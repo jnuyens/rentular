@@ -70,13 +70,13 @@ propertiesRouter.post(
   async (c) => {
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
-    const record = { id, ownerId: "system", ...data, isArchived: false, createdAt: new Date().toISOString() };
+    const record = { id, ownerId: c.get("userId") || "system", ...data, isArchived: false, createdAt: new Date().toISOString() };
 
     try {
       if (db && dbSchema) {
         await db.insert(dbSchema).values({
           id,
-          ownerId: "system",
+          ownerId: c.get("userId") || "system",
           name: data.name,
           type: data.type,
           street: data.street,

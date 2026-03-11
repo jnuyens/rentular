@@ -51,7 +51,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
   const leaseType = data.leaseType || data.type || "residential_long";
   const record = {
     id,
-    ownerId: "system",
+    ownerId: c.get("userId") || "system",
     propertyId: data.propertyId,
     tenantIds: data.tenantIds,
     type: leaseType,

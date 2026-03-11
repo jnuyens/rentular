@@ -60,13 +60,13 @@ tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
   const data = c.req.valid("json");
   const tenantLanguage = data.language || "nl";
   const id = crypto.randomUUID();
-  const record = { id, ownerId: "system", ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
+  const record = { id, ownerId: c.get("userId") || "system", ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
 
   try {
     if (db && dbSchema) {
       await db.insert(dbSchema).values({
         id,
-        ownerId: "system",
+        ownerId: c.get("userId") || "system",
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email || null,

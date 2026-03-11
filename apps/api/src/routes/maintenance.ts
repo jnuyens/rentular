@@ -50,7 +50,7 @@ maintenanceRouter.post(
     const nextDue = computeNextDue(data.lastCompleted || undefined, data.intervalMonths);
     const record = {
       id,
-      ownerId: "system",
+      ownerId: c.get("userId") || "system",
       propertyId: data.propertyId,
       type: data.type,
       name: data.name,

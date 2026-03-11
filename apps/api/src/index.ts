@@ -24,6 +24,7 @@ import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
+import { authMiddleware } from "./lib/authMiddleware";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -37,6 +38,7 @@ app.use(
     credentials: true,
   })
 );
+app.use("*", authMiddleware);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
