@@ -83,6 +83,11 @@ export const paymentFollowUpSettings = mysqlTable("payment_follow_up_settings", 
   // Interest on late payments
   interestEnabled: boolean("interest_enabled").default(false).notNull(),
   annualInterestRate: decimal("annual_interest_rate", { precision: 5, scale: 2 }).default("3.75"),
+  // SMS notifications (sent in addition to or instead of email)
+  smsEnabled: boolean("sms_enabled").default(false).notNull(),
+  smsFriendlyMessage: text("sms_friendly_message"), // Short SMS for friendly reminder
+  smsFormalMessage: text("sms_formal_message"),
+  smsFinalMessage: text("sms_final_message"),
   // Configurable email templates (support placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{adminFee}}, {{totalOwed}}, {{ownerName}})
   friendlySubject: varchar("friendly_subject", { length: 500 }).default("Friendly reminder: rent payment due"),
   friendlyBody: text("friendly_body"),

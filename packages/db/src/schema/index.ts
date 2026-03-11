@@ -7,3 +7,4 @@ export * from "./indexation";
 export * from "./costs";
 export * from "./bankAccounts";
 export * from "./propertyManagers";
+export * from "./communications";

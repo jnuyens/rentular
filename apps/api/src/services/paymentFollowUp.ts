@@ -1,5 +1,7 @@
 import { renderTemplate, type EmailOptions } from "../lib/email";
 import { queueEmail } from "../jobs/emailQueueWorker";
+import { queueSms } from "../jobs/smsQueueWorker";
+import { normalizePhoneNumber } from "../lib/sms";
 import {
   REMINDER_DEFAULTS,
   DEFAULT_EMAIL_TEMPLATES,
@@ -18,6 +20,7 @@ interface OverduePayment {
   daysPastDue: number;
   tenantName: string;
   tenantEmail: string;
+  tenantPhone: string | null;
   propertyName: string;
   ownerName: string;
   isIgnored: boolean;
@@ -42,7 +45,18 @@ interface FollowUpSettings {
   formalBody: string;
   finalSubject: string;
   finalBody: string;
+  // SMS settings
+  smsEnabled: boolean;
+  smsFriendlyMessage: string;
+  smsFormalMessage: string;
+  smsFinalMessage: string;
 }
+
+const DEFAULT_SMS_TEMPLATES = {
+  friendly: "Reminder: rent of {{amount}} for {{propertyName}} was due {{dueDate}}. Please arrange payment. - {{ownerName}}",
+  formal: "Your rent of {{amount}} for {{propertyName}} is {{daysPastDue}} days overdue. Please pay immediately. - {{ownerName}}",
+  final: "FINAL NOTICE: {{amount}} + fees (total {{totalOwed}}) overdue for {{propertyName}}. Immediate payment required. - {{ownerName}}",
+};
 
 const DEFAULT_SETTINGS: FollowUpSettings = {
   enabled: true,
@@ -57,6 +71,10 @@ const DEFAULT_SETTINGS: FollowUpSettings = {
   formalBody: DEFAULT_EMAIL_TEMPLATES.formal.body,
   finalSubject: DEFAULT_EMAIL_TEMPLATES.final.subject,
   finalBody: DEFAULT_EMAIL_TEMPLATES.final.body,
+  smsEnabled: false,
+  smsFriendlyMessage: DEFAULT_SMS_TEMPLATES.friendly,
+  smsFormalMessage: DEFAULT_SMS_TEMPLATES.formal,
+  smsFinalMessage: DEFAULT_SMS_TEMPLATES.final,
 };
 
 function calculateInterest(
@@ -191,6 +209,21 @@ export async function sendReminder(
   }
 
   await queueEmail(emailOptions);
+
+  // Send SMS if enabled and tenant has a phone number
+  if (settings.smsEnabled && payment.tenantPhone) {
+    const smsTemplate =
+      level === "friendly"
+        ? settings.smsFriendlyMessage
+        : level === "formal"
+          ? settings.smsFormalMessage
+          : settings.smsFinalMessage;
+
+    await queueSms({
+      to: normalizePhoneNumber(payment.tenantPhone),
+      body: renderTemplate(smsTemplate, vars),
+    });
+  }
 }
 
 // Generate a simple PDF overview of the late payment with interest + admin fee breakdown

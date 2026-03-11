@@ -15,9 +15,11 @@ import { costsRouter } from "./routes/costs";
 import { rentAdjustmentsRouter } from "./routes/rentAdjustments";
 import { bankAccountsRouter } from "./routes/bankAccounts";
 import { propertyManagersRouter } from "./routes/propertyManagers";
+import { communicationsRouter } from "./routes/communications";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
+import { smsQueue } from "./jobs/smsQueueWorker";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -48,6 +50,7 @@ app.route("/costs", costsRouter);
 app.route("/rent-adjustments", rentAdjustmentsRouter);
 app.route("/bank-accounts", bankAccountsRouter);
 app.route("/property-managers", propertyManagersRouter);
+app.route("/communications", communicationsRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>
@@ -59,6 +62,7 @@ setupLandlordReportSchedule().catch((err) =>
 
 // Email queue is auto-started by importing the worker module
 console.log(`[EmailQueue] Worker started (rate limit: ${process.env.EMAIL_RATE_LIMIT || 30}/min)`);
+console.log(`[SmsQueue] Worker started (rate limit: ${process.env.SMS_RATE_LIMIT || 10}/min, provider: ${process.env.SMS_PROVIDER || "console"})`);
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));
