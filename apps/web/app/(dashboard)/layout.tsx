@@ -12,6 +12,7 @@ import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import SupportChat from "@/components/SupportChat";
 
 const navigationItems = [
   { key: "properties" as const, href: "/properties", icon: Building2 },
@@ -96,6 +97,8 @@ export default async function DashboardLayout({
         </div>
         <div className="relative">{children}</div>
       </main>
+
+      <SupportChat />
     </div>
   );
 }
