@@ -57,7 +57,7 @@ export default async function DashboardLayout({
 
         <div className="border-t border-[hsl(var(--border))] p-4">
           <div className="mb-3">
-            <LanguageSwitcher />
+            <LanguageSwitcher dropDirection="up" />
           </div>
           <div className="flex items-center gap-3">
             {session.user?.image && (

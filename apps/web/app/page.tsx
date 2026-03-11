@@ -299,7 +299,7 @@ export default function LandingPage() {
                   <Check className="h-4 w-4 text-green-500" /> {t("planAllFeatures")}
                 </li>
                 <li className="flex items-center gap-2 text-sm text-gray-600">
-                  <Check className="h-4 w-4 text-green-500" /> {t("planEmailReminders")}
+                  <Check className="h-4 w-4 text-green-500" /> {t("planEmailSms")}
                 </li>
                 <li className="flex items-center gap-2 text-sm text-gray-600">
                   <Check className="h-4 w-4 text-green-500" /> {t("planIndexation")}
@@ -364,7 +364,7 @@ export default function LandingPage() {
                 <span className="text-gray-500">/{t("perMonth")}</span>
               </div>
               <ul className="mt-8 flex-1 space-y-3">
-                <li className="flex items-center gap-2 text-sm text-gray-600">
+                <li className="flex items-center gap-2 text-sm font-bold text-gray-900">
                   <Check className="h-4 w-4 text-green-500" /> {t("planUnlimited")}
                 </li>
                 <li className="flex items-center gap-2 text-sm text-gray-600">

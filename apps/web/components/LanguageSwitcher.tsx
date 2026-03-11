@@ -15,7 +15,7 @@ const LANGUAGES = [
 const COOKIE_NAME = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year
 
-export default function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
+export default function LanguageSwitcher({ compact = false, dropDirection = "auto" }: { compact?: boolean; dropDirection?: "up" | "down" | "auto" }) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -73,7 +73,11 @@ export default function LanguageSwitcher({ compact = false }: { compact?: boolea
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1 w-44 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-1 shadow-lg z-50">
+        <div className={`absolute left-0 w-44 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-1 shadow-lg z-50 ${
+          dropDirection === "up" ? "bottom-full mb-1" :
+          dropDirection === "down" ? "top-full mt-1" :
+          "top-full mt-1"
+        }`}>
           {LANGUAGES.map((lang) => (
             <button
               key={lang.code}
