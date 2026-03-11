@@ -65,6 +65,13 @@ export const leases = mysqlTable("leases", {
     scale: 2,
   }),
   lastIndexationDate: date("last_indexation_date"),
+  // Late payment administrative fee (per contract)
+  latePaymentFeeEnabled: boolean("late_payment_fee_enabled").default(false).notNull(),
+  latePaymentFeeAmount: decimal("late_payment_fee_amount", { precision: 10, scale: 2 }).default("15.00"),
+  latePaymentFeeEnforcement: mysqlEnum("late_payment_fee_enforcement", [
+    "soft",   // Waived if tenant pays within 7 days of the fee notice
+    "strict", // Once charged, the fee and any interest remain due regardless
+  ]).default("soft").notNull(),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

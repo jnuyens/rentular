@@ -31,6 +31,8 @@ export type PaymentMethod = "gocardless" | "bank_transfer" | "cash" | "other";
 
 export type ReminderType = "friendly" | "formal" | "final";
 
+export type LatePaymentFeeEnforcement = "soft" | "strict";
+
 export type Language = "nl" | "fr" | "de" | "en";
 
 // Belgian structured communication format: +++xxx/xxxx/xxxxx+++

@@ -50,6 +50,12 @@ export const REMINDER_DEFAULTS = {
 // Default annual interest rate for late payments (Belgian legal interest rate)
 export const DEFAULT_INTEREST_RATE = 3.75;
 
+// Default administrative fee for late payments (EUR)
+export const DEFAULT_LATE_PAYMENT_FEE = 15.0;
+
+// Soft enforcement grace period (days after fee notice to pay without owing the fee)
+export const SOFT_ENFORCEMENT_GRACE_DAYS = 7;
+
 // Balance check schedule (3x per day)
 export const BALANCE_CHECK_CRON = [
   "0 0 * * *",   // 00:00
@@ -91,6 +97,7 @@ Amount due: {{amount}}
 Due date: {{dueDate}}
 Days overdue: {{daysPastDue}}
 Interest charges: {{interestAmount}}
+Administrative fee: {{adminFee}}
 Total amount owed: {{totalOwed}}
 
 Please find attached a detailed overview of the outstanding amount.

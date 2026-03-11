@@ -28,7 +28,7 @@ interface FollowUpSettings {
 }
 
 const PLACEHOLDER_HELP =
-  "Available placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{totalOwed}}, {{ownerName}}";
+  "Available placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{adminFee}}, {{totalOwed}}, {{ownerName}}";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");

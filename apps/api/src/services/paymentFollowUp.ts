@@ -3,7 +3,10 @@ import {
   REMINDER_DEFAULTS,
   DEFAULT_EMAIL_TEMPLATES,
   DEFAULT_INTEREST_RATE,
+  DEFAULT_LATE_PAYMENT_FEE,
+  SOFT_ENFORCEMENT_GRACE_DAYS,
 } from "@rentular/shared";
+import type { LatePaymentFeeEnforcement } from "@rentular/shared";
 
 // Types for the data we expect from the database
 interface OverduePayment {
@@ -19,6 +22,10 @@ interface OverduePayment {
   isIgnored: boolean;
   // Which reminders have already been sent
   remindersSent: Array<"friendly" | "formal" | "final">;
+  // Per-lease late payment fee settings
+  latePaymentFeeEnabled: boolean;
+  latePaymentFeeAmount: number;
+  latePaymentFeeEnforcement: LatePaymentFeeEnforcement;
 }
 
 interface FollowUpSettings {
@@ -60,6 +67,25 @@ function calculateInterest(
   return Math.round(amount * dailyRate * daysPastDue * 100) / 100;
 }
 
+// Check if a late payment fee should be waived under soft enforcement
+// Soft: fee is waived if the tenant pays within SOFT_ENFORCEMENT_GRACE_DAYS of the fee notice
+// Strict: once charged, the fee remains due regardless of when the tenant pays
+export function shouldWaiveFee(
+  enforcement: LatePaymentFeeEnforcement,
+  feeChargedDate: string,
+  paidDate: string | null
+): boolean {
+  if (enforcement === "strict") return false;
+  if (!paidDate) return false;
+
+  const charged = new Date(feeChargedDate);
+  const paid = new Date(paidDate);
+  const diffDays = Math.floor(
+    (paid.getTime() - charged.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return diffDays <= SOFT_ENFORCEMENT_GRACE_DAYS;
+}
+
 function getTemplateVariables(
   payment: OverduePayment,
   settings: FollowUpSettings
@@ -72,14 +98,21 @@ function getTemplateVariables(
       )
     : 0;
 
+  const adminFee = payment.latePaymentFeeEnabled
+    ? payment.latePaymentFeeAmount
+    : 0;
+
+  const totalOwed = payment.amount + interestAmount + adminFee;
+
   return {
     tenantName: payment.tenantName,
-    amount: `€${payment.amount.toFixed(2)}`,
+    amount: `\u20AC${payment.amount.toFixed(2)}`,
     dueDate: payment.dueDate,
     propertyName: payment.propertyName,
     daysPastDue: payment.daysPastDue.toString(),
-    interestAmount: `€${interestAmount.toFixed(2)}`,
-    totalOwed: `€${(payment.amount + interestAmount).toFixed(2)}`,
+    interestAmount: `\u20AC${interestAmount.toFixed(2)}`,
+    adminFee: `\u20AC${adminFee.toFixed(2)}`,
+    totalOwed: `\u20AC${totalOwed.toFixed(2)}`,
     ownerName: payment.ownerName,
   };
 }
@@ -159,7 +192,7 @@ export async function sendReminder(
   await sendEmail(emailOptions);
 }
 
-// Generate a simple PDF overview of the late payment with interest breakdown
+// Generate a simple PDF overview of the late payment with interest + admin fee breakdown
 function generateLatePaymentPdf(
   payment: OverduePayment,
   settings: FollowUpSettings
@@ -171,10 +204,11 @@ function generateLatePaymentPdf(
         settings.annualInterestRate
       )
     : 0;
-  const totalOwed = payment.amount + interestAmount;
+  const adminFee = payment.latePaymentFeeEnabled
+    ? payment.latePaymentFeeAmount
+    : 0;
+  const totalOwed = payment.amount + interestAmount + adminFee;
 
-  // Minimal PDF generation - a real implementation would use a library like pdfkit or puppeteer
-  // For now, create a structured text that the PDF library will render
   const content = [
     "LATE PAYMENT OVERVIEW",
     "====================",
@@ -198,7 +232,17 @@ function generateLatePaymentPdf(
     );
   }
 
+  if (payment.latePaymentFeeEnabled) {
+    content.push(
+      "Administrative Fee:",
+      `  Late payment fee: EUR ${adminFee.toFixed(2)}`,
+      `  Enforcement: ${payment.latePaymentFeeEnforcement === "soft" ? "Soft (waived if paid within 7 days)" : "Strict (non-waivable)"}`,
+      ""
+    );
+  }
+
   content.push(
+    "--------------------",
     `TOTAL AMOUNT OWED: EUR ${totalOwed.toFixed(2)}`,
     "",
     "Please settle this amount immediately to avoid further action."

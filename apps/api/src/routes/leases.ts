@@ -25,6 +25,10 @@ const createLeaseSchema = z.object({
   indexationBaseIndex: z.number().optional(), // Base health index value
   paymentDay: z.number().int().min(1).max(28).default(1),
   gocardlessMandateId: z.string().optional(),
+  // Late payment administrative fee (per contract)
+  latePaymentFeeEnabled: z.boolean().default(false),
+  latePaymentFeeAmount: z.number().min(0).default(15.0),
+  latePaymentFeeEnforcement: z.enum(["soft", "strict"]).default("soft"),
 });
 
 export const leasesRouter = new Hono();

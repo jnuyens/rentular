@@ -43,6 +43,10 @@ export const payments = mysqlTable("payments", {
   // Breakdown
   rentAmount: decimal("rent_amount", { precision: 10, scale: 2 }),
   chargesAmount: decimal("charges_amount", { precision: 10, scale: 2 }),
+  // Late payment administrative fee & interest charged on this payment
+  latePaymentFee: decimal("late_payment_fee", { precision: 10, scale: 2 }).default("0.00"),
+  interestCharged: decimal("interest_charged", { precision: 10, scale: 2 }).default("0.00"),
+  feeWaivedAt: date("fee_waived_at"), // If soft enforcement and tenant paid within grace period
   // Non-rent payment: mark incoming payments as not rent-related (e.g. deposit refund, utility reimbursement)
   isIgnored: boolean("is_ignored").default(false).notNull(),
   ignoreReason: text("ignore_reason"),
@@ -79,7 +83,7 @@ export const paymentFollowUpSettings = mysqlTable("payment_follow_up_settings", 
   // Interest on late payments
   interestEnabled: boolean("interest_enabled").default(false).notNull(),
   annualInterestRate: decimal("annual_interest_rate", { precision: 5, scale: 2 }).default("3.75"),
-  // Configurable email templates (support placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{totalOwed}})
+  // Configurable email templates (support placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{adminFee}}, {{totalOwed}}, {{ownerName}})
   friendlySubject: varchar("friendly_subject", { length: 500 }).default("Friendly reminder: rent payment due"),
   friendlyBody: text("friendly_body"),
   formalSubject: varchar("formal_subject", { length: 500 }).default("Payment overdue - action required"),
