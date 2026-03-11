@@ -10,6 +10,7 @@ import { paymentsRouter } from "./routes/payments";
 import { indexationRouter } from "./routes/indexation";
 import { webhooksRouter } from "./routes/webhooks";
 import { settingsRouter } from "./routes/settings";
+import { authRouter } from "./routes/auth";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 
@@ -37,6 +38,7 @@ app.route("/payments", paymentsRouter);
 app.route("/indexation", indexationRouter);
 app.route("/webhooks", webhooksRouter);
 app.route("/settings", settingsRouter);
+app.route("/auth", authRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>

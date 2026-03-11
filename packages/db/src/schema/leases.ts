@@ -31,7 +31,8 @@ export const leases = mysqlTable("leases", {
   status: mysqlEnum("status", ["draft", "active", "terminated", "expired"])
     .default("draft")
     .notNull(),
-  startDate: date("start_date").notNull(),
+  signingDate: date("signing_date").notNull(), // Date the contract was signed
+  startDate: date("start_date").notNull(),    // Date the lease actually starts
   endDate: date("end_date"),
   // Financial
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),

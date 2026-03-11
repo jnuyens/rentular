@@ -13,7 +13,8 @@ const createLeaseSchema = z.object({
     "commercial",
   ]),
   region: z.enum(["flanders", "wallonia", "brussels"]),
-  startDate: z.string().date(),
+  signingDate: z.string().date(), // Date the contract was signed
+  startDate: z.string().date(),   // Date the lease starts (may differ from signing)
   endDate: z.string().date().optional(),
   monthlyRent: z.number().positive(),
   monthlyCharges: z.number().min(0).default(0),

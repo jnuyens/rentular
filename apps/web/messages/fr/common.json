@@ -4,7 +4,21 @@
     "continueWithGoogle": "Continuer avec Google",
     "continueWithFacebook": "Continuer avec Facebook",
     "continueWithTwitter": "Continuer avec X",
-    "termsNotice": "En continuant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialite."
+    "termsNotice": "En continuant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialite.",
+    "emailPlaceholder": "Adresse e-mail",
+    "passwordPlaceholder": "Mot de passe",
+    "passwordRequirement": "Minimum 12 caracteres",
+    "passwordTooShort": "Le mot de passe doit contenir au moins 12 caracteres.",
+    "signIn": "Se connecter",
+    "createAccount": "Creer un compte",
+    "sendResetLink": "Envoyer le lien de reinitialisation",
+    "noAccount": "Pas encore de compte ?",
+    "forgotPassword": "Mot de passe oublie ?",
+    "backToLogin": "Retour a la connexion",
+    "orContinueWith": "ou continuer avec",
+    "invalidCredentials": "E-mail ou mot de passe invalide.",
+    "registrationFailed": "L'inscription a echoue. Veuillez reessayer.",
+    "resetEmailSent": "Si un compte existe avec cet e-mail, un lien de reinitialisation a ete envoye."
   },
   "nav": {
     "properties": "Biens",

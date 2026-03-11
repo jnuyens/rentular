@@ -4,7 +4,21 @@
     "continueWithGoogle": "Weiter mit Google",
     "continueWithFacebook": "Weiter mit Facebook",
     "continueWithTwitter": "Weiter mit X",
-    "termsNotice": "Durch Fortfahren stimmen Sie unseren Nutzungsbedingungen und unserer Datenschutzrichtlinie zu."
+    "termsNotice": "Durch Fortfahren stimmen Sie unseren Nutzungsbedingungen und unserer Datenschutzrichtlinie zu.",
+    "emailPlaceholder": "E-Mail-Adresse",
+    "passwordPlaceholder": "Passwort",
+    "passwordRequirement": "Mindestens 12 Zeichen",
+    "passwordTooShort": "Das Passwort muss mindestens 12 Zeichen lang sein.",
+    "signIn": "Anmelden",
+    "createAccount": "Konto erstellen",
+    "sendResetLink": "Link zum Zuruecksetzen senden",
+    "noAccount": "Noch kein Konto?",
+    "forgotPassword": "Passwort vergessen?",
+    "backToLogin": "Zurueck zur Anmeldung",
+    "orContinueWith": "oder weiter mit",
+    "invalidCredentials": "Ungueltige E-Mail oder ungueltigtes Passwort.",
+    "registrationFailed": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "resetEmailSent": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zuruecksetzen gesendet."
   },
   "nav": {
     "properties": "Immobilien",

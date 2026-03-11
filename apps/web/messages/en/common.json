@@ -4,7 +4,21 @@
     "continueWithGoogle": "Continue with Google",
     "continueWithFacebook": "Continue with Facebook",
     "continueWithTwitter": "Continue with X",
-    "termsNotice": "By continuing, you agree to our Terms of Service and Privacy Policy."
+    "termsNotice": "By continuing, you agree to our Terms of Service and Privacy Policy.",
+    "emailPlaceholder": "Email address",
+    "passwordPlaceholder": "Password",
+    "passwordRequirement": "Minimum 12 characters",
+    "passwordTooShort": "Password must be at least 12 characters.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "sendResetLink": "Send reset link",
+    "noAccount": "Don't have an account?",
+    "forgotPassword": "Forgot password?",
+    "backToLogin": "Back to sign in",
+    "orContinueWith": "or continue with",
+    "invalidCredentials": "Invalid email or password.",
+    "registrationFailed": "Registration failed. Please try again.",
+    "resetEmailSent": "If an account with that email exists, a reset link has been sent."
   },
   "nav": {
     "properties": "Properties",

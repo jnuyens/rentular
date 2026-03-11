@@ -16,9 +16,22 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 255 }).unique().notNull(),
   emailVerified: timestamp("email_verified"),
   image: text("image"),
+  // Password auth (bcrypt hash, null for OAuth-only users)
+  passwordHash: varchar("password_hash", { length: 255 }),
   locale: varchar("locale", { length: 5 }).default("en"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Password reset tokens
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expires: timestamp("expires").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const accounts = mysqlTable(

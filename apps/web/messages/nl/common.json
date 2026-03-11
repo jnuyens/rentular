@@ -4,7 +4,21 @@
     "continueWithGoogle": "Doorgaan met Google",
     "continueWithFacebook": "Doorgaan met Facebook",
     "continueWithTwitter": "Doorgaan met X",
-    "termsNotice": "Door verder te gaan, ga je akkoord met onze Servicevoorwaarden en ons Privacybeleid."
+    "termsNotice": "Door verder te gaan, ga je akkoord met onze Servicevoorwaarden en ons Privacybeleid.",
+    "emailPlaceholder": "E-mailadres",
+    "passwordPlaceholder": "Wachtwoord",
+    "passwordRequirement": "Minimaal 12 tekens",
+    "passwordTooShort": "Wachtwoord moet minimaal 12 tekens bevatten.",
+    "signIn": "Inloggen",
+    "createAccount": "Account aanmaken",
+    "sendResetLink": "Resetlink versturen",
+    "noAccount": "Nog geen account?",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "backToLogin": "Terug naar inloggen",
+    "orContinueWith": "of doorgaan met",
+    "invalidCredentials": "Ongeldig e-mailadres of wachtwoord.",
+    "registrationFailed": "Registratie mislukt. Probeer het opnieuw.",
+    "resetEmailSent": "Als er een account met dat e-mailadres bestaat, is er een resetlink verstuurd."
   },
   "nav": {
     "properties": "Eigendommen",
