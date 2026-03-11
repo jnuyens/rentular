@@ -5,12 +5,20 @@ export const REGIONS = {
     indexationAutomatic: true,
     indexationRequestPeriod: null, // No limit, automatic
     defaultLeaseLength: 9, // years
+    // Flanders EPC-based indexation restrictions:
+    // - Freeze period Oct 1 2022 – Sep 30 2023 for contracts started before Oct 1, 2022
+    // - From Oct 1 2023: correction factor permanently applied to D/E/F/no-EPC contracts started before Oct 1, 2022
+    // - From 2028: E/F labels banned from indexation entirely
+    // - From 2030: further restrictions
+    // - Does NOT apply to student leases
+    epcIndexationRestrictions: true,
   },
   wallonia: {
     name: { en: "Wallonia", nl: "Wallonie", fr: "Wallonie", de: "Wallonien" },
     indexationAutomatic: false,
     indexationRequestPeriod: 3, // months after anniversary
     defaultLeaseLength: 9,
+    epcIndexationRestrictions: false,
   },
   brussels: {
     name: {
@@ -22,7 +30,7 @@ export const REGIONS = {
     indexationAutomatic: false,
     indexationRequestPeriod: 3,
     defaultLeaseLength: 9,
-    // Brussels has EPC-based indexation restrictions since Oct 2022
+    // Brussels has permanent EPC-based indexation restrictions since Oct 2022
     epcIndexationRestrictions: true,
   },
 } as const;
@@ -110,6 +118,85 @@ We urge you to settle this amount immediately. Failure to do so may result in fu
 Regards,
 {{ownerName}}`,
   },
+} as const;
+
+// === EPC-BASED INDEXATION RESTRICTIONS ===
+// Both Brussels and Flanders have EPC-based restrictions on rent indexation.
+// Wallonia currently has no EPC-based indexation restrictions.
+
+// Brussels: permanent restrictions (since October 14, 2022)
+// Determines what percentage of the calculated rent INCREASE can be applied
+export const BRUSSELS_EPC_INDEXATION_FACTOR: Record<string, number> = {
+  "A++": 1.0,
+  "A+": 1.0,
+  A: 1.0,
+  B: 1.0,
+  C: 0.5,   // Only 50% of the calculated increase
+  D: 0.75,  // Only 75% of the calculated increase
+  E: 0.5,   // Only 50% of the calculated increase
+  F: 0.0,   // No indexation allowed
+  G: 0.0,   // No indexation allowed
+  none: 0.0, // No EPC certificate = no indexation
+};
+
+// Flanders: temporary freeze + permanent correction factor
+// Only applies to residential leases (NOT student leases) started BEFORE Oct 1, 2022
+
+// Freeze period: Oct 1, 2022 – Sep 30, 2023
+export const FLANDERS_EPC_FREEZE_START = "2022-10-01";
+export const FLANDERS_EPC_FREEZE_END = "2023-09-30";
+
+// During the freeze period (Oct 2022 – Sep 2023):
+export const FLANDERS_EPC_FREEZE_FACTOR: Record<string, number> = {
+  "A++": 1.0,
+  "A+": 1.0,
+  A: 1.0,
+  B: 1.0,
+  C: 1.0,   // Full indexation allowed
+  D: 0.5,   // Only 50% of the increase
+  E: 0.0,   // No indexation
+  F: 0.0,   // No indexation
+  G: 0.0,   // No indexation
+  none: 0.0, // No EPC = no indexation
+};
+
+// After the freeze (from Oct 1, 2023): indexation allowed again for all labels,
+// BUT a correction factor must be applied that excludes the index growth during
+// the freeze period. This correction factor is permanent for the contract's lifetime,
+// unless a better EPC is obtained or a new contract is signed.
+// Labels A+/A/B/C: no correction needed (they were never restricted)
+// Labels D/E/F/G/none: correction factor must be applied
+export const FLANDERS_EPC_NEEDS_CORRECTION: Record<string, boolean> = {
+  "A++": false,
+  "A+": false,
+  A: false,
+  B: false,
+  C: false,
+  D: true,
+  E: true,
+  F: true,
+  G: true,
+  none: true,
+};
+
+// Future Flanders restrictions:
+// From 2028: E and F labels completely banned from indexation
+// From 2030: further restrictions (details TBD by Flemish government)
+export const FLANDERS_FUTURE_RESTRICTIONS = {
+  2028: { bannedLabels: ["E", "F"] as readonly string[] },
+  2030: { bannedLabels: ["D", "E", "F"] as readonly string[] },
+} as const;
+
+// EPC scores ordered from best to worst
+export const EPC_SCORES = ["A++", "A+", "A", "B", "C", "D", "E", "F", "G"] as const;
+
+// Property manager roles
+export const PROPERTY_MANAGER_ROLES = {
+  owner: { canManageManagers: true, canManageLeases: true, canManagePayments: true, canViewAll: true },
+  co_owner: { canManageManagers: true, canManageLeases: true, canManagePayments: true, canViewAll: true },
+  manager: { canManageManagers: false, canManageLeases: true, canManagePayments: true, canViewAll: true },
+  accountant: { canManageManagers: false, canManageLeases: false, canManagePayments: true, canViewAll: true },
+  viewer: { canManageManagers: false, canManageLeases: false, canManagePayments: false, canViewAll: true },
 } as const;
 
 // GoCardless scheme for Belgium

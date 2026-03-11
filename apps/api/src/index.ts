@@ -11,8 +11,13 @@ import { indexationRouter } from "./routes/indexation";
 import { webhooksRouter } from "./routes/webhooks";
 import { settingsRouter } from "./routes/settings";
 import { authRouter } from "./routes/auth";
+import { costsRouter } from "./routes/costs";
+import { rentAdjustmentsRouter } from "./routes/rentAdjustments";
+import { bankAccountsRouter } from "./routes/bankAccounts";
+import { propertyManagersRouter } from "./routes/propertyManagers";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
+import { emailQueue } from "./jobs/emailQueueWorker";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -39,6 +44,10 @@ app.route("/indexation", indexationRouter);
 app.route("/webhooks", webhooksRouter);
 app.route("/settings", settingsRouter);
 app.route("/auth", authRouter);
+app.route("/costs", costsRouter);
+app.route("/rent-adjustments", rentAdjustmentsRouter);
+app.route("/bank-accounts", bankAccountsRouter);
+app.route("/property-managers", propertyManagersRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>
@@ -47,6 +56,9 @@ setupPaymentCheckSchedule().catch((err) =>
 setupLandlordReportSchedule().catch((err) =>
   console.error("Failed to setup landlord report schedule:", err)
 );
+
+// Email queue is auto-started by importing the worker module
+console.log(`[EmailQueue] Worker started (rate limit: ${process.env.EMAIL_RATE_LIMIT || 30}/min)`);
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));

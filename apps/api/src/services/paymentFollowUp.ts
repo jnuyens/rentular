@@ -1,4 +1,5 @@
-import { sendEmail, renderTemplate, type EmailOptions } from "../lib/email";
+import { renderTemplate, type EmailOptions } from "../lib/email";
+import { queueEmail } from "../jobs/emailQueueWorker";
 import {
   REMINDER_DEFAULTS,
   DEFAULT_EMAIL_TEMPLATES,
@@ -189,7 +190,7 @@ export async function sendReminder(
     ];
   }
 
-  await sendEmail(emailOptions);
+  await queueEmail(emailOptions);
 }
 
 // Generate a simple PDF overview of the late payment with interest + admin fee breakdown

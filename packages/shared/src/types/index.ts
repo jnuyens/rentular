@@ -79,4 +79,38 @@ export interface IndexationResult {
   percentageChange: number;
   effectiveDate: string;
   region: Region;
+  // Brussels EPC restriction info (only for Brussels region)
+  epcScore?: string;
+  epcIndexationFactor?: number; // 0.0 to 1.0
+  epcRestricted?: boolean;      // true if indexation was reduced due to EPC
+  unrestrictedNewRent?: number;  // What the rent would be without EPC restriction
+}
+
+// EPC scores
+export type EpcScore = "A++" | "A+" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
+
+// Property manager roles
+export type PropertyManagerRole = "owner" | "co_owner" | "manager" | "accountant" | "viewer";
+
+// Bank account
+export interface BankAccount {
+  id: string;
+  ownerId: string;
+  label: string;
+  iban: string;
+  bic?: string;
+  holderName: string;
+  bankName?: string;
+  isDefault: boolean;
+}
+
+// Property manager (multi-user access)
+export interface PropertyManager {
+  id: string;
+  propertyId: string;
+  userId: string;
+  role: PropertyManagerRole;
+  invitedBy?: string;
+  invitedAt: string;
+  acceptedAt?: string;
 }

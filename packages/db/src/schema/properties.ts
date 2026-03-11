@@ -32,8 +32,10 @@ export const properties = mysqlTable("properties", {
   country: varchar("country", { length: 2 }).notNull().default("BE"),
   // Belgian-specific
   cadastralReference: varchar("cadastral_reference", { length: 100 }),
-  epcScore: varchar("epc_score", { length: 10 }), // Energy Performance Certificate
+  epcScore: varchar("epc_score", { length: 10 }), // Energy Performance Certificate numeric score (kWh/m²)
+  epcLabel: varchar("epc_label", { length: 5 }), // EPC label: A++, A+, A, B, C, D, E, F, G
   epcCertificateNumber: varchar("epc_certificate_number", { length: 100 }),
+  epcExpiryDate: varchar("epc_expiry_date", { length: 10 }), // YYYY-MM-DD
   // Metadata
   notes: text("notes"),
   metadata: json("metadata"),

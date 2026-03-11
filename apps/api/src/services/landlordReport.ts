@@ -1,4 +1,5 @@
-import { sendEmail, type EmailOptions } from "../lib/email";
+import { type EmailOptions } from "../lib/email";
+import { queueEmail } from "../jobs/emailQueueWorker";
 
 interface TenantPaymentStatus {
   tenantName: string;

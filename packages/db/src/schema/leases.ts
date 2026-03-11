@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 import { properties } from "./properties";
+import { bankAccounts } from "./bankAccounts";
 
 export const leases = mysqlTable("leases", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),
@@ -54,6 +55,9 @@ export const leases = mysqlTable("leases", {
     .default("bank_transfer")
     .notNull(),
   structuredCommunication: varchar("structured_communication", { length: 20 }), // +++xxx/xxxx/xxxxx+++
+  // Bank account used for rent collection on this contract
+  bankAccountId: varchar("bank_account_id", { length: 36 })
+    .references(() => bankAccounts.id),
   // Indexation
   indexationEnabled: boolean("indexation_enabled").default(true).notNull(),
   indexationBaseMonth: varchar("indexation_base_month", { length: 7 }), // YYYY-MM

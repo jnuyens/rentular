@@ -21,6 +21,7 @@ const createLeaseSchema = z.object({
   chargesType: z.enum(["fixed", "provision"]).default("fixed"),
   deposit: z.number().min(0).default(0),
   depositAccount: z.string().optional(), // Blocked bank account for deposit
+  bankAccountId: z.string().uuid().optional(), // Bank account used for rent collection on this contract
   indexationEnabled: z.boolean().default(true),
   indexationBaseMonth: z.string().optional(), // Month used as base for health index
   indexationBaseIndex: z.number().optional(), // Base health index value
