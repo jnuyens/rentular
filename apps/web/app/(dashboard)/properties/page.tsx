@@ -16,6 +16,7 @@ interface Property {
   postalCode: string;
   city: string;
   country: string;
+  heatingType?: string;
   epcLabel?: string;
   epcScore?: string;
 }
@@ -248,15 +249,35 @@ export default function PropertiesPage() {
                 </label>
                 <CountrySelect name="country" defaultValue="BE" />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("cadastralReference")}
-                </label>
-                <input
-                  name="cadastralReference"
-                  type="text"
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    {t("cadastralReference")}
+                  </label>
+                  <input
+                    name="cadastralReference"
+                    type="text"
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    {t("heatingType")}
+                  </label>
+                  <select
+                    name="heatingType"
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  >
+                    <option value="">{t("selectHeatingType")}</option>
+                    <option value="gas">{t("heatingGas")}</option>
+                    <option value="oil">{t("heatingOil")}</option>
+                    <option value="electric">{t("heatingElectric")}</option>
+                    <option value="heat_pump">{t("heatingHeatPump")}</option>
+                    <option value="wood">{t("heatingWood")}</option>
+                    <option value="pellet">{t("heatingPellet")}</option>
+                    <option value="none">{t("heatingNone")}</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

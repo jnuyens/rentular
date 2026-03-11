@@ -26,6 +26,7 @@ const createPropertySchema = z.object({
   city: z.string().min(1),
   country: z.string().max(2).default("BE"),
   cadastralReference: z.string().optional().default(""),
+  heatingType: z.enum(["gas", "oil", "electric", "heat_pump", "wood", "pellet", "none", ""]).optional().default(""),
   epcLabel: z.string().optional().default(""),
   epcScore: z.string().optional().default(""),
   epcCertificateNumber: z.string().optional().default(""),
