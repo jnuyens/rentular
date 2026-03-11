@@ -10,7 +10,9 @@ paymentsRouter.get("/", async (c) => {
   const leaseId = c.req.query("leaseId");
   const from = c.req.query("from");
   const to = c.req.query("to");
+  const showIgnored = c.req.query("showIgnored") === "true";
 
+  // TODO: Query payments, optionally filtering out ignored ones
   return c.json({ data: [], meta: { total: 0, page: 1, perPage: 20 } });
 });
 
@@ -82,3 +84,27 @@ paymentsRouter.post(
     return c.json({ message: "Reminder queued" });
   }
 );
+
+// Mark a payment as ignored (not rent-related)
+paymentsRouter.post(
+  "/:id/ignore",
+  zValidator(
+    "json",
+    z.object({
+      reason: z.string().min(1, "Please provide a reason"),
+    })
+  ),
+  async (c) => {
+    const id = c.req.param("id");
+    const { reason } = c.req.valid("json");
+    // TODO: Update payment set isIgnored=true, ignoreReason=reason
+    return c.json({ message: "Payment marked as non-rent-related" });
+  }
+);
+
+// Unmark a payment as ignored (restore it to normal tracking)
+paymentsRouter.post("/:id/unignore", async (c) => {
+  const id = c.req.param("id");
+  // TODO: Update payment set isIgnored=false, ignoreReason=null
+  return c.json({ message: "Payment restored to rent tracking" });
+});

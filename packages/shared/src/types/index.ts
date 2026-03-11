@@ -39,6 +39,33 @@ export interface StructuredCommunication {
   formatted: string; // +++xxx/xxxx/xxxxx+++
 }
 
+// Payment follow-up settings
+export interface PaymentFollowUpSettings {
+  enabled: boolean;
+  friendlyReminderDays: number;
+  formalReminderDays: number;
+  finalReminderDays: number;
+  interestEnabled: boolean;
+  annualInterestRate: number;
+  friendlySubject: string;
+  friendlyBody: string;
+  formalSubject: string;
+  formalBody: string;
+  finalSubject: string;
+  finalBody: string;
+}
+
+// Email template placeholders
+export type TemplatePlaceholder =
+  | "tenantName"
+  | "amount"
+  | "dueDate"
+  | "propertyName"
+  | "daysPastDue"
+  | "interestAmount"
+  | "totalOwed"
+  | "ownerName";
+
 // Indexation calculation result
 export interface IndexationResult {
   leaseId: string;

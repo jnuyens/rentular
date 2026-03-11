@@ -9,6 +9,8 @@ import { leasesRouter } from "./routes/leases";
 import { paymentsRouter } from "./routes/payments";
 import { indexationRouter } from "./routes/indexation";
 import { webhooksRouter } from "./routes/webhooks";
+import { settingsRouter } from "./routes/settings";
+import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -33,6 +35,12 @@ app.route("/leases", leasesRouter);
 app.route("/payments", paymentsRouter);
 app.route("/indexation", indexationRouter);
 app.route("/webhooks", webhooksRouter);
+app.route("/settings", settingsRouter);
+
+// Start background job schedules
+setupPaymentCheckSchedule().catch((err) =>
+  console.error("Failed to setup payment check schedule:", err)
+);
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));

@@ -6,8 +6,11 @@ import {
   date,
   decimal,
   mysqlEnum,
+  boolean,
+  int,
 } from "drizzle-orm/mysql-core";
 import { leases } from "./leases";
+import { users } from "./users";
 
 export const payments = mysqlTable("payments", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),
@@ -40,6 +43,9 @@ export const payments = mysqlTable("payments", {
   // Breakdown
   rentAmount: decimal("rent_amount", { precision: 10, scale: 2 }),
   chargesAmount: decimal("charges_amount", { precision: 10, scale: 2 }),
+  // Non-rent payment: mark incoming payments as not rent-related (e.g. deposit refund, utility reimbursement)
+  isIgnored: boolean("is_ignored").default(false).notNull(),
+  ignoreReason: text("ignore_reason"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -55,4 +61,32 @@ export const paymentReminders = mysqlTable("payment_reminders", {
   channel: mysqlEnum("channel", ["email", "sms", "letter"]).notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
   notes: text("notes"),
+});
+
+// Per-owner settings for automated payment follow-up
+export const paymentFollowUpSettings = mysqlTable("payment_follow_up_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  ownerId: varchar("owner_id", { length: 255 })
+    .notNull()
+    .unique()
+    .references(() => users.id),
+  // Enable/disable automated follow-up
+  enabled: boolean("enabled").default(true).notNull(),
+  // Escalation delays (days after due date)
+  friendlyReminderDays: int("friendly_reminder_days").default(0).notNull(),
+  formalReminderDays: int("formal_reminder_days").default(3).notNull(),
+  finalReminderDays: int("final_reminder_days").default(6).notNull(),
+  // Interest on late payments
+  interestEnabled: boolean("interest_enabled").default(false).notNull(),
+  annualInterestRate: decimal("annual_interest_rate", { precision: 5, scale: 2 }).default("3.75"),
+  // Configurable email templates (support placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{totalOwed}})
+  friendlySubject: varchar("friendly_subject", { length: 500 }).default("Friendly reminder: rent payment due"),
+  friendlyBody: text("friendly_body"),
+  formalSubject: varchar("formal_subject", { length: 500 }).default("Payment overdue - action required"),
+  formalBody: text("formal_body"),
+  finalSubject: varchar("final_subject", { length: 500 }).default("Final notice: overdue rent payment"),
+  finalBody: text("final_body"),
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

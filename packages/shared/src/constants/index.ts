@@ -38,10 +38,68 @@ export const PROPERTY_TYPES = {
 } as const;
 
 // Payment reminder escalation defaults (in days after due date)
+// Day 0: friendly reminder on the due date
+// Day 3: formal reminder
+// Day 6: final notice with PDF overview and optional interest
 export const REMINDER_DEFAULTS = {
-  friendly: 7, // 7 days after due date
-  formal: 21, // 21 days after due date
-  final: 45, // 45 days after due date - before legal proceedings
+  friendly: 0,
+  formal: 3,
+  final: 6,
+} as const;
+
+// Default annual interest rate for late payments (Belgian legal interest rate)
+export const DEFAULT_INTEREST_RATE = 3.75;
+
+// Balance check schedule (3x per day)
+export const BALANCE_CHECK_CRON = [
+  "0 0 * * *",   // 00:00
+  "0 10 * * *",  // 10:00
+  "0 17 * * *",  // 17:00
+] as const;
+
+// Default email templates with placeholder variables
+export const DEFAULT_EMAIL_TEMPLATES = {
+  friendly: {
+    subject: "Friendly reminder: rent payment due",
+    body: `Dear {{tenantName}},
+
+This is a friendly reminder that your rent payment of {{amount}} for {{propertyName}} was due on {{dueDate}}.
+
+If you have already made this payment, please disregard this message. Otherwise, we kindly ask you to arrange payment at your earliest convenience.
+
+Best regards,
+{{ownerName}}`,
+  },
+  formal: {
+    subject: "Payment overdue - action required",
+    body: `Dear {{tenantName}},
+
+We have not yet received your rent payment of {{amount}} for {{propertyName}}, which was due on {{dueDate}}. This payment is now {{daysPastDue}} days overdue.
+
+Please arrange payment as soon as possible to avoid further action.
+
+Kind regards,
+{{ownerName}}`,
+  },
+  final: {
+    subject: "Final notice: overdue rent payment",
+    body: `Dear {{tenantName}},
+
+Despite previous reminders, we have not received your rent payment for {{propertyName}}.
+
+Amount due: {{amount}}
+Due date: {{dueDate}}
+Days overdue: {{daysPastDue}}
+Interest charges: {{interestAmount}}
+Total amount owed: {{totalOwed}}
+
+Please find attached a detailed overview of the outstanding amount.
+
+We urge you to settle this amount immediately. Failure to do so may result in further legal action.
+
+Regards,
+{{ownerName}}`,
+  },
 } as const;
 
 // GoCardless scheme for Belgium
