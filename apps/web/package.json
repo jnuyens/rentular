@@ -9,16 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.1",
     "@rentular/db": "workspace:*",
     "@rentular/shared": "workspace:*",
+    "@tanstack/react-query": "^5.62.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
     "next": "^15.1.0",
     "next-auth": "^5.0.0-beta.25",
     "next-intl": "^3.24.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@tanstack/react-query": "^5.62.0",
-    "lucide-react": "^0.468.0",
-    "clsx": "^2.1.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.0"
   },
