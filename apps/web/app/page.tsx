@@ -16,6 +16,7 @@ import {
   Globe,
   FileText,
   Zap,
+  Wrench,
   ChevronRight,
 } from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -29,6 +30,30 @@ export default function LandingPage() {
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [resetSent, setResetSent] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  const handleCheckout = async (plan: string) => {
+    setCheckoutLoading(plan);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const res = await fetch(`${apiUrl}/api/v1/stripe/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        // Stripe not configured yet — fall back to signup
+        setShowLogin(true);
+      }
+    } catch {
+      setShowLogin(true);
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +111,7 @@ export default function LandingPage() {
     { icon: Globe, title: t("featureMultilingual"), desc: t("featureMultilingualDesc") },
     { icon: FileText, title: t("featureLeases"), desc: t("featureLeasesDesc") },
     { icon: Zap, title: t("featureSepa"), desc: t("featureSepaDesc") },
+    { icon: Wrench, title: t("featureMaintenance"), desc: t("featureMaintenanceDesc") },
   ];
 
   type FeatureKey =
@@ -178,9 +204,8 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="fixed top-0 z-40 w-full border-b border-gray-100 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
-            <Image src="/rentular.png" alt="Rentular" width={32} height={32} />
-            <span className="text-xl font-bold text-gray-900">Rentular</span>
+          <div className="flex items-center">
+            <Image src="/rentular.png" alt="Rentular" width={44} height={44} />
           </div>
           <div className="hidden items-center gap-8 md:flex">
             <a href="#features" className="text-sm text-gray-600 hover:text-gray-900">
@@ -254,7 +279,7 @@ export default function LandingPage() {
               {t("featuresSubtitle")}
             </p>
           </div>
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((f) => (
               <div
                 key={f.title}
@@ -309,18 +334,16 @@ export default function LandingPage() {
                 </li>
               </ul>
               <button
-                onClick={() => setShowLogin(true)}
-                className="mt-8 w-full rounded-lg border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={() => handleCheckout("starter")}
+                disabled={checkoutLoading === "starter"}
+                className="mt-8 w-full rounded-lg border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
-                {t("getStarted")}
+                {checkoutLoading === "starter" ? "..." : t("getStarted")}
               </button>
             </div>
 
-            {/* Standard - highlighted */}
-            <div className="relative flex flex-col rounded-2xl border-2 border-[hsl(var(--primary))] bg-white p-8 shadow-lg shadow-blue-500/10">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[hsl(var(--primary))] px-4 py-1 text-xs font-semibold text-white">
-                {t("mostPopular")}
-              </div>
+            {/* Standard */}
+            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white p-8">
               <h3 className="text-lg font-semibold text-gray-900">{t("planStandard")}</h3>
               <p className="mt-2 text-sm text-gray-500">{t("planStandardDesc")}</p>
               <div className="mt-6">
@@ -348,15 +371,19 @@ export default function LandingPage() {
                 </li>
               </ul>
               <button
-                onClick={() => setShowLogin(true)}
-                className="mt-8 w-full rounded-lg bg-[hsl(var(--primary))] py-3 text-sm font-semibold text-white transition-colors hover:opacity-90"
+                onClick={() => handleCheckout("standard")}
+                disabled={checkoutLoading === "standard"}
+                className="mt-8 w-full rounded-lg border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
               >
-                {t("getStarted")}
+                {checkoutLoading === "standard" ? "..." : t("getStarted")}
               </button>
             </div>
 
-            {/* Professional */}
-            <div className="flex flex-col rounded-2xl border border-gray-200 bg-white p-8">
+            {/* Professional - highlighted */}
+            <div className="relative flex flex-col rounded-2xl border-2 border-[hsl(var(--primary))] bg-white p-8 shadow-lg shadow-blue-500/10">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[hsl(var(--primary))] px-4 py-1 text-xs font-semibold text-white">
+                {t("mostPopular")}
+              </div>
               <h3 className="text-lg font-semibold text-gray-900">{t("planPro")}</h3>
               <p className="mt-2 text-sm text-gray-500">{t("planProDesc")}</p>
               <div className="mt-6">
@@ -387,10 +414,11 @@ export default function LandingPage() {
                 </li>
               </ul>
               <button
-                onClick={() => setShowLogin(true)}
-                className="mt-8 w-full rounded-lg border border-gray-200 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                onClick={() => handleCheckout("professional")}
+                disabled={checkoutLoading === "professional"}
+                className="mt-8 w-full rounded-lg bg-[hsl(var(--primary))] py-3 text-sm font-semibold text-white transition-colors hover:opacity-90 disabled:opacity-50"
               >
-                {t("getStarted")}
+                {checkoutLoading === "professional" ? "..." : t("getStarted")}
               </button>
             </div>
           </div>
@@ -431,6 +459,13 @@ export default function LandingPage() {
                   <td className="py-3 px-4 text-center text-gray-500">{competitorPrices.smovin}</td>
                   <td className="py-3 px-4 text-center text-gray-500">{competitorPrices.whise}</td>
                   <td className="py-3 px-4 text-center text-gray-500">{competitorPrices.rentio}</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="py-3 pr-4 font-medium text-gray-700">{t("compMaxPrice")}</td>
+                  <td className="py-3 px-4 text-center font-semibold text-green-600">{t("priceMax")}</td>
+                  <td className="py-3 px-4 text-center text-gray-500">{t("priceMaxSmovin")}</td>
+                  <td className="py-3 px-4 text-center text-gray-500">{t("priceMaxWhise")}</td>
+                  <td className="py-3 px-4 text-center text-gray-500">{t("priceMaxRentio")}</td>
                 </tr>
                 {comparisonFeatures.map((f) => (
                   <tr key={f.key} className="border-b border-gray-100">

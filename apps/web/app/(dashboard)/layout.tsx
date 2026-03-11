@@ -4,6 +4,7 @@ import {
   FileText,
   CreditCard,
   TrendingUp,
+  Wrench,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const navigationItems = [
   { key: "leases" as const, href: "/leases", icon: FileText },
   { key: "payments" as const, href: "/payments", icon: CreditCard },
   { key: "indexation" as const, href: "/indexation", icon: TrendingUp },
+  { key: "maintenance" as const, href: "/maintenance", icon: Wrench },
   { key: "settings" as const, href: "/settings", icon: Settings },
 ];
 
