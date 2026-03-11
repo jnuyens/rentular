@@ -2,12 +2,18 @@
 
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--muted))]">
+      {/* Language switcher in top-right corner */}
+      <div className="absolute right-4 top-4">
+        <LanguageSwitcher />
+      </div>
+
       <div className="w-full max-w-md rounded-xl bg-[hsl(var(--background))] p-8 shadow-lg">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-[hsl(var(--foreground))]">

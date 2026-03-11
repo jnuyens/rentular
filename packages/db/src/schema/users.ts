@@ -16,6 +16,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 255 }).unique().notNull(),
   emailVerified: timestamp("email_verified"),
   image: text("image"),
+  locale: varchar("locale", { length: 5 }).default("en"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

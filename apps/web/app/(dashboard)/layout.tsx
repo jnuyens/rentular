@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const navigation = [
   { name: "Properties", href: "/properties", icon: Building2 },
@@ -50,6 +51,9 @@ export default async function DashboardLayout({
         </nav>
 
         <div className="border-t border-[hsl(var(--border))] p-4">
+          <div className="mb-3">
+            <LanguageSwitcher />
+          </div>
           <div className="flex items-center gap-3">
             {session.user?.image && (
               <img

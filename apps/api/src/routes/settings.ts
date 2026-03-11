@@ -5,6 +5,22 @@ import { DEFAULT_EMAIL_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE } fro
 
 export const settingsRouter = new Hono();
 
+// Update user locale preference (saved to user profile)
+settingsRouter.put(
+  "/locale",
+  zValidator(
+    "json",
+    z.object({
+      locale: z.enum(["nl", "fr", "en", "de"]),
+    })
+  ),
+  async (c) => {
+    const { locale } = c.req.valid("json");
+    // TODO: Update users.locale for the authenticated user
+    return c.json({ locale, message: "Language preference saved" });
+  }
+);
+
 // Get payment follow-up settings for the current owner
 settingsRouter.get("/payment-follow-up", async (c) => {
   // TODO: Fetch from paymentFollowUpSettings table for the authenticated user
