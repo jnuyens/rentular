@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Building2, Plus, X, MapPin, Trash2 } from "lucide-react";
 import BelgianCityInput from "@/components/BelgianCityInput";
+import CountrySelect from "@/components/CountrySelect";
 
 interface Property {
   id: string;
@@ -245,13 +246,7 @@ export default function PropertiesPage() {
                 <label className="mb-1 block text-sm font-medium">
                   {t("country")}
                 </label>
-                <input
-                  name="country"
-                  type="text"
-                  defaultValue="BE"
-                  maxLength={2}
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                />
+                <CountrySelect name="country" defaultValue="BE" />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">
