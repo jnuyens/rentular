@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import Image from "next/image";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
@@ -61,13 +62,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[hsl(var(--muted))]">
-      <div className="absolute right-4 top-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-[hsl(var(--muted))]">
+      {/* Background watermark */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04]">
+        <Image src="/rentular.png" alt="" width={600} height={600} className="select-none" />
+      </div>
+
+      <div className="absolute right-4 top-4 z-10">
         <LanguageSwitcher />
       </div>
 
-      <div className="w-full max-w-md rounded-xl bg-[hsl(var(--background))] p-8 shadow-lg">
+      <div className="relative w-full max-w-md rounded-xl bg-[hsl(var(--background))] p-8 shadow-lg">
         <div className="mb-8 text-center">
+          <Image src="/rentular.png" alt="Rentular" width={72} height={72} className="mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-[hsl(var(--foreground))]">
             Rentular
           </h1>

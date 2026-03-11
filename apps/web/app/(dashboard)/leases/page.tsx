@@ -8,6 +8,7 @@ export default function LeasesPage() {
   const t = useTranslations("leases");
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -75,10 +76,24 @@ export default function LeasesPage() {
             </div>
             <form
               className="space-y-4"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                // TODO: API call
-                setShowAddModal(false);
+                setSaving(true);
+                const form = e.currentTarget;
+                const data = Object.fromEntries(new FormData(form));
+                try {
+                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+                  await fetch(`${apiUrl}/api/v1/leases`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                    credentials: "include",
+                  });
+                  setShowAddModal(false);
+                  form.reset();
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               <div className="grid grid-cols-2 gap-4">
@@ -87,6 +102,7 @@ export default function LeasesPage() {
                     {t("property")}
                   </label>
                   <select
+                    name="propertyId"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   >
@@ -98,6 +114,7 @@ export default function LeasesPage() {
                     {t("leaseType")}
                   </label>
                   <select
+                    name="leaseType"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   >
@@ -114,6 +131,7 @@ export default function LeasesPage() {
                   {t("region")}
                 </label>
                 <select
+                  name="region"
                   required
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 >
@@ -128,6 +146,7 @@ export default function LeasesPage() {
                     {t("signingDate")}
                   </label>
                   <input
+                    name="signingDate"
                     type="date"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -138,6 +157,7 @@ export default function LeasesPage() {
                     {t("startDate")}
                   </label>
                   <input
+                    name="startDate"
                     type="date"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -149,6 +169,7 @@ export default function LeasesPage() {
                   {t("endDate")}
                 </label>
                 <input
+                  name="endDate"
                   type="date"
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
@@ -159,6 +180,7 @@ export default function LeasesPage() {
                     {t("monthlyRent")}
                   </label>
                   <input
+                    name="monthlyRent"
                     type="number"
                     step="0.01"
                     min="0"
@@ -171,6 +193,7 @@ export default function LeasesPage() {
                     {t("monthlyCharges")}
                   </label>
                   <input
+                    name="monthlyCharges"
                     type="number"
                     step="0.01"
                     min="0"
@@ -183,7 +206,7 @@ export default function LeasesPage() {
                 <label className="mb-1 block text-sm font-medium">
                   {t("bankAccount")}
                 </label>
-                <select className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
+                <select name="bankAccountId" className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
                   <option value="">{t("selectBankAccount")}</option>
                 </select>
               </div>
@@ -197,9 +220,10 @@ export default function LeasesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90"
+                  disabled={saving}
+                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
                 >
-                  {t("saveLease")}
+                  {saving ? "..." : t("saveLease")}
                 </button>
               </div>
             </form>

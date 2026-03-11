@@ -16,6 +16,7 @@ import { rentAdjustmentsRouter } from "./routes/rentAdjustments";
 import { bankAccountsRouter } from "./routes/bankAccounts";
 import { propertyManagersRouter } from "./routes/propertyManagers";
 import { communicationsRouter } from "./routes/communications";
+import { gocardlessRouter } from "./routes/gocardless";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
@@ -51,6 +52,7 @@ app.route("/rent-adjustments", rentAdjustmentsRouter);
 app.route("/bank-accounts", bankAccountsRouter);
 app.route("/property-managers", propertyManagersRouter);
 app.route("/communications", communicationsRouter);
+app.route("/gocardless", gocardlessRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>

@@ -8,6 +8,7 @@ export default function TenantsPage() {
   const t = useTranslations("tenants");
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -60,10 +61,25 @@ export default function TenantsPage() {
             </div>
             <form
               className="space-y-4"
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                // TODO: API call
-                setShowAddModal(false);
+                setSaving(true);
+                const form = e.currentTarget;
+                const formData = new FormData(form);
+                const data = Object.fromEntries(formData);
+                try {
+                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+                  await fetch(`${apiUrl}/api/v1/tenants`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                    credentials: "include",
+                  });
+                  setShowAddModal(false);
+                  form.reset();
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               <div className="grid grid-cols-2 gap-4">
@@ -72,6 +88,7 @@ export default function TenantsPage() {
                     {t("firstName")}
                   </label>
                   <input
+                    name="firstName"
                     type="text"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -82,6 +99,7 @@ export default function TenantsPage() {
                     {t("lastName")}
                   </label>
                   <input
+                    name="lastName"
                     type="text"
                     required
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -94,7 +112,9 @@ export default function TenantsPage() {
                   {t("email")}
                 </label>
                 <input
+                  name="email"
                   type="email"
+                  required
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
               </div>
@@ -104,6 +124,7 @@ export default function TenantsPage() {
                   {t("phone")}
                 </label>
                 <input
+                  name="phone"
                   type="tel"
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
@@ -112,7 +133,7 @@ export default function TenantsPage() {
                 <label className="mb-1 block text-sm font-medium">
                   {t("language")}
                 </label>
-                <select className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
+                <select name="language" className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
                   <option value="nl">{t("langNl")}</option>
                   <option value="fr">{t("langFr")}</option>
                   <option value="en">{t("langEn")}</option>
@@ -124,6 +145,7 @@ export default function TenantsPage() {
                   {t("nationalRegister")}
                 </label>
                 <input
+                  name="nationalRegister"
                   type="text"
                   placeholder={t("nationalRegisterPlaceholder")}
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -134,6 +156,7 @@ export default function TenantsPage() {
                   {t("iban")}
                 </label>
                 <input
+                  name="bankAccount"
                   type="text"
                   placeholder="BE68 5390 0754 7034"
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -144,6 +167,7 @@ export default function TenantsPage() {
                   {t("notes")}
                 </label>
                 <textarea
+                  name="notes"
                   rows={3}
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
@@ -158,9 +182,10 @@ export default function TenantsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90"
+                  disabled={saving}
+                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
                 >
-                  {t("saveTenant")}
+                  {saving ? "..." : t("saveTenant")}
                 </button>
               </div>
             </form>

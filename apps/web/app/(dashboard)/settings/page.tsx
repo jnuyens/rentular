@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   Settings,
@@ -12,48 +12,28 @@ import {
   Save,
   FileBarChart,
   X,
+  Globe,
+  Landmark,
+  Trash2,
 } from "lucide-react";
 
-interface FollowUpSettings {
-  enabled: boolean;
-  friendlyReminderDays: number;
-  formalReminderDays: number;
-  finalReminderDays: number;
-  interestEnabled: boolean;
-  annualInterestRate: number;
-  friendlySubject: string;
-  friendlyBody: string;
-  formalSubject: string;
-  formalBody: string;
-  finalSubject: string;
-  finalBody: string;
+type Lang = "nl" | "fr" | "en" | "de";
+type Level = "friendly" | "formal" | "final";
+
+interface LevelTemplate {
+  subject: string;
+  body: string;
 }
 
-interface LandlordReportSettings {
-  enabled: boolean;
-  reportDays: number[];
-  skipIfAllPaid: boolean;
-}
+// Per-language email templates for all 3 reminder levels
+type TemplatesByLang = Record<Lang, Record<Level, LevelTemplate>>;
 
-const PLACEHOLDER_HELP =
-  "Available placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{adminFee}}, {{totalOwed}}, {{ownerName}}";
-
-const ALL_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
-
-export default function SettingsPage() {
-  const t = useTranslations("settings");
-  const [activeTab, setActiveTab] = useState<
-    "follow-up" | "landlord-reports" | "general"
-  >("follow-up");
-  const [settings, setSettings] = useState<FollowUpSettings>({
-    enabled: true,
-    friendlyReminderDays: 0,
-    formalReminderDays: 3,
-    finalReminderDays: 6,
-    interestEnabled: false,
-    annualInterestRate: 3.75,
-    friendlySubject: "Friendly reminder: rent payment due",
-    friendlyBody: `Dear {{tenantName}},
+// Default templates per language (matches @rentular/shared DEFAULT_EMAIL_TEMPLATES)
+const DEFAULT_TEMPLATES: TemplatesByLang = {
+  en: {
+    friendly: {
+      subject: "Friendly reminder: rent payment due",
+      body: `Dear {{tenantName}},
 
 This is a friendly reminder that your rent payment of {{amount}} for {{propertyName}} was due on {{dueDate}}.
 
@@ -61,8 +41,10 @@ If you have already made this payment, please disregard this message. Otherwise,
 
 Best regards,
 {{ownerName}}`,
-    formalSubject: "Payment overdue - action required",
-    formalBody: `Dear {{tenantName}},
+    },
+    formal: {
+      subject: "Payment overdue - action required",
+      body: `Dear {{tenantName}},
 
 We have not yet received your rent payment of {{amount}} for {{propertyName}}, which was due on {{dueDate}}. This payment is now {{daysPastDue}} days overdue.
 
@@ -70,8 +52,10 @@ Please arrange payment as soon as possible to avoid further action.
 
 Kind regards,
 {{ownerName}}`,
-    finalSubject: "Final notice: overdue rent payment",
-    finalBody: `Dear {{tenantName}},
+    },
+    final: {
+      subject: "Final notice: overdue rent payment",
+      body: `Dear {{tenantName}},
 
 Despite previous reminders, we have not received your rent payment for {{propertyName}}.
 
@@ -88,20 +72,296 @@ We urge you to settle this amount immediately. Failure to do so may result in fu
 
 Regards,
 {{ownerName}}`,
+    },
+  },
+  nl: {
+    friendly: {
+      subject: "Vriendelijke herinnering: huurbetaling verschuldigd",
+      body: `Beste {{tenantName}},
+
+Dit is een vriendelijke herinnering dat uw huurbetaling van {{amount}} voor {{propertyName}} verschuldigd was op {{dueDate}}.
+
+Als u deze betaling al heeft gedaan, kunt u dit bericht negeren. Anders vragen wij u vriendelijk om de betaling zo snel mogelijk te regelen.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Betaling achterstallig - actie vereist",
+      body: `Beste {{tenantName}},
+
+Wij hebben uw huurbetaling van {{amount}} voor {{propertyName}} nog niet ontvangen. Deze betaling was verschuldigd op {{dueDate}} en is nu {{daysPastDue}} dagen te laat.
+
+Gelieve de betaling zo snel mogelijk te regelen om verdere stappen te vermijden.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Laatste aanmaning: achterstallige huurbetaling",
+      body: `Beste {{tenantName}},
+
+Ondanks eerdere herinneringen hebben wij uw huurbetaling voor {{propertyName}} nog niet ontvangen.
+
+Verschuldigd bedrag: {{amount}}
+Vervaldatum: {{dueDate}}
+Dagen te laat: {{daysPastDue}}
+Intrestkosten: {{interestAmount}}
+Administratieve kost: {{adminFee}}
+Totaal verschuldigd: {{totalOwed}}
+
+In bijlage vindt u een gedetailleerd overzicht van het openstaande bedrag.
+
+Wij verzoeken u dringend dit bedrag onmiddellijk te voldoen. Bij gebrek aan betaling kunnen verdere juridische stappen ondernomen worden.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+  },
+  fr: {
+    friendly: {
+      subject: "Rappel amical : loyer a payer",
+      body: `Cher/Chere {{tenantName}},
+
+Ceci est un rappel amical que votre paiement de loyer de {{amount}} pour {{propertyName}} etait du le {{dueDate}}.
+
+Si vous avez deja effectue ce paiement, veuillez ignorer ce message. Dans le cas contraire, nous vous prions de bien vouloir effectuer le paiement dans les plus brefs delais.
+
+Cordialement,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Paiement en retard - action requise",
+      body: `Cher/Chere {{tenantName}},
+
+Nous n'avons pas encore recu votre paiement de loyer de {{amount}} pour {{propertyName}}, qui etait du le {{dueDate}}. Ce paiement a maintenant {{daysPastDue}} jours de retard.
+
+Veuillez effectuer le paiement dans les plus brefs delais afin d'eviter toute action ulterieure.
+
+Cordialement,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Dernier avis : loyer impaye",
+      body: `Cher/Chere {{tenantName}},
+
+Malgre nos rappels precedents, nous n'avons pas recu votre paiement de loyer pour {{propertyName}}.
+
+Montant du : {{amount}}
+Date d'echeance : {{dueDate}}
+Jours de retard : {{daysPastDue}}
+Interets de retard : {{interestAmount}}
+Frais administratifs : {{adminFee}}
+Montant total du : {{totalOwed}}
+
+Vous trouverez ci-joint un apercu detaille du montant impaye.
+
+Nous vous prions instamment de regler ce montant immediatement. A defaut, des actions juridiques pourront etre engagees.
+
+Cordialement,
+{{ownerName}}`,
+    },
+  },
+  de: {
+    friendly: {
+      subject: "Freundliche Erinnerung: Mietzahlung faellig",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+dies ist eine freundliche Erinnerung, dass Ihre Mietzahlung von {{amount}} fuer {{propertyName}} am {{dueDate}} faellig war.
+
+Falls Sie diese Zahlung bereits geleistet haben, koennen Sie diese Nachricht ignorieren. Andernfalls bitten wir Sie, die Zahlung so bald wie moeglich zu veranlassen.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Zahlung ueberfaellig - Handlung erforderlich",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+wir haben Ihre Mietzahlung von {{amount}} fuer {{propertyName}} noch nicht erhalten. Diese Zahlung war am {{dueDate}} faellig und ist nun {{daysPastDue}} Tage ueberfaellig.
+
+Bitte veranlassen Sie die Zahlung so bald wie moeglich, um weitere Massnahmen zu vermeiden.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Letzte Mahnung: ueberfaellige Mietzahlung",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+trotz vorheriger Erinnerungen haben wir Ihre Mietzahlung fuer {{propertyName}} nicht erhalten.
+
+Faelliger Betrag: {{amount}}
+Faelligkeitsdatum: {{dueDate}}
+Tage ueberfaellig: {{daysPastDue}}
+Zinskosten: {{interestAmount}}
+Verwaltungsgebuehr: {{adminFee}}
+Gesamtbetrag faellig: {{totalOwed}}
+
+Im Anhang finden Sie eine detaillierte Uebersicht des ausstehenden Betrags.
+
+Wir fordern Sie dringend auf, diesen Betrag unverzueglich zu begleichen. Andernfalls koennen weitere rechtliche Schritte eingeleitet werden.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+  },
+};
+
+const LANG_LABELS: Record<Lang, string> = {
+  nl: "Nederlands",
+  fr: "Francais",
+  en: "English",
+  de: "Deutsch",
+};
+
+interface FollowUpSettings {
+  enabled: boolean;
+  friendlyReminderDays: number;
+  formalReminderDays: number;
+  finalReminderDays: number;
+  interestEnabled: boolean;
+  annualInterestRate: number;
+  templates: TemplatesByLang;
+}
+
+interface LandlordReportSettings {
+  enabled: boolean;
+  reportDays: number[];
+  skipIfAllPaid: boolean;
+}
+
+const PLACEHOLDER_HELP =
+  "{{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}, {{daysPastDue}}, {{interestAmount}}, {{adminFee}}, {{totalOwed}}, {{ownerName}}";
+
+const ALL_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+function deepCloneTemplates(t: TemplatesByLang): TemplatesByLang {
+  return JSON.parse(JSON.stringify(t));
+}
+
+export default function SettingsPage() {
+  const t = useTranslations("settings");
+  const [activeTab, setActiveTab] = useState<
+    "follow-up" | "landlord-reports" | "general" | "bank-accounts"
+  >("follow-up");
+  const [templateLang, setTemplateLang] = useState<Lang>("nl");
+  const [settings, setSettings] = useState<FollowUpSettings>({
+    enabled: true,
+    friendlyReminderDays: 0,
+    formalReminderDays: 3,
+    finalReminderDays: 6,
+    interestEnabled: false,
+    annualInterestRate: 3.75,
+    templates: deepCloneTemplates(DEFAULT_TEMPLATES),
   });
   const [reportSettings, setReportSettings] = useState<LandlordReportSettings>({
     enabled: true,
     reportDays: [3, 7, 15, 28],
     skipIfAllPaid: false,
   });
-  const [previewLevel, setPreviewLevel] = useState<
-    "friendly" | "formal" | "final" | null
-  >(null);
+  const [previewLevel, setPreviewLevel] = useState<Level | null>(null);
   const [saving, setSaving] = useState(false);
   const [newDay, setNewDay] = useState<number | "">("");
 
-  const update = (field: keyof FollowUpSettings, value: unknown) => {
+  // Bank accounts state
+  interface BankAccount {
+    id: string;
+    label: string;
+    iban: string;
+    bic: string;
+    holderName: string;
+    bankName: string;
+    isDefault: boolean;
+  }
+
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [showAddBank, setShowAddBank] = useState(false);
+  const [bankForm, setBankForm] = useState({
+    label: "",
+    iban: "",
+    bic: "",
+    holderName: "",
+    bankName: "",
+    isDefault: false,
+  });
+  const [bankLoading, setBankLoading] = useState(false);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+  const fetchBankAccounts = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/bank-accounts`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBankAccounts(data);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    fetchBankAccounts();
+  }, [fetchBankAccounts]);
+
+  const handleAddBankAccount = async () => {
+    setBankLoading(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/bank-accounts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bankForm),
+        credentials: "include",
+      });
+      if (res.ok) {
+        setBankForm({ label: "", iban: "", bic: "", holderName: "", bankName: "", isDefault: false });
+        setShowAddBank(false);
+        await fetchBankAccounts();
+      }
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  const handleSetDefaultBank = async (id: string) => {
+    await fetch(`${apiUrl}/api/v1/bank-accounts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isDefault: true }),
+      credentials: "include",
+    });
+    await fetchBankAccounts();
+  };
+
+  const handleArchiveBank = async (id: string) => {
+    await fetch(`${apiUrl}/api/v1/bank-accounts/${id}/archive`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    await fetchBankAccounts();
+  };
+
+  const update = (field: keyof Omit<FollowUpSettings, "templates">, value: unknown) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateTemplate = (lang: Lang, level: Level, field: "subject" | "body", value: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      templates: {
+        ...prev.templates,
+        [lang]: {
+          ...prev.templates[lang],
+          [level]: {
+            ...prev.templates[lang][level],
+            [field]: value,
+          },
+        },
+      },
+    }));
   };
 
   const updateReport = (field: keyof LandlordReportSettings, value: unknown) => {
@@ -130,7 +390,6 @@ Regards,
   const handleSave = async () => {
     setSaving(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       await Promise.all([
         fetch(`${apiUrl}/api/v1/settings/payment-follow-up`, {
           method: "PUT",
@@ -159,12 +418,7 @@ Regards,
         finalReminderDays: 6,
         interestEnabled: false,
         annualInterestRate: 3.75,
-        friendlySubject: "Friendly reminder: rent payment due",
-        friendlyBody: settings.friendlyBody,
-        formalSubject: "Payment overdue - action required",
-        formalBody: settings.formalBody,
-        finalSubject: "Final notice: overdue rent payment",
-        finalBody: settings.finalBody,
+        templates: deepCloneTemplates(DEFAULT_TEMPLATES),
       });
     } else if (activeTab === "landlord-reports") {
       setReportSettings({
@@ -175,11 +429,24 @@ Regards,
     }
   };
 
+  const resetTemplateLang = (lang: Lang) => {
+    setSettings((prev) => ({
+      ...prev,
+      templates: {
+        ...prev.templates,
+        [lang]: deepCloneTemplates(DEFAULT_TEMPLATES)[lang],
+      },
+    }));
+  };
+
   const tabs = [
     { key: "follow-up" as const, label: t("paymentFollowUp") },
     { key: "landlord-reports" as const, label: t("landlordReports") },
+    { key: "bank-accounts" as const, label: t("bankAccounts") },
     { key: "general" as const, label: t("general") },
   ];
+
+  const currentTemplates = settings.templates[templateLang];
 
   return (
     <div>
@@ -243,11 +510,11 @@ Regards,
             </p>
 
             <div className="space-y-4">
-              {[
-                { level: "friendly", color: "green", num: 1, label: t("friendlyReminder"), field: "friendlyReminderDays" as const },
-                { level: "formal", color: "yellow", num: 2, label: t("formalReminder"), field: "formalReminderDays" as const },
-                { level: "final", color: "red", num: 3, label: t("finalNotice"), field: "finalReminderDays" as const, desc: t("finalNoticeDescription") },
-              ].map(({ color, num, label, field, desc }) => (
+              {([
+                { level: "friendly" as const, color: "green", num: 1, label: t("friendlyReminder"), field: "friendlyReminderDays" as const },
+                { level: "formal" as const, color: "yellow", num: 2, label: t("formalReminder"), field: "formalReminderDays" as const },
+                { level: "final" as const, color: "red", num: 3, label: t("finalNotice"), field: "finalReminderDays" as const, desc: t("finalNoticeDescription") },
+              ]).map(({ color, num, label, field, desc }) => (
                 <div key={field} className="flex items-center gap-4">
                   <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-${color}-100 text-${color}-700 text-sm font-bold`}>
                     {num}
@@ -318,14 +585,46 @@ Regards,
             )}
           </div>
 
-          {/* Email templates */}
+          {/* Email templates — per language */}
           <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
-              <Mail className="h-5 w-5" />
-              {t("emailTemplates")}
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <Mail className="h-5 w-5" />
+                {t("emailTemplates")}
+              </h2>
+              <button
+                onClick={() => resetTemplateLang(templateLang)}
+                className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              >
+                <RotateCcw className="h-3 w-3" />
+                {t("resetDefaults")} ({LANG_LABELS[templateLang]})
+              </button>
+            </div>
+
+            <p className="mb-2 text-xs text-[hsl(var(--muted-foreground))]">
+              {t("templateLanguageDescription")}
+            </p>
+
+            {/* Language tabs */}
+            <div className="mb-4 flex gap-1 rounded-lg bg-[hsl(var(--muted))] p-1 w-fit">
+              {(["nl", "fr", "en", "de"] as const).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setTemplateLang(lang)}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    templateLang === lang
+                      ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
+                      : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                  }`}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  {LANG_LABELS[lang]}
+                </button>
+              ))}
+            </div>
+
             <p className="mb-4 text-xs text-[hsl(var(--muted-foreground))]">
-              {PLACEHOLDER_HELP}
+              {t("placeholders")}: {PLACEHOLDER_HELP}
             </p>
 
             <div className="space-y-6">
@@ -335,7 +634,7 @@ Regards,
                   className="rounded-md border border-[hsl(var(--border))] p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold capitalize">
+                    <h3 className="text-sm font-semibold">
                       {level === "friendly"
                         ? t("friendlyReminder")
                         : level === "formal"
@@ -360,11 +659,9 @@ Regards,
                       </label>
                       <input
                         type="text"
-                        value={
-                          settings[`${level}Subject` as keyof FollowUpSettings] as string
-                        }
+                        value={currentTemplates[level].subject}
                         onChange={(e) =>
-                          update(`${level}Subject`, e.target.value)
+                          updateTemplate(templateLang, level, "subject", e.target.value)
                         }
                         className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
                       />
@@ -374,10 +671,10 @@ Regards,
                         {t("body")}
                       </label>
                       <textarea
-                        value={
-                          settings[`${level}Body` as keyof FollowUpSettings] as string
+                        value={currentTemplates[level].body}
+                        onChange={(e) =>
+                          updateTemplate(templateLang, level, "body", e.target.value)
                         }
-                        onChange={(e) => update(`${level}Body`, e.target.value)}
                         rows={8}
                         className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
                       />
@@ -525,6 +822,177 @@ Regards,
               {t("resetDefaults")}
             </button>
           </div>
+        </div>
+      )}
+
+      {activeTab === "bank-accounts" && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <Landmark className="h-5 w-5" />
+                  {t("bankAccounts")}
+                </h2>
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                  {t("bankAccountsDescription")}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddBank(!showAddBank)}
+                className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90"
+              >
+                {t("addBankAccount")}
+              </button>
+            </div>
+          </div>
+
+          {/* Add bank account form */}
+          {showAddBank && (
+            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
+              <h3 className="mb-4 text-sm font-semibold">{t("addBankAccount")}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium">{t("bankLabel")}</label>
+                  <input
+                    type="text"
+                    value={bankForm.label}
+                    onChange={(e) => setBankForm((f) => ({ ...f, label: e.target.value }))}
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("bankIban")}</label>
+                    <input
+                      type="text"
+                      value={bankForm.iban}
+                      onChange={(e) => setBankForm((f) => ({ ...f, iban: e.target.value }))}
+                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("bankBic")}</label>
+                    <input
+                      type="text"
+                      value={bankForm.bic}
+                      onChange={(e) => setBankForm((f) => ({ ...f, bic: e.target.value }))}
+                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("bankHolderName")}</label>
+                    <input
+                      type="text"
+                      value={bankForm.holderName}
+                      onChange={(e) => setBankForm((f) => ({ ...f, holderName: e.target.value }))}
+                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("bankBankName")}</label>
+                    <input
+                      type="text"
+                      value={bankForm.bankName}
+                      onChange={(e) => setBankForm((f) => ({ ...f, bankName: e.target.value }))}
+                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={bankForm.isDefault}
+                      onChange={(e) => setBankForm((f) => ({ ...f, isDefault: e.target.checked }))}
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
+                  </label>
+                  <span className="text-sm font-medium">{t("bankSetDefault")}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleAddBankAccount}
+                    disabled={bankLoading || !bankForm.iban}
+                    className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {bankLoading ? t("saving") : t("addBankAccount")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddBank(false);
+                      setBankForm({ label: "", iban: "", bic: "", holderName: "", bankName: "", isDefault: false });
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium hover:bg-[hsl(var(--muted))]"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bank accounts list */}
+          {bankAccounts.length === 0 ? (
+            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
+              <div className="flex flex-col items-center gap-3 text-[hsl(var(--muted-foreground))]">
+                <Landmark className="h-8 w-8" />
+                <p className="text-sm font-medium">{t("noBankAccounts")}</p>
+                <p className="text-xs">{t("noBankAccountsDescription")}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {bankAccounts.map((account) => (
+                <div
+                  key={account.id}
+                  className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold">{account.label || account.iban}</h3>
+                        {account.isDefault && (
+                          <span className="rounded-full bg-[hsl(var(--primary))] px-2 py-0.5 text-xs font-medium text-[hsl(var(--primary-foreground))]">
+                            {t("bankDefault")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-mono text-[hsl(var(--muted-foreground))]">
+                        {account.iban}
+                      </p>
+                      <div className="flex gap-4 text-xs text-[hsl(var(--muted-foreground))]">
+                        {account.holderName && <span>{account.holderName}</span>}
+                        {account.bankName && <span>{account.bankName}</span>}
+                        {account.bic && <span>BIC: {account.bic}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!account.isDefault && (
+                        <button
+                          onClick={() => handleSetDefaultBank(account.id)}
+                          className="rounded-md border border-[hsl(var(--border))] px-3 py-1.5 text-xs font-medium hover:bg-[hsl(var(--muted))]"
+                        >
+                          {t("bankSetDefault")}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleArchiveBank(account.id)}
+                        className="rounded-md border border-[hsl(var(--border))] p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

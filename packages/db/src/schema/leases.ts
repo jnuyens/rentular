@@ -58,6 +58,8 @@ export const leases = mysqlTable("leases", {
   // Bank account used for rent collection on this contract
   bankAccountId: varchar("bank_account_id", { length: 36 })
     .references(() => bankAccounts.id),
+  // GoCardless mandate for SEPA direct debit collection
+  gocardlessMandateId: varchar("gocardless_mandate_id", { length: 255 }),
   // Indexation
   indexationEnabled: boolean("indexation_enabled").default(true).notNull(),
   indexationBaseMonth: varchar("indexation_base_month", { length: 7 }), // YYYY-MM
