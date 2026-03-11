@@ -1,0 +1,38 @@
+{
+  "auth": {
+    "loginSubtitle": "Sign in to manage your properties",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithFacebook": "Continue with Facebook",
+    "continueWithTwitter": "Continue with X",
+    "termsNotice": "By continuing, you agree to our Terms of Service and Privacy Policy."
+  },
+  "nav": {
+    "properties": "Properties",
+    "tenants": "Tenants",
+    "leases": "Leases",
+    "payments": "Payments",
+    "indexation": "Indexation",
+    "settings": "Settings"
+  },
+  "properties": {
+    "title": "Properties",
+    "subtitle": "Manage your buildings and units",
+    "addProperty": "Add Property",
+    "emptyTitle": "No properties yet",
+    "emptyDescription": "Get started by adding your first property."
+  },
+  "payments": {
+    "title": "Payments",
+    "subtitle": "Track rent payments and follow up on late payments",
+    "overdue": "Overdue",
+    "pending": "Pending",
+    "paid": "Paid"
+  },
+  "indexation": {
+    "title": "Rent Indexation",
+    "subtitle": "Automatic rent adjustments based on the health index",
+    "nextIndexation": "Next indexation",
+    "currentIndex": "Current health index",
+    "calculate": "Calculate new rents"
+  }
+}

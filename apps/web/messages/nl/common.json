@@ -1,0 +1,38 @@
+{
+  "auth": {
+    "loginSubtitle": "Meld je aan om je eigendommen te beheren",
+    "continueWithGoogle": "Doorgaan met Google",
+    "continueWithFacebook": "Doorgaan met Facebook",
+    "continueWithTwitter": "Doorgaan met X",
+    "termsNotice": "Door verder te gaan, ga je akkoord met onze Servicevoorwaarden en ons Privacybeleid."
+  },
+  "nav": {
+    "properties": "Eigendommen",
+    "tenants": "Huurders",
+    "leases": "Huurcontracten",
+    "payments": "Betalingen",
+    "indexation": "Indexatie",
+    "settings": "Instellingen"
+  },
+  "properties": {
+    "title": "Eigendommen",
+    "subtitle": "Beheer je gebouwen en eenheden",
+    "addProperty": "Eigendom toevoegen",
+    "emptyTitle": "Nog geen eigendommen",
+    "emptyDescription": "Voeg je eerste eigendom toe om te beginnen."
+  },
+  "payments": {
+    "title": "Betalingen",
+    "subtitle": "Volg huurbetalingen op en herinner bij achterstallige betalingen",
+    "overdue": "Achterstallig",
+    "pending": "In afwachting",
+    "paid": "Betaald"
+  },
+  "indexation": {
+    "title": "Huurindexatie",
+    "subtitle": "Automatische huuraanpassingen op basis van de gezondheidsindex",
+    "nextIndexation": "Volgende indexatie",
+    "currentIndex": "Huidige gezondheidsindex",
+    "calculate": "Nieuwe huur berekenen"
+  }
+}

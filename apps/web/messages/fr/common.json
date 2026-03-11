@@ -1,0 +1,38 @@
+{
+  "auth": {
+    "loginSubtitle": "Connectez-vous pour gerer vos biens",
+    "continueWithGoogle": "Continuer avec Google",
+    "continueWithFacebook": "Continuer avec Facebook",
+    "continueWithTwitter": "Continuer avec X",
+    "termsNotice": "En continuant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialite."
+  },
+  "nav": {
+    "properties": "Biens",
+    "tenants": "Locataires",
+    "leases": "Baux",
+    "payments": "Paiements",
+    "indexation": "Indexation",
+    "settings": "Parametres"
+  },
+  "properties": {
+    "title": "Biens",
+    "subtitle": "Gerez vos immeubles et unites",
+    "addProperty": "Ajouter un bien",
+    "emptyTitle": "Aucun bien pour l'instant",
+    "emptyDescription": "Commencez par ajouter votre premier bien."
+  },
+  "payments": {
+    "title": "Paiements",
+    "subtitle": "Suivez les paiements de loyer et relancez les retards",
+    "overdue": "En retard",
+    "pending": "En attente",
+    "paid": "Paye"
+  },
+  "indexation": {
+    "title": "Indexation des loyers",
+    "subtitle": "Ajustements automatiques du loyer sur base de l'indice sante",
+    "nextIndexation": "Prochaine indexation",
+    "currentIndex": "Indice sante actuel",
+    "calculate": "Calculer les nouveaux loyers"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "auth": {
+    "loginSubtitle": "Melden Sie sich an, um Ihre Immobilien zu verwalten",
+    "continueWithGoogle": "Weiter mit Google",
+    "continueWithFacebook": "Weiter mit Facebook",
+    "continueWithTwitter": "Weiter mit X",
+    "termsNotice": "Durch Fortfahren stimmen Sie unseren Nutzungsbedingungen und unserer Datenschutzrichtlinie zu."
+  },
+  "nav": {
+    "properties": "Immobilien",
+    "tenants": "Mieter",
+    "leases": "Mietvertraege",
+    "payments": "Zahlungen",
+    "indexation": "Indexierung",
+    "settings": "Einstellungen"
+  },
+  "properties": {
+    "title": "Immobilien",
+    "subtitle": "Verwalten Sie Ihre Gebaude und Einheiten",
+    "addProperty": "Immobilie hinzufuegen",
+    "emptyTitle": "Noch keine Immobilien",
+    "emptyDescription": "Fuegen Sie Ihre erste Immobilie hinzu, um loszulegen."
+  },
+  "payments": {
+    "title": "Zahlungen",
+    "subtitle": "Verfolgen Sie Mietzahlungen und mahnen Sie bei Zahlungsrueckstaenden",
+    "overdue": "Ueberfaellig",
+    "pending": "Ausstehend",
+    "paid": "Bezahlt"
+  },
+  "indexation": {
+    "title": "Mietindexierung",
+    "subtitle": "Automatische Mietanpassungen basierend auf dem Gesundheitsindex",
+    "nextIndexation": "Naechste Indexierung",
+    "currentIndex": "Aktueller Gesundheitsindex",
+    "calculate": "Neue Mieten berechnen"
+  }
+}
