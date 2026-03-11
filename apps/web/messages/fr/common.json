@@ -57,7 +57,8 @@
     "epcExpiryDate": "Date d'expiration EPC",
     "notes": "Notes",
     "cancel": "Annuler",
-    "saveProperty": "Enregistrer le bien"
+    "saveProperty": "Enregistrer le bien",
+    "saveError": "Échec de l'enregistrement. Vérifiez votre connexion."
   },
   "payments": {
     "title": "Paiements",
@@ -150,7 +151,9 @@
     "iban": "IBAN",
     "notes": "Notes",
     "cancel": "Annuler",
-    "saveTenant": "Enregistrer le locataire"
+    "saveTenant": "Enregistrer le locataire",
+    "saveError": "Échec de l'enregistrement. Vérifiez votre connexion.",
+    "noResults": "Aucun locataire trouvé."
   },
   "leases": {
     "title": "Baux",
@@ -186,7 +189,11 @@
     "bankAccount": "Compte bancaire",
     "selectBankAccount": "Selectionnez un compte bancaire",
     "cancel": "Annuler",
-    "saveLease": "Enregistrer le bail"
+    "saveLease": "Enregistrer le bail",
+    "saveError": "Échec de l'enregistrement. Vérifiez votre connexion.",
+    "tenants": "Locataire(s)",
+    "noTenantsYet": "Ajoutez d'abord un locataire.",
+    "coTenantsNote": "Plusieurs locataires sélectionnés - ils seront ajoutés comme co-locataires sur le bail."
   },
   "indexation": {
     "title": "Indexation des loyers",

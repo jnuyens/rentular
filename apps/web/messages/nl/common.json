@@ -57,7 +57,8 @@
     "epcExpiryDate": "EPC-vervaldatum",
     "notes": "Notities",
     "cancel": "Annuleren",
-    "saveProperty": "Eigendom opslaan"
+    "saveProperty": "Eigendom opslaan",
+    "saveError": "Opslaan mislukt. Controleer je verbinding."
   },
   "payments": {
     "title": "Betalingen",
@@ -150,7 +151,9 @@
     "iban": "IBAN",
     "notes": "Notities",
     "cancel": "Annuleren",
-    "saveTenant": "Huurder opslaan"
+    "saveTenant": "Huurder opslaan",
+    "saveError": "Opslaan mislukt. Controleer je verbinding.",
+    "noResults": "Geen huurders gevonden."
   },
   "leases": {
     "title": "Huurcontracten",
@@ -186,7 +189,11 @@
     "bankAccount": "Bankrekening",
     "selectBankAccount": "Selecteer een bankrekening",
     "cancel": "Annuleren",
-    "saveLease": "Contract opslaan"
+    "saveLease": "Contract opslaan",
+    "saveError": "Opslaan mislukt. Controleer je verbinding.",
+    "tenants": "Huurder(s)",
+    "noTenantsYet": "Voeg eerst een huurder toe.",
+    "coTenantsNote": "Meerdere huurders geselecteerd - ze worden als medehuurders op het contract gezet."
   },
   "indexation": {
     "title": "Huurindexatie",

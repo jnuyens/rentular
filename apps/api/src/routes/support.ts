@@ -5,6 +5,45 @@ import { queueEmail } from "../jobs/emailQueueWorker";
 
 export const supportRouter = new Hono();
 
+// Forward message to Signal bot (alice) if configured
+async function forwardToSignalBot(message: string, userInfo?: string): Promise<string | null> {
+  const botUrl = process.env.SIGNAL_BOT_URL; // e.g. http://localhost:8080/v2/send
+  const botNumber = process.env.SIGNAL_BOT_NUMBER; // Signal number of the bot
+  const supportNumber = process.env.SIGNAL_SUPPORT_NUMBER; // Your Signal number to receive messages
+
+  if (!botUrl || !supportNumber) return null;
+
+  try {
+    // signal-cli REST API format
+    const res = await fetch(botUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `[Rentular Support]${userInfo ? ` (${userInfo})` : ""}\n\n${message}`,
+        number: botNumber,
+        recipients: [supportNumber],
+      }),
+    });
+
+    if (!res.ok) {
+      console.error("[SignalBot] Failed to forward message:", res.status, await res.text());
+      return null;
+    }
+
+    // Check if the bot returns a reply (for AI-powered bots)
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await res.json();
+      if (data.reply) return data.reply;
+    }
+
+    return null;
+  } catch (err) {
+    console.error("[SignalBot] Error forwarding to Signal bot:", err);
+    return null;
+  }
+}
+
 // Chat with support - stores the message and sends notification to support team
 supportRouter.post(
   "/chat",
@@ -21,13 +60,8 @@ supportRouter.post(
     // const userId = c.get("userId");
     // const userEmail = c.get("userEmail");
 
-    // TODO: Store support message in database
-    // await db.insert(supportMessages).values({
-    //   id: crypto.randomUUID(),
-    //   userId,
-    //   message,
-    //   createdAt: new Date(),
-    // });
+    // Forward to Signal bot (alice) - try to get a bot reply
+    const botReply = await forwardToSignalBot(message);
 
     // Notify support team via email if configured
     const supportEmail = process.env.SUPPORT_EMAIL;
@@ -39,7 +73,12 @@ supportRouter.post(
       });
     }
 
-    // Auto-reply based on keywords
+    // If the Signal bot returned a reply, use that
+    if (botReply) {
+      return c.json({ reply: botReply });
+    }
+
+    // Otherwise fall back to auto-reply based on keywords
     const lowerMessage = message.toLowerCase();
     let reply: string;
 
@@ -98,6 +137,41 @@ supportRouter.post(
     }
 
     return c.json({ reply });
+  }
+);
+
+// Webhook endpoint for Signal bot to push replies back
+supportRouter.post(
+  "/signal-webhook",
+  zValidator(
+    "json",
+    z.object({
+      // signal-cli webhook format
+      envelope: z.object({
+        source: z.string().optional(),
+        dataMessage: z.object({
+          message: z.string().optional(),
+          timestamp: z.number().optional(),
+        }).optional(),
+      }).optional(),
+      // Or simple format from custom bots
+      from: z.string().optional(),
+      message: z.string().optional(),
+    }).passthrough()
+  ),
+  async (c) => {
+    const data = c.req.valid("json");
+
+    // Extract message from either signal-cli format or simple format
+    const message = data.envelope?.dataMessage?.message || data.message;
+    const from = data.envelope?.source || data.from;
+
+    if (message) {
+      console.log(`[SignalBot] Received reply from ${from}: ${message}`);
+      // TODO: Store the reply and push to the user's chat session via SSE or WebSocket
+    }
+
+    return c.json({ ok: true });
   }
 );
 

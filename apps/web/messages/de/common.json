@@ -57,7 +57,8 @@
     "epcExpiryDate": "EPC-Ablaufdatum",
     "notes": "Notizen",
     "cancel": "Abbrechen",
-    "saveProperty": "Immobilie speichern"
+    "saveProperty": "Immobilie speichern",
+    "saveError": "Speichern fehlgeschlagen. Überprüfen Sie Ihre Verbindung."
   },
   "payments": {
     "title": "Zahlungen",
@@ -150,7 +151,9 @@
     "iban": "IBAN",
     "notes": "Notizen",
     "cancel": "Abbrechen",
-    "saveTenant": "Mieter speichern"
+    "saveTenant": "Mieter speichern",
+    "saveError": "Speichern fehlgeschlagen. Überprüfen Sie Ihre Verbindung.",
+    "noResults": "Keine Mieter gefunden."
   },
   "leases": {
     "title": "Mietvertraege",
@@ -186,7 +189,11 @@
     "bankAccount": "Bankkonto",
     "selectBankAccount": "Bankkonto auswaehlen",
     "cancel": "Abbrechen",
-    "saveLease": "Vertrag speichern"
+    "saveLease": "Vertrag speichern",
+    "saveError": "Speichern fehlgeschlagen. Überprüfen Sie Ihre Verbindung.",
+    "tenants": "Mieter",
+    "noTenantsYet": "Fügen Sie zuerst einen Mieter hinzu.",
+    "coTenantsNote": "Mehrere Mieter ausgewählt - sie werden als Mitmieter im Vertrag eingetragen."
   },
   "indexation": {
     "title": "Mietindexierung",

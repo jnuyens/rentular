@@ -57,7 +57,8 @@
     "epcExpiryDate": "EPC expiry date",
     "notes": "Notes",
     "cancel": "Cancel",
-    "saveProperty": "Save Property"
+    "saveProperty": "Save Property",
+    "saveError": "Failed to save. Please check your connection."
   },
   "payments": {
     "title": "Payments",
@@ -150,7 +151,9 @@
     "iban": "IBAN",
     "notes": "Notes",
     "cancel": "Cancel",
-    "saveTenant": "Save Tenant"
+    "saveTenant": "Save Tenant",
+    "saveError": "Failed to save. Please check your connection.",
+    "noResults": "No tenants found."
   },
   "leases": {
     "title": "Leases",
@@ -186,7 +189,11 @@
     "bankAccount": "Bank account",
     "selectBankAccount": "Select a bank account",
     "cancel": "Cancel",
-    "saveLease": "Save Lease"
+    "saveLease": "Save Lease",
+    "saveError": "Failed to save. Please check your connection.",
+    "tenants": "Tenant(s)",
+    "noTenantsYet": "Add a tenant first.",
+    "coTenantsNote": "Multiple tenants selected - they will be added as co-tenants on the lease."
   },
   "indexation": {
     "title": "Rent Indexation",
