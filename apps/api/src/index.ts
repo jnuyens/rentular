@@ -11,6 +11,7 @@ import { indexationRouter } from "./routes/indexation";
 import { webhooksRouter } from "./routes/webhooks";
 import { settingsRouter } from "./routes/settings";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
+import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -40,6 +41,9 @@ app.route("/settings", settingsRouter);
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>
   console.error("Failed to setup payment check schedule:", err)
+);
+setupLandlordReportSchedule().catch((err) =>
+  console.error("Failed to setup landlord report schedule:", err)
 );
 
 // 404 handler

@@ -77,6 +77,15 @@
     "saveSettings": "Instellingen opslaan",
     "saving": "Opslaan...",
     "resetDefaults": "Standaardwaarden herstellen",
+    "landlordReports": "Verhuurderrapporten",
+    "landlordReportTitle": "Betalingsoverzichtrapporten",
+    "landlordReportDescription": "Ontvang automatische e-mailrapporten met een overzicht van de betalingsstatus van al je huurders.",
+    "reportSchedule": "Rapportschema",
+    "reportScheduleDescription": "Kies op welke dagen van de maand je een betalingsoverzichtrapport wilt ontvangen.",
+    "dayOfMonth": "Dag {day}",
+    "addReportDay": "Rapportdag toevoegen...",
+    "skipIfAllPaid": "Rapport overslaan als alles betaald is",
+    "skipIfAllPaidDescription": "Geen rapport versturen wanneer elke huurder op tijd heeft betaald. Je wordt alleen verwittigd bij openstaande of achterstallige betalingen.",
     "generalComingSoon": "Algemene instellingen binnenkort beschikbaar."
   }
 }

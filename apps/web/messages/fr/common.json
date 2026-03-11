@@ -77,6 +77,15 @@
     "saveSettings": "Enregistrer",
     "saving": "Enregistrement...",
     "resetDefaults": "Reinitialiser les valeurs par defaut",
+    "landlordReports": "Rapports proprietaire",
+    "landlordReportTitle": "Rapports d'apercu des paiements",
+    "landlordReportDescription": "Recevez des rapports automatiques par e-mail resumant l'etat des paiements de tous vos locataires.",
+    "reportSchedule": "Calendrier des rapports",
+    "reportScheduleDescription": "Choisissez les jours du mois ou vous souhaitez recevoir un rapport d'apercu des paiements.",
+    "dayOfMonth": "Jour {day}",
+    "addReportDay": "Ajouter un jour de rapport...",
+    "skipIfAllPaid": "Ne pas envoyer le rapport si tout est paye",
+    "skipIfAllPaidDescription": "Aucun rapport ne sera envoye si chaque locataire a paye a temps. Vous ne serez notifie qu'en cas de paiements en retard ou en attente.",
     "generalComingSoon": "Parametres generaux bientot disponibles."
   }
 }

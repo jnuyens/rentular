@@ -77,6 +77,15 @@
     "saveSettings": "Save settings",
     "saving": "Saving...",
     "resetDefaults": "Reset to defaults",
+    "landlordReports": "Landlord Reports",
+    "landlordReportTitle": "Payment overview reports",
+    "landlordReportDescription": "Receive automatic email reports summarising the payment status of all your tenants.",
+    "reportSchedule": "Report schedule",
+    "reportScheduleDescription": "Choose which days of the month you want to receive a payment overview report.",
+    "dayOfMonth": "Day {day}",
+    "addReportDay": "Add a report day...",
+    "skipIfAllPaid": "Skip report if all payments are received",
+    "skipIfAllPaidDescription": "Do not send a report email when every tenant has paid on time. You will only be notified when there are outstanding or overdue payments.",
     "generalComingSoon": "General settings coming soon."
   }
 }

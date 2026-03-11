@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { DEFAULT_EMAIL_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE } from "@rentular/shared";
+import { DEFAULT_EMAIL_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE, DEFAULT_LANDLORD_REPORT_DAYS } from "@rentular/shared";
 
 export const settingsRouter = new Hono();
 
@@ -117,5 +117,44 @@ settingsRouter.post(
     );
 
     return c.json({ subject: renderedSubject, body: renderedBody });
+  }
+);
+
+// --- Landlord report settings ---
+
+// Get landlord report settings
+settingsRouter.get("/landlord-report", async (c) => {
+  // TODO: Fetch from paymentFollowUpSettings for the authenticated user
+  return c.json({
+    data: {
+      enabled: true,
+      reportDays: [...DEFAULT_LANDLORD_REPORT_DAYS],
+      skipIfAllPaid: false,
+    },
+  });
+});
+
+// Update landlord report settings
+settingsRouter.put(
+  "/landlord-report",
+  zValidator(
+    "json",
+    z.object({
+      enabled: z.boolean(),
+      reportDays: z
+        .array(z.number().int().min(1).max(28))
+        .min(1)
+        .max(28)
+        .refine(
+          (days) => new Set(days).size === days.length,
+          { message: "Report days must be unique" }
+        ),
+      skipIfAllPaid: z.boolean(),
+    })
+  ),
+  async (c) => {
+    const data = c.req.valid("json");
+    // TODO: Upsert landlord report settings (stored as CSV in landlordReportDays)
+    return c.json({ data, message: "Landlord report settings updated" });
   }
 );

@@ -56,6 +56,9 @@ export const DEFAULT_LATE_PAYMENT_FEE = 15.0;
 // Soft enforcement grace period (days after fee notice to pay without owing the fee)
 export const SOFT_ENFORCEMENT_GRACE_DAYS = 7;
 
+// Default days of the month to send landlord payment overview reports
+export const DEFAULT_LANDLORD_REPORT_DAYS = [3, 7, 15, 28] as const;
+
 // Balance check schedule (3x per day)
 export const BALANCE_CHECK_CRON = [
   "0 0 * * *",   // 00:00

@@ -77,6 +77,15 @@
     "saveSettings": "Einstellungen speichern",
     "saving": "Speichern...",
     "resetDefaults": "Standardwerte wiederherstellen",
+    "landlordReports": "Vermieterberichte",
+    "landlordReportTitle": "Zahlungsuebersichtsberichte",
+    "landlordReportDescription": "Erhalten Sie automatische E-Mail-Berichte mit einer Zusammenfassung des Zahlungsstatus aller Ihrer Mieter.",
+    "reportSchedule": "Berichtsplan",
+    "reportScheduleDescription": "Waehlen Sie, an welchen Tagen des Monats Sie einen Zahlungsuebersichtsbericht erhalten moechten.",
+    "dayOfMonth": "Tag {day}",
+    "addReportDay": "Berichtstag hinzufuegen...",
+    "skipIfAllPaid": "Bericht ueberspringen wenn alles bezahlt ist",
+    "skipIfAllPaidDescription": "Es wird kein Bericht gesendet, wenn jeder Mieter puenktlich bezahlt hat. Sie werden nur bei ausstehenden oder ueberfaelligen Zahlungen benachrichtigt.",
     "generalComingSoon": "Allgemeine Einstellungen in Kuerze verfuegbar."
   }
 }

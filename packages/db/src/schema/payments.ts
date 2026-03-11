@@ -90,7 +90,12 @@ export const paymentFollowUpSettings = mysqlTable("payment_follow_up_settings", 
   formalBody: text("formal_body"),
   finalSubject: varchar("final_subject", { length: 500 }).default("Final notice: overdue rent payment"),
   finalBody: text("final_body"),
+  // Landlord payment overview report settings
+  landlordReportEnabled: boolean("landlord_report_enabled").default(true).notNull(),
+  landlordReportDays: varchar("landlord_report_days", { length: 50 }).default("3,7,15,28"),
+  landlordReportSkipIfAllPaid: boolean("landlord_report_skip_if_all_paid").default(false).notNull(),
   // Metadata
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
