@@ -21,10 +21,9 @@ export default async function middleware(req: NextRequest) {
     cookieName: "__Secure-authjs.session-token",
   });
 
-  // Redirect root to dashboard (or login if unauthenticated)
+  // Landing page is public — let it through
   if (pathname === "/") {
-    const dest = token ? "/properties" : "/login";
-    return NextResponse.redirect(new URL(dest, req.url));
+    return NextResponse.next();
   }
 
   // If not authenticated and not on public page, redirect to login

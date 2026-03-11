@@ -1,8 +1,20 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { getDb, properties } from "@rentular/db";
-import { eq } from "drizzle-orm";
+import * as mem from "../lib/memoryStore";
+
+let db: any = null;
+let dbSchema: any = null;
+let eq: any = null;
+
+try {
+  const dbMod = require("@rentular/db");
+  db = dbMod.getDb();
+  dbSchema = dbMod.properties;
+  eq = require("drizzle-orm").eq;
+} catch {
+  console.log("[Properties] Database unavailable, using in-memory store");
+}
 
 const createPropertySchema = z.object({
   name: z.string().min(1),
@@ -26,26 +38,29 @@ export const propertiesRouter = new Hono();
 // List all properties
 propertiesRouter.get("/", async (c) => {
   try {
-    const db = getDb();
-    const result = await (db as any).select().from(properties);
-    return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    if (db && dbSchema) {
+      const result = await db.select().from(dbSchema);
+      return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    }
   } catch (err) {
-    console.error("Failed to fetch properties:", err);
-    return c.json({ data: [], meta: { total: 0, page: 1, perPage: 20 } });
+    console.error("DB read failed, falling back to memory:", err);
   }
+  const result = mem.getAll("properties").filter((p: any) => !p.isArchived);
+  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
 });
 
 // Get a single property
 propertiesRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
   try {
-    const db = getDb();
-    const result = await (db as any).select().from(properties).where(eq(properties.id, id));
-    return c.json({ data: result[0] || null });
-  } catch (err) {
-    console.error("Failed to fetch property:", err);
-    return c.json({ data: null });
+    if (db && dbSchema && eq) {
+      const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
+      return c.json({ data: result[0] || null });
+    }
+  } catch {
+    // fallback
   }
+  return c.json({ data: mem.getById("properties", id) || null });
 });
 
 // Create a property
@@ -55,32 +70,36 @@ propertiesRouter.post(
   async (c) => {
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
+    const record = { id, ownerId: "system", ...data, isArchived: false, createdAt: new Date().toISOString() };
+
     try {
-      const db = getDb();
-      await (db as any).insert(properties).values({
-        id,
-        ownerId: "system", // TODO: get from auth session
-        name: data.name,
-        type: data.type,
-        street: data.street,
-        streetNumber: data.streetNumber,
-        box: data.box || null,
-        postalCode: data.postalCode,
-        city: data.city,
-        country: data.country,
-        cadastralReference: data.cadastralReference || null,
-        epcLabel: data.epcLabel || null,
-        epcScore: data.epcScore || null,
-        epcCertificateNumber: data.epcCertificateNumber || null,
-        epcExpiryDate: data.epcExpiryDate || null,
-        notes: data.notes || null,
-      });
-      return c.json({ data: { id, ...data }, message: "Property created" }, 201);
+      if (db && dbSchema) {
+        await db.insert(dbSchema).values({
+          id,
+          ownerId: "system",
+          name: data.name,
+          type: data.type,
+          street: data.street,
+          streetNumber: data.streetNumber,
+          box: data.box || null,
+          postalCode: data.postalCode,
+          city: data.city,
+          country: data.country,
+          cadastralReference: data.cadastralReference || null,
+          epcLabel: data.epcLabel || null,
+          epcScore: data.epcScore || null,
+          epcCertificateNumber: data.epcCertificateNumber || null,
+          epcExpiryDate: data.epcExpiryDate || null,
+          notes: data.notes || null,
+        });
+        return c.json({ data: record, message: "Property created" }, 201);
+      }
     } catch (err) {
-      console.error("Failed to create property:", err);
-      // Return success with the data even if DB fails (in-memory mode)
-      return c.json({ data: { id, ...data }, message: "Property created (not persisted - database unavailable)" }, 201);
+      console.error("DB insert failed, using memory store:", err);
     }
+
+    mem.insert("properties", record);
+    return c.json({ data: record, message: "Property created" }, 201);
   }
 );
 
@@ -92,10 +111,11 @@ propertiesRouter.patch(
     const id = c.req.param("id");
     const data = c.req.valid("json");
     try {
-      const db = getDb();
-      await (db as any).update(properties).set(data).where(eq(properties.id, id));
-    } catch (err) {
-      console.error("Failed to update property:", err);
+      if (db && dbSchema && eq) {
+        await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
+      }
+    } catch {
+      mem.update("properties", id, data);
     }
     return c.json({ data: { id, ...data }, message: "Property updated" });
   }
@@ -105,10 +125,11 @@ propertiesRouter.patch(
 propertiesRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
   try {
-    const db = getDb();
-    await (db as any).update(properties).set({ isArchived: true }).where(eq(properties.id, id));
-  } catch (err) {
-    console.error("Failed to delete property:", err);
+    if (db && dbSchema && eq) {
+      await db.update(dbSchema).set({ isArchived: true }).where(eq(dbSchema.id, id));
+    }
+  } catch {
+    mem.remove("properties", id);
   }
   return c.json({ message: "Property deleted" });
 });

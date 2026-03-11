@@ -1,57 +1,80 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import * as mem from "../lib/memoryStore";
 
 const createLeaseSchema = z.object({
-  propertyId: z.string().uuid(),
-  tenantIds: z.array(z.string().uuid()).min(1),
-  type: z.enum([
-    "residential_short",   // 3 years max (Belgium)
-    "residential_long",    // 9 years (Belgium standard)
-    "residential_lifetime", // lifetime lease
+  propertyId: z.string().min(1),
+  tenantIds: z.array(z.string()).optional().default([]),
+  // Frontend sends "leaseType", accept both
+  leaseType: z.enum([
+    "residential_short",
+    "residential_long",
+    "residential_lifetime",
     "student",
     "commercial",
-  ]),
+  ]).optional(),
+  type: z.enum([
+    "residential_short",
+    "residential_long",
+    "residential_lifetime",
+    "student",
+    "commercial",
+  ]).optional(),
   region: z.enum(["flanders", "wallonia", "brussels"]),
-  signingDate: z.string().date(), // Date the contract was signed
-  startDate: z.string().date(),   // Date the lease starts (may differ from signing)
-  endDate: z.string().date().optional(),
-  monthlyRent: z.number().positive(),
-  monthlyCharges: z.number().min(0).default(0),
-  chargesType: z.enum(["fixed", "provision"]).default("fixed"),
-  deposit: z.number().min(0).default(0),
-  depositAccount: z.string().optional(), // Blocked bank account for deposit
-  bankAccountId: z.string().uuid().optional(), // Bank account used for rent collection on this contract
-  indexationEnabled: z.boolean().default(true),
-  indexationBaseMonth: z.string().optional(), // Month used as base for health index
-  indexationBaseIndex: z.number().optional(), // Base health index value
-  paymentDay: z.number().int().min(1).max(28).default(1),
-  gocardlessMandateId: z.string().optional(),
-  // Late payment administrative fee (per contract)
-  latePaymentFeeEnabled: z.boolean().default(false),
-  latePaymentFeeAmount: z.number().min(0).default(15.0),
-  latePaymentFeeEnforcement: z.enum(["soft", "strict"]).default("soft"),
+  signingDate: z.string().min(1),
+  startDate: z.string().min(1),
+  endDate: z.string().optional().default(""),
+  // Accept string or number for rent/charges (FormData sends strings)
+  monthlyRent: z.union([z.number(), z.string()]).transform((v) => Number(v)),
+  monthlyCharges: z.union([z.number(), z.string()]).optional().default("0").transform((v) => Number(v)),
+  bankAccountId: z.string().optional().default(""),
+  indexationEnabled: z.boolean().optional().default(true),
+  paymentDay: z.number().int().min(1).max(28).optional().default(1),
 });
 
 export const leasesRouter = new Hono();
 
 leasesRouter.get("/", async (c) => {
-  return c.json({ data: [], meta: { total: 0, page: 1, perPage: 20 } });
+  const result = mem.getAll("leases").filter((l: any) => !l.isArchived);
+  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
 });
 
 leasesRouter.get("/:id", async (c) => {
-  return c.json({ data: null });
+  const id = c.req.param("id");
+  return c.json({ data: mem.getById("leases", id) || null });
 });
 
 leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
   const data = c.req.valid("json");
-  return c.json({ data, message: "Lease created" }, 201);
+  const id = crypto.randomUUID();
+  const leaseType = data.leaseType || data.type || "residential_long";
+  const record = {
+    id,
+    ownerId: "system",
+    propertyId: data.propertyId,
+    tenantIds: data.tenantIds,
+    type: leaseType,
+    region: data.region,
+    status: "draft",
+    signingDate: data.signingDate,
+    startDate: data.startDate,
+    endDate: data.endDate || null,
+    monthlyRent: String(data.monthlyRent),
+    monthlyCharges: String(data.monthlyCharges),
+    bankAccountId: data.bankAccountId || null,
+    indexationEnabled: data.indexationEnabled,
+    paymentDay: data.paymentDay,
+    createdAt: new Date().toISOString(),
+  };
+
+  mem.insert("leases", record);
+  return c.json({ data: record, message: "Lease created" }, 201);
 });
 
 // Get upcoming indexations for a lease
 leasesRouter.get("/:id/indexation", async (c) => {
   const id = c.req.param("id");
-  // TODO: Calculate next indexation based on health index
   return c.json({
     leaseId: id,
     currentRent: 0,

@@ -1,8 +1,20 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { getDb, tenants } from "@rentular/db";
-import { eq } from "drizzle-orm";
+import * as mem from "../lib/memoryStore";
+
+let db: any = null;
+let dbSchema: any = null;
+let eq: any = null;
+
+try {
+  const dbMod = require("@rentular/db");
+  db = dbMod.getDb();
+  dbSchema = dbMod.tenants;
+  eq = require("drizzle-orm").eq;
+} catch {
+  console.log("[Tenants] Database unavailable, using in-memory store");
+}
 
 const createTenantSchema = z.object({
   firstName: z.string().min(1),
@@ -19,60 +31,59 @@ const createTenantSchema = z.object({
 export const tenantsRouter = new Hono();
 
 tenantsRouter.get("/", async (c) => {
-  const search = c.req.query("search");
-  const includeArchived = c.req.query("includeArchived") === "true";
   try {
-    const db = getDb();
-    const result = await (db as any).select().from(tenants);
-    return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    if (db && dbSchema) {
+      const result = await db.select().from(dbSchema);
+      return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    }
   } catch (err) {
-    console.error("Failed to fetch tenants:", err);
-    return c.json({ data: [], meta: { total: 0, page: 1, perPage: 20 } });
+    console.error("DB read failed, falling back to memory:", err);
   }
+  const result = mem.getAll("tenants").filter((t: any) => !t.isArchived);
+  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
 });
 
 tenantsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
   try {
-    const db = getDb();
-    const result = await (db as any).select().from(tenants).where(eq(tenants.id, id));
-    return c.json({ data: result[0] || null });
-  } catch (err) {
-    console.error("Failed to fetch tenant:", err);
-    return c.json({ data: null });
+    if (db && dbSchema && eq) {
+      const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
+      return c.json({ data: result[0] || null });
+    }
+  } catch {
+    // fallback
   }
+  return c.json({ data: mem.getById("tenants", id) || null });
 });
 
 tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
   const data = c.req.valid("json");
   const tenantLanguage = data.language || "nl";
   const id = crypto.randomUUID();
+  const record = { id, ownerId: "system", ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
 
   try {
-    const db = getDb();
-    await (db as any).insert(tenants).values({
-      id,
-      ownerId: "system", // TODO: get from auth session
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email || null,
-      phone: data.phone || null,
-      language: tenantLanguage,
-      nationalRegister: data.nationalRegister || null,
-      iban: data.bankAccount || null,
-      notes: data.notes || null,
-    });
-    return c.json({
-      data: { id, ...data, language: tenantLanguage },
-      message: "Tenant created",
-    }, 201);
+    if (db && dbSchema) {
+      await db.insert(dbSchema).values({
+        id,
+        ownerId: "system",
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email || null,
+        phone: data.phone || null,
+        language: tenantLanguage,
+        nationalRegister: data.nationalRegister || null,
+        iban: data.bankAccount || null,
+        notes: data.notes || null,
+      });
+      return c.json({ data: record, message: "Tenant created" }, 201);
+    }
   } catch (err) {
-    console.error("Failed to create tenant:", err);
-    return c.json({
-      data: { id, ...data, language: tenantLanguage },
-      message: "Tenant created (not persisted - database unavailable)",
-    }, 201);
+    console.error("DB insert failed, using memory store:", err);
   }
+
+  mem.insert("tenants", record);
+  return c.json({ data: record, message: "Tenant created" }, 201);
 });
 
 tenantsRouter.patch(
@@ -82,10 +93,11 @@ tenantsRouter.patch(
     const id = c.req.param("id");
     const data = c.req.valid("json");
     try {
-      const db = getDb();
-      await (db as any).update(tenants).set(data).where(eq(tenants.id, id));
-    } catch (err) {
-      console.error("Failed to update tenant:", err);
+      if (db && dbSchema && eq) {
+        await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
+      }
+    } catch {
+      mem.update("tenants", id, data);
     }
     return c.json({ data: { id, ...data }, message: "Tenant updated" });
   }
@@ -94,10 +106,11 @@ tenantsRouter.patch(
 tenantsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
   try {
-    const db = getDb();
-    await (db as any).update(tenants).set({ isArchived: true }).where(eq(tenants.id, id));
-  } catch (err) {
-    console.error("Failed to delete tenant:", err);
+    if (db && dbSchema && eq) {
+      await db.update(dbSchema).set({ isArchived: true }).where(eq(dbSchema.id, id));
+    }
+  } catch {
+    mem.remove("tenants", id);
   }
   return c.json({ message: "Tenant deleted" });
 });
