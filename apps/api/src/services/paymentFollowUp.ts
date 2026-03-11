@@ -5,11 +5,12 @@ import { normalizePhoneNumber } from "../lib/sms";
 import {
   REMINDER_DEFAULTS,
   DEFAULT_EMAIL_TEMPLATES,
+  DEFAULT_SMS_TEMPLATES,
   DEFAULT_INTEREST_RATE,
   DEFAULT_LATE_PAYMENT_FEE,
   SOFT_ENFORCEMENT_GRACE_DAYS,
 } from "@rentular/shared";
-import type { LatePaymentFeeEnforcement } from "@rentular/shared";
+import type { LatePaymentFeeEnforcement, SupportedLanguage } from "@rentular/shared";
 
 // Types for the data we expect from the database
 interface OverduePayment {
@@ -21,6 +22,7 @@ interface OverduePayment {
   tenantName: string;
   tenantEmail: string;
   tenantPhone: string | null;
+  tenantLanguage: SupportedLanguage; // Tenant's preferred language for communications
   propertyName: string;
   ownerName: string;
   isIgnored: boolean;
@@ -52,30 +54,31 @@ interface FollowUpSettings {
   smsFinalMessage: string;
 }
 
-const DEFAULT_SMS_TEMPLATES = {
-  friendly: "Reminder: rent of {{amount}} for {{propertyName}} was due {{dueDate}}. Please arrange payment. - {{ownerName}}",
-  formal: "Your rent of {{amount}} for {{propertyName}} is {{daysPastDue}} days overdue. Please pay immediately. - {{ownerName}}",
-  final: "FINAL NOTICE: {{amount}} + fees (total {{totalOwed}}) overdue for {{propertyName}}. Immediate payment required. - {{ownerName}}",
-};
+// Get default settings using the specified language for templates
+function getDefaultSettings(lang: SupportedLanguage = "en"): FollowUpSettings {
+  const emailTemplates = DEFAULT_EMAIL_TEMPLATES[lang];
+  const smsTemplates = DEFAULT_SMS_TEMPLATES[lang];
+  return {
+    enabled: true,
+    friendlyReminderDays: REMINDER_DEFAULTS.friendly,
+    formalReminderDays: REMINDER_DEFAULTS.formal,
+    finalReminderDays: REMINDER_DEFAULTS.final,
+    interestEnabled: false,
+    annualInterestRate: DEFAULT_INTEREST_RATE,
+    friendlySubject: emailTemplates.friendly.subject,
+    friendlyBody: emailTemplates.friendly.body,
+    formalSubject: emailTemplates.formal.subject,
+    formalBody: emailTemplates.formal.body,
+    finalSubject: emailTemplates.final.subject,
+    finalBody: emailTemplates.final.body,
+    smsEnabled: false,
+    smsFriendlyMessage: smsTemplates.friendly,
+    smsFormalMessage: smsTemplates.formal,
+    smsFinalMessage: smsTemplates.final,
+  };
+}
 
-const DEFAULT_SETTINGS: FollowUpSettings = {
-  enabled: true,
-  friendlyReminderDays: REMINDER_DEFAULTS.friendly,
-  formalReminderDays: REMINDER_DEFAULTS.formal,
-  finalReminderDays: REMINDER_DEFAULTS.final,
-  interestEnabled: false,
-  annualInterestRate: DEFAULT_INTEREST_RATE,
-  friendlySubject: DEFAULT_EMAIL_TEMPLATES.friendly.subject,
-  friendlyBody: DEFAULT_EMAIL_TEMPLATES.friendly.body,
-  formalSubject: DEFAULT_EMAIL_TEMPLATES.formal.subject,
-  formalBody: DEFAULT_EMAIL_TEMPLATES.formal.body,
-  finalSubject: DEFAULT_EMAIL_TEMPLATES.final.subject,
-  finalBody: DEFAULT_EMAIL_TEMPLATES.final.body,
-  smsEnabled: false,
-  smsFriendlyMessage: DEFAULT_SMS_TEMPLATES.friendly,
-  smsFormalMessage: DEFAULT_SMS_TEMPLATES.formal,
-  smsFinalMessage: DEFAULT_SMS_TEMPLATES.final,
-};
+const DEFAULT_SETTINGS: FollowUpSettings = getDefaultSettings("en");
 
 function calculateInterest(
   amount: number,
@@ -176,19 +179,26 @@ export async function sendReminder(
 ): Promise<void> {
   const vars = getTemplateVariables(payment, settings);
 
-  const subjectTemplate =
-    level === "friendly"
-      ? settings.friendlySubject
-      : level === "formal"
-        ? settings.formalSubject
-        : settings.finalSubject;
+  // Use tenant's language for default templates; custom owner templates override
+  const lang = payment.tenantLanguage || "en";
+  const langDefaults = getDefaultSettings(lang);
 
-  const bodyTemplate =
-    level === "friendly"
-      ? settings.friendlyBody
-      : level === "formal"
-        ? settings.formalBody
-        : settings.finalBody;
+  // If the owner has customized templates (differs from any default), use the owner's version.
+  // Otherwise, use the tenant's language-specific default templates.
+  const ownerEnDefaults = getDefaultSettings("en");
+
+  const getTemplate = (field: "Subject" | "Body") => {
+    const settingsKey = `${level}${field}` as keyof FollowUpSettings;
+    const ownerValue = settings[settingsKey] as string;
+    const enDefault = ownerEnDefaults[settingsKey] as string;
+    // If the owner's template matches any language default, use the tenant's language version
+    const isCustomized = ownerValue !== enDefault;
+    if (isCustomized) return ownerValue;
+    return langDefaults[settingsKey] as string;
+  };
+
+  const subjectTemplate = getTemplate("Subject");
+  const bodyTemplate = getTemplate("Body");
 
   const emailOptions: EmailOptions = {
     to: payment.tenantEmail,
@@ -212,12 +222,13 @@ export async function sendReminder(
 
   // Send SMS if enabled and tenant has a phone number
   if (settings.smsEnabled && payment.tenantPhone) {
-    const smsTemplate =
-      level === "friendly"
-        ? settings.smsFriendlyMessage
-        : level === "formal"
-          ? settings.smsFormalMessage
-          : settings.smsFinalMessage;
+    // Use tenant language for SMS defaults, owner custom overrides
+    const smsField = `sms${level.charAt(0).toUpperCase() + level.slice(1)}Message` as keyof FollowUpSettings;
+    const ownerSms = settings[smsField] as string;
+    const enDefaultSms = ownerEnDefaults[smsField] as string;
+    const smsTemplate = ownerSms !== enDefaultSms
+      ? ownerSms
+      : langDefaults[smsField] as string;
 
     await queueSms({
       to: normalizePhoneNumber(payment.tenantPhone),

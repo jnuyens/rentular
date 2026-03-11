@@ -74,11 +74,19 @@ export const BALANCE_CHECK_CRON = [
   "0 17 * * *",  // 17:00
 ] as const;
 
-// Default email templates with placeholder variables
-export const DEFAULT_EMAIL_TEMPLATES = {
-  friendly: {
-    subject: "Friendly reminder: rent payment due",
-    body: `Dear {{tenantName}},
+// Default email templates with placeholder variables — per language
+// Emails are sent in the tenant's preferred language
+export type SupportedLanguage = "en" | "nl" | "fr" | "de";
+
+export const DEFAULT_EMAIL_TEMPLATES: Record<SupportedLanguage, {
+  friendly: { subject: string; body: string };
+  formal: { subject: string; body: string };
+  final: { subject: string; body: string };
+}> = {
+  en: {
+    friendly: {
+      subject: "Friendly reminder: rent payment due",
+      body: `Dear {{tenantName}},
 
 This is a friendly reminder that your rent payment of {{amount}} for {{propertyName}} was due on {{dueDate}}.
 
@@ -86,10 +94,10 @@ If you have already made this payment, please disregard this message. Otherwise,
 
 Best regards,
 {{ownerName}}`,
-  },
-  formal: {
-    subject: "Payment overdue - action required",
-    body: `Dear {{tenantName}},
+    },
+    formal: {
+      subject: "Payment overdue - action required",
+      body: `Dear {{tenantName}},
 
 We have not yet received your rent payment of {{amount}} for {{propertyName}}, which was due on {{dueDate}}. This payment is now {{daysPastDue}} days overdue.
 
@@ -97,10 +105,10 @@ Please arrange payment as soon as possible to avoid further action.
 
 Kind regards,
 {{ownerName}}`,
-  },
-  final: {
-    subject: "Final notice: overdue rent payment",
-    body: `Dear {{tenantName}},
+    },
+    final: {
+      subject: "Final notice: overdue rent payment",
+      body: `Dear {{tenantName}},
 
 Despite previous reminders, we have not received your rent payment for {{propertyName}}.
 
@@ -117,8 +125,169 @@ We urge you to settle this amount immediately. Failure to do so may result in fu
 
 Regards,
 {{ownerName}}`,
+    },
   },
-} as const;
+  nl: {
+    friendly: {
+      subject: "Vriendelijke herinnering: huurbetaling verschuldigd",
+      body: `Beste {{tenantName}},
+
+Dit is een vriendelijke herinnering dat uw huurbetaling van {{amount}} voor {{propertyName}} verschuldigd was op {{dueDate}}.
+
+Als u deze betaling al heeft gedaan, kunt u dit bericht negeren. Anders vragen wij u vriendelijk om de betaling zo snel mogelijk te regelen.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Betaling achterstallig - actie vereist",
+      body: `Beste {{tenantName}},
+
+Wij hebben uw huurbetaling van {{amount}} voor {{propertyName}} nog niet ontvangen. Deze betaling was verschuldigd op {{dueDate}} en is nu {{daysPastDue}} dagen te laat.
+
+Gelieve de betaling zo snel mogelijk te regelen om verdere stappen te vermijden.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Laatste aanmaning: achterstallige huurbetaling",
+      body: `Beste {{tenantName}},
+
+Ondanks eerdere herinneringen hebben wij uw huurbetaling voor {{propertyName}} nog niet ontvangen.
+
+Verschuldigd bedrag: {{amount}}
+Vervaldatum: {{dueDate}}
+Dagen te laat: {{daysPastDue}}
+Intrestkosten: {{interestAmount}}
+Administratieve kost: {{adminFee}}
+Totaal verschuldigd: {{totalOwed}}
+
+In bijlage vindt u een gedetailleerd overzicht van het openstaande bedrag.
+
+Wij verzoeken u dringend dit bedrag onmiddellijk te voldoen. Bij gebrek aan betaling kunnen verdere juridische stappen ondernomen worden.
+
+Met vriendelijke groeten,
+{{ownerName}}`,
+    },
+  },
+  fr: {
+    friendly: {
+      subject: "Rappel amical : loyer a payer",
+      body: `Cher/Chere {{tenantName}},
+
+Ceci est un rappel amical que votre paiement de loyer de {{amount}} pour {{propertyName}} etait du le {{dueDate}}.
+
+Si vous avez deja effectue ce paiement, veuillez ignorer ce message. Dans le cas contraire, nous vous prions de bien vouloir effectuer le paiement dans les plus brefs delais.
+
+Cordialement,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Paiement en retard - action requise",
+      body: `Cher/Chere {{tenantName}},
+
+Nous n'avons pas encore recu votre paiement de loyer de {{amount}} pour {{propertyName}}, qui etait du le {{dueDate}}. Ce paiement a maintenant {{daysPastDue}} jours de retard.
+
+Veuillez effectuer le paiement dans les plus brefs delais afin d'eviter toute action ulterieure.
+
+Cordialement,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Dernier avis : loyer impaye",
+      body: `Cher/Chere {{tenantName}},
+
+Malgre nos rappels precedents, nous n'avons pas recu votre paiement de loyer pour {{propertyName}}.
+
+Montant du : {{amount}}
+Date d'echeance : {{dueDate}}
+Jours de retard : {{daysPastDue}}
+Interets de retard : {{interestAmount}}
+Frais administratifs : {{adminFee}}
+Montant total du : {{totalOwed}}
+
+Vous trouverez ci-joint un apercu detaille du montant impaye.
+
+Nous vous prions instamment de regler ce montant immediatement. A defaut, des actions juridiques pourront etre engagees.
+
+Cordialement,
+{{ownerName}}`,
+    },
+  },
+  de: {
+    friendly: {
+      subject: "Freundliche Erinnerung: Mietzahlung faellig",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+dies ist eine freundliche Erinnerung, dass Ihre Mietzahlung von {{amount}} fuer {{propertyName}} am {{dueDate}} faellig war.
+
+Falls Sie diese Zahlung bereits geleistet haben, koennen Sie diese Nachricht ignorieren. Andernfalls bitten wir Sie, die Zahlung so bald wie moeglich zu veranlassen.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+    formal: {
+      subject: "Zahlung ueberfaellig - Handlung erforderlich",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+wir haben Ihre Mietzahlung von {{amount}} fuer {{propertyName}} noch nicht erhalten. Diese Zahlung war am {{dueDate}} faellig und ist nun {{daysPastDue}} Tage ueberfaellig.
+
+Bitte veranlassen Sie die Zahlung so bald wie moeglich, um weitere Massnahmen zu vermeiden.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+    final: {
+      subject: "Letzte Mahnung: ueberfaellige Mietzahlung",
+      body: `Sehr geehrte(r) {{tenantName}},
+
+trotz vorheriger Erinnerungen haben wir Ihre Mietzahlung fuer {{propertyName}} nicht erhalten.
+
+Faelliger Betrag: {{amount}}
+Faelligkeitsdatum: {{dueDate}}
+Tage ueberfaellig: {{daysPastDue}}
+Zinskosten: {{interestAmount}}
+Verwaltungsgebuehr: {{adminFee}}
+Gesamtbetrag faellig: {{totalOwed}}
+
+Im Anhang finden Sie eine detaillierte Uebersicht des ausstehenden Betrags.
+
+Wir fordern Sie dringend auf, diesen Betrag unverzueglich zu begleichen. Andernfalls koennen weitere rechtliche Schritte eingeleitet werden.
+
+Mit freundlichen Gruessen,
+{{ownerName}}`,
+    },
+  },
+};
+
+// Default SMS templates per language
+export const DEFAULT_SMS_TEMPLATES: Record<SupportedLanguage, {
+  friendly: string;
+  formal: string;
+  final: string;
+}> = {
+  en: {
+    friendly: "Reminder: rent of {{amount}} for {{propertyName}} was due {{dueDate}}. Please arrange payment. - {{ownerName}}",
+    formal: "Your rent of {{amount}} for {{propertyName}} is {{daysPastDue}} days overdue. Please pay immediately. - {{ownerName}}",
+    final: "FINAL NOTICE: {{amount}} + fees (total {{totalOwed}}) overdue for {{propertyName}}. Immediate payment required. - {{ownerName}}",
+  },
+  nl: {
+    friendly: "Herinnering: huur van {{amount}} voor {{propertyName}} was verschuldigd op {{dueDate}}. Gelieve te betalen. - {{ownerName}}",
+    formal: "Uw huur van {{amount}} voor {{propertyName}} is {{daysPastDue}} dagen te laat. Gelieve onmiddellijk te betalen. - {{ownerName}}",
+    final: "LAATSTE AANMANING: {{amount}} + kosten (totaal {{totalOwed}}) achterstallig voor {{propertyName}}. Onmiddellijke betaling vereist. - {{ownerName}}",
+  },
+  fr: {
+    friendly: "Rappel : loyer de {{amount}} pour {{propertyName}} du le {{dueDate}}. Veuillez payer. - {{ownerName}}",
+    formal: "Votre loyer de {{amount}} pour {{propertyName}} a {{daysPastDue}} jours de retard. Veuillez payer immediatement. - {{ownerName}}",
+    final: "DERNIER AVIS : {{amount}} + frais (total {{totalOwed}}) impaye pour {{propertyName}}. Paiement immediat requis. - {{ownerName}}",
+  },
+  de: {
+    friendly: "Erinnerung: Miete von {{amount}} fuer {{propertyName}} war am {{dueDate}} faellig. Bitte zahlen Sie. - {{ownerName}}",
+    formal: "Ihre Miete von {{amount}} fuer {{propertyName}} ist {{daysPastDue}} Tage ueberfaellig. Bitte zahlen Sie sofort. - {{ownerName}}",
+    final: "LETZTE MAHNUNG: {{amount}} + Gebuehren (Gesamt {{totalOwed}}) ueberfaellig fuer {{propertyName}}. Sofortige Zahlung erforderlich. - {{ownerName}}",
+  },
+};
 
 // === EPC-BASED INDEXATION RESTRICTIONS ===
 // Both Brussels and Flanders have EPC-based restrictions on rent indexation.

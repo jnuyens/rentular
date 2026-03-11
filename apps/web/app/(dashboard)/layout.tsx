@@ -9,15 +9,16 @@ import {
 } from "lucide-react";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
-const navigation = [
-  { name: "Properties", href: "/properties", icon: Building2 },
-  { name: "Tenants", href: "/tenants", icon: Users },
-  { name: "Leases", href: "/leases", icon: FileText },
-  { name: "Payments", href: "/payments", icon: CreditCard },
-  { name: "Indexation", href: "/indexation", icon: TrendingUp },
-  { name: "Settings", href: "/settings", icon: Settings },
+const navigationItems = [
+  { key: "properties" as const, href: "/properties", icon: Building2 },
+  { key: "tenants" as const, href: "/tenants", icon: Users },
+  { key: "leases" as const, href: "/leases", icon: FileText },
+  { key: "payments" as const, href: "/payments", icon: CreditCard },
+  { key: "indexation" as const, href: "/indexation", icon: TrendingUp },
+  { key: "settings" as const, href: "/settings", icon: Settings },
 ];
 
 export default async function DashboardLayout({
@@ -27,6 +28,8 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
   if (!session) redirect("/login");
+
+  const t = await getTranslations("nav");
 
   return (
     <div className="flex h-screen">
@@ -38,14 +41,14 @@ export default async function DashboardLayout({
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => (
+          {navigationItems.map((item) => (
             <a
-              key={item.name}
+              key={item.key}
               href={item.href}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
             >
               <item.icon className="h-5 w-5" />
-              {item.name}
+              {t(item.key)}
             </a>
           ))}
         </nav>
