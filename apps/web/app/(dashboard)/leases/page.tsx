@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, Plus, Search, X, Users, UserPlus } from "lucide-react";
+import { FileText, Plus, Search, X, Users, Pencil, Trash2 } from "lucide-react";
 
 interface Property {
   id: string;
@@ -24,24 +24,66 @@ interface Lease {
   type: string;
   region: string;
   status: string;
+  signingDate: string;
   startDate: string;
   endDate?: string;
   monthlyRent: string;
   monthlyCharges: string;
+  bankAccountId?: string;
   tenantIds?: string[];
 }
 
 export default function LeasesPage() {
   const t = useTranslations("leases");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingLease, setEditingLease] = useState<Lease | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [leases, setLeases] = useState<Lease[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const openAdd = () => {
+    setEditingLease(null);
+    setSelectedTenants([]);
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEdit = (lease: Lease) => {
+    setEditingLease(lease);
+    setSelectedTenants(lease.tenantIds || []);
+    setError("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingLease(null);
+    setSelectedTenants([]);
+    setError("");
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/leases/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setLeases((prev) => prev.filter((l) => l.id !== id));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -108,7 +150,7 @@ export default function LeasesPage() {
           </p>
         </div>
         <button
-          onClick={() => { setShowAddModal(true); setError(""); setSelectedTenants([]); }}
+          onClick={openAdd}
           className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
@@ -163,24 +205,44 @@ export default function LeasesPage() {
             return (
               <div
                 key={lease.id}
-                className="flex items-center justify-between rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm"
+                onClick={() => openEdit(lease)}
+                className="flex cursor-pointer items-center justify-between rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-colors hover:border-[hsl(var(--primary))]/50"
               >
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{prop?.name || lease.propertyId}</h3>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[lease.status] || ""}`}>
-                      {lease.status}
+                      {t(`status${lease.status.charAt(0).toUpperCase()}${lease.status.slice(1)}`) || lease.status}
                     </span>
                   </div>
                   <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
                     {typeLabels[lease.type] || lease.type} &middot; {lease.startDate} - {lease.endDate || "..."}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
-                  {Number(lease.monthlyCharges) > 0 && (
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">+ &euro;{lease.monthlyCharges}</p>
-                  )}
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
+                    {Number(lease.monthlyCharges) > 0 && (
+                      <p className="text-xs text-[hsl(var(--muted-foreground))]">+ &euro;{lease.monthlyCharges}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(lease); }}
+                      className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                      title={t("editLease")}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(lease.id); }}
+                      disabled={deleting === lease.id}
+                      className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      title={t("deleteLease")}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -188,13 +250,15 @@ export default function LeasesPage() {
         </div>
       )}
 
-      {/* Add lease modal */}
-      {showAddModal && (
+      {/* Add/Edit lease modal */}
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-[hsl(var(--background))] p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t("addLeaseTitle")}</h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <h2 className="text-lg font-semibold">
+                {editingLease ? t("editLeaseTitle") : t("addLeaseTitle")}
+              </h2>
+              <button onClick={closeModal}>
                 <X className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
               </button>
             </div>
@@ -213,19 +277,27 @@ export default function LeasesPage() {
                 setError("");
                 const form = e.currentTarget;
                 const data = Object.fromEntries(new FormData(form));
+                const body = { ...data, tenantIds: selectedTenants };
                 try {
-                  const res = await fetch(`${apiUrl}/api/v1/leases`, {
-                    method: "POST",
+                  const url = editingLease
+                    ? `${apiUrl}/api/v1/leases/${editingLease.id}`
+                    : `${apiUrl}/api/v1/leases`;
+                  const res = await fetch(url, {
+                    method: editingLease ? "PUT" : "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...data, tenantIds: selectedTenants }),
+                    body: JSON.stringify(body),
                     credentials: "include",
                   });
                   if (res.ok) {
                     const json = await res.json();
-                    setLeases((prev) => [...prev, json.data]);
-                    setShowAddModal(false);
-                    form.reset();
-                    setSelectedTenants([]);
+                    if (editingLease) {
+                      setLeases((prev) =>
+                        prev.map((l) => (l.id === editingLease.id ? json.data : l))
+                      );
+                    } else {
+                      setLeases((prev) => [...prev, json.data]);
+                    }
+                    closeModal();
                   } else {
                     const errJson = await res.json().catch(() => null);
                     setError(errJson?.error || `Error ${res.status}`);
@@ -245,6 +317,7 @@ export default function LeasesPage() {
                   <select
                     name="propertyId"
                     required
+                    defaultValue={editingLease?.propertyId || ""}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   >
                     <option value="">{t("selectProperty")}</option>
@@ -260,6 +333,7 @@ export default function LeasesPage() {
                   <select
                     name="leaseType"
                     required
+                    defaultValue={editingLease?.type || "residential_long"}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   >
                     <option value="residential_long">{t("typeResidentialLong")}</option>
@@ -311,19 +385,37 @@ export default function LeasesPage() {
                 )}
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("region")}
-                </label>
-                <select
-                  name="region"
-                  required
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                >
-                  <option value="flanders">{t("regionFlanders")}</option>
-                  <option value="wallonia">{t("regionWallonia")}</option>
-                  <option value="brussels">{t("regionBrussels")}</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    {t("region")}
+                  </label>
+                  <select
+                    name="region"
+                    required
+                    defaultValue={editingLease?.region || "flanders"}
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  >
+                    <option value="flanders">{t("regionFlanders")}</option>
+                    <option value="wallonia">{t("regionWallonia")}</option>
+                    <option value="brussels">{t("regionBrussels")}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">
+                    {t("status")}
+                  </label>
+                  <select
+                    name="status"
+                    defaultValue={editingLease?.status || "active"}
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  >
+                    <option value="active">{t("statusActive")}</option>
+                    <option value="draft">{t("statusDraft")}</option>
+                    <option value="terminated">{t("statusTerminated")}</option>
+                    <option value="expired">{t("statusExpired")}</option>
+                  </select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -334,6 +426,7 @@ export default function LeasesPage() {
                     name="signingDate"
                     type="date"
                     required
+                    defaultValue={editingLease?.signingDate || ""}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   />
                 </div>
@@ -345,6 +438,7 @@ export default function LeasesPage() {
                     name="startDate"
                     type="date"
                     required
+                    defaultValue={editingLease?.startDate || ""}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   />
                 </div>
@@ -356,6 +450,7 @@ export default function LeasesPage() {
                 <input
                   name="endDate"
                   type="date"
+                  defaultValue={editingLease?.endDate || ""}
                   className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
               </div>
@@ -370,6 +465,7 @@ export default function LeasesPage() {
                     step="0.01"
                     min="0"
                     required
+                    defaultValue={editingLease?.monthlyRent || ""}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   />
                 </div>
@@ -382,7 +478,7 @@ export default function LeasesPage() {
                     type="number"
                     step="0.01"
                     min="0"
-                    defaultValue="0"
+                    defaultValue={editingLease?.monthlyCharges || "0"}
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                   />
                 </div>
@@ -391,14 +487,18 @@ export default function LeasesPage() {
                 <label className="mb-1 block text-sm font-medium">
                   {t("bankAccount")}
                 </label>
-                <select name="bankAccountId" className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
+                <select
+                  name="bankAccountId"
+                  defaultValue={editingLease?.bankAccountId || ""}
+                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                >
                   <option value="">{t("selectBankAccount")}</option>
                 </select>
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeModal}
                   className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]"
                 >
                   {t("cancel")}
@@ -408,7 +508,7 @@ export default function LeasesPage() {
                   disabled={saving}
                   className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
                 >
-                  {saving ? "..." : t("saveLease")}
+                  {saving ? "..." : editingLease ? t("updateLease") : t("saveLease")}
                 </button>
               </div>
             </form>

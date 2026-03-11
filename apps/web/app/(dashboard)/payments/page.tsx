@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import {
   CreditCard,
@@ -15,6 +15,8 @@ import {
   CalendarOff,
   TrendingDown,
   X,
+  Search,
+  ChevronDown,
 } from "lucide-react";
 
 interface Payment {
@@ -28,6 +30,114 @@ interface Payment {
   isIgnored: boolean;
   ignoreReason: string | null;
   reminders: Array<{ type: string; sentAt: string }>;
+}
+
+interface LeaseOption {
+  id: string;
+  propertyName: string;
+  tenantNames: string;
+  monthlyRent: string;
+  type: string;
+}
+
+function LeaseSelect({
+  value,
+  onChange,
+  leases,
+  placeholder,
+  inputClass,
+  labelClass,
+  label,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  leases: LeaseOption[];
+  placeholder: string;
+  inputClass: string;
+  labelClass: string;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const selected = leases.find((l) => l.id === value);
+  const filtered = leases.filter((l) => {
+    const q = query.toLowerCase();
+    return (
+      l.propertyName.toLowerCase().includes(q) ||
+      l.tenantNames.toLowerCase().includes(q) ||
+      l.type.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div ref={ref} className="relative">
+      <label className={labelClass}>{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`${inputClass} flex items-center justify-between text-left`}
+      >
+        <span className={selected ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}>
+          {selected
+            ? `${selected.propertyName} — ${selected.tenantNames || "?"} (€${selected.monthlyRent}/m)`
+            : placeholder}
+        </span>
+        <ChevronDown className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg">
+          <div className="flex items-center border-b border-[hsl(var(--border))] px-3 py-2">
+            <Search className="mr-2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={placeholder}
+              className="w-full bg-transparent text-sm outline-none"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                Geen contracten gevonden
+              </div>
+            ) : (
+              filtered.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(l.id);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                  className={`flex w-full flex-col px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--muted))] ${
+                    l.id === value ? "bg-[hsl(var(--primary))]/10" : ""
+                  }`}
+                >
+                  <span className="font-medium">{l.propertyName}</span>
+                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                    {l.tenantNames || "—"} · €{l.monthlyRent}/m · {l.type}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 type ModalType = "payment" | "cost" | "rent-free" | "deduction" | "ignore" | null;
@@ -93,9 +203,41 @@ export default function PaymentsPage() {
   const [freePeriodForm, setFreePeriodForm] = useState({ leaseId: "", startDate: "", endDate: "", reason: "", waiveCharges: false, notes: "" });
   const [deductionForm, setDeductionForm] = useState({ leaseId: "", type: "temporary" as string, amount: "", startDate: "", endDate: "", reason: "", notes: "" });
 
+  const [leaseOptions, setLeaseOptions] = useState<LeaseOption[]>([]);
+
   const payments: Payment[] = [];
   const visiblePayments = showIgnored ? payments : payments.filter((p) => !p.isIgnored);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+  const fetchLeases = useCallback(async () => {
+    try {
+      const [leasesRes, propsRes, tenantsRes] = await Promise.all([
+        fetch(`${apiUrl}/api/v1/leases`, { credentials: "include" }),
+        fetch(`${apiUrl}/api/v1/properties`, { credentials: "include" }),
+        fetch(`${apiUrl}/api/v1/tenants`, { credentials: "include" }),
+      ]);
+      const leasesData = leasesRes.ok ? (await leasesRes.json()).data || [] : [];
+      const propsData = propsRes.ok ? (await propsRes.json()).data || [] : [];
+      const tenantsData = tenantsRes.ok ? (await tenantsRes.json()).data || [] : [];
+      const propMap = new Map(propsData.map((p: any) => [p.id, p.name || p.city || p.id]));
+      const tenantMap = new Map(tenantsData.map((t: any) => [t.id, `${t.firstName} ${t.lastName}`]));
+      setLeaseOptions(
+        leasesData.map((l: any) => ({
+          id: l.id,
+          propertyName: propMap.get(l.propertyId) || l.propertyId,
+          tenantNames: (l.tenantIds || []).map((id: string) => tenantMap.get(id) || id).join(", "),
+          monthlyRent: l.monthlyRent,
+          type: l.type,
+        }))
+      );
+    } catch {
+      // API unavailable
+    }
+  }, [apiUrl]);
+
+  useEffect(() => {
+    fetchLeases();
+  }, [fetchLeases]);
 
   const closeModal = () => {
     setActiveModal(null);
@@ -266,10 +408,15 @@ export default function PaymentsPage() {
       {/* Record payment modal */}
       <Modal open={activeModal === "payment"} onClose={closeModal} title={t("addPaymentTitle")}>
         <form onSubmit={handleRecordPayment} className="space-y-4">
-          <div>
-            <label className={labelClass}>{t("leaseId")}</label>
-            <input type="text" required value={paymentForm.leaseId} onChange={(e) => setPaymentForm({ ...paymentForm, leaseId: e.target.value })} placeholder={t("leaseIdPlaceholder")} className={inputClass} />
-          </div>
+          <LeaseSelect
+            value={paymentForm.leaseId}
+            onChange={(id) => setPaymentForm({ ...paymentForm, leaseId: id })}
+            leases={leaseOptions}
+            placeholder={t("leaseIdPlaceholder")}
+            inputClass={inputClass}
+            labelClass={labelClass}
+            label={t("leaseId")}
+          />
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>{t("amountLabel")}</label>
@@ -356,10 +503,15 @@ export default function PaymentsPage() {
       {/* Rent-free period modal */}
       <Modal open={activeModal === "rent-free"} onClose={closeModal} title={t("addRentFreeTitle")}>
         <form onSubmit={handleAddFreePeriod} className="space-y-4">
-          <div>
-            <label className={labelClass}>{t("leaseId")}</label>
-            <input type="text" required value={freePeriodForm.leaseId} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, leaseId: e.target.value })} placeholder={t("leaseIdPlaceholder")} className={inputClass} />
-          </div>
+          <LeaseSelect
+            value={freePeriodForm.leaseId}
+            onChange={(id) => setFreePeriodForm({ ...freePeriodForm, leaseId: id })}
+            leases={leaseOptions}
+            placeholder={t("leaseIdPlaceholder")}
+            inputClass={inputClass}
+            labelClass={labelClass}
+            label={t("leaseId")}
+          />
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>{t("startDate")}</label>
@@ -392,10 +544,15 @@ export default function PaymentsPage() {
       {/* Rent deduction modal */}
       <Modal open={activeModal === "deduction"} onClose={closeModal} title={t("addDeductionTitle")}>
         <form onSubmit={handleAddDeduction} className="space-y-4">
-          <div>
-            <label className={labelClass}>{t("leaseId")}</label>
-            <input type="text" required value={deductionForm.leaseId} onChange={(e) => setDeductionForm({ ...deductionForm, leaseId: e.target.value })} placeholder={t("leaseIdPlaceholder")} className={inputClass} />
-          </div>
+          <LeaseSelect
+            value={deductionForm.leaseId}
+            onChange={(id) => setDeductionForm({ ...deductionForm, leaseId: id })}
+            leases={leaseOptions}
+            placeholder={t("leaseIdPlaceholder")}
+            inputClass={inputClass}
+            labelClass={labelClass}
+            label={t("leaseId")}
+          />
           <div>
             <label className={labelClass}>{t("deductionType")}</label>
             <select value={deductionForm.type} onChange={(e) => setDeductionForm({ ...deductionForm, type: e.target.value })} className={inputClass}>

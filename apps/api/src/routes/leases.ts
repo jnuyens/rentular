@@ -29,6 +29,7 @@ const createLeaseSchema = z.object({
   monthlyRent: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   monthlyCharges: z.union([z.number(), z.string()]).optional().default("0").transform((v) => Number(v)),
   bankAccountId: z.string().optional().default(""),
+  status: z.enum(["active", "draft", "terminated", "expired"]).optional().default("active"),
   indexationEnabled: z.boolean().optional().default(true),
   paymentDay: z.number().int().min(1).max(28).optional().default(1),
 });
@@ -56,7 +57,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     tenantIds: data.tenantIds,
     type: leaseType,
     region: data.region,
-    status: "draft",
+    status: data.status,
     signingDate: data.signingDate,
     startDate: data.startDate,
     endDate: data.endDate || null,
@@ -70,6 +71,43 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
 
   mem.insert("leases", record);
   return c.json({ data: record, message: "Lease created" }, 201);
+});
+
+// Update a lease
+leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async (c) => {
+  const id = c.req.param("id");
+  const existing = mem.getById("leases", id);
+  if (!existing) return c.json({ error: "Lease not found" }, 404);
+
+  const data = c.req.valid("json");
+  const leaseType = data.leaseType || data.type;
+  const updates: Record<string, any> = {};
+
+  if (data.propertyId !== undefined) updates.propertyId = data.propertyId;
+  if (data.tenantIds !== undefined) updates.tenantIds = data.tenantIds;
+  if (leaseType) updates.type = leaseType;
+  if (data.region !== undefined) updates.region = data.region;
+  if (data.status !== undefined) updates.status = data.status;
+  if (data.signingDate !== undefined) updates.signingDate = data.signingDate;
+  if (data.startDate !== undefined) updates.startDate = data.startDate;
+  if (data.endDate !== undefined) updates.endDate = data.endDate || null;
+  if (data.monthlyRent !== undefined) updates.monthlyRent = String(data.monthlyRent);
+  if (data.monthlyCharges !== undefined) updates.monthlyCharges = String(data.monthlyCharges);
+  if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
+  if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
+  if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
+
+  mem.update("leases", id, updates);
+  return c.json({ data: { ...existing, ...updates }, message: "Lease updated" });
+});
+
+// Delete a lease
+leasesRouter.delete("/:id", async (c) => {
+  const id = c.req.param("id");
+  const existing = mem.getById("leases", id);
+  if (!existing) return c.json({ error: "Lease not found" }, 404);
+  mem.remove("leases", id);
+  return c.json({ message: "Lease deleted" });
 });
 
 // Get upcoming indexations for a lease
