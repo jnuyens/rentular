@@ -296,7 +296,7 @@ export default function SettingsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setBankAccounts(data);
+        setBankAccounts(data.data || []);
       }
     } catch {
       // silently fail
