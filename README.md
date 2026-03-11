@@ -1,6 +1,16 @@
-# Rentular
+<p align="center">
+  <img src="apps/web/public/rentular.png" alt="Rentular" width="280" />
+</p>
 
-OpenSource real estate management platform built for the Belgian market, with international expansion in mind.
+<h1 align="center">Rentular</h1>
+
+<p align="center">
+  OpenSource real estate management platform built for the Belgian market, with international expansion in mind.
+</p>
+
+<p align="center">
+  <a href="https://github.com/jnuyens/rentular/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License" /></a>
+</p>
 
 ## Features
 
@@ -10,6 +20,8 @@ OpenSource real estate management platform built for the Belgian market, with in
 - **Payment Follow-up** - Track rent payments, send automated reminders for late payments
 - **Rent Indexation** - Automatic rent adjustments based on the Belgian health index (Statbel)
 - **GoCardless Integration** - SEPA Direct Debit for automated rent collection
+- **Periodic Maintenance** - Track fire alarm inspections, heating maintenance, chimney sweeps
+- **Stripe Subscriptions** - Hosted checkout with card, Bancontact, and iDEAL support
 - **Multi-language** - Dutch, French, German, and English
 
 ## Tech Stack
@@ -21,7 +33,7 @@ OpenSource real estate management platform built for the Belgian market, with in
 | Database | MariaDB (default) or PostgreSQL |
 | ORM | Drizzle |
 | Auth | Auth.js (Google, Facebook, Twitter/X) |
-| Payments | GoCardless |
+| Payments | GoCardless + Stripe |
 | Background Jobs | BullMQ + Redis |
 | Monorepo | Turborepo + pnpm |
 

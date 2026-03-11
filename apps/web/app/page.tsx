@@ -205,7 +205,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 z-40 w-full border-b border-gray-100 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <div className="flex items-center">
-            <Image src="/rentular.png" alt="Rentular" width={44} height={44} />
+            <Image src="/rentular.png" alt="Rentular" width={56} height={56} className="-my-2" />
           </div>
           <div className="hidden items-center gap-8 md:flex">
             <a href="#features" className="text-sm text-gray-600 hover:text-gray-900">
