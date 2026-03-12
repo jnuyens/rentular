@@ -277,7 +277,7 @@ export function BankNameSelect({ value, onChange, className = "" }: BankNameSele
           <div className="max-h-48 overflow-y-auto">
             {filtered.map((bank) => (
               <button
-                key={bank.bic}
+                key={bank.name}
                 type="button"
                 onClick={() => {
                   onChange?.(bank.name, bank.bic);
