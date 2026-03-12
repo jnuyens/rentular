@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Users, Plus, Search, Mail, Phone, X, UserPlus } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, X, Pencil, Trash2 } from "lucide-react";
 import PhoneInput from "@/components/PhoneInput";
+import IbanInput from "@/components/IbanInput";
 
 // Avatar options: diverse set of people + abstract icons
 const AVATARS = [
@@ -48,17 +49,20 @@ interface Tenant {
 
 export default function TenantsPage() {
   const t = useTranslations("tenants");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<Tenant | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAvatar, setSelectedAvatar] = useState("abs1");
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
   const fetchTenants = useCallback(async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const res = await fetch(`${apiUrl}/api/v1/tenants`, { credentials: "include" });
       if (res.ok) {
         const json = await res.json();
@@ -69,20 +73,94 @@ export default function TenantsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiUrl]);
 
   useEffect(() => {
     fetchTenants();
   }, [fetchTenants]);
 
-  const filteredTenants = tenants.filter((t) => {
+  const openAdd = () => {
+    setEditing(null);
+    setSelectedAvatar("abs1");
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEdit = (tenant: Tenant) => {
+    setEditing(tenant);
+    setSelectedAvatar(tenant.avatar || "abs1");
+    setError("");
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditing(null);
+    setError("");
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/tenants/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        setTenants((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    formData.set("avatar", selectedAvatar);
+    const data = Object.fromEntries(formData);
+    try {
+      const url = editing
+        ? `${apiUrl}/api/v1/tenants/${editing.id}`
+        : `${apiUrl}/api/v1/tenants`;
+      const res = await fetch(url, {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (editing) {
+          setTenants((prev) => prev.map((t) => (t.id === editing.id ? json.data : t)));
+        } else {
+          setTenants((prev) => [...prev, json.data]);
+        }
+        closeModal();
+      } else {
+        const errJson = await res.json().catch(() => null);
+        setError(errJson?.error || `Error ${res.status}`);
+      }
+    } catch {
+      setError(t("saveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredTenants = tenants.filter((tenant) => {
     if (!search) return true;
     const s = search.toLowerCase();
     return (
-      t.firstName.toLowerCase().includes(s) ||
-      t.lastName.toLowerCase().includes(s) ||
-      t.email?.toLowerCase().includes(s) ||
-      t.phone?.includes(s)
+      tenant.firstName.toLowerCase().includes(s) ||
+      tenant.lastName.toLowerCase().includes(s) ||
+      tenant.email?.toLowerCase().includes(s) ||
+      tenant.phone?.includes(s)
     );
   });
 
@@ -90,6 +168,8 @@ export default function TenantsPage() {
     const av = AVATARS.find((a) => a.id === avatarId);
     return av?.svg || "🧑";
   };
+
+  const ic = "w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm";
 
   return (
     <div className="space-y-6">
@@ -101,7 +181,7 @@ export default function TenantsPage() {
           </p>
         </div>
         <button
-          onClick={() => { setShowAddModal(true); setError(""); setSelectedAvatar("abs1"); }}
+          onClick={openAdd}
           className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
@@ -144,7 +224,8 @@ export default function TenantsPage() {
           {filteredTenants.map((tenant) => (
             <div
               key={tenant.id}
-              className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-shadow hover:shadow-md"
+              onClick={() => openEdit(tenant)}
+              className="cursor-pointer rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-all hover:shadow-md hover:border-[hsl(var(--primary))]/50"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-xl">
@@ -155,6 +236,21 @@ export default function TenantsPage() {
                   <div className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))]">
                     <span className="uppercase">{tenant.language}</span>
                   </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}
+                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(tenant.id); }}
+                    disabled={deleting === tenant.id}
+                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
               <div className="mt-3 space-y-1.5 text-sm text-[hsl(var(--muted-foreground))]">
@@ -176,13 +272,15 @@ export default function TenantsPage() {
         </div>
       )}
 
-      {/* Add tenant modal */}
-      {showAddModal && (
+      {/* Add/Edit tenant modal */}
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-[hsl(var(--background))] p-6 shadow-xl">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">{t("addTenantTitle")}</h2>
-              <button onClick={() => setShowAddModal(false)}>
+              <h2 className="text-lg font-semibold">
+                {editing ? t("editTenantTitle") : t("addTenantTitle")}
+              </h2>
+              <button onClick={closeModal}>
                 <X className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
               </button>
             </div>
@@ -193,40 +291,7 @@ export default function TenantsPage() {
               </div>
             )}
 
-            <form
-              className="space-y-4"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setSaving(true);
-                setError("");
-                const form = e.currentTarget;
-                const formData = new FormData(form);
-                formData.set("avatar", selectedAvatar);
-                const data = Object.fromEntries(formData);
-                try {
-                  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-                  const res = await fetch(`${apiUrl}/api/v1/tenants`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                    credentials: "include",
-                  });
-                  if (res.ok) {
-                    const json = await res.json();
-                    setTenants((prev) => [...prev, json.data]);
-                    setShowAddModal(false);
-                    form.reset();
-                  } else {
-                    const errJson = await res.json().catch(() => null);
-                    setError(errJson?.error || `Error ${res.status}`);
-                  }
-                } catch {
-                  setError(t("saveError"));
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
+            <form className="space-y-4" onSubmit={handleSubmit} key={editing?.id || "new"}>
               {/* Avatar selection */}
               <div>
                 <label className="mb-2 block text-sm font-medium">Avatar</label>
@@ -254,23 +319,13 @@ export default function TenantsPage() {
                   <label className="mb-1 block text-sm font-medium">
                     {t("firstName")}
                   </label>
-                  <input
-                    name="firstName"
-                    type="text"
-                    required
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
+                  <input name="firstName" type="text" required defaultValue={editing?.firstName || ""} className={ic} />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium">
                     {t("lastName")}
                   </label>
-                  <input
-                    name="lastName"
-                    type="text"
-                    required
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
+                  <input name="lastName" type="text" required defaultValue={editing?.lastName || ""} className={ic} />
                 </div>
               </div>
               <div>
@@ -278,25 +333,20 @@ export default function TenantsPage() {
                   <Mail className="mr-1 inline h-4 w-4" />
                   {t("email")}
                 </label>
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                />
+                <input name="email" type="email" required defaultValue={editing?.email || ""} className={ic} />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   <Phone className="mr-1 inline h-4 w-4" />
                   {t("phone")}
                 </label>
-                <PhoneInput name="phone" defaultCountry="BE" />
+                <PhoneInput name="phone" defaultCountry="BE" value={editing?.phone} />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   {t("language")}
                 </label>
-                <select name="language" className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
+                <select name="language" defaultValue={editing?.language || "nl"} className={ic}>
                   <option value="nl">{t("langNl")}</option>
                   <option value="fr">{t("langFr")}</option>
                   <option value="en">{t("langEn")}</option>
@@ -311,34 +361,29 @@ export default function TenantsPage() {
                   name="nationalRegister"
                   type="text"
                   placeholder={t("nationalRegisterPlaceholder")}
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  defaultValue={editing?.nationalRegister || ""}
+                  className={ic}
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   {t("iban")}
                 </label>
-                <input
+                <IbanInput
                   name="bankAccount"
-                  type="text"
-                  placeholder="BE68 5390 0754 7034"
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  value={editing?.bankAccount || ""}
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">
                   {t("notes")}
                 </label>
-                <textarea
-                  name="notes"
-                  rows={3}
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                />
+                <textarea name="notes" rows={3} defaultValue={editing?.notes || ""} className={ic} />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeModal}
                   className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]"
                 >
                   {t("cancel")}
@@ -348,7 +393,7 @@ export default function TenantsPage() {
                   disabled={saving}
                   className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
                 >
-                  {saving ? "..." : t("saveTenant")}
+                  {saving ? "..." : editing ? t("updateTenant") : t("saveTenant")}
                 </button>
               </div>
             </form>

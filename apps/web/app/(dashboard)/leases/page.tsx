@@ -31,6 +31,7 @@ interface Lease {
   monthlyCharges: string;
   bankAccountId?: string;
   tenantIds?: string[];
+  indexationEnabled?: boolean;
 }
 
 export default function LeasesPage() {
@@ -45,11 +46,13 @@ export default function LeasesPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
+  const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const openAdd = () => {
     setEditingLease(null);
     setSelectedTenants([]);
+    setIndexationEnabled(true);
     setError("");
     setShowModal(true);
   };
@@ -57,6 +60,7 @@ export default function LeasesPage() {
   const openEdit = (lease: Lease) => {
     setEditingLease(lease);
     setSelectedTenants(lease.tenantIds || []);
+    setIndexationEnabled(lease.indexationEnabled !== false);
     setError("");
     setShowModal(true);
   };
@@ -277,7 +281,7 @@ export default function LeasesPage() {
                 setError("");
                 const form = e.currentTarget;
                 const data = Object.fromEntries(new FormData(form));
-                const body = { ...data, tenantIds: selectedTenants };
+                const body = { ...data, tenantIds: selectedTenants, indexationEnabled };
                 try {
                   const url = editingLease
                     ? `${apiUrl}/api/v1/leases/${editingLease.id}`
@@ -495,6 +499,27 @@ export default function LeasesPage() {
                   <option value="">{t("selectBankAccount")}</option>
                 </select>
               </div>
+              {/* Indexation toggle */}
+              <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">{t("indexation")}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">{t("indexationDescription")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIndexationEnabled(!indexationEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    indexationEnabled ? "bg-[hsl(var(--primary))]" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      indexationEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
               <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"

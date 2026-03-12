@@ -114,11 +114,15 @@ propertiesRouter.patch(
     try {
       if (db && dbSchema && eq) {
         await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
+        const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
+        return c.json({ data: result[0] || { id, ...data }, message: "Property updated" });
       }
     } catch {
-      mem.update("properties", id, data);
+      // fallback
     }
-    return c.json({ data: { id, ...data }, message: "Property updated" });
+    const existing = mem.getById("properties", id);
+    mem.update("properties", id, data);
+    return c.json({ data: { ...existing, ...data }, message: "Property updated" });
   }
 );
 

@@ -95,11 +95,15 @@ tenantsRouter.patch(
     try {
       if (db && dbSchema && eq) {
         await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
+        const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
+        return c.json({ data: result[0] || { id, ...data }, message: "Tenant updated" });
       }
     } catch {
-      mem.update("tenants", id, data);
+      // fallback
     }
-    return c.json({ data: { id, ...data }, message: "Tenant updated" });
+    const existing = mem.getById("tenants", id);
+    mem.update("tenants", id, data);
+    return c.json({ data: { ...existing, ...data }, message: "Tenant updated" });
   }
 );
 

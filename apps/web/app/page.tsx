@@ -428,6 +428,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Indexation ROI callout */}
+      <section className="border-t border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50 py-16">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <TrendingUp className="mx-auto h-10 w-10 text-green-600" />
+          <h2 className="mt-4 text-2xl font-bold text-gray-900 md:text-3xl">
+            {t("indexationRoiTitle")}
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-gray-600">
+            {t("indexationRoiDescription")}
+          </p>
+          <div className="mx-auto mt-8 grid max-w-xl gap-6 sm:grid-cols-2">
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <p className="text-3xl font-bold text-green-600">{t("indexationRoiExample")}</p>
+              <p className="mt-2 text-sm text-gray-500">{t("indexationRoiExampleDesc")}</p>
+            </div>
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <p className="text-3xl font-bold text-green-600">{t("indexationRoiCost")}</p>
+              <p className="mt-2 text-sm text-gray-500">{t("indexationRoiCostDesc")}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Comparison */}
       <section id="comparison" className="border-t border-gray-100 bg-gray-50 py-24">
         <div className="mx-auto max-w-5xl px-6">
@@ -532,6 +555,8 @@ export default function LandingPage() {
                 GitHub
               </a>
               <a href="#pricing" className="hover:text-gray-900">{t("navPricing")}</a>
+              <a href="/privacy" className="hover:text-gray-900">{t("privacy")}</a>
+              <a href="/terms" className="hover:text-gray-900">{t("terms")}</a>
               <a href="/login" className="hover:text-gray-900">{t("login")}</a>
             </div>
           </div>

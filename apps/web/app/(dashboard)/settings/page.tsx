@@ -16,6 +16,7 @@ import {
   Landmark,
   Trash2,
 } from "lucide-react";
+import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
 
 type Lang = "nl" | "fr" | "en" | "de";
 type Level = "friendly" | "formal" | "final";
@@ -862,45 +863,46 @@ export default function SettingsPage() {
                     className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t("bankIban")}</label>
-                    <input
-                      type="text"
-                      value={bankForm.iban}
-                      onChange={(e) => setBankForm((f) => ({ ...f, iban: e.target.value }))}
-                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t("bankBic")}</label>
-                    <input
-                      type="text"
-                      value={bankForm.bic}
-                      onChange={(e) => setBankForm((f) => ({ ...f, bic: e.target.value }))}
-                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                    />
-                  </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">{t("bankIban")}</label>
+                  <IbanInput
+                    value={bankForm.iban}
+                    onChange={(iban) => setBankForm((f) => ({ ...f, iban }))}
+                    onBankDetected={(bankName, bic) =>
+                      setBankForm((f) => ({
+                        ...f,
+                        bankName: f.bankName || bankName,
+                        bic: f.bic || bic,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1 block text-xs font-medium">{t("bankHolderName")}</label>
-                    <input
-                      type="text"
-                      value={bankForm.holderName}
-                      onChange={(e) => setBankForm((f) => ({ ...f, holderName: e.target.value }))}
-                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                    <label className="mb-1 block text-xs font-medium">{t("bankBic")}</label>
+                    <BicSelect
+                      value={bankForm.bic}
+                      onChange={(bic) => setBankForm((f) => ({ ...f, bic }))}
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium">{t("bankBankName")}</label>
-                    <input
-                      type="text"
+                    <BankNameSelect
                       value={bankForm.bankName}
-                      onChange={(e) => setBankForm((f) => ({ ...f, bankName: e.target.value }))}
-                      className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                      onChange={(bankName, bic) =>
+                        setBankForm((f) => ({ ...f, bankName, bic: f.bic || bic }))
+                      }
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium">{t("bankHolderName")}</label>
+                  <input
+                    type="text"
+                    value={bankForm.holderName}
+                    onChange={(e) => setBankForm((f) => ({ ...f, holderName: e.target.value }))}
+                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <label className="relative inline-flex cursor-pointer items-center">

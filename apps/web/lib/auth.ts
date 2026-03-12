@@ -12,14 +12,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      // Allow linking accounts with the same email across providers
+      allowDangerousEmailAccountLinking: true,
     }),
     Facebook({
       clientId: process.env.AUTH_FACEBOOK_ID!,
       clientSecret: process.env.AUTH_FACEBOOK_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     Twitter({
       clientId: process.env.AUTH_TWITTER_ID!,
       clientSecret: process.env.AUTH_TWITTER_SECRET!,
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: "Email",
@@ -52,15 +56,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
+        // Use email as the canonical user identifier so that different
+        // OAuth providers (Google, Facebook, Twitter) or credentials
+        // all map to the same user when they share the same email.
+        // The API middleware (authMiddleware.ts) looks up users by email
+        // to ensure data consistency across login methods.
         token.id = user.id;
+        token.email = user.email;
+        token.provider = account?.provider;
       }
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.id) {
+      if (session.user) {
         session.user.id = token.id as string;
+        if (token.email) session.user.email = token.email as string;
       }
       return session;
     },
