@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-03-22T20:33:25.163Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-03-22T20:36:10.535Z"
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 02 (payment-processing-webhooks) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Plan: 4 of 5
 | Phase 02 P01 | 2min | 2 tasks | 4 files |
 | Phase 02 P03 | 3min | 2 tasks | 1 files |
 | Phase 02 P02 | 3min | 2 tasks | 2 files |
+| Phase 02 P04 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Webhook events inserted as processing before handler runs, updated to processed/failed after -- ensures audit trail even on crash
 - [Phase 02]: Unknown GoCardless payments auto-created with amount 0.00 and review note (D-12), rather than silently discarding
 - [Phase 02]: Mandate terminal events append timestamped note to lease.notes before clearing mandateId (D-13 lease flagging)
+- [Phase 02]: Provider-agnostic BankAccountDataProvider interface supports future Ponto/Enable Banking swap
+- [Phase 02]: GoCardless BAD silent renewal not supported; email warning at 7/1 day thresholds
+- [Phase 02]: Transaction matching: digits-only normalization of structured communications for tolerance
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T20:33:25.156Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-03-22T20:36:10.532Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
