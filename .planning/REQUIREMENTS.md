@@ -79,7 +79,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INF-01**: All remaining TODO stubs in API routes are implemented or explicitly removed
+- [x] **INF-01**: All remaining TODO stubs in API routes are implemented or explicitly removed
 - [ ] **INF-02**: Cost tracking endpoints are functional
 - [ ] **INF-03**: Rent adjustment endpoints are functional
 - [ ] **INF-04**: Communication logging endpoints are functional
@@ -148,7 +148,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SEC-01 | Phase 1: Security & Infrastructure Foundation | Complete |
 | SEC-02 | Phase 1: Security & Infrastructure Foundation | Complete |
-| INF-01 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-01 | Phase 1: Security & Infrastructure Foundation | Complete |
 | INF-02 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-03 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-04 | Phase 1: Security & Infrastructure Foundation | Pending |

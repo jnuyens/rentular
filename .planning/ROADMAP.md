@@ -39,7 +39,7 @@ Plans:
 - [x] 01-02-PLAN.md -- CSRF middleware with webhook exclusion and enhanced health check
 - [x] 01-03-PLAN.md -- Static typed imports for properties, tenants, bankAccounts, authMiddleware
 - [ ] 01-04-PLAN.md -- Wire costs, rentAdjustments, communications, settings to DB; relabel deferred TODOs
-- [ ] 01-05-PLAN.md -- Rewrite leases and maintenance to DB; delete memoryStore
+- [x] 01-05-PLAN.md -- Rewrite leases and maintenance to DB; delete memoryStore
 
 ### Phase 2: Payment Processing & Webhooks
 **Goal**: Landlords can collect rent via SEPA direct debit and have complete visibility into payment status, with no data loss from GoCardless events
