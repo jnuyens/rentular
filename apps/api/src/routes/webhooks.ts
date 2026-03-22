@@ -1,10 +1,19 @@
 import { Hono } from "hono";
+import { eq } from "drizzle-orm";
+import { getDb, webhookEvents, payments, leases, tenants } from "@rentular/db";
 import {
   verifyWebhookSignature,
   type GoCardlessEvent,
   type GoCardlessWebhookPayload,
 } from "../lib/gocardless";
-import { queueEmail } from "../jobs/emailQueueWorker";
+import {
+  transitionPayment,
+  cascadeMandateCancellation,
+  GC_PAYMENT_STATUS_MAP,
+  GC_MANDATE_STATUS_MAP,
+  MANDATE_TERMINAL_STATUSES,
+  type PaymentStatus,
+} from "../services/paymentStateMachine";
 
 export const webhooksRouter = new Hono();
 
@@ -54,125 +63,198 @@ async function processEvent(event: GoCardlessEvent): Promise<void> {
     `[Webhook] Processing ${event.resource_type}.${event.action} (${event.id})`
   );
 
-  switch (event.resource_type) {
-    case "payments":
-      await handlePaymentEvent(event);
-      break;
-    case "mandates":
-      await handleMandateEvent(event);
-      break;
-    case "payouts":
-      await handlePayoutEvent(event);
-      break;
-    default:
-      console.log(
-        `[Webhook] Unhandled resource type: ${event.resource_type}.${event.action}`
-      );
+  const db = getDb();
+
+  // Idempotency check: skip duplicate events (D-10)
+  const existing = await db.query.webhookEvents.findFirst({
+    where: eq(webhookEvents.eventId, event.id),
+  });
+  if (existing) {
+    console.log(`[Webhook] Skipping duplicate event ${event.id}`);
+    return;
+  }
+
+  // Record the event before processing
+  const eventRecord = {
+    id: crypto.randomUUID(),
+    eventId: event.id,
+    resourceType: event.resource_type,
+    action: event.action,
+    resourceId:
+      event.links[event.resource_type] ||
+      event.links.payment ||
+      event.links.mandate ||
+      "",
+    payload: event,
+    status: "processing" as const,
+    receivedAt: new Date(),
+  };
+
+  await db.insert(webhookEvents).values(eventRecord);
+
+  try {
+    switch (event.resource_type) {
+      case "payments":
+        await handlePaymentEvent(event);
+        break;
+      case "mandates":
+        await handleMandateEvent(event);
+        break;
+      case "payouts":
+        await handlePayoutEvent(event);
+        break;
+      default:
+        console.log(
+          `[Webhook] Unhandled resource type: ${event.resource_type}.${event.action}`
+        );
+    }
+
+    // Mark event as processed
+    await db
+      .update(webhookEvents)
+      .set({ status: "processed", processedAt: new Date() })
+      .where(eq(webhookEvents.id, eventRecord.id));
+  } catch (err) {
+    // Mark event as failed
+    await db
+      .update(webhookEvents)
+      .set({ status: "failed", errorMessage: String(err) })
+      .where(eq(webhookEvents.id, eventRecord.id));
+    throw err;
   }
 }
 
 // ----- Payment events -----
 async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
   const gcPaymentId = event.links.payment;
+  const db = getDb();
 
-  switch (event.action) {
-    case "confirmed": {
-      // Payment successfully collected from the tenant's bank account
-      console.log(`[Webhook] Payment ${gcPaymentId} confirmed`);
+  // Map GoCardless action to internal status
+  const internalStatus: PaymentStatus | undefined =
+    GC_PAYMENT_STATUS_MAP[event.action];
 
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
+  if (!internalStatus) {
+    console.log(
+      `[Webhook] No status mapping for payment action: ${event.action}, skipping`
+    );
+    return;
+  }
 
-    case "failed": {
-      // Payment failed (e.g. insufficient funds, mandate cancelled)
+  // Look up existing payment by GoCardless payment ID
+  const payment = await db.query.payments.findFirst({
+    where: eq(payments.gocardlessPaymentId, gcPaymentId),
+  });
+
+  if (payment) {
+    // Transition the payment via state machine
+    const transitioned = await transitionPayment(payment.id, internalStatus, {
+      paidDate:
+        internalStatus === "paid"
+          ? new Date().toISOString().split("T")[0]
+          : undefined,
+    });
+
+    if (transitioned) {
       console.log(
-        `[Webhook] Payment ${gcPaymentId} failed: ${event.details.cause} - ${event.details.description}`
+        `[Webhook] Payment ${gcPaymentId} transitioned to ${internalStatus}`
       );
-
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
-
-    case "late_failure_settled": {
-      // A payment that was initially confirmed has been reversed (chargeback)
-      console.log(`[Webhook] Payment ${gcPaymentId} late failure settled`);
-
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
-
-    case "charged_back": {
-      // Tenant's bank has reversed the payment
-      console.log(`[Webhook] Payment ${gcPaymentId} charged back`);
-
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
-
-    case "paid_out": {
-      // Funds have been paid out to the landlord's bank account
-      console.log(`[Webhook] Payment ${gcPaymentId} paid out to landlord`);
-      // Informational - the payment was already confirmed earlier
-      break;
-    }
-
-    case "submitted":
-    case "created": {
-      // Payment created/submitted to the bank - no action needed
-      console.log(`[Webhook] Payment ${gcPaymentId} ${event.action}`);
-      break;
-    }
-
-    case "cancelled": {
-      console.log(`[Webhook] Payment ${gcPaymentId} cancelled`);
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
-
-    default:
+    } else {
       console.log(
-        `[Webhook] Unhandled payment action: ${event.action} for ${gcPaymentId}`
+        `[Webhook] Payment ${gcPaymentId} transition to ${internalStatus} skipped (invalid from current state)`
       );
+    }
+  } else {
+    // Auto-create unknown payment for review (D-12)
+    // Try to find the lease via mandate links
+    const mandateId = event.links.mandate;
+    let lease = null;
+
+    if (mandateId) {
+      lease = await db.query.leases.findFirst({
+        where: eq(leases.gocardlessMandateId, mandateId),
+      });
+    }
+
+    if (lease) {
+      await db.insert(payments).values({
+        id: crypto.randomUUID(),
+        leaseId: lease.id,
+        status: internalStatus,
+        amount: "0.00",
+        dueDate: new Date().toISOString().split("T")[0],
+        method: "gocardless",
+        gocardlessPaymentId: gcPaymentId,
+        notes:
+          "Auto-created from webhook - amount unknown, needs review",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      console.log(
+        `[Webhook] Auto-created payment for ${gcPaymentId} on lease ${lease.id} (needs review)`
+      );
+    } else {
+      console.log(
+        `[Webhook] Cannot resolve payment ${gcPaymentId} - no lease found for mandate ${mandateId || "unknown"}`
+      );
+    }
   }
 }
 
 // ----- Mandate events -----
 async function handleMandateEvent(event: GoCardlessEvent): Promise<void> {
   const mandateId = event.links.mandate;
+  const db = getDb();
 
-  switch (event.action) {
-    case "active": {
-      // Mandate is now active - direct debits can be collected
-      console.log(`[Webhook] Mandate ${mandateId} is now active`);
+  // Map GoCardless action to internal mandate status
+  const mandateStatus = GC_MANDATE_STATUS_MAP[event.action];
 
-      // Phase 2: implement payment/mandate state persistence
-      break;
+  if (!mandateStatus) {
+    console.log(
+      `[Webhook] No status mapping for mandate action: ${event.action}, skipping`
+    );
+    return;
+  }
+
+  if (MANDATE_TERMINAL_STATUSES.includes(mandateStatus)) {
+    // Cascade-cancel pending payments (D-13)
+    const cancelledCount = await cascadeMandateCancellation(mandateId);
+
+    // Flag affected leases with a visible note before clearing the mandate ID (D-13)
+    const affectedLeases = await db
+      .select({ id: leases.id, notes: leases.notes })
+      .from(leases)
+      .where(eq(leases.gocardlessMandateId, mandateId));
+
+    for (const lease of affectedLeases) {
+      const flagNote = `Mandate ${mandateId} ${event.action} on ${new Date().toISOString().split("T")[0]} -- SEPA collection stopped, action required.`;
+      const updatedNotes = lease.notes
+        ? `${lease.notes}\n${flagNote}`
+        : flagNote;
+      await db
+        .update(leases)
+        .set({
+          notes: updatedNotes,
+          gocardlessMandateId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(leases.id, lease.id));
     }
 
-    case "cancelled":
-    case "failed":
-    case "expired": {
-      // Mandate is no longer usable
-      console.log(
-        `[Webhook] Mandate ${mandateId} ${event.action}: ${event.details.cause}`
-      );
+    // Clear mandate from tenants
+    await db
+      .update(tenants)
+      .set({ gocardlessMandateId: null, updatedAt: new Date() })
+      .where(eq(tenants.gocardlessMandateId, mandateId));
 
-      // Phase 2: implement payment/mandate state persistence
-      break;
-    }
-
-    case "created":
-    case "submitted":
-    case "reinstated": {
-      console.log(`[Webhook] Mandate ${mandateId} ${event.action}`);
-      break;
-    }
-
-    default:
-      console.log(
-        `[Webhook] Unhandled mandate action: ${event.action} for ${mandateId}`
-      );
+    console.log(
+      `[Webhook] Mandate ${mandateId} ${event.action}: flagged ${affectedLeases.length} lease(s) with notes, cleared mandate, cancelled ${cancelledCount} pending payments`
+    );
+  } else if (mandateStatus === "active") {
+    // Mandate is now active - no DB update needed (mandate ID is already stored from setup)
+    console.log(`[Webhook] Mandate ${mandateId} is now active`);
+  } else {
+    // Informational mandate events (created, submitted, pending)
+    console.log(`[Webhook] Mandate ${mandateId} ${event.action}`);
   }
 }
 
