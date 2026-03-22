@@ -44,6 +44,9 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 - ✓ Payment state machine enforcing valid status transitions — Phase 2
 - ✓ Webhook event cleanup (12-month retention) — Phase 2
 - ✓ PSD2 consent expiry monitoring with renewal + notification fallback — Phase 2
+- ✓ Belgian health index integration (Statbel beSTAT API with daily BullMQ refresh) — Phase 3
+- ✓ Rent indexation calculation with regional formulas (Brussels/Flanders/Wallonia EPC restrictions) — Phase 3
+- ✓ Indexation preview, apply, and tenant notification in 4 languages with legal references — Phase 3
 
 ### Active
 
@@ -55,10 +58,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 - [ ] Role-based access control (owner vs manager permissions)
 - [ ] Property manager dashboard view (see assigned properties only)
 
-**Rent Indexation**
-- [ ] Belgian health index integration (Statbel API)
-- [ ] Automatic rent indexation calculations
-- [ ] Indexation history and overdue tracking
+**Rent Indexation** — *Validated in Phase 3*
 
 **Notifications**
 - [ ] Email delivery with domain-specific SMTP configuration
@@ -101,7 +101,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 ## Context
 
 - **Existing codebase:** Monorepo (Turborepo) with Next.js 15 frontend, Hono API, Drizzle ORM, MySQL
-- **Current state:** Phases 1-2 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring via Open Banking. Rent indexation is next (Phase 3).
+- **Current state:** Phases 1-3 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring, and Belgian rent indexation with Statbel health index pipeline, regional EPC-restricted calculations, and multilingual tenant notifications. Notifications & payment follow-up is next (Phase 4).
 - **Competitive landscape:** Smovin, Rentila are established Belgian alternatives. Rentular differentiates on price.
 - **Target market:** Belgian landlords (1-10 properties) and professional property managers
 - **Infrastructure:** Proxmox on Hetzner, Docker deployment. SMTP available on server but needs domain configuration.
@@ -146,4 +146,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after Phase 2 completion*
+*Last updated: 2026-03-23 after Phase 3 completion*
