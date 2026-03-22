@@ -83,12 +83,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INF-02**: Cost tracking endpoints are functional
 - [ ] **INF-03**: Rent adjustment endpoints are functional
 - [ ] **INF-04**: Communication logging endpoints are functional
-- [ ] **INF-05**: Database indexes exist for common query patterns (payments by lease+status, properties by owner)
+- [x] **INF-05**: Database indexes exist for common query patterns (payments by lease+status, properties by owner)
 
 ### Leases
 
-- [ ] **LSE-01**: System supports both residential and commercial lease types
-- [ ] **LSE-02**: Basic auto-generated maintenance reminders based on property/lease type
+- [x] **LSE-01**: System supports both residential and commercial lease types
+- [x] **LSE-02**: Basic auto-generated maintenance reminders based on property/lease type
 
 ### Internationalization
 
@@ -152,9 +152,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INF-02 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-03 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-04 | Phase 1: Security & Infrastructure Foundation | Pending |
-| INF-05 | Phase 1: Security & Infrastructure Foundation | Pending |
-| LSE-01 | Phase 1: Security & Infrastructure Foundation | Pending |
-| LSE-02 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-05 | Phase 1: Security & Infrastructure Foundation | Complete |
+| LSE-01 | Phase 1: Security & Infrastructure Foundation | Complete |
+| LSE-02 | Phase 1: Security & Infrastructure Foundation | Complete |
 | PAY-01 | Phase 2: Payment Processing & Webhooks | Pending |
 | PAY-02 | Phase 2: Payment Processing & Webhooks | Pending |
 | PAY-03 | Phase 2: Payment Processing & Webhooks | Pending |
