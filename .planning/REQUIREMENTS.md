@@ -146,13 +146,67 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| SEC-01 | Phase 1: Security & Infrastructure Foundation | Pending |
+| SEC-02 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-01 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-02 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-03 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-04 | Phase 1: Security & Infrastructure Foundation | Pending |
+| INF-05 | Phase 1: Security & Infrastructure Foundation | Pending |
+| LSE-01 | Phase 1: Security & Infrastructure Foundation | Pending |
+| LSE-02 | Phase 1: Security & Infrastructure Foundation | Pending |
+| PAY-01 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-02 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-03 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-04 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-05 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-06 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-07 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-08 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-09 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-10 | Phase 2: Payment Processing & Webhooks | Pending |
+| IDX-01 | Phase 3: Rent Indexation | Pending |
+| IDX-02 | Phase 3: Rent Indexation | Pending |
+| IDX-03 | Phase 3: Rent Indexation | Pending |
+| IDX-04 | Phase 3: Rent Indexation | Pending |
+| IDX-05 | Phase 3: Rent Indexation | Pending |
+| IDX-06 | Phase 3: Rent Indexation | Pending |
+| IDX-07 | Phase 3: Rent Indexation | Pending |
+| IDX-08 | Phase 3: Rent Indexation | Pending |
+| NTF-01 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-03 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-04 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-05 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-06 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-07 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| I18N-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| PM-01 | Phase 5: Property Manager Roles | Pending |
+| PM-02 | Phase 5: Property Manager Roles | Pending |
+| PM-03 | Phase 5: Property Manager Roles | Pending |
+| PM-04 | Phase 5: Property Manager Roles | Pending |
+| PM-05 | Phase 5: Property Manager Roles | Pending |
+| PM-06 | Phase 5: Property Manager Roles | Pending |
+| IMP-01 | Phase 6: Smovin Import (Beta) | Pending |
+| IMP-02 | Phase 6: Smovin Import (Beta) | Pending |
+| IMP-03 | Phase 6: Smovin Import (Beta) | Pending |
+| IMP-04 | Phase 6: Smovin Import (Beta) | Pending |
+| IMP-05 | Phase 6: Smovin Import (Beta) | Pending |
+| UI-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-04 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-05 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| ONB-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| ONB-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| I18N-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 0
-- Unmapped: 47
+- v1 requirements: 55 total
+- Mapped to phases: 55
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after initial definition*
+*Last updated: 2026-03-22 after roadmap creation*
