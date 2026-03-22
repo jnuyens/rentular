@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { csrf } from "hono/csrf";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import { propertiesRouter } from "./routes/properties";
@@ -25,8 +26,31 @@ import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
 import { authMiddleware } from "./lib/authMiddleware";
+import { requireAuth } from "./lib/routeAuth";
 
 const app = new Hono().basePath("/api/v1");
+
+// Parse ALLOWED_ORIGINS env var (comma-separated) for both CORS and CSRF
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.WEB_URL || "http://localhost:3000")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const protectedPrefixes = [
+  "/properties",
+  "/tenants",
+  "/leases",
+  "/payments",
+  "/indexation",
+  "/settings",
+  "/costs",
+  "/rent-adjustments",
+  "/bank-accounts",
+  "/property-managers",
+  "/communications",
+  "/gocardless",
+  "/maintenance",
+];
 
 // Middleware
 app.use("*", logger());
@@ -34,11 +58,28 @@ app.use("*", prettyJSON());
 app.use(
   "*",
   cors({
-    origin: process.env.WEB_URL || "http://localhost:3000",
+    origin: (origin) => (allowedOrigins.includes(origin) ? origin : allowedOrigins[0]),
     credentials: true,
   })
 );
+// CSRF protection for all state-changing requests (per D-01)
+// Skip webhook endpoints -- they use signature verification instead
+app.use("*", async (c, next) => {
+  const path = c.req.path;
+  if (path.includes("/webhooks/") || path.includes("/stripe/webhook")) {
+    return next();
+  }
+  return csrf({ origin: (origin) => allowedOrigins.includes(origin) })(c, next);
+});
 app.use("*", authMiddleware);
+for (const prefix of protectedPrefixes) {
+  app.use(prefix, requireAuth);
+  app.use(`${prefix}/*`, requireAuth);
+}
+app.use("/support/chat", requireAuth);
+app.use("/support/chat/*", requireAuth);
+app.use("/stripe/checkout", requireAuth);
+app.use("/stripe/subscription", requireAuth);
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
