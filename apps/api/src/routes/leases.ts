@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import * as mem from "../lib/memoryStore";
+import { eq, and } from "drizzle-orm";
+import { getDb, leases, leaseTenants } from "@rentular/db";
+import { getRequiredUserId } from "../lib/routeAuth";
+
+const db = getDb();
 
 const createLeaseSchema = z.object({
   propertyId: z.string().min(1),
@@ -36,28 +40,46 @@ const createLeaseSchema = z.object({
 
 export const leasesRouter = new Hono();
 
+// List all leases for owner
 leasesRouter.get("/", async (c) => {
-  const result = mem.getAll("leases").filter((l: any) => !l.isArchived);
-  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(leases)
+    .where(eq(leases.ownerId, ownerId));
+  // For each lease, fetch tenant IDs from junction table
+  const data = await Promise.all(result.map(async (lease) => {
+    const tenantRows = await db.select().from(leaseTenants)
+      .where(eq(leaseTenants.leaseId, lease.id));
+    return { ...lease, tenantIds: tenantRows.map(t => t.tenantId) };
+  }));
+  return c.json({ data, meta: { total: data.length, page: 1, perPage: 100 } });
 });
 
+// Get a single lease
 leasesRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  return c.json({ data: mem.getById("leases", id) || null });
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(leases)
+    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+  if (!result[0]) return c.json({ data: null });
+  const tenantRows = await db.select().from(leaseTenants)
+    .where(eq(leaseTenants.leaseId, id));
+  return c.json({ data: { ...result[0], tenantIds: tenantRows.map(t => t.tenantId) } });
 });
 
+// Create a lease
 leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
   const data = c.req.valid("json");
+  const ownerId = getRequiredUserId(c);
   const id = crypto.randomUUID();
   const leaseType = data.leaseType || data.type || "residential_long";
-  const record = {
+
+  await db.insert(leases).values({
     id,
-    ownerId: c.get("userId") || "system",
+    ownerId,
     propertyId: data.propertyId,
-    tenantIds: data.tenantIds,
     type: leaseType,
     region: data.region,
-    status: data.status,
+    status: data.status || "active",
     signingDate: data.signingDate,
     startDate: data.startDate,
     endDate: data.endDate || null,
@@ -66,25 +88,36 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     bankAccountId: data.bankAccountId || null,
     indexationEnabled: data.indexationEnabled,
     paymentDay: data.paymentDay,
-    createdAt: new Date().toISOString(),
-  };
+  });
 
-  mem.insert("leases", record);
-  return c.json({ data: record, message: "Lease created" }, 201);
+  // Insert tenant associations into junction table
+  if (data.tenantIds && data.tenantIds.length > 0) {
+    for (const [index, tenantId] of data.tenantIds.entries()) {
+      await db.insert(leaseTenants).values({
+        leaseId: id,
+        tenantId,
+        isPrimary: index === 0,
+      });
+    }
+  }
+
+  const [created] = await db.select().from(leases).where(eq(leases.id, id));
+  return c.json({ data: { ...created, tenantIds: data.tenantIds || [] }, message: "Lease created" }, 201);
 });
 
 // Update a lease
 leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async (c) => {
   const id = c.req.param("id");
-  const existing = mem.getById("leases", id);
-  if (!existing) return c.json({ error: "Lease not found" }, 404);
+  const ownerId = getRequiredUserId(c);
+  const existing = await db.select().from(leases)
+    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+  if (!existing[0]) return c.json({ error: "Lease not found" }, 404);
 
   const data = c.req.valid("json");
   const leaseType = data.leaseType || data.type;
   const updates: Record<string, any> = {};
 
   if (data.propertyId !== undefined) updates.propertyId = data.propertyId;
-  if (data.tenantIds !== undefined) updates.tenantIds = data.tenantIds;
   if (leaseType) updates.type = leaseType;
   if (data.region !== undefined) updates.region = data.region;
   if (data.status !== undefined) updates.status = data.status;
@@ -97,16 +130,39 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
 
-  mem.update("leases", id, updates);
-  return c.json({ data: { ...existing, ...updates }, message: "Lease updated" });
+  if (Object.keys(updates).length > 0) {
+    await db.update(leases).set(updates)
+      .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+  }
+
+  // Update tenant associations if provided
+  if (data.tenantIds !== undefined) {
+    await db.delete(leaseTenants).where(eq(leaseTenants.leaseId, id));
+    for (const [index, tenantId] of data.tenantIds.entries()) {
+      await db.insert(leaseTenants).values({
+        leaseId: id,
+        tenantId,
+        isPrimary: index === 0,
+      });
+    }
+  }
+
+  const [updated] = await db.select().from(leases).where(eq(leases.id, id));
+  const tenantRows = await db.select().from(leaseTenants)
+    .where(eq(leaseTenants.leaseId, id));
+  return c.json({ data: { ...updated, tenantIds: tenantRows.map(t => t.tenantId) }, message: "Lease updated" });
 });
 
 // Delete a lease
 leasesRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const existing = mem.getById("leases", id);
-  if (!existing) return c.json({ error: "Lease not found" }, 404);
-  mem.remove("leases", id);
+  const ownerId = getRequiredUserId(c);
+  const existing = await db.select().from(leases)
+    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+  if (!existing[0]) return c.json({ error: "Lease not found" }, 404);
+  // Delete tenant associations first (foreign key)
+  await db.delete(leaseTenants).where(eq(leaseTenants.leaseId, id));
+  await db.delete(leases).where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
   return c.json({ message: "Lease deleted" });
 });
 
