@@ -27,6 +27,7 @@ import { stripeRouter } from "./routes/stripe";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
+import { setupHealthIndexSchedule } from "./jobs/healthIndexWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
 import { authMiddleware } from "./lib/authMiddleware";
@@ -147,6 +148,9 @@ setupLandlordReportSchedule().catch((err) =>
 );
 setupWebhookCleanupSchedule().catch((err) =>
   console.error("Failed to setup webhook cleanup schedule:", err)
+);
+setupHealthIndexSchedule().catch((err) =>
+  console.error("Failed to setup health index schedule:", err)
 );
 
 // Email queue is auto-started by importing the worker module
