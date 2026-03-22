@@ -80,13 +80,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
       // Payment successfully collected from the tenant's bank account
       console.log(`[Webhook] Payment ${gcPaymentId} confirmed`);
 
-      // TODO: Update payment record in DB
-      // await db.update(payments)
-      //   .set({ status: "paid", paidDate: new Date().toISOString().slice(0,10) })
-      //   .where(eq(payments.gocardlessPaymentId, gcPaymentId));
-
-      // TODO: Log communication
-      // await db.insert(communications).values({ ... type: "payment_confirmed" ... });
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -96,18 +90,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
         `[Webhook] Payment ${gcPaymentId} failed: ${event.details.cause} - ${event.details.description}`
       );
 
-      // TODO: Update payment status
-      // await db.update(payments)
-      //   .set({ status: "failed" })
-      //   .where(eq(payments.gocardlessPaymentId, gcPaymentId));
-
-      // TODO: Notify the landlord about the failed payment
-      // Fetch the lease/tenant/owner details from the payment record
-      // await queueEmail({
-      //   to: ownerEmail,
-      //   subject: `Payment failed for ${tenantName}`,
-      //   body: `The direct debit payment of EUR ${amount} for ${propertyName} has failed. Reason: ${event.details.description}`,
-      // });
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -115,12 +98,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
       // A payment that was initially confirmed has been reversed (chargeback)
       console.log(`[Webhook] Payment ${gcPaymentId} late failure settled`);
 
-      // TODO: Revert the payment status back to failed
-      // await db.update(payments)
-      //   .set({ status: "failed", paidDate: null })
-      //   .where(eq(payments.gocardlessPaymentId, gcPaymentId));
-
-      // TODO: Notify landlord about the chargeback
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -128,12 +106,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
       // Tenant's bank has reversed the payment
       console.log(`[Webhook] Payment ${gcPaymentId} charged back`);
 
-      // TODO: Update payment status to refunded
-      // await db.update(payments)
-      //   .set({ status: "refunded" })
-      //   .where(eq(payments.gocardlessPaymentId, gcPaymentId));
-
-      // TODO: Notify landlord
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -153,10 +126,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
 
     case "cancelled": {
       console.log(`[Webhook] Payment ${gcPaymentId} cancelled`);
-      // TODO: Update payment status
-      // await db.update(payments)
-      //   .set({ status: "cancelled" })
-      //   .where(eq(payments.gocardlessPaymentId, gcPaymentId));
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -176,14 +146,7 @@ async function handleMandateEvent(event: GoCardlessEvent): Promise<void> {
       // Mandate is now active - direct debits can be collected
       console.log(`[Webhook] Mandate ${mandateId} is now active`);
 
-      // TODO: Update lease paymentMethod to "gocardless" if not already
-      // const lease = await db.select().from(leases)
-      //   .where(eq(leases.gocardlessMandateId, mandateId)).limit(1);
-      // if (lease[0]) {
-      //   await db.update(leases)
-      //     .set({ paymentMethod: "gocardless" })
-      //     .where(eq(leases.id, lease[0].id));
-      // }
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 
@@ -195,13 +158,7 @@ async function handleMandateEvent(event: GoCardlessEvent): Promise<void> {
         `[Webhook] Mandate ${mandateId} ${event.action}: ${event.details.cause}`
       );
 
-      // TODO: Disable auto-collection for this lease, revert to bank_transfer
-      // await db.update(leases)
-      //   .set({ paymentMethod: "bank_transfer" })
-      //   .where(eq(leases.gocardlessMandateId, mandateId));
-
-      // TODO: Notify landlord that direct debit has been cancelled
-      // await queueEmail({ to: ownerEmail, subject: "Direct debit cancelled", body: "..." });
+      // Phase 2: implement payment/mandate state persistence
       break;
     }
 

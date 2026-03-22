@@ -10,14 +10,13 @@ propertyManagersRouter.get("/", async (c) => {
   if (!propertyId) {
     return c.json({ error: "propertyId is required" }, 400);
   }
-  // TODO: Query propertyManagers + join users for name/email, verify caller has access
+  // Phase 5: implement property manager roles
   return c.json({ data: [] });
 });
 
 // List all properties the current user has access to (via ownership or manager role)
 propertyManagersRouter.get("/my-properties", async (c) => {
-  // TODO: Query properties where ownerId = auth user
-  //       UNION propertyManagers where userId = auth user and acceptedAt is not null
+  // Phase 5: implement property manager roles
   return c.json({ data: [] });
 });
 
@@ -34,11 +33,7 @@ propertyManagersRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    // TODO:
-    // 1. Verify caller is owner or co_owner of the property
-    // 2. Find or create user by email
-    // 3. Insert into propertyManagers with acceptedAt = null
-    // 4. Send invitation email
+    // Phase 5: implement property manager roles
     return c.json({ data, message: "Invitation sent" }, 201);
   }
 );
@@ -46,7 +41,7 @@ propertyManagersRouter.post(
 // Accept an invitation
 propertyManagersRouter.post("/:id/accept", async (c) => {
   const id = c.req.param("id");
-  // TODO: Set acceptedAt = now(), verify the invitation belongs to auth user
+  // Phase 5: implement property manager roles
   return c.json({ message: "Invitation accepted" });
 });
 
@@ -62,7 +57,7 @@ propertyManagersRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    // TODO: Verify caller is owner/co_owner, cannot change original owner's role
+    // Phase 5: implement property manager roles
     return c.json({ data, message: "Role updated" });
   }
 );
@@ -70,6 +65,6 @@ propertyManagersRouter.patch(
 // Remove a manager from a property
 propertyManagersRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  // TODO: Verify caller is owner/co_owner, cannot remove original owner
+  // Phase 5: implement property manager roles
   return c.json({ message: "Manager removed" });
 });

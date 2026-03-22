@@ -56,9 +56,7 @@ supportRouter.post(
   async (c) => {
     const { message } = c.req.valid("json");
 
-    // TODO: Get authenticated user from session
-    // const userId = c.get("userId");
-    // const userEmail = c.get("userEmail");
+    // Phase 7: implement support chat persistence
 
     // Forward to Signal bot (alice) - try to get a bot reply
     const botReply = await forwardToSignalBot(message);
@@ -168,7 +166,7 @@ supportRouter.post(
 
     if (message) {
       console.log(`[SignalBot] Received reply from ${from}: ${message}`);
-      // TODO: Store the reply and push to the user's chat session via SSE or WebSocket
+      // Phase 7: implement support chat persistence
     }
 
     return c.json({ ok: true });
@@ -177,6 +175,6 @@ supportRouter.post(
 
 // Get support chat history
 supportRouter.get("/chat/history", async (c) => {
-  // TODO: Fetch messages for authenticated user from database
+  // Phase 7: implement support chat persistence
   return c.json({ data: [] });
 });

@@ -83,7 +83,7 @@ stripeRouter.post("/webhook", async (c) => {
       console.log(
         `[Stripe] Checkout completed: ${session.customer_email}, plan: ${session.metadata?.plan}`
       );
-      // TODO: Activate subscription in DB for this user
+      // Phase 2: implement subscription persistence
       break;
     }
     case "customer.subscription.updated": {
@@ -91,13 +91,13 @@ stripeRouter.post("/webhook", async (c) => {
       console.log(
         `[Stripe] Subscription updated: ${subscription.id}, status: ${subscription.status}`
       );
-      // TODO: Update subscription status in DB
+      // Phase 2: implement subscription persistence
       break;
     }
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       console.log(`[Stripe] Subscription cancelled: ${subscription.id}`);
-      // TODO: Mark subscription as cancelled in DB
+      // Phase 2: implement subscription persistence
       break;
     }
     case "invoice.payment_failed": {
@@ -105,7 +105,7 @@ stripeRouter.post("/webhook", async (c) => {
       console.log(
         `[Stripe] Payment failed: ${invoice.customer_email}`
       );
-      // TODO: Notify user of failed payment
+      // Phase 2: implement subscription persistence
       break;
     }
     default:
@@ -117,7 +117,7 @@ stripeRouter.post("/webhook", async (c) => {
 
 // Get subscription status for authenticated user
 stripeRouter.get("/subscription", async (c) => {
-  // TODO: Look up user's Stripe customer ID from DB and return subscription details
+  // Phase 2: implement subscription persistence
   return c.json({
     plan: null,
     status: "none",

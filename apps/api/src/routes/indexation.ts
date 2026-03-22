@@ -14,7 +14,7 @@ export const indexationRouter = new Hono();
 
 // Get current Belgian health index
 indexationRouter.get("/health-index", async (c) => {
-  // TODO: Fetch from Statbel API or cached value
+  // Phase 3: implement rent indexation
   return c.json({
     currentIndex: 0,
     month: "",
@@ -173,7 +173,7 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
   // - Wallonia: no EPC restrictions currently
   // - Brussels: permanent restrictions based on EPC label
 
-  // TODO: Fetch lease + property (for epcLabel + region), health index values
+  // Phase 3: implement rent indexation
   const baseRent = 0;       // from lease.monthlyRent
   const baseIndex = 0;      // from healthIndexValues
   const currentIndex = 0;   // from healthIndexValues
@@ -262,13 +262,13 @@ indexationRouter.post(
     const leaseId = c.req.param("leaseId");
     const { overrideNewRent, subject, body } = c.req.valid("json");
 
-    // TODO:
+    // Phase 3: implement rent indexation
     // 1. Calculate the indexed rent using the formula
     // 2. If overrideNewRent is provided and <= calculated new rent, use that instead
     // 3. Generate default email subject/body with all details
     // 4. Return preview with rendered placeholders
 
-    const calculatedNewRent = 0; // TODO: actual calculation
+    const calculatedNewRent = 0; // Phase 3: implement rent indexation
     const finalNewRent = overrideNewRent
       ? Math.min(overrideNewRent, calculatedNewRent)
       : calculatedNewRent;
@@ -322,7 +322,7 @@ indexationRouter.post(
     const leaseId = c.req.param("leaseId");
     const { newRent, subject, body, sendNotification } = c.req.valid("json");
 
-    // TODO:
+    // Phase 3: implement rent indexation
     // 1. Verify newRent <= calculated indexed rent (landlord can lower, not raise beyond index)
     // 2. Update lease: currentMonthlyRent = newRent, lastIndexationDate = today
     // 3. Create indexationRecord with status 'applied'

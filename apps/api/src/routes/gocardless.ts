@@ -124,10 +124,7 @@ gocardlessRouter.post(
         );
       }
 
-      // TODO: Update tenant record with gocardlessCustomerId and gocardlessMandateId
-      // TODO: Update lease record with gocardlessMandateId and set paymentMethod to "gocardless"
-      // await db.update(tenants).set({ gocardlessCustomerId: mandate.links?.customer, gocardlessMandateId: mandate.id }).where(eq(tenants.id, data.tenantId));
-      // await db.update(leases).set({ gocardlessMandateId: mandate.id, paymentMethod: "gocardless" }).where(eq(leases.id, data.leaseId));
+      // Phase 2: implement GoCardless data persistence
 
       return c.json({
         data: {
@@ -186,8 +183,7 @@ gocardlessRouter.post("/mandates/:mandateId/cancel", async (c) => {
   try {
     const mandate = await cancelMandate(mandateId);
 
-    // TODO: Update lease to set paymentMethod back to "bank_transfer"
-    // and clear the gocardlessMandateId
+    // Phase 2: implement GoCardless data persistence
 
     return c.json({
       data: {
@@ -232,8 +228,7 @@ gocardlessRouter.post(
         countryCode: "BE",
       });
 
-      // TODO: Update tenant record with gocardlessCustomerId
-      // await db.update(tenants).set({ gocardlessCustomerId: customerId }).where(eq(tenants.id, data.tenantId));
+      // Phase 2: implement GoCardless data persistence
 
       return c.json({
         data: { customerId },

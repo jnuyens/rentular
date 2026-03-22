@@ -1,9 +1,15 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
+import { getDb, users, paymentFollowUpSettings } from "@rentular/db";
+import { getRequiredUserId } from "../lib/routeAuth";
 import { DEFAULT_EMAIL_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE, DEFAULT_LANDLORD_REPORT_DAYS } from "@rentular/shared";
 
+const db = getDb();
+
 export const settingsRouter = new Hono();
+const defaultEmailTemplates = DEFAULT_EMAIL_TEMPLATES.en;
 
 // Update user locale preference (saved to user profile)
 settingsRouter.put(
@@ -16,14 +22,20 @@ settingsRouter.put(
   ),
   async (c) => {
     const { locale } = c.req.valid("json");
-    // TODO: Update users.locale for the authenticated user
+    const ownerId = getRequiredUserId(c);
+    await db.update(users).set({ locale }).where(eq(users.id, ownerId));
     return c.json({ locale, message: "Language preference saved" });
   }
 );
 
 // Get payment follow-up settings for the current owner
 settingsRouter.get("/payment-follow-up", async (c) => {
-  // TODO: Fetch from paymentFollowUpSettings table for the authenticated user
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(paymentFollowUpSettings)
+    .where(eq(paymentFollowUpSettings.ownerId, ownerId));
+  if (result[0]) {
+    return c.json({ data: result[0] });
+  }
   // Return defaults if no settings exist yet
   return c.json({
     data: {
@@ -33,12 +45,12 @@ settingsRouter.get("/payment-follow-up", async (c) => {
       finalReminderDays: REMINDER_DEFAULTS.final,
       interestEnabled: false,
       annualInterestRate: DEFAULT_INTEREST_RATE,
-      friendlySubject: DEFAULT_EMAIL_TEMPLATES.friendly.subject,
-      friendlyBody: DEFAULT_EMAIL_TEMPLATES.friendly.body,
-      formalSubject: DEFAULT_EMAIL_TEMPLATES.formal.subject,
-      formalBody: DEFAULT_EMAIL_TEMPLATES.formal.body,
-      finalSubject: DEFAULT_EMAIL_TEMPLATES.final.subject,
-      finalBody: DEFAULT_EMAIL_TEMPLATES.final.body,
+      friendlySubject: defaultEmailTemplates.friendly.subject,
+      friendlyBody: defaultEmailTemplates.friendly.body,
+      formalSubject: defaultEmailTemplates.formal.subject,
+      formalBody: defaultEmailTemplates.formal.body,
+      finalSubject: defaultEmailTemplates.final.subject,
+      finalBody: defaultEmailTemplates.final.body,
     },
   });
 });
@@ -72,14 +84,50 @@ settingsRouter.put(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    // TODO: Upsert into paymentFollowUpSettings table for the authenticated user
+    const ownerId = getRequiredUserId(c);
+    const existing = await db.select().from(paymentFollowUpSettings)
+      .where(eq(paymentFollowUpSettings.ownerId, ownerId));
+    if (existing[0]) {
+      await db.update(paymentFollowUpSettings).set({
+        enabled: data.enabled,
+        friendlyReminderDays: data.friendlyReminderDays,
+        formalReminderDays: data.formalReminderDays,
+        finalReminderDays: data.finalReminderDays,
+        interestEnabled: data.interestEnabled,
+        annualInterestRate: String(data.annualInterestRate),
+        friendlySubject: data.friendlySubject,
+        friendlyBody: data.friendlyBody,
+        formalSubject: data.formalSubject,
+        formalBody: data.formalBody,
+        finalSubject: data.finalSubject,
+        finalBody: data.finalBody,
+      }).where(eq(paymentFollowUpSettings.ownerId, ownerId));
+    } else {
+      await db.insert(paymentFollowUpSettings).values({
+        id: crypto.randomUUID(),
+        ownerId,
+        enabled: data.enabled,
+        friendlyReminderDays: data.friendlyReminderDays,
+        formalReminderDays: data.formalReminderDays,
+        finalReminderDays: data.finalReminderDays,
+        interestEnabled: data.interestEnabled,
+        annualInterestRate: String(data.annualInterestRate),
+        friendlySubject: data.friendlySubject,
+        friendlyBody: data.friendlyBody,
+        formalSubject: data.formalSubject,
+        formalBody: data.formalBody,
+        finalSubject: data.finalSubject,
+        finalBody: data.finalBody,
+      });
+    }
     return c.json({ data, message: "Payment follow-up settings updated" });
   }
 );
 
 // Reset payment follow-up settings to defaults
 settingsRouter.post("/payment-follow-up/reset", async (c) => {
-  // TODO: Delete the user's settings row (will fall back to defaults)
+  const ownerId = getRequiredUserId(c);
+  await db.delete(paymentFollowUpSettings).where(eq(paymentFollowUpSettings.ownerId, ownerId));
   return c.json({ message: "Settings reset to defaults" });
 });
 
@@ -98,12 +146,12 @@ settingsRouter.post(
     // Replace placeholders with sample data for preview
     const sampleVars: Record<string, string> = {
       tenantName: "Jan Janssens",
-      amount: "€850.00",
+      amount: "EUR850.00",
       dueDate: "2026-03-01",
       propertyName: "Apartment 2B, Koningstraat 15",
       daysPastDue: "5",
-      interestAmount: "€1.23",
-      totalOwed: "€851.23",
+      interestAmount: "EUR1.23",
+      totalOwed: "EUR851.23",
       ownerName: "Property Owner",
     };
 
@@ -124,7 +172,22 @@ settingsRouter.post(
 
 // Get landlord report settings
 settingsRouter.get("/landlord-report", async (c) => {
-  // TODO: Fetch from paymentFollowUpSettings for the authenticated user
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(paymentFollowUpSettings)
+    .where(eq(paymentFollowUpSettings.ownerId, ownerId));
+  if (result[0]) {
+    const reportDays = result[0].landlordReportDays
+      ? result[0].landlordReportDays.split(",").map(Number)
+      : [...DEFAULT_LANDLORD_REPORT_DAYS];
+    return c.json({
+      data: {
+        enabled: result[0].landlordReportEnabled,
+        reportDays,
+        skipIfAllPaid: result[0].landlordReportSkipIfAllPaid,
+      },
+    });
+  }
+  // Return defaults if no settings exist
   return c.json({
     data: {
       enabled: true,
@@ -154,7 +217,25 @@ settingsRouter.put(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    // TODO: Upsert landlord report settings (stored as CSV in landlordReportDays)
+    const ownerId = getRequiredUserId(c);
+    const landlordReportDays = data.reportDays.join(",");
+    const existing = await db.select().from(paymentFollowUpSettings)
+      .where(eq(paymentFollowUpSettings.ownerId, ownerId));
+    if (existing[0]) {
+      await db.update(paymentFollowUpSettings).set({
+        landlordReportEnabled: data.enabled,
+        landlordReportDays,
+        landlordReportSkipIfAllPaid: data.skipIfAllPaid,
+      }).where(eq(paymentFollowUpSettings.ownerId, ownerId));
+    } else {
+      await db.insert(paymentFollowUpSettings).values({
+        id: crypto.randomUUID(),
+        ownerId,
+        landlordReportEnabled: data.enabled,
+        landlordReportDays,
+        landlordReportSkipIfAllPaid: data.skipIfAllPaid,
+      });
+    }
     return c.json({ data, message: "Landlord report settings updated" });
   }
 );
