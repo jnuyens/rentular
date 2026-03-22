@@ -67,8 +67,41 @@ paymentsRouter.get(
 
 // Get overdue payments summary (must be before /:id to avoid route conflict)
 paymentsRouter.get("/summary/overdue", async (c) => {
-  // Phase 2: implement overdue summary (Task 2)
-  return c.json({ error: "Overdue payment summaries are not implemented yet." }, 501);
+  const ownerId = getRequiredUserId(c);
+  const today = new Date().toISOString().split("T")[0];
+
+  const result = await db
+    .select()
+    .from(payments)
+    .innerJoin(leases, eq(payments.leaseId, leases.id))
+    .where(
+      and(
+        eq(leases.ownerId, ownerId),
+        sql`${payments.status} IN ('pending', 'failed')`,
+        lt(payments.dueDate, new Date(today))
+      )
+    );
+
+  const overduePayments = result.map((r) => ({
+    id: r.payments.id,
+    leaseId: r.payments.leaseId,
+    amount: r.payments.amount,
+    dueDate: r.payments.dueDate,
+    status: r.payments.status,
+  }));
+
+  const totalOverdue = overduePayments.reduce(
+    (sum, p) => sum + Number(p.amount),
+    0
+  );
+
+  return c.json({
+    data: {
+      totalOverdue: Math.round(totalOverdue * 100) / 100,
+      count: overduePayments.length,
+      payments: overduePayments,
+    },
+  });
 });
 
 // Get payment details (PAY-02)
@@ -153,30 +186,162 @@ paymentsRouter.post(
     })
   ),
   async (c) => {
-    // Phase 2: implement SEPA collection (Task 2)
-    return c.json(
-      { error: "Payment collection is disabled until payment persistence is implemented." },
-      501
-    );
+    const ownerId = getRequiredUserId(c);
+    const data = c.req.valid("json");
+
+    // Verify lease ownership and get lease details
+    const leaseResult = await db
+      .select()
+      .from(leases)
+      .where(and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)));
+
+    if (!leaseResult[0]) {
+      return c.json({ error: "Lease not found" }, 404);
+    }
+
+    const lease = leaseResult[0];
+
+    if (!lease.gocardlessMandateId) {
+      return c.json(
+        { error: "No active GoCardless mandate for this lease. Set up a mandate first." },
+        400
+      );
+    }
+
+    if (!isGoCardlessConfigured()) {
+      return c.json({ error: "GoCardless is not configured." }, 503);
+    }
+
+    const amount =
+      data.amount || Number(lease.monthlyRent) + Number(lease.monthlyCharges);
+    const idempotencyKey = crypto.randomUUID();
+
+    try {
+      const gcResult = await gcCreatePayment({
+        mandateId: lease.gocardlessMandateId,
+        amount,
+        description: data.description || "Rent payment",
+        chargeDate: data.chargeDate,
+        metadata: { lease_id: data.leaseId },
+        idempotencyKey,
+      });
+
+      const id = crypto.randomUUID();
+
+      await db.insert(payments).values({
+        id,
+        leaseId: data.leaseId,
+        amount: String(amount),
+        dueDate: gcResult.chargeDate,
+        status: "processing",
+        method: "gocardless",
+        gocardlessPaymentId: gcResult.paymentId,
+        structuredCommunication: lease.structuredCommunication || null,
+        rentAmount: String(lease.monthlyRent),
+        chargesAmount: String(lease.monthlyCharges),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      return c.json(
+        {
+          data: {
+            id,
+            gocardlessPaymentId: gcResult.paymentId,
+            status: "processing",
+            chargeDate: gcResult.chargeDate,
+            amount,
+          },
+        },
+        201
+      );
+    } catch (err) {
+      console.error("[Payments] GoCardless createPayment failed:", err);
+      const message =
+        err instanceof Error ? err.message : "GoCardless payment creation failed";
+      return c.json({ error: message }, 500);
+    }
   }
 );
 
 // Retry a failed GoCardless payment (PAY-05)
 paymentsRouter.post("/:id/retry", async (c) => {
-  // Phase 2: implement payment retry (Task 2)
-  return c.json(
-    { error: "Payment retry is disabled until payment persistence is implemented." },
-    501
-  );
+  const id = c.req.param("id");
+  const ownerId = getRequiredUserId(c);
+
+  // Find payment with ownership check
+  const result = await db
+    .select()
+    .from(payments)
+    .innerJoin(leases, eq(payments.leaseId, leases.id))
+    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+
+  if (!result[0]) {
+    return c.json({ error: "Payment not found" }, 404);
+  }
+
+  const payment = result[0].payments;
+
+  if (payment.status !== "failed") {
+    return c.json({ error: "Only failed payments can be retried" }, 400);
+  }
+
+  if (!payment.gocardlessPaymentId) {
+    return c.json({ error: "Only GoCardless payments can be retried" }, 400);
+  }
+
+  try {
+    await gcRetryPayment(payment.gocardlessPaymentId);
+    await transitionPayment(payment.id, "processing");
+
+    return c.json({ data: { id: payment.id, status: "processing" } });
+  } catch (err) {
+    console.error("[Payments] GoCardless retryPayment failed:", err);
+    const message =
+      err instanceof Error ? err.message : "GoCardless payment retry failed";
+    return c.json({ error: message }, 500);
+  }
 });
 
 // Cancel a pending GoCardless payment (PAY-06)
 paymentsRouter.post("/:id/cancel", async (c) => {
-  // Phase 2: implement payment cancel (Task 2)
-  return c.json(
-    { error: "Payment cancellation is disabled until payment persistence is implemented." },
-    501
-  );
+  const id = c.req.param("id");
+  const ownerId = getRequiredUserId(c);
+
+  // Find payment with ownership check
+  const result = await db
+    .select()
+    .from(payments)
+    .innerJoin(leases, eq(payments.leaseId, leases.id))
+    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+
+  if (!result[0]) {
+    return c.json({ error: "Payment not found" }, 404);
+  }
+
+  const payment = result[0].payments;
+
+  if (payment.status !== "pending" && payment.status !== "processing") {
+    return c.json(
+      { error: "Only pending or processing payments can be cancelled" },
+      400
+    );
+  }
+
+  try {
+    if (payment.gocardlessPaymentId) {
+      await gcCancelPayment(payment.gocardlessPaymentId);
+    }
+
+    await transitionPayment(payment.id, "cancelled");
+
+    return c.json({ data: { id: payment.id, status: "cancelled" } });
+  } catch (err) {
+    console.error("[Payments] GoCardless cancelPayment failed:", err);
+    const message =
+      err instanceof Error ? err.message : "GoCardless payment cancellation failed";
+    return c.json({ error: message }, 500);
+  }
 });
 
 // Send payment reminder
@@ -208,19 +373,58 @@ paymentsRouter.post(
     })
   ),
   async (c) => {
-    // Phase 2: implement ignore (Task 2)
-    return c.json(
-      { error: "Ignoring payments is disabled until payment persistence is implemented." },
-      501
-    );
+    const id = c.req.param("id");
+    const ownerId = getRequiredUserId(c);
+    const data = c.req.valid("json");
+
+    // Find payment with ownership check
+    const result = await db
+      .select()
+      .from(payments)
+      .innerJoin(leases, eq(payments.leaseId, leases.id))
+      .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+
+    if (!result[0]) {
+      return c.json({ error: "Payment not found" }, 404);
+    }
+
+    await db
+      .update(payments)
+      .set({
+        isIgnored: true,
+        ignoreReason: data.reason,
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, id));
+
+    return c.json({ data: { id, isIgnored: true, ignoreReason: data.reason } });
   }
 );
 
 // Unmark a payment as ignored (restore it to normal tracking)
 paymentsRouter.post("/:id/unignore", async (c) => {
-  // Phase 2: implement unignore (Task 2)
-  return c.json(
-    { error: "Ignoring payments is disabled until payment persistence is implemented." },
-    501
-  );
+  const id = c.req.param("id");
+  const ownerId = getRequiredUserId(c);
+
+  // Find payment with ownership check
+  const result = await db
+    .select()
+    .from(payments)
+    .innerJoin(leases, eq(payments.leaseId, leases.id))
+    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+
+  if (!result[0]) {
+    return c.json({ error: "Payment not found" }, 404);
+  }
+
+  await db
+    .update(payments)
+    .set({
+      isIgnored: false,
+      ignoreReason: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(payments.id, id));
+
+  return c.json({ data: { id, isIgnored: false, ignoreReason: null } });
 });
