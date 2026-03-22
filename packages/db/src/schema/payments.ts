@@ -8,6 +8,7 @@ import {
   mysqlEnum,
   boolean,
   int,
+  index,
 } from "drizzle-orm/mysql-core";
 import { leases } from "./leases";
 import { users } from "./users";
@@ -54,7 +55,10 @@ export const payments = mysqlTable("payments", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  leaseStatusIdx: index("payments_lease_status_idx").on(table.leaseId, table.status),
+  leaseIdIdx: index("payments_lease_id_idx").on(table.leaseId),
+}));
 
 export const paymentReminders = mysqlTable("payment_reminders", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),

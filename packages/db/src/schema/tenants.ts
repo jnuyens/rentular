@@ -5,6 +5,7 @@ import {
   timestamp,
   mysqlEnum,
   boolean,
+  index,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 
@@ -31,4 +32,6 @@ export const tenants = mysqlTable("tenants", {
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  ownerIdx: index("tenants_owner_idx").on(table.ownerId),
+}));

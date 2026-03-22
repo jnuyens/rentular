@@ -5,6 +5,7 @@ import {
   timestamp,
   mysqlEnum,
   json,
+  index,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 import { leases } from "./leases";
@@ -60,4 +61,7 @@ export const communications = mysqlTable("communications", {
   queuedAt: timestamp("queued_at").defaultNow().notNull(),
   sentAt: timestamp("sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  ownerIdx: index("communications_owner_idx").on(table.ownerId),
+  leaseIdx: index("communications_lease_idx").on(table.leaseId),
+}));

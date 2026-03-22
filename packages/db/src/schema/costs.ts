@@ -7,6 +7,7 @@ import {
   decimal,
   mysqlEnum,
   boolean,
+  index,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 import { properties } from "./properties";
@@ -43,7 +44,10 @@ export const costs = mysqlTable("costs", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  ownerIdx: index("costs_owner_idx").on(table.ownerId),
+  ownerPropertyIdx: index("costs_owner_property_idx").on(table.ownerId, table.propertyId),
+}));
 
 // Rent-free periods (e.g. first month free, renovation period, goodwill gesture)
 export const rentFreePeriods = mysqlTable("rent_free_periods", {

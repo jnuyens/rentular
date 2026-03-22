@@ -8,6 +8,7 @@ import {
   int,
   mysqlEnum,
   boolean,
+  index,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 import { properties } from "./properties";
@@ -83,7 +84,10 @@ export const leases = mysqlTable("leases", {
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  ownerPropertyIdx: index("leases_owner_property_idx").on(table.ownerId, table.propertyId),
+  ownerIdx: index("leases_owner_idx").on(table.ownerId),
+}));
 
 // Many-to-many: a lease can have multiple tenants (co-tenants)
 export const leaseTenants = mysqlTable("lease_tenants", {
