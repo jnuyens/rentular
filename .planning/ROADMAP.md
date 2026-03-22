@@ -32,11 +32,14 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. All TODO stubs in API routes are either implemented with working logic or explicitly removed with a comment explaining why
   4. Cost tracking, rent adjustment, and communication logging endpoints return valid data when called
   5. Database queries for payments-by-lease, payments-by-status, and properties-by-owner use indexed columns (verified via EXPLAIN)
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Schema foundation: maintenance table, heatingType column, database indexes
+- [ ] 01-02-PLAN.md -- CSRF middleware with webhook exclusion and enhanced health check
+- [ ] 01-03-PLAN.md -- Static typed imports for properties, tenants, bankAccounts, authMiddleware
+- [ ] 01-04-PLAN.md -- Wire costs, rentAdjustments, communications, settings to DB; relabel deferred TODOs
+- [ ] 01-05-PLAN.md -- Rewrite leases and maintenance to DB; delete memoryStore
 
 ### Phase 2: Payment Processing & Webhooks
 **Goal**: Landlords can collect rent via SEPA direct debit and have complete visibility into payment status, with no data loss from GoCardless events
@@ -139,7 +142,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security & Infrastructure Foundation | 0/? | Not started | - |
+| 1. Security & Infrastructure Foundation | 0/5 | Planning complete | - |
 | 2. Payment Processing & Webhooks | 0/? | Not started | - |
 | 3. Rent Indexation | 0/? | Not started | - |
 | 4. Notifications & Payment Follow-Up | 0/? | Not started | - |
