@@ -1,23 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import * as mem from "../lib/memoryStore";
+import { eq, and } from "drizzle-orm";
+import { getDb, bankAccounts } from "@rentular/db";
 
-let db: any = null;
-let dbSchema: any = null;
-let eq: any = null;
-let and: any = null;
-
-try {
-  const dbMod = require("@rentular/db");
-  db = dbMod.getDb();
-  dbSchema = dbMod.bankAccounts;
-  const drizzle = require("drizzle-orm");
-  eq = drizzle.eq;
-  and = drizzle.and;
-} catch {
-  console.log("[BankAccounts] Database unavailable, using in-memory store");
-}
+const db = getDb();
 
 export const bankAccountsRouter = new Hono();
 
@@ -36,31 +23,21 @@ const createBankAccountSchema = z.object({
 // List bank accounts for the authenticated user
 bankAccountsRouter.get("/", async (c) => {
   const ownerId = c.get("userId");
-  try {
-    if (db && dbSchema && ownerId) {
-      const conditions = [eq(dbSchema.ownerId, ownerId), eq(dbSchema.isArchived, false)];
-      const result = await db.select().from(dbSchema).where(and(...conditions));
-      return c.json({ data: result });
-    }
-  } catch (err) {
-    console.error("[BankAccounts] DB read failed:", err);
+  if (!ownerId) {
+    return c.json({ error: "Authentication required" }, 401);
   }
-  const result = mem.getAll("bankAccounts").filter((b: any) => !b.isArchived && (!ownerId || b.ownerId === ownerId));
+  const result = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.ownerId, ownerId), eq(bankAccounts.isArchived, false)));
   return c.json({ data: result });
 });
 
 // Get a single bank account
 bankAccountsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
-      return c.json({ data: result[0] || null });
-    }
-  } catch {
-    // fallback
-  }
-  return c.json({ data: mem.getById("bankAccounts", id) || null });
+  const result = await db.select().from(bankAccounts).where(eq(bankAccounts.id, id));
+  return c.json({ data: result[0] || null });
 });
 
 // Add a bank account
@@ -73,11 +50,20 @@ bankAccountsRouter.post(
     const id = crypto.randomUUID();
 
     // If setting as default, unset others first
-    if (data.isDefault && db && dbSchema) {
-      try {
-        await db.update(dbSchema).set({ isDefault: false }).where(eq(dbSchema.ownerId, ownerId));
-      } catch {}
+    if (data.isDefault) {
+      await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
     }
+
+    await db.insert(bankAccounts).values({
+      id,
+      ownerId,
+      label: data.label,
+      iban: data.iban,
+      bic: data.bic || null,
+      holderName: data.holderName,
+      bankName: data.bankName || null,
+      isDefault: data.isDefault,
+    });
 
     const record = {
       id,
@@ -91,26 +77,6 @@ bankAccountsRouter.post(
       isArchived: false,
       createdAt: new Date().toISOString(),
     };
-
-    try {
-      if (db && dbSchema) {
-        await db.insert(dbSchema).values({
-          id,
-          ownerId,
-          label: data.label,
-          iban: data.iban,
-          bic: data.bic || null,
-          holderName: data.holderName,
-          bankName: data.bankName || null,
-          isDefault: data.isDefault,
-        });
-        return c.json({ data: record, message: "Bank account added" }, 201);
-      }
-    } catch (err) {
-      console.error("[BankAccounts] DB insert failed:", err);
-    }
-
-    mem.insert("bankAccounts", record);
     return c.json({ data: record, message: "Bank account added" }, 201);
   }
 );
@@ -135,19 +101,11 @@ bankAccountsRouter.patch(
     const ownerId = c.get("userId");
 
     // If setting as default, unset others first
-    if (data.isDefault && db && dbSchema && ownerId) {
-      try {
-        await db.update(dbSchema).set({ isDefault: false }).where(eq(dbSchema.ownerId, ownerId));
-      } catch {}
+    if (data.isDefault && ownerId) {
+      await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
     }
 
-    try {
-      if (db && dbSchema && eq) {
-        await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
-      }
-    } catch {
-      mem.update("bankAccounts", id, data);
-    }
+    await db.update(bankAccounts).set(data).where(eq(bankAccounts.id, id));
     return c.json({ data: { id, ...data }, message: "Bank account updated" });
   }
 );
@@ -155,13 +113,7 @@ bankAccountsRouter.patch(
 // Archive a bank account (soft delete)
 bankAccountsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      await db.update(dbSchema).set({ isArchived: true }).where(eq(dbSchema.id, id));
-    }
-  } catch {
-    mem.remove("bankAccounts", id);
-  }
+  await db.update(bankAccounts).set({ isArchived: true }).where(eq(bankAccounts.id, id));
   return c.json({ message: "Bank account archived" });
 });
 
@@ -169,13 +121,9 @@ bankAccountsRouter.delete("/:id", async (c) => {
 bankAccountsRouter.post("/:id/set-default", async (c) => {
   const id = c.req.param("id");
   const ownerId = c.get("userId");
-  try {
-    if (db && dbSchema && eq && ownerId) {
-      await db.update(dbSchema).set({ isDefault: false }).where(eq(dbSchema.ownerId, ownerId));
-      await db.update(dbSchema).set({ isDefault: true }).where(eq(dbSchema.id, id));
-    }
-  } catch (err) {
-    console.error("[BankAccounts] Set default failed:", err);
+  if (ownerId) {
+    await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
+    await db.update(bankAccounts).set({ isDefault: true }).where(eq(bankAccounts.id, id));
   }
   return c.json({ message: "Default bank account updated" });
 });
