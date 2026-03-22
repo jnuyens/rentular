@@ -69,11 +69,11 @@ Plans:
   2. Landlord can preview an indexed rent calculation for a lease and see the correct formula applied for the property's region (Brussels, Flanders, or Wallonia) including EPC correction factors
   3. Landlord can apply the indexation (or a lower custom amount), which updates the lease rent amount and creates a history record
   4. Tenant receives an indexation notification email in their preferred language after the landlord applies the indexation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md -- Statbel health index service and BullMQ daily refresh worker
+- [ ] 03-02-PLAN.md -- Wire indexation endpoints to DB, email notification with regional legal references
 
 ### Phase 4: Notifications & Payment Follow-Up
 **Goal**: The system automatically reminds tenants about overdue payments through escalating email and SMS notifications, with full delivery tracking
@@ -147,7 +147,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 |-------|----------------|--------|-----------|
 | 1. Security & Infrastructure Foundation | 5/5 | Complete | - |
 | 2. Payment Processing & Webhooks | 0/5 | Planning complete | - |
-| 3. Rent Indexation | 0/? | Not started | - |
+| 3. Rent Indexation | 0/2 | Planning complete | - |
 | 4. Notifications & Payment Follow-Up | 0/? | Not started | - |
 | 5. Property Manager Roles | 0/? | Not started | - |
 | 6. Smovin Import (Beta) | 0/? | Not started | - |
