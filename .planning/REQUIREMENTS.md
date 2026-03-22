@@ -52,8 +52,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Security
 
-- [ ] **SEC-01**: All state-changing API endpoints have CSRF protection via Hono middleware
-- [ ] **SEC-02**: Database imports use proper TypeScript types (no `any` typing)
+- [x] **SEC-01**: All state-changing API endpoints have CSRF protection via Hono middleware
+- [x] **SEC-02**: Database imports use proper TypeScript types (no `any` typing)
 
 ### Smovin Import (Beta)
 
@@ -146,8 +146,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 1: Security & Infrastructure Foundation | Pending |
-| SEC-02 | Phase 1: Security & Infrastructure Foundation | Pending |
+| SEC-01 | Phase 1: Security & Infrastructure Foundation | Complete |
+| SEC-02 | Phase 1: Security & Infrastructure Foundation | Complete |
 | INF-01 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-02 | Phase 1: Security & Infrastructure Foundation | Pending |
 | INF-03 | Phase 1: Security & Infrastructure Foundation | Pending |
