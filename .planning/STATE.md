@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-03-22T20:33:13.421Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-22T20:33:25.163Z"
 progress:
   total_phases: 7
   completed_phases: 1
@@ -53,6 +53,7 @@ Plan: 4 of 5
 | Phase 01 P04 | 6min | 2 tasks | 11 files |
 | Phase 02 P01 | 2min | 2 tasks | 4 files |
 | Phase 02 P03 | 3min | 2 tasks | 1 files |
+| Phase 02 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 02]: Overdue summary route placed before /:id to avoid Hono route parameter conflict
 - [Phase 02]: Manual payments immediately marked as paid (no state machine transition needed)
 - [Phase 02]: GoCardless not configured returns 503 vs missing mandate returns 400 to distinguish infra vs data issues
+- [Phase 02]: Webhook events inserted as processing before handler runs, updated to processed/failed after -- ensures audit trail even on crash
+- [Phase 02]: Unknown GoCardless payments auto-created with amount 0.00 and review note (D-12), rather than silently discarding
+- [Phase 02]: Mandate terminal events append timestamped note to lease.notes before clearing mandateId (D-13 lease flagging)
 
 ### Pending Todos
 
@@ -91,6 +95,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T20:33:06.160Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-03-22T20:33:25.156Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
