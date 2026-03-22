@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { eq, and } from "drizzle-orm";
+import { getDb, tenants, leases } from "@rentular/db";
 import {
   isGoCardlessConfigured,
   createMandateSetupFlow,
@@ -8,6 +10,7 @@ import {
   cancelMandate,
   createCustomer,
 } from "../lib/gocardless";
+import { getRequiredUserId } from "../lib/routeAuth";
 
 export const gocardlessRouter = new Hono();
 
@@ -47,6 +50,16 @@ gocardlessRouter.post(
     }
 
     const data = c.req.valid("json");
+
+    // Ownership check: verify lease belongs to authenticated user
+    const ownerId = getRequiredUserId(c);
+    const db = getDb();
+    const lease = await db.query.leases.findFirst({
+      where: and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)),
+    });
+    if (!lease) {
+      return c.json({ error: "Lease not found" }, 404);
+    }
 
     try {
       const result = await createMandateSetupFlow({
@@ -124,7 +137,41 @@ gocardlessRouter.post(
         );
       }
 
-      // Phase 2: implement GoCardless data persistence
+      // Persist GoCardless IDs to database
+      const ownerId = getRequiredUserId(c);
+      const db = getDb();
+
+      // Verify lease belongs to this owner
+      const lease = await db.query.leases.findFirst({
+        where: and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)),
+      });
+      if (!lease) {
+        return c.json({ error: "Lease not found" }, 404);
+      }
+
+      // Update lease with mandate ID
+      await db
+        .update(leases)
+        .set({
+          gocardlessMandateId: mandate.id,
+          paymentMethod: "gocardless",
+          updatedAt: new Date(),
+        })
+        .where(eq(leases.id, data.leaseId));
+
+      // Update tenant with mandate ID and customer ID
+      await db
+        .update(tenants)
+        .set({
+          gocardlessMandateId: mandate.id,
+          gocardlessCustomerId: mandate.links?.customer || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, data.tenantId));
+
+      console.log(
+        `[GoCardless] Mandate ${mandate.id} linked to lease ${data.leaseId} and tenant ${data.tenantId}`
+      );
 
       return c.json({
         data: {
@@ -183,7 +230,41 @@ gocardlessRouter.post("/mandates/:mandateId/cancel", async (c) => {
   try {
     const mandate = await cancelMandate(mandateId);
 
-    // Phase 2: implement GoCardless data persistence
+    const db = getDb();
+
+    // Flag affected leases with a visible note before clearing mandate (D-13)
+    const affectedLeases = await db
+      .select({ id: leases.id, notes: leases.notes })
+      .from(leases)
+      .where(eq(leases.gocardlessMandateId, mandateId));
+
+    for (const lease of affectedLeases) {
+      const flagNote = `Mandate ${mandateId} cancelled on ${new Date().toISOString().split("T")[0]} -- SEPA collection stopped, action required.`;
+      const updatedNotes = lease.notes
+        ? `${lease.notes}\n${flagNote}`
+        : flagNote;
+      await db
+        .update(leases)
+        .set({
+          notes: updatedNotes,
+          gocardlessMandateId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(leases.id, lease.id));
+    }
+
+    // Clear mandate from tenants
+    await db
+      .update(tenants)
+      .set({
+        gocardlessMandateId: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenants.gocardlessMandateId, mandateId));
+
+    console.log(
+      `[GoCardless] Mandate ${mandateId} cancelled: flagged ${affectedLeases.length} lease(s), cleared from DB`
+    );
 
     return c.json({
       data: {
@@ -228,7 +309,19 @@ gocardlessRouter.post(
         countryCode: "BE",
       });
 
-      // Phase 2: implement GoCardless data persistence
+      // Persist GoCardless customer ID to tenant record
+      const db = getDb();
+      await db
+        .update(tenants)
+        .set({
+          gocardlessCustomerId: customerId,
+          updatedAt: new Date(),
+        })
+        .where(eq(tenants.id, data.tenantId));
+
+      console.log(
+        `[GoCardless] Customer ${customerId} linked to tenant ${data.tenantId}`
+      );
 
       return c.json({
         data: { customerId },
