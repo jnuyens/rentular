@@ -1,9 +1,12 @@
 import { serve } from "@hono/node-server";
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
 import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
+import Redis from "ioredis";
+import { getDb } from "@rentular/db";
 import { propertiesRouter } from "./routes/properties";
 import { tenantsRouter } from "./routes/tenants";
 import { leasesRouter } from "./routes/leases";
@@ -81,8 +84,39 @@ app.use("/support/chat/*", requireAuth);
 app.use("/stripe/checkout", requireAuth);
 app.use("/stripe/subscription", requireAuth);
 
-// Health check
-app.get("/health", (c) => c.json({ status: "ok", version: "0.1.0" }));
+// Health check -- verifies DB + Redis connectivity (per D-12, not SMTP)
+app.get("/health", async (c) => {
+  const checks: Record<string, string> = {};
+
+  // Database check
+  try {
+    const db = getDb();
+    await db.execute(sql`SELECT 1`);
+    checks.database = "ok";
+  } catch {
+    checks.database = "error";
+  }
+
+  // Redis check
+  try {
+    const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
+      connectTimeout: 3000,
+      lazyConnect: true,
+    });
+    await redis.connect();
+    await redis.ping();
+    await redis.quit();
+    checks.redis = "ok";
+  } catch {
+    checks.redis = "error";
+  }
+
+  const allOk = Object.values(checks).every((v) => v === "ok");
+  return c.json(
+    { status: allOk ? "healthy" : "degraded", checks, version: "0.1.0" },
+    allOk ? 200 : 503
+  );
+});
 
 // Routes
 app.route("/properties", propertiesRouter);
