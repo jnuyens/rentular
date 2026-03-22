@@ -1,8 +1,35 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { getDb, costs } from "@rentular/db";
+import { getRequiredUserId } from "../lib/routeAuth";
+
+const db = getDb();
 
 export const costsRouter = new Hono();
+
+// Cost summary must be registered before /:id to avoid route conflicts
+costsRouter.get("/summary/totals", async (c) => {
+  const from = c.req.query("from");
+  const to = c.req.query("to");
+
+  const ownerId = getRequiredUserId(c);
+  const conditions = [eq(costs.ownerId, ownerId)];
+  if (from) conditions.push(gte(costs.date, from));
+  if (to) conditions.push(lte(costs.date, to));
+  const allCosts = await db.select().from(costs).where(and(...conditions));
+  const totalCosts = allCosts.reduce((sum, cost) => sum + Number(cost.amount), 0);
+  const byCategory: Record<string, number> = {};
+  const byProperty: Record<string, number> = {};
+  for (const cost of allCosts) {
+    byCategory[cost.category] = (byCategory[cost.category] || 0) + Number(cost.amount);
+    if (cost.propertyId) {
+      byProperty[cost.propertyId] = (byProperty[cost.propertyId] || 0) + Number(cost.amount);
+    }
+  }
+  return c.json({ totalCosts, byCategory, byProperty });
+});
 
 // List costs with filtering
 costsRouter.get("/", async (c) => {
@@ -12,13 +39,24 @@ costsRouter.get("/", async (c) => {
   const from = c.req.query("from");
   const to = c.req.query("to");
 
-  // TODO: Query costs with filters
-  return c.json({ data: [], meta: { total: 0, page: 1, perPage: 20 } });
+  const ownerId = getRequiredUserId(c);
+  const conditions = [eq(costs.ownerId, ownerId)];
+  if (propertyId) conditions.push(eq(costs.propertyId, propertyId));
+  if (leaseId) conditions.push(eq(costs.leaseId, leaseId));
+  if (category) conditions.push(eq(costs.category, category as any));
+  if (from) conditions.push(gte(costs.date, from));
+  if (to) conditions.push(lte(costs.date, to));
+  const result = await db.select().from(costs).where(and(...conditions));
+  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 20 } });
 });
 
 // Get cost details
 costsRouter.get("/:id", async (c) => {
-  return c.json({ data: null });
+  const id = c.req.param("id");
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(costs)
+    .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+  return result[0] ? c.json({ data: result[0] }) : c.json({ error: "Cost not found" }, 404);
 });
 
 // Add a cost
@@ -50,8 +88,23 @@ costsRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    // TODO: Insert into costs table
-    return c.json({ data, message: "Cost recorded" }, 201);
+    const ownerId = getRequiredUserId(c);
+    const id = crypto.randomUUID();
+    await db.insert(costs).values({
+      id,
+      ownerId,
+      propertyId: data.propertyId || null,
+      leaseId: data.leaseId || null,
+      category: data.category,
+      description: data.description,
+      amount: String(data.amount),
+      date: data.date,
+      rechargedToTenant: data.rechargedToTenant,
+      reference: data.reference || null,
+      notes: data.notes || null,
+    });
+    const [created] = await db.select().from(costs).where(eq(costs.id, id));
+    return c.json({ data: created, message: "Cost recorded" }, 201);
   }
 );
 
@@ -76,22 +129,32 @@ costsRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    // TODO: Update cost
-    return c.json({ data, message: "Cost updated" });
+    const ownerId = getRequiredUserId(c);
+    const existing = await db.select().from(costs)
+      .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+    if (!existing[0]) return c.json({ error: "Cost not found" }, 404);
+    const updateData: Record<string, any> = {};
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.amount !== undefined) updateData.amount = String(data.amount);
+    if (data.date !== undefined) updateData.date = data.date;
+    if (data.rechargedToTenant !== undefined) updateData.rechargedToTenant = data.rechargedToTenant;
+    if (data.reference !== undefined) updateData.reference = data.reference;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    await db.update(costs).set(updateData)
+      .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+    const [updated] = await db.select().from(costs).where(eq(costs.id, id));
+    return c.json({ data: updated, message: "Cost updated" });
   }
 );
 
 // Delete a cost
 costsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  // TODO: Delete cost
+  const ownerId = getRequiredUserId(c);
+  const existing = await db.select().from(costs)
+    .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+  if (!existing[0]) return c.json({ error: "Cost not found" }, 404);
+  await db.delete(costs).where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
   return c.json({ message: "Cost deleted" });
-});
-
-// Get cost summary (totals by category, by property)
-costsRouter.get("/summary/totals", async (c) => {
-  const from = c.req.query("from");
-  const to = c.req.query("to");
-  // TODO: Aggregate costs
-  return c.json({ totalCosts: 0, byCategory: {}, byProperty: {} });
 });
