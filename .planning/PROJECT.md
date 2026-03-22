@@ -35,14 +35,20 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 - ✓ Residential + commercial lease types supported in schema — Phase 1
 - ✓ Maintenance task auto-generation with DB persistence — Phase 1
 - ✓ Health check endpoint (DB + Redis) — Phase 1
+- ✓ Payment CRUD: list, detail, record, collect, retry, cancel, overdue summary — Phase 2
+- ✓ GoCardless webhook persistence with idempotent event processing — Phase 2
+- ✓ Mandate lifecycle cascade (cancel pending payments + flag lease on mandate failure) — Phase 2
+- ✓ Bank account monitoring via GoCardless BAD / Open Banking PSD2 — Phase 2
+- ✓ Transaction matching by Belgian structured communication — Phase 2
+- ✓ Payment overview report with period/property/lease filtering — Phase 2
+- ✓ Payment state machine enforcing valid status transitions — Phase 2
+- ✓ Webhook event cleanup (12-month retention) — Phase 2
+- ✓ PSD2 consent expiry monitoring with renewal + notification fallback — Phase 2
 
 ### Active
 
-**Payments & Webhooks (Critical)**
-- [ ] Payment endpoints: list, details, record manual payment, trigger collection, retry, cancel
-- [ ] GoCardless webhook handlers: persist payment status, mandate changes, payout events to database
-- [ ] Payment follow-up logic: late fees, grace periods, automated escalation
-- [ ] Idempotency tracking for webhook processing
+**Payment Follow-Up (remaining from Payments)**
+- [ ] Payment follow-up logic: late fees, grace periods, automated escalation — *worker logic exists, notification delivery in Phase 4*
 
 **Property Managers**
 - [ ] Full property manager role: invite via email, accept invitation, manage assigned properties
@@ -95,7 +101,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 ## Context
 
 - **Existing codebase:** Monorepo (Turborepo) with Next.js 15 frontend, Hono API, Drizzle ORM, MySQL
-- **Current state:** Phase 1 complete — backend hardened with CSRF, type-safe DB access, and all routes wired to real database. Payment processing and webhook persistence are next (Phase 2). Deferred routes have explicit phase markers.
+- **Current state:** Phases 1-2 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring via Open Banking. Rent indexation is next (Phase 3).
 - **Competitive landscape:** Smovin, Rentila are established Belgian alternatives. Rentular differentiates on price.
 - **Target market:** Belgian landlords (1-10 properties) and professional property managers
 - **Infrastructure:** Proxmox on Hetzner, Docker deployment. SMTP available on server but needs domain configuration.
@@ -140,4 +146,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-22 after Phase 1 completion*
+*Last updated: 2026-03-22 after Phase 2 completion*
