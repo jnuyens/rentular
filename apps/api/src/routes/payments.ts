@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, lt, sql } from "drizzle-orm";
+import { eq, and, desc, lt, gte, lte, inArray, sql } from "drizzle-orm";
 import { getDb, payments, leases } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
@@ -15,6 +15,181 @@ import { transitionPayment } from "../services/paymentStateMachine";
 const db = getDb();
 
 export const paymentsRouter = new Hono();
+
+// Helper: resolve date range from period or custom from/to (D-16)
+function resolveDateRange(
+  period?: string,
+  from?: string,
+  to?: string
+): { fromDate: string; toDate: string } {
+  const today = new Date();
+  if (period === "monthly") {
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    return {
+      fromDate: `${year}-${month}-01`,
+      toDate: `${year}-${month}-${String(new Date(year, today.getMonth() + 1, 0).getDate()).padStart(2, "0")}`,
+    };
+  }
+  if (period === "yearly") {
+    const year = today.getFullYear();
+    return { fromDate: `${year}-01-01`, toDate: `${year}-12-31` };
+  }
+  if (from && to) {
+    // Normalize: if from is YYYY-MM, append -01. If to is YYYY-MM, append last day.
+    const fromDate = from.length === 7 ? `${from}-01` : from;
+    const toDate =
+      to.length === 7
+        ? `${to}-${String(new Date(Number(to.slice(0, 4)), Number(to.slice(5, 7)), 0).getDate()).padStart(2, "0")}`
+        : to;
+    return { fromDate, toDate };
+  }
+  // Default: current month
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  return {
+    fromDate: `${year}-${month}-01`,
+    toDate: `${year}-${month}-${String(new Date(year, today.getMonth() + 1, 0).getDate()).padStart(2, "0")}`,
+  };
+}
+
+const overviewQuerySchema = z.object({
+  period: z.enum(["monthly", "yearly"]).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  propertyId: z.string().uuid().optional(),
+  leaseId: z.string().uuid().optional(),
+  detail: z.coerce.boolean().optional().default(false),
+});
+
+// Payment overview with summary stats (PAY-10, D-14 through D-17)
+// Must be registered BEFORE /:id to avoid route collision
+paymentsRouter.get(
+  "/overview",
+  zValidator("query", overviewQuerySchema),
+  async (c) => {
+    const ownerId = getRequiredUserId(c);
+    const query = c.req.valid("query");
+    const { fromDate, toDate } = resolveDateRange(
+      query.period,
+      query.from,
+      query.to
+    );
+
+    // Build conditions
+    const conditions = [
+      eq(leases.ownerId, ownerId),
+      gte(payments.dueDate, fromDate),
+      lte(payments.dueDate, toDate),
+    ];
+    if (query.propertyId) conditions.push(eq(leases.propertyId, query.propertyId));
+    if (query.leaseId) conditions.push(eq(payments.leaseId, query.leaseId));
+
+    const result = await db
+      .select({
+        id: payments.id,
+        leaseId: payments.leaseId,
+        status: payments.status,
+        amount: payments.amount,
+        dueDate: payments.dueDate,
+        paidDate: payments.paidDate,
+        method: payments.method,
+        latePaymentFee: payments.latePaymentFee,
+        interestCharged: payments.interestCharged,
+        isIgnored: payments.isIgnored,
+      })
+      .from(payments)
+      .innerJoin(leases, eq(payments.leaseId, leases.id))
+      .where(and(...conditions));
+
+    // Filter out ignored payments from stats
+    const activePayments = result.filter((p) => !p.isIgnored);
+
+    const summary = {
+      period: { from: fromDate, to: toDate },
+      totalExpected: activePayments.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0
+      ),
+      totalCollected: activePayments
+        .filter((p) => p.status === "paid")
+        .reduce((sum, p) => sum + Number(p.amount), 0),
+      totalOverdue: activePayments
+        .filter((p) => p.status === "pending" || p.status === "failed")
+        .reduce((sum, p) => sum + Number(p.amount), 0),
+      totalProcessing: activePayments
+        .filter((p) => p.status === "processing")
+        .reduce((sum, p) => sum + Number(p.amount), 0),
+      totalFees: activePayments.reduce(
+        (sum, p) => sum + Number(p.latePaymentFee || 0),
+        0
+      ),
+      totalInterest: activePayments.reduce(
+        (sum, p) => sum + Number(p.interestCharged || 0),
+        0
+      ),
+      countByStatus: {
+        paid: activePayments.filter((p) => p.status === "paid").length,
+        pending: activePayments.filter((p) => p.status === "pending").length,
+        processing: activePayments.filter((p) => p.status === "processing")
+          .length,
+        failed: activePayments.filter((p) => p.status === "failed").length,
+        cancelled: activePayments.filter((p) => p.status === "cancelled")
+          .length,
+        refunded: activePayments.filter((p) => p.status === "refunded").length,
+      },
+      totalPayments: activePayments.length,
+    };
+
+    // D-17: Always include current month overdue as a top-level field
+    const now = new Date();
+    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const currentMonthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+
+    // If the query period already covers current month, compute from existing data
+    // Otherwise, run a separate query
+    let currentMonthOverdue = 0;
+    if (fromDate <= currentMonthStart && toDate >= currentMonthEnd) {
+      currentMonthOverdue = activePayments
+        .filter(
+          (p) =>
+            p.dueDate >= currentMonthStart &&
+            p.dueDate <= currentMonthEnd &&
+            (p.status === "pending" || p.status === "failed")
+        )
+        .reduce((sum, p) => sum + Number(p.amount), 0);
+    } else {
+      const currentMonthResult = await db
+        .select({ amount: payments.amount, status: payments.status })
+        .from(payments)
+        .innerJoin(leases, eq(payments.leaseId, leases.id))
+        .where(
+          and(
+            eq(leases.ownerId, ownerId),
+            gte(payments.dueDate, currentMonthStart),
+            lte(payments.dueDate, currentMonthEnd),
+            inArray(payments.status, ["pending", "failed"]),
+            eq(payments.isIgnored, false)
+          )
+        );
+      currentMonthOverdue = currentMonthResult.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0
+      );
+    }
+
+    // D-14: summary by default, detail when ?detail=true
+    const response: Record<string, unknown> = {
+      summary: { ...summary, currentMonthOverdue },
+    };
+
+    if (query.detail) {
+      response.payments = result;
+    }
+
+    return c.json({ data: response });
+  }
+);
 
 // List all payments with filtering (PAY-01)
 paymentsRouter.get(
