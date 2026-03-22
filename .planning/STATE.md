@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-22T20:27:42.908Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-03-22T20:33:13.421Z"
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 02 (payment-processing-webhooks) — EXECUTING
-Plan: 2 of 5
+Plan: 4 of 5
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Plan: 2 of 5
 | Phase 01 P05 | 2min | 2 tasks | 3 files |
 | Phase 01 P04 | 6min | 2 tasks | 11 files |
 | Phase 02 P01 | 2min | 2 tasks | 4 files |
+| Phase 02 P03 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 02]: eventId unique constraint for DB-level webhook idempotency
 - [Phase 02]: Provider-agnostic bank_connections table supporting GoCardless BAD, Ponto, Enable Banking
 - [Phase 02]: Forward-jump state transitions allowed to handle out-of-order GoCardless webhook events
+- [Phase 02]: Overdue summary route placed before /:id to avoid Hono route parameter conflict
+- [Phase 02]: Manual payments immediately marked as paid (no state machine transition needed)
+- [Phase 02]: GoCardless not configured returns 503 vs missing mandate returns 400 to distinguish infra vs data issues
 
 ### Pending Todos
 
@@ -87,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T20:27:42.904Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-22T20:33:06.160Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

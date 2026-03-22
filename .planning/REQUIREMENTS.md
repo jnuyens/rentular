@@ -9,12 +9,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Payments
 
-- [ ] **PAY-01**: Landlord can view list of all payments with status (paid, overdue, processing, failed, cancelled)
-- [ ] **PAY-02**: Landlord can view payment details including GoCardless reference, charge date, and method
-- [ ] **PAY-03**: Landlord can record a manual payment (cash, bank transfer) for a lease
-- [ ] **PAY-04**: Landlord can trigger SEPA direct debit collection for a specific lease via GoCardless
-- [ ] **PAY-05**: Landlord can retry a failed GoCardless payment
-- [ ] **PAY-06**: Landlord can cancel a pending GoCardless payment
+- [x] **PAY-01**: Landlord can view list of all payments with status (paid, overdue, processing, failed, cancelled)
+- [x] **PAY-02**: Landlord can view payment details including GoCardless reference, charge date, and method
+- [x] **PAY-03**: Landlord can record a manual payment (cash, bank transfer) for a lease
+- [x] **PAY-04**: Landlord can trigger SEPA direct debit collection for a specific lease via GoCardless
+- [x] **PAY-05**: Landlord can retry a failed GoCardless payment
+- [x] **PAY-06**: Landlord can cancel a pending GoCardless payment
 - [x] **PAY-07**: GoCardless webhook events persist payment status changes to database (confirmed, failed, charged back, cancelled)
 - [x] **PAY-08**: GoCardless webhook events persist mandate status changes (active, failed, expired, cancelled)
 - [x] **PAY-09**: Webhook processing is idempotent (duplicate events are safely skipped)
@@ -155,12 +155,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INF-05 | Phase 1: Security & Infrastructure Foundation | Complete |
 | LSE-01 | Phase 1: Security & Infrastructure Foundation | Complete |
 | LSE-02 | Phase 1: Security & Infrastructure Foundation | Complete |
-| PAY-01 | Phase 2: Payment Processing & Webhooks | Pending |
-| PAY-02 | Phase 2: Payment Processing & Webhooks | Pending |
-| PAY-03 | Phase 2: Payment Processing & Webhooks | Pending |
-| PAY-04 | Phase 2: Payment Processing & Webhooks | Pending |
-| PAY-05 | Phase 2: Payment Processing & Webhooks | Pending |
-| PAY-06 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-01 | Phase 2: Payment Processing & Webhooks | Complete |
+| PAY-02 | Phase 2: Payment Processing & Webhooks | Complete |
+| PAY-03 | Phase 2: Payment Processing & Webhooks | Complete |
+| PAY-04 | Phase 2: Payment Processing & Webhooks | Complete |
+| PAY-05 | Phase 2: Payment Processing & Webhooks | Complete |
+| PAY-06 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-07 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-08 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-09 | Phase 2: Payment Processing & Webhooks | Complete |

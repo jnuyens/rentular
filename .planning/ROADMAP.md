@@ -55,8 +55,8 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md -- Schema foundations (webhook_events, bank_connections) and payment state machine service
-- [ ] 02-02-PLAN.md -- Idempotent webhook persistence and GoCardless mandate/customer DB wiring
-- [ ] 02-03-PLAN.md -- Payment CRUD endpoints: list, detail, record, collect, retry, cancel
+- [x] 02-02-PLAN.md -- Idempotent webhook persistence and GoCardless mandate/customer DB wiring
+- [x] 02-03-PLAN.md -- Payment CRUD endpoints: list, detail, record, collect, retry, cancel
 - [ ] 02-04-PLAN.md -- Bank account monitoring interface, transaction matcher, and worker implementations
 - [ ] 02-05-PLAN.md -- Payment overview report endpoint and webhook event cleanup job
 
