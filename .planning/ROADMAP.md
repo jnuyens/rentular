@@ -38,7 +38,7 @@ Plans:
 - [x] 01-01-PLAN.md -- Schema foundation: maintenance table, heatingType column, database indexes
 - [x] 01-02-PLAN.md -- CSRF middleware with webhook exclusion and enhanced health check
 - [x] 01-03-PLAN.md -- Static typed imports for properties, tenants, bankAccounts, authMiddleware
-- [ ] 01-04-PLAN.md -- Wire costs, rentAdjustments, communications, settings to DB; relabel deferred TODOs
+- [x] 01-04-PLAN.md -- Wire costs, rentAdjustments, communications, settings to DB; relabel deferred TODOs
 - [x] 01-05-PLAN.md -- Rewrite leases and maintenance to DB; delete memoryStore
 
 ### Phase 2: Payment Processing & Webhooks
