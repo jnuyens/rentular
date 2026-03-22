@@ -22,7 +22,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Rent Indexation
 
-- [ ] **IDX-01**: System fetches Belgian health index data from Statbel beSTAT API and caches in database
+- [x] **IDX-01**: System fetches Belgian health index data from Statbel beSTAT API and caches in database
 - [ ] **IDX-02**: System calculates indexed rent using correct regional formula (Brussels, Flanders, Wallonia)
 - [ ] **IDX-03**: System applies EPC correction factors for Brussels (E/F/G permanent penalty) and Flanders (correction factor)
 - [ ] **IDX-04**: Landlord can preview indexed rent calculation before applying
@@ -165,7 +165,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAY-08 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-09 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-10 | Phase 2: Payment Processing & Webhooks | Complete |
-| IDX-01 | Phase 3: Rent Indexation | Pending |
+| IDX-01 | Phase 3: Rent Indexation | Complete |
 | IDX-02 | Phase 3: Rent Indexation | Pending |
 | IDX-03 | Phase 3: Rent Indexation | Pending |
 | IDX-04 | Phase 3: Rent Indexation | Pending |

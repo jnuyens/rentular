@@ -72,7 +72,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Statbel health index service and BullMQ daily refresh worker
+- [x] 03-01-PLAN.md -- Statbel health index service and BullMQ daily refresh worker
 - [ ] 03-02-PLAN.md -- Wire indexation endpoints to DB, email notification with regional legal references
 
 ### Phase 4: Notifications & Payment Follow-Up
