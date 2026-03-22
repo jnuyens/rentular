@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-22T23:35:44.775Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-03-22T23:42:19.487Z"
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -57,6 +57,7 @@ Plan: 2 of 2
 | Phase 02 P04 | 5min | 2 tasks | 6 files |
 | Phase 02 P05 | 3min | 2 tasks | 3 files |
 | Phase 03 P01 | 2min | 2 tasks | 3 files |
+| Phase 03 P02 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Webhook cleanup runs weekly Sunday 03:00 following same BullMQ pattern as paymentCheckWorker
 - [Phase 03]: Skip-if-exists upsert for health index: values never change once published by Statbel
 - [Phase 03]: Silent failure on Statbel API errors with retry-next-day via daily cron (D-03)
+- [Phase 03]: Shared calculateLeaseIndexation helper centralizes lease/property/index lookup across 3 endpoints
+- [Phase 03]: Override rent capped at EPC-restricted maximum, base rent never modified (D-07/D-08)
 
 ### Pending Todos
 
@@ -105,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T23:35:44.772Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-03-22T23:42:19.482Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None

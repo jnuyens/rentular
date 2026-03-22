@@ -73,7 +73,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md -- Statbel health index service and BullMQ daily refresh worker
-- [ ] 03-02-PLAN.md -- Wire indexation endpoints to DB, email notification with regional legal references
+- [x] 03-02-PLAN.md -- Wire indexation endpoints to DB, email notification with regional legal references
 
 ### Phase 4: Notifications & Payment Follow-Up
 **Goal**: The system automatically reminds tenants about overdue payments through escalating email and SMS notifications, with full delivery tracking

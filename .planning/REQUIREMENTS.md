@@ -23,13 +23,13 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Rent Indexation
 
 - [x] **IDX-01**: System fetches Belgian health index data from Statbel beSTAT API and caches in database
-- [ ] **IDX-02**: System calculates indexed rent using correct regional formula (Brussels, Flanders, Wallonia)
-- [ ] **IDX-03**: System applies EPC correction factors for Brussels (E/F/G permanent penalty) and Flanders (correction factor)
-- [ ] **IDX-04**: Landlord can preview indexed rent calculation before applying
-- [ ] **IDX-05**: Landlord can choose to apply a lower-than-indexed rent amount
-- [ ] **IDX-06**: Landlord can customize the indexation notification message to tenant
-- [ ] **IDX-07**: Applying indexation updates the lease rent and creates an indexation history record
-- [ ] **IDX-08**: System sends indexation notification email to tenant in their preferred language
+- [x] **IDX-02**: System calculates indexed rent using correct regional formula (Brussels, Flanders, Wallonia)
+- [x] **IDX-03**: System applies EPC correction factors for Brussels (E/F/G permanent penalty) and Flanders (correction factor)
+- [x] **IDX-04**: Landlord can preview indexed rent calculation before applying
+- [x] **IDX-05**: Landlord can choose to apply a lower-than-indexed rent amount
+- [x] **IDX-06**: Landlord can customize the indexation notification message to tenant
+- [x] **IDX-07**: Applying indexation updates the lease rent and creates an indexation history record
+- [x] **IDX-08**: System sends indexation notification email to tenant in their preferred language
 
 ### Notifications
 
@@ -166,13 +166,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAY-09 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-10 | Phase 2: Payment Processing & Webhooks | Complete |
 | IDX-01 | Phase 3: Rent Indexation | Complete |
-| IDX-02 | Phase 3: Rent Indexation | Pending |
-| IDX-03 | Phase 3: Rent Indexation | Pending |
-| IDX-04 | Phase 3: Rent Indexation | Pending |
-| IDX-05 | Phase 3: Rent Indexation | Pending |
-| IDX-06 | Phase 3: Rent Indexation | Pending |
-| IDX-07 | Phase 3: Rent Indexation | Pending |
-| IDX-08 | Phase 3: Rent Indexation | Pending |
+| IDX-02 | Phase 3: Rent Indexation | Complete |
+| IDX-03 | Phase 3: Rent Indexation | Complete |
+| IDX-04 | Phase 3: Rent Indexation | Complete |
+| IDX-05 | Phase 3: Rent Indexation | Complete |
+| IDX-06 | Phase 3: Rent Indexation | Complete |
+| IDX-07 | Phase 3: Rent Indexation | Complete |
+| IDX-08 | Phase 3: Rent Indexation | Complete |
 | NTF-01 | Phase 4: Notifications & Payment Follow-Up | Pending |
 | NTF-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
 | NTF-03 | Phase 4: Notifications & Payment Follow-Up | Pending |
