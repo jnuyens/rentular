@@ -9,3 +9,5 @@ export * from "./bankAccounts";
 export * from "./propertyManagers";
 export * from "./communications";
 export * from "./maintenance";
+export * from "./webhookEvents";
+export * from "./bankConnections";
