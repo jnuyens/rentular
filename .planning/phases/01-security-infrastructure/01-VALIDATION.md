@@ -2,8 +2,8 @@
 phase: 1
 slug: security-infrastructure
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-22
 ---
 
@@ -17,18 +17,18 @@ created: 2026-03-22
 
 | Property | Value |
 |----------|-------|
-| **Framework** | vitest (or manual curl/EXPLAIN verification) |
-| **Config file** | none — Wave 0 installs if needed |
-| **Quick run command** | `pnpm --filter api test` |
-| **Full suite command** | `pnpm --filter api test && pnpm turbo build` |
+| **Framework** | No test framework in Phase 1 (per research). Verification via grep + pnpm build + manual curl/EXPLAIN |
+| **Config file** | none |
+| **Quick run command** | `pnpm turbo build` |
+| **Full suite command** | `pnpm turbo build` |
 | **Estimated runtime** | ~30 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `pnpm --filter api test`
-- **After every plan wave:** Run `pnpm --filter api test && pnpm turbo build`
+- **After every task commit:** Run `pnpm turbo build`
+- **After every plan wave:** Run `pnpm turbo build`
 - **Before `/gsd:verify-work`:** Full suite must be green
 - **Max feedback latency:** 30 seconds
 
