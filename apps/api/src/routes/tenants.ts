@@ -1,20 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import * as mem from "../lib/memoryStore";
+import { eq, and } from "drizzle-orm";
+import { getDb, tenants } from "@rentular/db";
+import { getRequiredUserId } from "../lib/routeAuth";
 
-let db: any = null;
-let dbSchema: any = null;
-let eq: any = null;
-
-try {
-  const dbMod = require("@rentular/db");
-  db = dbMod.getDb();
-  dbSchema = dbMod.tenants;
-  eq = require("drizzle-orm").eq;
-} catch {
-  console.log("[Tenants] Database unavailable, using in-memory store");
-}
+const db = getDb();
 
 const createTenantSchema = z.object({
   firstName: z.string().min(1),
@@ -31,58 +22,46 @@ const createTenantSchema = z.object({
 export const tenantsRouter = new Hono();
 
 tenantsRouter.get("/", async (c) => {
-  try {
-    if (db && dbSchema) {
-      const result = await db.select().from(dbSchema);
-      return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
-    }
-  } catch (err) {
-    console.error("DB read failed, falling back to memory:", err);
-  }
-  const result = mem.getAll("tenants").filter((t: any) => !t.isArchived);
+  const ownerId = getRequiredUserId(c);
+  const result = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.ownerId, ownerId));
   return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
 });
 
 tenantsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
-      return c.json({ data: result[0] || null });
-    }
-  } catch {
-    // fallback
-  }
-  return c.json({ data: mem.getById("tenants", id) || null });
+  const ownerId = getRequiredUserId(c);
+  const result = await db
+    .select()
+    .from(tenants)
+    .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
+  return result[0]
+    ? c.json({ data: result[0] })
+    : c.json({ error: "Tenant not found" }, 404);
 });
 
 tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
   const data = c.req.valid("json");
   const tenantLanguage = data.language || "nl";
+  const ownerId = getRequiredUserId(c);
   const id = crypto.randomUUID();
-  const record = { id, ownerId: c.get("userId") || "system", ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
 
-  try {
-    if (db && dbSchema) {
-      await db.insert(dbSchema).values({
-        id,
-        ownerId: c.get("userId") || "system",
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email || null,
-        phone: data.phone || null,
-        language: tenantLanguage,
-        nationalRegister: data.nationalRegister || null,
-        iban: data.bankAccount || null,
-        notes: data.notes || null,
-      });
-      return c.json({ data: record, message: "Tenant created" }, 201);
-    }
-  } catch (err) {
-    console.error("DB insert failed, using memory store:", err);
-  }
+  await db.insert(tenants).values({
+    id,
+    ownerId,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email || null,
+    phone: data.phone || null,
+    language: tenantLanguage,
+    nationalRegister: data.nationalRegister || null,
+    iban: data.bankAccount || null,
+    notes: data.notes || null,
+  });
 
-  mem.insert("tenants", record);
+  const record = { id, ownerId, ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
   return c.json({ data: record, message: "Tenant created" }, 201);
 });
 
@@ -92,29 +71,47 @@ tenantsRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    try {
-      if (db && dbSchema && eq) {
-        await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
-        const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
-        return c.json({ data: result[0] || { id, ...data }, message: "Tenant updated" });
-      }
-    } catch {
-      // fallback
+    const ownerId = getRequiredUserId(c);
+
+    const existing = await db
+      .select()
+      .from(tenants)
+      .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
+    if (!existing[0]) {
+      return c.json({ error: "Tenant not found" }, 404);
     }
-    const existing = mem.getById("tenants", id);
-    mem.update("tenants", id, data);
-    return c.json({ data: { ...existing, ...data }, message: "Tenant updated" });
+
+    const { bankAccount, ...rest } = data;
+    await db
+      .update(tenants)
+      .set({
+        ...rest,
+        ...(bankAccount !== undefined ? { iban: bankAccount } : {}),
+      })
+      .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
+    const result = await db
+      .select()
+      .from(tenants)
+      .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
+    return c.json({ data: result[0], message: "Tenant updated" });
   }
 );
 
 tenantsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      await db.update(dbSchema).set({ isArchived: true }).where(eq(dbSchema.id, id));
-    }
-  } catch {
-    mem.remove("tenants", id);
+  const ownerId = getRequiredUserId(c);
+
+  const existing = await db
+    .select()
+    .from(tenants)
+    .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
+  if (!existing[0]) {
+    return c.json({ error: "Tenant not found" }, 404);
   }
+
+  await db
+    .update(tenants)
+    .set({ isArchived: true })
+    .where(and(eq(tenants.id, id), eq(tenants.ownerId, ownerId)));
   return c.json({ message: "Tenant deleted" });
 });
