@@ -51,11 +51,14 @@ Plans:
   3. Landlord can record a manual cash/transfer payment and see it reflected in the payment list
   4. When GoCardless sends a webhook (payment confirmed, failed, charged back, mandate changed), the event is persisted to the database and the payment/mandate status updates automatically
   5. Sending the same GoCardless webhook event twice does not create duplicate records or change state incorrectly
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Schema foundations (webhook_events, bank_connections) and payment state machine service
+- [ ] 02-02-PLAN.md -- Idempotent webhook persistence and GoCardless mandate/customer DB wiring
+- [ ] 02-03-PLAN.md -- Payment CRUD endpoints: list, detail, record, collect, retry, cancel
+- [ ] 02-04-PLAN.md -- Bank account monitoring interface, transaction matcher, and worker implementations
+- [ ] 02-05-PLAN.md -- Payment overview report endpoint and webhook event cleanup job
 
 ### Phase 3: Rent Indexation
 **Goal**: Landlords can automatically calculate and apply Belgian rent indexation with correct regional formulas, giving them a key tool that justifies choosing Rentular
@@ -142,8 +145,8 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security & Infrastructure Foundation | 0/5 | Planning complete | - |
-| 2. Payment Processing & Webhooks | 0/? | Not started | - |
+| 1. Security & Infrastructure Foundation | 5/5 | Complete | - |
+| 2. Payment Processing & Webhooks | 0/5 | Planning complete | - |
 | 3. Rent Indexation | 0/? | Not started | - |
 | 4. Notifications & Payment Follow-Up | 0/? | Not started | - |
 | 5. Property Manager Roles | 0/? | Not started | - |
