@@ -58,7 +58,7 @@ Plans:
 - [x] 02-02-PLAN.md -- Idempotent webhook persistence and GoCardless mandate/customer DB wiring
 - [x] 02-03-PLAN.md -- Payment CRUD endpoints: list, detail, record, collect, retry, cancel
 - [x] 02-04-PLAN.md -- Bank account monitoring interface, transaction matcher, and worker implementations
-- [ ] 02-05-PLAN.md -- Payment overview report endpoint and webhook event cleanup job
+- [x] 02-05-PLAN.md -- Payment overview report endpoint and webhook event cleanup job
 
 ### Phase 3: Rent Indexation
 **Goal**: Landlords can automatically calculate and apply Belgian rent indexation with correct regional formulas, giving them a key tool that justifies choosing Rentular

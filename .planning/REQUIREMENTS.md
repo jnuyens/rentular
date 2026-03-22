@@ -18,7 +18,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PAY-07**: GoCardless webhook events persist payment status changes to database (confirmed, failed, charged back, cancelled)
 - [x] **PAY-08**: GoCardless webhook events persist mandate status changes (active, failed, expired, cancelled)
 - [x] **PAY-09**: Webhook processing is idempotent (duplicate events are safely skipped)
-- [ ] **PAY-10**: Landlord can view monthly/yearly payment overview report (collected, overdue, fees summary)
+- [x] **PAY-10**: Landlord can view monthly/yearly payment overview report (collected, overdue, fees summary)
 
 ### Rent Indexation
 
@@ -164,7 +164,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PAY-07 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-08 | Phase 2: Payment Processing & Webhooks | Complete |
 | PAY-09 | Phase 2: Payment Processing & Webhooks | Complete |
-| PAY-10 | Phase 2: Payment Processing & Webhooks | Pending |
+| PAY-10 | Phase 2: Payment Processing & Webhooks | Complete |
 | IDX-01 | Phase 3: Rent Indexation | Pending |
 | IDX-02 | Phase 3: Rent Indexation | Pending |
 | IDX-03 | Phase 3: Rent Indexation | Pending |
