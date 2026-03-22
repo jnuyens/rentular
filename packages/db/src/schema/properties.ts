@@ -6,6 +6,7 @@ import {
   mysqlEnum,
   boolean,
   json,
+  index,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
 
@@ -36,10 +37,13 @@ export const properties = mysqlTable("properties", {
   epcLabel: varchar("epc_label", { length: 5 }), // EPC label: A++, A+, A, B, C, D, E, F, G
   epcCertificateNumber: varchar("epc_certificate_number", { length: 100 }),
   epcExpiryDate: varchar("epc_expiry_date", { length: 10 }), // YYYY-MM-DD
+  heatingType: mysqlEnum("heating_type", ["gas", "oil", "electric", "heat_pump", "wood", "pellet", "none"]),
   // Metadata
   notes: text("notes"),
   metadata: json("metadata"),
   isArchived: boolean("is_archived").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  ownerIdx: index("properties_owner_idx").on(table.ownerId),
+}));
