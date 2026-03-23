@@ -89,8 +89,8 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md -- SMTP settings schema, encryption library, and centralized communications logging in queueEmail/queueSms
-- [ ] 04-02-PLAN.md -- Per-landlord SMTP transport cache, SMTP settings API, and communications resend/send wiring
-- [ ] 04-03-PLAN.md -- Communications dashboard page, sidebar nav, Email Settings tab, SMS consent notice, i18n in 4 languages
+- [x] 04-02-PLAN.md -- Per-landlord SMTP transport cache, SMTP settings API, and communications resend/send wiring
+- [x] 04-03-PLAN.md -- Communications dashboard page, sidebar nav, Email Settings tab, SMS consent notice, i18n in 4 languages
 
 ### Phase 5: Property Manager Roles
 **Goal**: Property owners can delegate management of their properties to other users with appropriate role-based permissions
