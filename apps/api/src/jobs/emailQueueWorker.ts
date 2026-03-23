@@ -41,10 +41,10 @@ export interface CommunicationMeta {
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    const { to, subject, body, attachments, communicationId } = job.data as EmailOptions & { communicationId?: string };
+    const { to, subject, body, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
     console.log(`[EmailQueue] Sending email to ${to}: "${subject}"`);
     try {
-      await sendEmail({ to, subject, body, attachments });
+      await sendEmail({ to, subject, body, attachments, ownerId });
       console.log(`[EmailQueue] Sent successfully to ${to}`);
 
       // Update communications record on success
@@ -133,9 +133,11 @@ export async function queueEmail(
     }
   }
 
+  // Include ownerId in job data for per-landlord SMTP transport selection
+  const ownerId = meta?.ownerId;
   const jobData = communicationId
-    ? { ...options, communicationId }
-    : options;
+    ? { ...options, communicationId, ownerId }
+    : ownerId ? { ...options, ownerId } : options;
 
   const job = await emailQueue.add("send-email", jobData, {
     priority: opts?.priority,

@@ -2,9 +2,12 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { getDb, users, paymentFollowUpSettings } from "@rentular/db";
+import { getDb, users, paymentFollowUpSettings, smtpSettings } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
-import { DEFAULT_EMAIL_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE, DEFAULT_LANDLORD_REPORT_DAYS } from "@rentular/shared";
+import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_SMS_TEMPLATES, REMINDER_DEFAULTS, DEFAULT_INTEREST_RATE, DEFAULT_LANDLORD_REPORT_DAYS } from "@rentular/shared";
+import { encrypt } from "../lib/encryption";
+import { createTransport } from "nodemailer";
+import { clearTransportCache } from "../lib/email";
 
 const db = getDb();
 
@@ -37,6 +40,7 @@ settingsRouter.get("/payment-follow-up", async (c) => {
     return c.json({ data: result[0] });
   }
   // Return defaults if no settings exist yet
+  const defaultSmsTemplates = DEFAULT_SMS_TEMPLATES.en;
   return c.json({
     data: {
       enabled: true,
@@ -51,6 +55,9 @@ settingsRouter.get("/payment-follow-up", async (c) => {
       formalBody: defaultEmailTemplates.formal.body,
       finalSubject: defaultEmailTemplates.final.subject,
       finalBody: defaultEmailTemplates.final.body,
+      smsFriendlyMessage: defaultSmsTemplates.friendly,
+      smsFormalMessage: defaultSmsTemplates.formal,
+      smsFinalMessage: defaultSmsTemplates.final,
     },
   });
 });
@@ -73,6 +80,9 @@ settingsRouter.put(
       formalBody: z.string().min(1),
       finalSubject: z.string().min(1).max(500),
       finalBody: z.string().min(1),
+      smsFriendlyMessage: z.string().optional(),
+      smsFormalMessage: z.string().optional(),
+      smsFinalMessage: z.string().optional(),
     }).refine(
       (data) =>
         data.friendlyReminderDays <= data.formalReminderDays &&
@@ -101,6 +111,9 @@ settingsRouter.put(
         formalBody: data.formalBody,
         finalSubject: data.finalSubject,
         finalBody: data.finalBody,
+        smsFriendlyMessage: data.smsFriendlyMessage || null,
+        smsFormalMessage: data.smsFormalMessage || null,
+        smsFinalMessage: data.smsFinalMessage || null,
       }).where(eq(paymentFollowUpSettings.ownerId, ownerId));
     } else {
       await db.insert(paymentFollowUpSettings).values({
@@ -118,6 +131,9 @@ settingsRouter.put(
         formalBody: data.formalBody,
         finalSubject: data.finalSubject,
         finalBody: data.finalBody,
+        smsFriendlyMessage: data.smsFriendlyMessage || null,
+        smsFormalMessage: data.smsFormalMessage || null,
+        smsFinalMessage: data.smsFinalMessage || null,
       });
     }
     return c.json({ data, message: "Payment follow-up settings updated" });
@@ -239,3 +255,135 @@ settingsRouter.put(
     return c.json({ data, message: "Landlord report settings updated" });
   }
 );
+
+// --- SMTP settings ---
+
+// Get SMTP settings for the current owner (password masked)
+settingsRouter.get("/smtp", async (c) => {
+  const ownerId = getRequiredUserId(c);
+  const result = await db.select().from(smtpSettings).where(eq(smtpSettings.ownerId, ownerId)).limit(1);
+  if (!result[0]) {
+    return c.json({ data: null });
+  }
+  // Return settings with password masked
+  return c.json({
+    data: {
+      host: result[0].host,
+      port: result[0].port,
+      username: result[0].username,
+      fromAddress: result[0].fromAddress,
+      fromName: result[0].fromName,
+      verified: result[0].verified,
+      lastVerifiedAt: result[0].lastVerifiedAt,
+      hasPassword: true, // Indicate password is set without exposing it
+    },
+  });
+});
+
+// Save/update SMTP settings with encrypted password
+settingsRouter.put(
+  "/smtp",
+  zValidator("json", z.object({
+    host: z.string().min(1).max(255),
+    port: z.number().int().min(1).max(65535),
+    username: z.string().min(1).max(255),
+    password: z.string().min(1),
+    fromAddress: z.string().email().max(255),
+    fromName: z.string().max(255).optional(),
+  })),
+  async (c) => {
+    const data = c.req.valid("json");
+    const ownerId = getRequiredUserId(c);
+
+    const { encrypted, iv, tag } = encrypt(data.password);
+
+    const existing = await db.select().from(smtpSettings).where(eq(smtpSettings.ownerId, ownerId)).limit(1);
+
+    if (existing[0]) {
+      await db.update(smtpSettings).set({
+        host: data.host,
+        port: data.port,
+        username: data.username,
+        passwordEncrypted: encrypted,
+        passwordIv: iv,
+        passwordTag: tag,
+        fromAddress: data.fromAddress,
+        fromName: data.fromName || null,
+        verified: false, // Reset verification on any change
+        updatedAt: new Date(),
+      }).where(eq(smtpSettings.ownerId, ownerId));
+    } else {
+      await db.insert(smtpSettings).values({
+        id: crypto.randomUUID(),
+        ownerId,
+        host: data.host,
+        port: data.port,
+        username: data.username,
+        passwordEncrypted: encrypted,
+        passwordIv: iv,
+        passwordTag: tag,
+        fromAddress: data.fromAddress,
+        fromName: data.fromName || null,
+        verified: false,
+      });
+    }
+
+    clearTransportCache(ownerId);
+    return c.json({ message: "SMTP settings saved" });
+  }
+);
+
+// Test SMTP connection and send a test email to the landlord
+settingsRouter.post(
+  "/smtp/test",
+  zValidator("json", z.object({
+    host: z.string().min(1),
+    port: z.number().int(),
+    username: z.string().min(1),
+    password: z.string().min(1),
+    fromAddress: z.string().email(),
+  })),
+  async (c) => {
+    const data = c.req.valid("json");
+    const ownerId = getRequiredUserId(c);
+
+    const transport = createTransport({
+      host: data.host,
+      port: data.port,
+      secure: data.port === 465,
+      auth: { user: data.username, pass: data.password },
+    });
+
+    try {
+      await transport.verify(); // Validates connection + auth
+      // Send a real test email to the landlord
+      const owner = await db.select().from(users).where(eq(users.id, ownerId)).limit(1);
+      if (owner[0]?.email) {
+        await transport.sendMail({
+          from: data.fromAddress,
+          to: owner[0].email,
+          subject: "Rentular SMTP Test",
+          text: "This is a test email from Rentular to verify your SMTP settings are working correctly.",
+        });
+      }
+      // Mark as verified in the DB if settings exist
+      await db.update(smtpSettings).set({
+        verified: true,
+        lastVerifiedAt: new Date(),
+      }).where(eq(smtpSettings.ownerId, ownerId));
+      return c.json({ success: true, message: "SMTP connection verified and test email sent" });
+    } catch (err) {
+      return c.json({ success: false, error: String(err) }, 400);
+    } finally {
+      transport.close();
+    }
+  }
+);
+
+// Remove SMTP settings (revert to platform default)
+settingsRouter.delete("/smtp", async (c) => {
+  const ownerId = getRequiredUserId(c);
+  await db.delete(smtpSettings).where(eq(smtpSettings.ownerId, ownerId));
+  clearTransportCache(ownerId);
+  return c.json({ message: "SMTP settings removed, using platform defaults" });
+});
