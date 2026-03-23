@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
-import { getDb, communications } from "@rentular/db";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { getDb, communications, leases, leaseTenants, tenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import { queueEmail, type CommunicationMeta } from "../jobs/emailQueueWorker";
+import { queueSms } from "../jobs/smsQueueWorker";
 
 const db = getDb();
 
@@ -31,15 +33,42 @@ communicationsRouter.get("/", async (c) => {
   const channel = c.req.query("channel");   // email, sms, letter
   const type = c.req.query("type");         // payment_reminder_friendly, etc.
   const status = c.req.query("status");     // queued, sent, delivered, failed, bounced
+  const propertyId = c.req.query("propertyId");
+  const tenantId = c.req.query("tenantId");
   const page = Number(c.req.query("page")) || 1;
   const perPage = Number(c.req.query("perPage")) || 20;
 
   const ownerId = getRequiredUserId(c);
-  const conditions = [eq(communications.ownerId, ownerId)];
+  const conditions: ReturnType<typeof eq>[] = [eq(communications.ownerId, ownerId)];
   if (leaseId) conditions.push(eq(communications.leaseId, leaseId));
   if (channel) conditions.push(eq(communications.channel, channel as any));
   if (type) conditions.push(eq(communications.type, type as any));
   if (status) conditions.push(eq(communications.status, status as any));
+
+  // Filter by propertyId: find all leases for that property, then filter communications
+  if (propertyId) {
+    const propertyLeases = await db.select({ id: leases.id }).from(leases)
+      .where(and(eq(leases.ownerId, ownerId), eq(leases.propertyId, propertyId)));
+    const leaseIds = propertyLeases.map(l => l.id);
+    if (leaseIds.length > 0) {
+      conditions.push(inArray(communications.leaseId, leaseIds));
+    } else {
+      return c.json({ data: [], meta: { total: 0, page, perPage } });
+    }
+  }
+
+  // Filter by tenantId: find all leases for that tenant via leaseTenants join
+  if (tenantId) {
+    const tenantLeases = await db.select({ leaseId: leaseTenants.leaseId }).from(leaseTenants)
+      .where(eq(leaseTenants.tenantId, tenantId));
+    const leaseIds = tenantLeases.map(l => l.leaseId);
+    if (leaseIds.length > 0) {
+      conditions.push(inArray(communications.leaseId, leaseIds));
+    } else {
+      return c.json({ data: [], meta: { total: 0, page, perPage } });
+    }
+  }
+
   const result = await db.select().from(communications)
     .where(and(...conditions))
     .orderBy(desc(communications.createdAt));
@@ -58,7 +87,7 @@ communicationsRouter.get("/:id", async (c) => {
   return result[0] ? c.json({ data: result[0] }) : c.json({ error: "Communication not found" }, 404);
 });
 
-// Resend a failed communication
+// Resend a failed communication via the email/SMS queue
 communicationsRouter.post("/:id/resend", async (c) => {
   const id = c.req.param("id");
   const ownerId = getRequiredUserId(c);
@@ -68,22 +97,32 @@ communicationsRouter.post("/:id/resend", async (c) => {
   if (!["failed", "bounced"].includes(original[0].status)) {
     return c.json({ error: "Only failed or bounced communications can be resent" }, 400);
   }
-  // Phase 4: Implement actual re-queueing via email/SMS queue
-  // For now, create a new communication record marking it as queued
-  const newId = crypto.randomUUID();
-  await db.insert(communications).values({
-    ...original[0],
-    id: newId,
-    status: "queued",
-    queuedAt: new Date(),
-    sentAt: null,
-    errorMessage: null,
-    externalId: null,
-  });
+
+  const meta: CommunicationMeta = {
+    ownerId: original[0].ownerId,
+    leaseId: original[0].leaseId || undefined,
+    type: original[0].type as CommunicationMeta["type"],
+    recipientName: original[0].recipientName,
+  };
+
+  if (original[0].channel === "email") {
+    await queueEmail(
+      { to: original[0].recipientEmail!, subject: original[0].subject || "", body: original[0].body },
+      undefined,
+      meta,
+    );
+  } else if (original[0].channel === "sms") {
+    await queueSms(
+      { to: original[0].recipientPhone!, body: original[0].body },
+      undefined,
+      meta,
+    );
+  }
+
   return c.json({ message: "Communication re-queued for delivery" });
 });
 
-// Send a custom message to a tenant
+// Send a custom message to a tenant (looks up tenant from lease)
 communicationsRouter.post(
   "/send",
   zValidator(
@@ -101,23 +140,53 @@ communicationsRouter.post(
   async (c) => {
     const data = c.req.valid("json");
     const ownerId = getRequiredUserId(c);
-    const id = crypto.randomUUID();
-    // Phase 4: Implement actual queueing via email/SMS queue
-    // For now, create the communication record
-    await db.insert(communications).values({
-      id,
-      ownerId,
-      leaseId: data.leaseId,
-      channel: data.channel,
-      type: "custom",
-      recipientName: "Tenant", // Phase 4: look up tenant name from lease
-      recipientEmail: data.channel === "email" ? "pending" : null,
-      recipientPhone: data.channel === "sms" ? "pending" : null,
-      subject: data.subject || null,
-      body: data.body,
-      status: "queued",
-    });
-    const [created] = await db.select().from(communications).where(eq(communications.id, id));
-    return c.json({ data: created, message: "Message queued for delivery" }, 201);
+
+    // Look up the lease and verify ownership
+    const lease = await db.select().from(leases)
+      .where(and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId))).limit(1);
+    if (!lease[0]) return c.json({ error: "Lease not found" }, 404);
+
+    // Get primary tenant for this lease
+    const tenantLink = await db.select().from(leaseTenants)
+      .where(and(eq(leaseTenants.leaseId, data.leaseId), eq(leaseTenants.isPrimary, true))).limit(1);
+    if (!tenantLink[0]) return c.json({ error: "No primary tenant found for this lease" }, 404);
+
+    const tenant = await db.select().from(tenants)
+      .where(eq(tenants.id, tenantLink[0].tenantId)).limit(1);
+    if (!tenant[0]) return c.json({ error: "Tenant not found" }, 404);
+
+    const tenantName = `${tenant[0].firstName} ${tenant[0].lastName}`.trim();
+
+    if (data.channel === "email") {
+      if (!tenant[0].email) {
+        return c.json({ error: "Tenant has no email address" }, 400);
+      }
+      await queueEmail(
+        { to: tenant[0].email, subject: data.subject!, body: data.body },
+        undefined,
+        {
+          ownerId,
+          leaseId: data.leaseId,
+          type: "custom",
+          recipientName: tenantName || tenant[0].email,
+        },
+      );
+    } else if (data.channel === "sms") {
+      if (!tenant[0].phone) {
+        return c.json({ error: "Tenant has no phone number" }, 400);
+      }
+      await queueSms(
+        { to: tenant[0].phone, body: data.body },
+        undefined,
+        {
+          ownerId,
+          leaseId: data.leaseId,
+          type: "custom",
+          recipientName: tenantName || tenant[0].phone,
+        },
+      );
+    }
+
+    return c.json({ message: "Message queued for delivery" }, 201);
   }
 );
