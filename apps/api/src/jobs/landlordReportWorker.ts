@@ -15,7 +15,7 @@ import {
   generateReportEmail,
   shouldRunOnDay,
 } from "../services/landlordReport";
-import { sendEmail } from "../lib/email";
+import { queueEmail } from "./emailQueueWorker";
 
 const QUEUE_NAME = "landlord-report";
 
@@ -164,7 +164,11 @@ const worker = new Worker(
 
         if (shouldSendReport(reportData)) {
           const email = generateReportEmail(reportData);
-          await sendEmail(email);
+          await queueEmail(email, undefined, {
+            ownerId,
+            type: "landlord_report",
+            recipientName: ownerName,
+          });
           sentCount++;
           console.log(`[LandlordReport] Sent report to ${ownerEmail}`);
         } else {

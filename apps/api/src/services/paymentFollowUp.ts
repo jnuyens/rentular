@@ -1,5 +1,5 @@
 import { renderTemplate, type EmailOptions } from "../lib/email";
-import { queueEmail } from "../jobs/emailQueueWorker";
+import { queueEmail, type CommunicationMeta } from "../jobs/emailQueueWorker";
 import { queueSms } from "../jobs/smsQueueWorker";
 import { normalizePhoneNumber } from "../lib/sms";
 import {
@@ -175,7 +175,8 @@ export function determineReminderLevel(
 export async function sendReminder(
   payment: OverduePayment,
   level: ReminderLevel,
-  settings: FollowUpSettings
+  settings: FollowUpSettings,
+  ownerId: string,
 ): Promise<void> {
   const vars = getTemplateVariables(payment, settings);
 
@@ -218,7 +219,12 @@ export async function sendReminder(
     ];
   }
 
-  await queueEmail(emailOptions);
+  await queueEmail(emailOptions, undefined, {
+    ownerId,
+    leaseId: payment.leaseId,
+    type: `payment_reminder_${level}` as CommunicationMeta["type"],
+    recipientName: payment.tenantName,
+  });
 
   // Send SMS if enabled and tenant has a phone number
   if (settings.smsEnabled && payment.tenantPhone) {
@@ -233,6 +239,11 @@ export async function sendReminder(
     await queueSms({
       to: normalizePhoneNumber(payment.tenantPhone),
       body: renderTemplate(smsTemplate, vars),
+    }, undefined, {
+      ownerId,
+      leaseId: payment.leaseId,
+      type: `payment_reminder_${level}` as CommunicationMeta["type"],
+      recipientName: payment.tenantName,
     });
   }
 }

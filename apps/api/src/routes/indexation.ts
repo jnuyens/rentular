@@ -938,6 +938,11 @@ indexationRouter.post(
             to: tenant.email,
             subject: renderedSubject,
             body: renderedBody,
+          }, undefined, {
+            ownerId: userId,
+            leaseId,
+            type: "indexation_notification",
+            recipientName: tenantName,
           });
 
           notificationSent = true;

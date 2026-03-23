@@ -20,7 +20,7 @@ import {
 } from "../services/paymentFollowUp";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { processIncomingTransactions } from "../services/transactionMatcher";
-import { sendEmail } from "../lib/email";
+import { queueEmail } from "./emailQueueWorker";
 import type { SupportedLanguage } from "@rentular/shared";
 
 const QUEUE_NAME = "payment-check";
@@ -217,7 +217,7 @@ const worker = new Worker(
         const level = determineReminderLevel(paymentInfo, followUpSettings);
 
         if (level) {
-          await sendReminder(paymentInfo, level, followUpSettings);
+          await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId);
 
           // Record the reminder in paymentReminders table
           await db.insert(paymentReminders).values({
@@ -375,10 +375,14 @@ const worker = new Worker(
             .limit(1);
 
           if (owner[0]?.email) {
-            await sendEmail({
+            await queueEmail({
               to: owner[0].email,
               subject: `Bank connection expiring in ${daysUntilExpiry} day(s) - action required`,
               body: `Dear ${owner[0].name || "Landlord"},\n\nYour bank connection for ${conn.institutionName || conn.iban || "your account"} will expire in ${daysUntilExpiry} day(s).\n\nAutomatic renewal was not possible. Please reconnect your bank account in the Rentular dashboard to continue receiving automatic payment matching.\n\nIf you do not reconnect before expiry, incoming bank transfers will no longer be automatically matched to expected payments.\n\nBest regards,\nRentular`,
+            }, undefined, {
+              ownerId: conn.ownerId,
+              type: "other",
+              recipientName: owner[0].name || "Landlord",
             });
             console.log(
               `[PaymentCheck] Consent expiry warning sent to ${owner[0].email} for connection ${conn.id} (${daysUntilExpiry} days remaining)`
