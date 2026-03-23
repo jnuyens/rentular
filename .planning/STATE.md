@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to execute
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-23T09:12:46.222Z"
+status: Ready to plan
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-23T23:41:23.305Z"
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 15
 ---
 
 # Project State
@@ -23,8 +23,8 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 ## Current Position
 
-Phase: 04 (notifications-payment-follow-up) — EXECUTING
-Plan: 2 of 3
+Phase: 5
+Plan: Not started
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Plan: 2 of 3
 | Phase 03 P01 | 2min | 2 tasks | 3 files |
 | Phase 03 P02 | 5min | 2 tasks | 2 files |
 | Phase 04 P01 | 5min | 3 tasks | 9 files |
+| Phase 04 P02 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 04]: CommunicationMeta is optional third parameter on queueEmail/queueSms for backward compatibility
 - [Phase 04]: Support chat endpoint skipped for communication logging (no authenticated user, ownerId is NOT NULL)
 - [Phase 04]: Direct sendEmail calls replaced with queueEmail in landlordReportWorker and paymentCheckWorker for centralized logging
+- [Phase 04]: SMTP transport cache stores transport + fromAddress/fromName together to avoid extra DB query on cache hit
+- [Phase 04]: ownerId passed through email queue job data for per-landlord SMTP transport selection at send time
+- [Phase 04]: Communications send endpoint relies on queueEmail/queueSms auto-logging instead of manual db.insert
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T09:12:46.218Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-23T09:21:29.063Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

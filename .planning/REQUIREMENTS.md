@@ -37,9 +37,9 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **NTF-02**: System sends formal payment reminder email after configurable grace period
 - [x] **NTF-03**: System sends final payment reminder email before escalation
 - [x] **NTF-04**: System sends SMS payment reminders at each reminder level
-- [ ] **NTF-05**: Landlord can customize email/SMS templates per language (EN, NL, FR, DE) and per reminder level
+- [x] **NTF-05**: Landlord can customize email/SMS templates per language (EN, NL, FR, DE) and per reminder level
 - [x] **NTF-06**: System logs all sent communications (email, SMS) with delivery status
-- [ ] **NTF-07**: Email delivery works with domain-specific SMTP configuration
+- [x] **NTF-07**: Email delivery works with domain-specific SMTP configuration
 
 ### Property Managers
 
@@ -177,9 +177,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NTF-02 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-03 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-04 | Phase 4: Notifications & Payment Follow-Up | Complete |
-| NTF-05 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-05 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-06 | Phase 4: Notifications & Payment Follow-Up | Complete |
-| NTF-07 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-07 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | I18N-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
 | PM-01 | Phase 5: Property Manager Roles | Pending |
 | PM-02 | Phase 5: Property Manager Roles | Pending |
