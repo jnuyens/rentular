@@ -33,12 +33,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Notifications
 
-- [ ] **NTF-01**: System sends automated friendly payment reminder email when rent is overdue
-- [ ] **NTF-02**: System sends formal payment reminder email after configurable grace period
-- [ ] **NTF-03**: System sends final payment reminder email before escalation
-- [ ] **NTF-04**: System sends SMS payment reminders at each reminder level
+- [x] **NTF-01**: System sends automated friendly payment reminder email when rent is overdue
+- [x] **NTF-02**: System sends formal payment reminder email after configurable grace period
+- [x] **NTF-03**: System sends final payment reminder email before escalation
+- [x] **NTF-04**: System sends SMS payment reminders at each reminder level
 - [ ] **NTF-05**: Landlord can customize email/SMS templates per language (EN, NL, FR, DE) and per reminder level
-- [ ] **NTF-06**: System logs all sent communications (email, SMS) with delivery status
+- [x] **NTF-06**: System logs all sent communications (email, SMS) with delivery status
 - [ ] **NTF-07**: Email delivery works with domain-specific SMTP configuration
 
 ### Property Managers
@@ -173,12 +173,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IDX-06 | Phase 3: Rent Indexation | Complete |
 | IDX-07 | Phase 3: Rent Indexation | Complete |
 | IDX-08 | Phase 3: Rent Indexation | Complete |
-| NTF-01 | Phase 4: Notifications & Payment Follow-Up | Pending |
-| NTF-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
-| NTF-03 | Phase 4: Notifications & Payment Follow-Up | Pending |
-| NTF-04 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-01 | Phase 4: Notifications & Payment Follow-Up | Complete |
+| NTF-02 | Phase 4: Notifications & Payment Follow-Up | Complete |
+| NTF-03 | Phase 4: Notifications & Payment Follow-Up | Complete |
+| NTF-04 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-05 | Phase 4: Notifications & Payment Follow-Up | Pending |
-| NTF-06 | Phase 4: Notifications & Payment Follow-Up | Pending |
+| NTF-06 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-07 | Phase 4: Notifications & Payment Follow-Up | Pending |
 | I18N-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
 | PM-01 | Phase 5: Property Manager Roles | Pending |
