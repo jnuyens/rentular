@@ -85,11 +85,12 @@ Plans:
   3. Landlord can customize email and SMS templates per language (EN, NL, FR, DE) and per reminder level, and those templates are used for outgoing messages
   4. Every sent email and SMS is logged with delivery status, and the landlord can see the communication history
   5. Email delivery works through domain-specific SMTP configuration (not a shared/default sender)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- SMTP settings schema, encryption library, and centralized communications logging in queueEmail/queueSms
+- [ ] 04-02-PLAN.md -- Per-landlord SMTP transport cache, SMTP settings API, and communications resend/send wiring
+- [ ] 04-03-PLAN.md -- Communications dashboard page, sidebar nav, Email Settings tab, SMS consent notice, i18n in 4 languages
 
 ### Phase 5: Property Manager Roles
 **Goal**: Property owners can delegate management of their properties to other users with appropriate role-based permissions
@@ -148,7 +149,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 1. Security & Infrastructure Foundation | 5/5 | Complete | - |
 | 2. Payment Processing & Webhooks | 0/5 | Planning complete | - |
 | 3. Rent Indexation | 0/2 | Planning complete | - |
-| 4. Notifications & Payment Follow-Up | 0/? | Not started | - |
+| 4. Notifications & Payment Follow-Up | 0/3 | Planning complete | - |
 | 5. Property Manager Roles | 0/? | Not started | - |
 | 6. Smovin Import (Beta) | 0/? | Not started | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/? | Not started | - |
