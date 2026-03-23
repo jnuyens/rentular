@@ -41,9 +41,13 @@ Declared values (must be multiples of 4):
 | 2xl | 48px | Not used in this phase |
 | 3xl | 64px | Not used in this phase |
 
-Exceptions: none
+Exceptions:
 
-**Source:** Extracted from existing dashboard layout.tsx and settings/page.tsx patterns. Main content uses `p-8`, cards use `p-6`, nav items use `px-3 py-2.5`.
+| Value | Tailwind | Justification |
+|-------|----------|---------------|
+| 10px | `py-2.5` | Matches established project-wide pattern used in layout.tsx sidebar nav items, all dashboard buttons, select dropdowns, and input fields. Present in 20+ instances across the codebase. Changing to a multiple of 4 would break visual consistency with existing pages. |
+
+**Source:** Extracted from existing dashboard layout.tsx and settings/page.tsx patterns. Main content uses `p-8`, cards use `p-6`, nav items use `px-3 py-2.5`, buttons use `px-4 py-2.5`.
 
 ---
 
@@ -52,11 +56,13 @@ Exceptions: none
 | Role | Size | Weight | Line Height | Tailwind Class |
 |------|------|--------|-------------|----------------|
 | Body | 14px | 400 (normal) | 1.5 | `text-sm` |
-| Label | 14px | 500 (medium) | 1.5 | `text-sm font-medium` |
-| Heading | 24px | 700 (bold) | 1.2 | `text-2xl font-bold` |
+| Label | 14px | 600 (semibold) | 1.5 | `text-sm font-semibold` |
 | Subheading | 18px | 600 (semibold) | 1.3 | `text-lg font-semibold` |
+| Heading | 24px | 600 (semibold) | 1.2 | `text-2xl font-semibold` |
 
-**Source:** Existing pages use `text-2xl font-bold` for page titles, `text-lg font-semibold` for card headings, `text-sm font-medium` for labels and nav items, `text-sm` for body text and table cells.
+**Weights used:** 2 -- normal (400) for body/table text, semibold (600) for labels, subheadings, and headings.
+
+**Source:** Consolidated from existing patterns. The codebase uses `font-medium` (500) and `font-bold` (700) in some places, but this phase standardizes on 400 + 600 to stay within the 2-weight limit. Existing page patterns use `text-lg font-semibold` for card headings and `text-sm` for body, which already align.
 
 ---
 
@@ -86,7 +92,7 @@ Exceptions: none
 | email | `bg-blue-100` | `text-blue-700` |
 | sms | `bg-purple-100` | `text-purple-700` |
 
-Accent reserved for: active tab indicator, primary action buttons ("Send test email", "Save Settings"), active filter state, sidebar nav hover/active state.
+Accent reserved for: active tab indicator, primary action buttons ("Send test email", "Save settings"), active filter state, sidebar nav hover/active state.
 
 ---
 
@@ -95,7 +101,7 @@ Accent reserved for: active tab indicator, primary action buttons ("Send test em
 ### 1. Communications Page (`/communications`)
 
 **Page Header**
-- Title: `h1.text-2xl.font-bold` -- "Communications"
+- Title: `h1.text-2xl.font-semibold` -- "Communications"
 - Subtitle: `p.text-sm.text-[hsl(var(--muted-foreground))]` -- "View all sent emails and SMS messages"
 - No primary CTA button in the header (this is a read-only log)
 
@@ -108,7 +114,7 @@ Accent reserved for: active tab indicator, primary action buttons ("Send test em
 
 **Communications Table**
 - Container: `div.rounded-lg.border.border-[hsl(var(--border))].bg-[hsl(var(--background))].overflow-hidden`
-- Table header row: `bg-[hsl(var(--muted))]` with `text-xs font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider`
+- Table header row: `bg-[hsl(var(--muted))]` with `text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider`
 - Columns: Type | Channel | Recipient | Subject | Date | Status
 - Column widths: Type 15% | Channel 8% | Recipient 20% | Subject 30% | Date 15% | Status 12%
 
@@ -160,7 +166,7 @@ Accent reserved for: active tab indicator, primary action buttons ("Send test em
 | From Name | text input | `Your Company Name` | optional |
 
 - Input styling: `w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50`
-- Label styling: `block text-sm font-medium mb-1`
+- Label styling: `block text-sm font-semibold mb-1`
 
 **Verification Status Indicator**
 - When SMTP settings are saved and verified: `div.flex.items-center.gap-2.text-sm.text-green-600` with `CheckCircle2` icon -- "SMTP connection verified"
@@ -168,11 +174,11 @@ Accent reserved for: active tab indicator, primary action buttons ("Send test em
 - When verification failed: `div.flex.items-center.gap-2.text-sm.text-red-600` with `XCircle` icon -- "Verification failed: {error}"
 
 **Action Buttons**
-- "Send test email" button: `rounded-lg border border-[hsl(var(--primary))] text-[hsl(var(--primary))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--primary))]/10 transition-colors` (outlined style, not filled -- secondary action)
+- "Send test email" button: `rounded-lg border border-[hsl(var(--primary))] text-[hsl(var(--primary))] px-4 py-2.5 text-sm font-semibold hover:bg-[hsl(var(--primary))]/10 transition-colors` (outlined style, not filled -- secondary action)
 - Loading state: button text changes to "Sending..." with disabled state, `opacity-50 cursor-not-allowed`
 - Success feedback: inline text below button -- "Test email sent to {email}" in `text-sm text-green-600`
 - Failure feedback: inline text below button -- "Failed: {error}" in `text-sm text-red-600`
-- "Save" button and "Reset" button use existing settings page pattern: page-level save/reset at the top of the settings area
+- "Save settings" button and "Reset to defaults" button use existing settings page pattern: page-level save/reset at the top of the settings area
 
 **SMS Consent Notice**
 - In the existing "follow-up" tab, add an info banner above the SMS toggle:
@@ -187,7 +193,7 @@ Accent reserved for: active tab indicator, primary action buttons ("Send test em
 - Href: `/communications`
 - Icon: `MessageSquare` from Lucide React
 - i18n key: `nav.communications`
-- Styling: identical to all other nav items -- `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]`
+- Styling: identical to all other nav items -- `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]`
 
 ---
 
@@ -216,6 +222,9 @@ All copy below is for the EN locale. NL, FR, DE translations must be provided in
 | SMS consent notice | "SMS consent is your responsibility as a landlord. Ensure you have obtained explicit consent from tenants before enabling SMS reminders. Rentular does not manage tenant opt-in/opt-out." |
 | Nav label | "Communications" |
 | Settings tab label | "Email Settings" |
+| Primary CTA (settings save) | "Save settings" |
+| Secondary action (settings reset) | "Reset to defaults" |
+| Error state (communications load) | "Failed to load communications. Please try again." |
 
 ### Communication Type Labels (for table display and filter dropdown)
 
@@ -290,6 +299,7 @@ communications.statusFailed = "Failed"
 communications.statusBounced = "Bounced"
 communications.channelEmail = "Email"
 communications.channelSms = "SMS"
+communications.loadError = "Failed to load communications. Please try again."
 
 settings.emailSettings = "Email Settings"
 settings.smtpTitle = "Custom SMTP Server"
@@ -330,7 +340,7 @@ settings.smsConsentNotice = "SMS consent is your responsibility as a landlord. E
 - If any field is filled, host/port/username/password/fromAddress all become required (client-side validation)
 - Password field has eye-toggle to show/hide (use existing `Eye`/`EyeOff` pattern from payments page)
 - "Send test email" button is disabled until all required fields are filled
-- "Send test email" does NOT save settings -- it tests with the current form values. Landlord must click "Save" separately.
+- "Send test email" does NOT save settings -- it tests with the current form values. Landlord must click "Save settings" separately.
 
 ### Loading States
 - Communications page: skeleton placeholder -- 5 rows of `animate-pulse bg-[hsl(var(--muted))] h-12 rounded` while loading
