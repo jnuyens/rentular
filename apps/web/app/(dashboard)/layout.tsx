@@ -4,6 +4,7 @@ import {
   FileText,
   CreditCard,
   TrendingUp,
+  MessageSquare,
   Wrench,
   Settings,
   LogOut,
@@ -21,6 +22,7 @@ const navigationItems = [
   { key: "leases" as const, href: "/leases", icon: FileText },
   { key: "payments" as const, href: "/payments", icon: CreditCard },
   { key: "indexation" as const, href: "/indexation", icon: TrendingUp },
+  { key: "communications" as const, href: "/communications", icon: MessageSquare },
   { key: "maintenance" as const, href: "/maintenance", icon: Wrench },
   { key: "settings" as const, href: "/settings", icon: Settings },
 ];
