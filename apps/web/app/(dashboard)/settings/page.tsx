@@ -9,12 +9,17 @@ import {
   Percent,
   RotateCcw,
   Eye,
+  EyeOff,
   Save,
   FileBarChart,
   X,
   Globe,
   Landmark,
   Trash2,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  MessageSquare,
 } from "lucide-react";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
 
@@ -244,7 +249,7 @@ function deepCloneTemplates(t: TemplatesByLang): TemplatesByLang {
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const [activeTab, setActiveTab] = useState<
-    "follow-up" | "landlord-reports" | "general" | "bank-accounts"
+    "follow-up" | "landlord-reports" | "general" | "bank-accounts" | "email-settings"
   >("follow-up");
   const [templateLang, setTemplateLang] = useState<Lang>("nl");
   const [settings, setSettings] = useState<FollowUpSettings>({
@@ -288,6 +293,38 @@ export default function SettingsPage() {
   });
   const [bankLoading, setBankLoading] = useState(false);
 
+  // SMTP settings state
+  const [smtpSettings, setSmtpSettings] = useState<{
+    host: string;
+    port: number;
+    username: string;
+    password: string;
+    fromAddress: string;
+    fromName: string;
+  }>({
+    host: "",
+    port: 587,
+    username: "",
+    password: "",
+    fromAddress: "",
+    fromName: "",
+  });
+  const [smtpLoaded, setSmtpLoaded] = useState(false);
+  const [smtpHasPassword, setSmtpHasPassword] = useState(false);
+  const [smtpVerified, setSmtpVerified] = useState<boolean | null>(null);
+  const [smtpLastVerifiedAt, setSmtpLastVerifiedAt] = useState<string | null>(null);
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+
+  // SMS template state (for follow-up tab)
+  const [smsTemplates, setSmsTemplates] = useState({
+    smsFriendlyMessage: "",
+    smsFormalMessage: "",
+    smsFinalMessage: "",
+  });
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const fetchBankAccounts = useCallback(async () => {
@@ -304,9 +341,71 @@ export default function SettingsPage() {
     }
   }, [apiUrl]);
 
+  const fetchSmtpSettings = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/smtp`, { credentials: "include" });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setSmtpSettings({
+            host: json.data.host || "",
+            port: json.data.port || 587,
+            username: json.data.username || "",
+            password: "",
+            fromAddress: json.data.fromAddress || "",
+            fromName: json.data.fromName || "",
+          });
+          setSmtpHasPassword(json.data.hasPassword || false);
+          setSmtpVerified(json.data.verified);
+          setSmtpLastVerifiedAt(json.data.lastVerifiedAt);
+        }
+        setSmtpLoaded(true);
+      }
+    } catch (err) {
+      console.error("[Settings] Failed to fetch SMTP settings:", err);
+      setSmtpLoaded(true);
+    }
+  }, [apiUrl]);
+
+  const fetchFollowUpSettings = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/payment-follow-up`, { credentials: "include" });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data || json) {
+          const data = json.data || json;
+          setSmsTemplates({
+            smsFriendlyMessage: data.smsFriendlyMessage || "",
+            smsFormalMessage: data.smsFormalMessage || "",
+            smsFinalMessage: data.smsFinalMessage || "",
+          });
+          // Also update follow-up settings if present
+          if (data.enabled !== undefined) {
+            setSettings(prev => ({
+              ...prev,
+              enabled: data.enabled ?? prev.enabled,
+              friendlyReminderDays: data.friendlyReminderDays ?? prev.friendlyReminderDays,
+              formalReminderDays: data.formalReminderDays ?? prev.formalReminderDays,
+              finalReminderDays: data.finalReminderDays ?? prev.finalReminderDays,
+              interestEnabled: data.interestEnabled ?? prev.interestEnabled,
+              annualInterestRate: data.annualInterestRate ?? prev.annualInterestRate,
+            }));
+          }
+          if (data.templates) {
+            setSettings(prev => ({ ...prev, templates: data.templates }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Settings] Failed to fetch follow-up settings:", err);
+    }
+  }, [apiUrl]);
+
   useEffect(() => {
     fetchBankAccounts();
-  }, [fetchBankAccounts]);
+    fetchSmtpSettings();
+    fetchFollowUpSettings();
+  }, [fetchBankAccounts, fetchSmtpSettings, fetchFollowUpSettings]);
 
   const handleAddBankAccount = async () => {
     setBankLoading(true);
@@ -343,6 +442,90 @@ export default function SettingsPage() {
       credentials: "include",
     });
     await fetchBankAccounts();
+  };
+
+  const handleSmtpSave = async () => {
+    if (!smtpSettings.host) return;
+    setSmtpSaving(true);
+    try {
+      const body: Record<string, unknown> = {
+        host: smtpSettings.host,
+        port: smtpSettings.port,
+        username: smtpSettings.username,
+        fromAddress: smtpSettings.fromAddress,
+        fromName: smtpSettings.fromName || undefined,
+      };
+      if (smtpSettings.password) {
+        body.password = smtpSettings.password;
+      } else if (!smtpHasPassword) {
+        setSmtpSaving(false);
+        return;
+      }
+      if (!body.password && !smtpHasPassword) {
+        setSmtpSaving(false);
+        return;
+      }
+
+      const res = await fetch(`${apiUrl}/api/v1/settings/smtp`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setSmtpVerified(false);
+        setSmtpHasPassword(true);
+        setSmtpSettings(prev => ({ ...prev, password: "" }));
+        await fetchSmtpSettings();
+      }
+    } catch (err) {
+      console.error("[Settings] Failed to save SMTP:", err);
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleSmtpTest = async () => {
+    setSmtpTesting(true);
+    setSmtpTestResult(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/smtp/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          host: smtpSettings.host,
+          port: smtpSettings.port,
+          username: smtpSettings.username,
+          password: smtpSettings.password,
+          fromAddress: smtpSettings.fromAddress,
+        }),
+      });
+      const json = await res.json();
+      setSmtpTestResult({
+        success: json.success,
+        message: json.success ? json.message : json.error,
+      });
+    } catch (err) {
+      setSmtpTestResult({ success: false, message: String(err) });
+    } finally {
+      setSmtpTesting(false);
+    }
+  };
+
+  const handleSmtpReset = async () => {
+    try {
+      await fetch(`${apiUrl}/api/v1/settings/smtp`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      setSmtpSettings({ host: "", port: 587, username: "", password: "", fromAddress: "", fromName: "" });
+      setSmtpHasPassword(false);
+      setSmtpVerified(null);
+      setSmtpTestResult(null);
+    } catch (err) {
+      console.error("[Settings] Failed to reset SMTP:", err);
+    }
   };
 
   const update = (field: keyof Omit<FollowUpSettings, "templates">, value: unknown) => {
@@ -395,7 +578,12 @@ export default function SettingsPage() {
         fetch(`${apiUrl}/api/v1/settings/payment-follow-up`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
+          body: JSON.stringify({
+            ...settings,
+            smsFriendlyMessage: smsTemplates.smsFriendlyMessage,
+            smsFormalMessage: smsTemplates.smsFormalMessage,
+            smsFinalMessage: smsTemplates.smsFinalMessage,
+          }),
           credentials: "include",
         }),
         fetch(`${apiUrl}/api/v1/settings/landlord-report`, {
@@ -444,6 +632,7 @@ export default function SettingsPage() {
     { key: "follow-up" as const, label: t("paymentFollowUp") },
     { key: "landlord-reports" as const, label: t("landlordReports") },
     { key: "bank-accounts" as const, label: t("bankAccounts") },
+    { key: "email-settings" as const, label: t("emailSettings") },
     { key: "general" as const, label: t("general") },
   ];
 
@@ -479,6 +668,12 @@ export default function SettingsPage() {
 
       {activeTab === "follow-up" && (
         <div className="space-y-6">
+          {/* SMS consent notice */}
+          <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
+            <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span>{t("smsConsentNotice")}</span>
+          </div>
+
           {/* Enable/disable */}
           <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
             <div className="flex items-center justify-between">
@@ -683,6 +878,52 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* SMS Templates */}
+          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
+            <div className="mb-4">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <MessageSquare className="h-5 w-5" />
+                {t("smsTemplatesTitle")}
+              </h2>
+              <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+                {t("smsTemplatesDescription")}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smsFriendlyTemplate")}</label>
+                <textarea
+                  value={smsTemplates.smsFriendlyMessage}
+                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFriendlyMessage: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                  placeholder={"{{tenantName}}, your payment of {{amount}} for {{propertyName}} is overdue since {{dueDate}}."}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smsFormalTemplate")}</label>
+                <textarea
+                  value={smsTemplates.smsFormalMessage}
+                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFormalMessage: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                  placeholder={"{{tenantName}}, payment of {{amount}} for {{propertyName}} is now {{daysPastDue}} days overdue. Please arrange payment immediately."}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smsFinalTemplate")}</label>
+                <textarea
+                  value={smsTemplates.smsFinalMessage}
+                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFinalMessage: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                  placeholder={"FINAL NOTICE: {{tenantName}}, {{amount}} for {{propertyName}} remains unpaid. Legal action may follow."}
+                />
+              </div>
             </div>
           </div>
 
@@ -995,6 +1236,155 @@ export default function SettingsPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "email-settings" && (
+        <div className="space-y-6">
+          {/* SMTP Configuration Card */}
+          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
+            <h2 className="text-lg font-semibold">{t("smtpTitle")}</h2>
+            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{t("smtpDescription")}</p>
+
+            <div className="mt-6 space-y-4">
+              {/* SMTP Host */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpHost")}</label>
+                <input
+                  type="text"
+                  placeholder="smtp.example.com"
+                  value={smtpSettings.host}
+                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, host: e.target.value }))}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                />
+              </div>
+
+              {/* SMTP Port */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpPort")}</label>
+                <input
+                  type="number"
+                  placeholder="587"
+                  value={smtpSettings.port}
+                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, port: Number(e.target.value) }))}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                />
+              </div>
+
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpUsername")}</label>
+                <input
+                  type="text"
+                  placeholder="user@example.com"
+                  value={smtpSettings.username}
+                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, username: e.target.value }))}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                />
+              </div>
+
+              {/* Password with eye toggle */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpPassword")}</label>
+                <div className="relative">
+                  <input
+                    type={showSmtpPassword ? "text" : "password"}
+                    placeholder={smtpHasPassword ? "********" : ""}
+                    value={smtpSettings.password}
+                    onChange={(e) => setSmtpSettings(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpPassword(!showSmtpPassword)}
+                    aria-label={showSmtpPassword ? "Hide password" : "Show password"}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[hsl(var(--muted-foreground))]"
+                  >
+                    {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* From Address */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpFromAddress")}</label>
+                <input
+                  type="email"
+                  placeholder="noreply@yourdomain.com"
+                  value={smtpSettings.fromAddress}
+                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, fromAddress: e.target.value }))}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                />
+              </div>
+
+              {/* From Name */}
+              <div>
+                <label className="block text-sm font-semibold mb-1">{t("smtpFromName")}</label>
+                <input
+                  type="text"
+                  placeholder="Your Company Name"
+                  value={smtpSettings.fromName}
+                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, fromName: e.target.value }))}
+                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
+                />
+              </div>
+            </div>
+
+            {/* Verification status */}
+            {smtpVerified === true && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
+                <CheckCircle2 className="h-4 w-4" />
+                {t("smtpVerified")}
+              </div>
+            )}
+            {smtpVerified === false && smtpHasPassword && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-yellow-600">
+                <AlertCircle className="h-4 w-4" />
+                {t("smtpNotVerified")}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                onClick={handleSmtpTest}
+                disabled={smtpTesting || !smtpSettings.host || !smtpSettings.username || !smtpSettings.password || !smtpSettings.fromAddress}
+                className={`rounded-lg border border-[hsl(var(--primary))] text-[hsl(var(--primary))] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  smtpTesting || !smtpSettings.host || !smtpSettings.username || !smtpSettings.password || !smtpSettings.fromAddress
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-[hsl(var(--primary))]/10"
+                }`}
+              >
+                {smtpTesting ? t("sendingTest") : t("sendTestEmail")}
+              </button>
+
+              <button
+                onClick={handleSmtpSave}
+                disabled={smtpSaving || !smtpSettings.host}
+                className={`rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  smtpSaving || !smtpSettings.host ? "opacity-50 cursor-not-allowed" : "hover:bg-[hsl(var(--primary))]/90"
+                }`}
+              >
+                {smtpSaving ? t("saving") : t("saveSettings")}
+              </button>
+
+              {smtpHasPassword && (
+                <button
+                  onClick={handleSmtpReset}
+                  className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+                >
+                  {t("resetDefaults")}
+                </button>
+              )}
+            </div>
+
+            {/* Test result */}
+            {smtpTestResult && (
+              <p className={`mt-3 text-sm ${smtpTestResult.success ? "text-green-600" : "text-red-600"}`}>
+                {smtpTestResult.message}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
