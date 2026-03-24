@@ -5,12 +5,14 @@ import * as mem from "../lib/memoryStore";
 
 let db: any = null;
 let dbSchema: any = null;
+let pmSchema: any = null;
 let eq: any = null;
 
 try {
   const dbMod = require("@rentular/db");
   db = dbMod.getDb();
   dbSchema = dbMod.properties;
+  pmSchema = dbMod.propertyManagers;
   eq = require("drizzle-orm").eq;
 } catch {
   console.log("[Properties] Database unavailable, using in-memory store");
@@ -71,13 +73,15 @@ propertiesRouter.post(
   async (c) => {
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
-    const record = { id, ownerId: c.get("userId") || "system", ...data, isArchived: false, createdAt: new Date().toISOString() };
+    const currentOwnerId = c.get("userId") || "system";
+    const record = { id, ownerId: currentOwnerId, ...data, isArchived: false, createdAt: new Date().toISOString() };
 
     try {
       if (db && dbSchema) {
+        const ownerId = c.get("userId") || "system";
         await db.insert(dbSchema).values({
           id,
-          ownerId: c.get("userId") || "system",
+          ownerId,
           name: data.name,
           type: data.type,
           street: data.street,
@@ -93,6 +97,20 @@ propertiesRouter.post(
           epcExpiryDate: data.epcExpiryDate || null,
           notes: data.notes || null,
         });
+
+        // Auto-register owner in propertyManagers (Pattern 6 from research)
+        if (pmSchema && ownerId !== "system") {
+          await db.insert(pmSchema).values({
+            id: crypto.randomUUID(),
+            propertyId: id,
+            userId: ownerId,
+            role: "owner",
+            invitedBy: null,
+            acceptedAt: new Date(),
+            invitedAt: new Date(),
+          });
+        }
+
         return c.json({ data: record, message: "Property created" }, 201);
       }
     } catch (err) {
