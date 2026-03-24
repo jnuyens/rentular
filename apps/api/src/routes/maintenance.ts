@@ -1,9 +1,16 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
-import { getDb, maintenanceTasks, leases, properties } from "@rentular/db";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
+import { getDb, maintenanceTasks, leases, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  canAccessDomain,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
+import type { PropertyManagerRole } from "@rentular/shared";
 
 const db = getDb();
 
@@ -38,11 +45,21 @@ function computeStatus(nextDue: string): "ok" | "due_soon" | "overdue" {
 
 export const maintenanceRouter = new Hono();
 
-// List all maintenance tasks for owner
+// List all maintenance tasks for accessible properties (accountant blocked per D-05)
 maintenanceRouter.get("/", async (c) => {
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return c.json({ data: [], meta: { total: 0 } });
+
+  // Filter out properties where user is accountant (accountant blocked from maintenance per D-05)
+  const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+    .from(propertyManagers)
+    .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
+  const allowedIds = roles.filter(r => canAccessDomain(r.role as PropertyManagerRole, "maintenance")).map(r => r.propertyId);
+  if (allowedIds.length === 0) return c.json({ data: [], meta: { total: 0 } });
+
   const result = await db.select().from(maintenanceTasks)
-    .where(eq(maintenanceTasks.ownerId, ownerId));
+    .where(inArray(maintenanceTasks.propertyId, allowedIds));
   const data = result.map((t) => ({
     ...t,
     status: computeStatus(t.nextDue),
@@ -56,7 +73,19 @@ maintenanceRouter.post(
   zValidator("json", createMaintenanceSchema),
   async (c) => {
     const data = c.req.valid("json");
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
+
+    // Check manager+ role on the property
+    const role = await getUserPropertyRole(userId, data.propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+
+    // Look up the property's actual owner
+    const [property] = await db.select({ ownerId: properties.ownerId }).from(properties).where(eq(properties.id, data.propertyId));
+    if (!property) return c.json({ error: "Property not found" }, 404);
+    const ownerId = property.ownerId;
+
     const id = crypto.randomUUID();
     const nextDue = computeNextDue(data.lastCompleted || undefined, data.intervalMonths);
     await db.insert(maintenanceTasks).values({
@@ -80,10 +109,16 @@ maintenanceRouter.post(
 // Update a task (toggle autoEmail, set lastCompleted date, etc.)
 maintenanceRouter.put("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const task = await db.select().from(maintenanceTasks)
-    .where(and(eq(maintenanceTasks.id, id), eq(maintenanceTasks.ownerId, ownerId)));
+    .where(eq(maintenanceTasks.id, id));
   if (!task[0]) return c.json({ error: "Not found" }, 404);
+
+  // Check manager+ role on the task's property
+  const role = await getUserPropertyRole(userId, task[0].propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
 
   const body = await c.req.json();
   const updates: Record<string, any> = {};
@@ -96,7 +131,7 @@ maintenanceRouter.put("/:id", async (c) => {
 
   if (Object.keys(updates).length > 0) {
     await db.update(maintenanceTasks).set(updates)
-      .where(and(eq(maintenanceTasks.id, id), eq(maintenanceTasks.ownerId, ownerId)));
+      .where(eq(maintenanceTasks.id, id));
   }
 
   const [updated] = await db.select().from(maintenanceTasks).where(eq(maintenanceTasks.id, id));
@@ -106,10 +141,16 @@ maintenanceRouter.put("/:id", async (c) => {
 // Mark task as completed (today)
 maintenanceRouter.post("/:id/complete", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const task = await db.select().from(maintenanceTasks)
-    .where(and(eq(maintenanceTasks.id, id), eq(maintenanceTasks.ownerId, ownerId)));
+    .where(eq(maintenanceTasks.id, id));
   if (!task[0]) return c.json({ error: "Not found" }, 404);
+
+  // Check manager+ role on the task's property
+  const role = await getUserPropertyRole(userId, task[0].propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
 
   const today = new Date().toISOString().split("T")[0];
   const nextDue = computeNextDue(today, task[0].intervalMonths);
@@ -122,16 +163,28 @@ maintenanceRouter.post("/:id/complete", async (c) => {
 
 // Auto-generate maintenance tasks for all leases based on property heating type
 maintenanceRouter.post("/auto-generate", async (c) => {
-  const ownerId = getRequiredUserId(c);
-  // Query active leases for this owner
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return c.json({ data: [], message: "Generated 0 tasks" });
+
+  // Only generate for properties where user has manager+ role and can access maintenance domain
+  const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+    .from(propertyManagers)
+    .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
+  const managerIds = roles
+    .filter(r => hasMinimumRole(r.role as PropertyManagerRole, "manager") && canAccessDomain(r.role as PropertyManagerRole, "maintenance"))
+    .map(r => r.propertyId);
+  if (managerIds.length === 0) return c.json({ data: [], message: "Generated 0 tasks" });
+
+  // Query active leases for accessible properties
   const activeLeases = await db.select().from(leases)
-    .where(and(eq(leases.ownerId, ownerId), eq(leases.status, "active")));
-  // Query all properties for this owner (to get heatingType)
+    .where(and(inArray(leases.propertyId, managerIds), eq(leases.status, "active")));
+  // Query accessible properties (to get heatingType)
   const ownerProperties = await db.select().from(properties)
-    .where(eq(properties.ownerId, ownerId));
-  // Query existing maintenance tasks for this owner
+    .where(inArray(properties.id, managerIds));
+  // Query existing maintenance tasks for accessible properties
   const existingTasks = await db.select().from(maintenanceTasks)
-    .where(eq(maintenanceTasks.ownerId, ownerId));
+    .where(inArray(maintenanceTasks.propertyId, managerIds));
 
   const propMap = new Map(ownerProperties.map((p) => [p.id, p]));
   const created: any[] = [];
@@ -140,6 +193,7 @@ maintenanceRouter.post("/auto-generate", async (c) => {
     const prop = propMap.get(lease.propertyId);
     if (!prop) continue;
 
+    const ownerId = prop.ownerId;
     const heatingType = prop.heatingType || "";
 
     // Fire alarm - always, every 12 months
@@ -200,10 +254,17 @@ maintenanceRouter.post("/auto-generate", async (c) => {
 // Delete a maintenance task
 maintenanceRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const existing = await db.select().from(maintenanceTasks)
-    .where(and(eq(maintenanceTasks.id, id), eq(maintenanceTasks.ownerId, ownerId)));
+    .where(eq(maintenanceTasks.id, id));
   if (!existing[0]) return c.json({ error: "Not found" }, 404);
+
+  // Check co_owner+ role on the task's property
+  const role = await getUserPropertyRole(userId, existing[0].propertyId);
+  if (!role || !hasMinimumRole(role, "co_owner")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
+
   await db.delete(maintenanceTasks).where(eq(maintenanceTasks.id, id));
   return c.json({ message: "Deleted" });
 });

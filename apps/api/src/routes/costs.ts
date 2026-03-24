@@ -1,9 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, inArray, or } from "drizzle-orm";
 import { getDb, costs } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 const db = getDb();
 
@@ -14,8 +19,22 @@ costsRouter.get("/summary/totals", async (c) => {
   const from = c.req.query("from");
   const to = c.req.query("to");
 
-  const ownerId = getRequiredUserId(c);
-  const conditions = [eq(costs.ownerId, ownerId)];
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+
+  // Build conditions: costs on accessible properties OR general costs owned by user (no propertyId)
+  const conditions: any[] = [];
+  if (accessibleIds.length > 0) {
+    conditions.push(
+      or(
+        inArray(costs.propertyId, accessibleIds),
+        and(eq(costs.ownerId, userId), eq(costs.propertyId, ""))
+      )
+    );
+  } else {
+    // No accessible properties -- only show user's own general costs (if any)
+    conditions.push(and(eq(costs.ownerId, userId), eq(costs.propertyId, "")));
+  }
   if (from) conditions.push(gte(costs.date, from));
   if (to) conditions.push(lte(costs.date, to));
   const allCosts = await db.select().from(costs).where(and(...conditions));
@@ -39,8 +58,21 @@ costsRouter.get("/", async (c) => {
   const from = c.req.query("from");
   const to = c.req.query("to");
 
-  const ownerId = getRequiredUserId(c);
-  const conditions = [eq(costs.ownerId, ownerId)];
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+
+  // Build conditions: costs on accessible properties OR general costs owned by user
+  const conditions: any[] = [];
+  if (accessibleIds.length > 0) {
+    conditions.push(
+      or(
+        inArray(costs.propertyId, accessibleIds),
+        and(eq(costs.ownerId, userId), eq(costs.propertyId, ""))
+      )
+    );
+  } else {
+    conditions.push(and(eq(costs.ownerId, userId), eq(costs.propertyId, "")));
+  }
   if (propertyId) conditions.push(eq(costs.propertyId, propertyId));
   if (leaseId) conditions.push(eq(costs.leaseId, leaseId));
   if (category) conditions.push(eq(costs.category, category as any));
@@ -53,10 +85,20 @@ costsRouter.get("/", async (c) => {
 // Get cost details
 costsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const result = await db.select().from(costs)
-    .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
-  return result[0] ? c.json({ data: result[0] }) : c.json({ error: "Cost not found" }, 404);
+    .where(eq(costs.id, id));
+  if (!result[0]) return c.json({ error: "Cost not found" }, 404);
+
+  // Verify access: if cost has a propertyId, check property access; otherwise check ownership
+  if (result[0].propertyId) {
+    const role = await getUserPropertyRole(userId, result[0].propertyId);
+    if (!role) return c.json({ error: "Cost not found" }, 404);
+  } else if (result[0].ownerId !== userId) {
+    return c.json({ error: "Cost not found" }, 404);
+  }
+
+  return c.json({ data: result[0] });
 });
 
 // Add a cost
@@ -88,11 +130,20 @@ costsRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
+
+    // If cost is linked to a property, check accountant+ role
+    if (data.propertyId) {
+      const role = await getUserPropertyRole(userId, data.propertyId);
+      if (!role || !hasMinimumRole(role, "accountant")) {
+        return c.json({ error: "Insufficient permissions" }, 403);
+      }
+    }
+
     const id = crypto.randomUUID();
     await db.insert(costs).values({
       id,
-      ownerId,
+      ownerId: userId,
       propertyId: data.propertyId || null,
       leaseId: data.leaseId || null,
       category: data.category,
@@ -129,10 +180,21 @@ costsRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
     const existing = await db.select().from(costs)
-      .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+      .where(eq(costs.id, id));
     if (!existing[0]) return c.json({ error: "Cost not found" }, 404);
+
+    // Check accountant+ role on the cost's property
+    if (existing[0].propertyId) {
+      const role = await getUserPropertyRole(userId, existing[0].propertyId);
+      if (!role || !hasMinimumRole(role, "accountant")) {
+        return c.json({ error: "Insufficient permissions" }, 403);
+      }
+    } else if (existing[0].ownerId !== userId) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+
     const updateData: Record<string, any> = {};
     if (data.category !== undefined) updateData.category = data.category;
     if (data.description !== undefined) updateData.description = data.description;
@@ -142,7 +204,7 @@ costsRouter.patch(
     if (data.reference !== undefined) updateData.reference = data.reference;
     if (data.notes !== undefined) updateData.notes = data.notes;
     await db.update(costs).set(updateData)
-      .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+      .where(eq(costs.id, id));
     const [updated] = await db.select().from(costs).where(eq(costs.id, id));
     return c.json({ data: updated, message: "Cost updated" });
   }
@@ -151,10 +213,21 @@ costsRouter.patch(
 // Delete a cost
 costsRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const existing = await db.select().from(costs)
-    .where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+    .where(eq(costs.id, id));
   if (!existing[0]) return c.json({ error: "Cost not found" }, 404);
-  await db.delete(costs).where(and(eq(costs.id, id), eq(costs.ownerId, ownerId)));
+
+  // Check co_owner+ role on the cost's property
+  if (existing[0].propertyId) {
+    const role = await getUserPropertyRole(userId, existing[0].propertyId);
+    if (!role || !hasMinimumRole(role, "co_owner")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+  } else if (existing[0].ownerId !== userId) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
+
+  await db.delete(costs).where(eq(costs.id, id));
   return c.json({ message: "Cost deleted" });
 });

@@ -11,6 +11,11 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 const db = getDb();
 
@@ -68,7 +73,10 @@ paymentsRouter.get(
   "/overview",
   zValidator("query", overviewQuerySchema),
   async (c) => {
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
+    const accessibleIds = await getAccessiblePropertyIds(userId);
+    if (accessibleIds.length === 0) return c.json({ data: { summary: { period: { from: "", to: "" }, totalExpected: 0, totalCollected: 0, totalOverdue: 0, totalProcessing: 0, totalFees: 0, totalInterest: 0, countByStatus: { paid: 0, pending: 0, processing: 0, failed: 0, cancelled: 0, refunded: 0 }, totalPayments: 0, currentMonthOverdue: 0 } } });
+
     const query = c.req.valid("query");
     const { fromDate, toDate } = resolveDateRange(
       query.period,
@@ -78,7 +86,7 @@ paymentsRouter.get(
 
     // Build conditions
     const conditions = [
-      eq(leases.ownerId, ownerId),
+      inArray(leases.propertyId, accessibleIds),
       gte(payments.dueDate, fromDate),
       lte(payments.dueDate, toDate),
     ];
@@ -165,7 +173,7 @@ paymentsRouter.get(
         .innerJoin(leases, eq(payments.leaseId, leases.id))
         .where(
           and(
-            eq(leases.ownerId, ownerId),
+            inArray(leases.propertyId, accessibleIds),
             gte(payments.dueDate, currentMonthStart),
             lte(payments.dueDate, currentMonthEnd),
             inArray(payments.status, ["pending", "failed"]),
@@ -213,10 +221,13 @@ paymentsRouter.get(
     })
   ),
   async (c) => {
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
+    const accessibleIds = await getAccessiblePropertyIds(userId);
+    if (accessibleIds.length === 0) return c.json({ data: [], meta: { total: 0, page: 1, perPage: 50 } });
+
     const { status, leaseId, page = 1, perPage = 50 } = c.req.valid("query");
 
-    const conditions = [eq(leases.ownerId, ownerId)];
+    const conditions = [inArray(leases.propertyId, accessibleIds)];
     if (status) {
       conditions.push(eq(payments.status, status));
     }
@@ -242,7 +253,10 @@ paymentsRouter.get(
 
 // Get overdue payments summary (must be before /:id to avoid route conflict)
 paymentsRouter.get("/summary/overdue", async (c) => {
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return c.json({ data: { totalOverdue: 0, count: 0, payments: [] } });
+
   const today = new Date().toISOString().split("T")[0];
 
   const result = await db
@@ -251,7 +265,7 @@ paymentsRouter.get("/summary/overdue", async (c) => {
     .innerJoin(leases, eq(payments.leaseId, leases.id))
     .where(
       and(
-        eq(leases.ownerId, ownerId),
+        inArray(leases.propertyId, accessibleIds),
         sql`${payments.status} IN ('pending', 'failed')`,
         lt(payments.dueDate, new Date(today))
       )
@@ -282,15 +296,21 @@ paymentsRouter.get("/summary/overdue", async (c) => {
 // Get payment details (PAY-02)
 paymentsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
 
   const result = await db
     .select()
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
-    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(payments.id, id));
 
   if (!result[0]) {
+    return c.json({ error: "Payment not found" }, 404);
+  }
+
+  // Verify user has access to the lease's property
+  const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+  if (!role) {
     return c.json({ error: "Payment not found" }, 404);
   }
 
@@ -312,17 +332,22 @@ paymentsRouter.post(
     })
   ),
   async (c) => {
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
     const data = c.req.valid("json");
 
-    // Verify lease ownership
+    // Verify lease access with accountant+ role (recording payments)
     const lease = await db
       .select()
       .from(leases)
-      .where(and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)));
+      .where(eq(leases.id, data.leaseId));
 
     if (!lease[0]) {
       return c.json({ error: "Lease not found" }, 404);
+    }
+
+    const role = await getUserPropertyRole(userId, lease[0].propertyId);
+    if (!role || !hasMinimumRole(role, "accountant")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
     }
 
     const id = crypto.randomUUID();
@@ -361,17 +386,22 @@ paymentsRouter.post(
     })
   ),
   async (c) => {
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
     const data = c.req.valid("json");
 
-    // Verify lease ownership and get lease details
+    // Verify lease access with manager+ role (GoCardless collection)
     const leaseResult = await db
       .select()
       .from(leases)
-      .where(and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)));
+      .where(eq(leases.id, data.leaseId));
 
     if (!leaseResult[0]) {
       return c.json({ error: "Lease not found" }, 404);
+    }
+
+    const role = await getUserPropertyRole(userId, leaseResult[0].propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
     }
 
     const lease = leaseResult[0];
@@ -442,17 +472,23 @@ paymentsRouter.post(
 // Retry a failed GoCardless payment (PAY-05)
 paymentsRouter.post("/:id/retry", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
 
-  // Find payment with ownership check
+  // Find payment with lease join
   const result = await db
     .select()
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
-    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(payments.id, id));
 
   if (!result[0]) {
     return c.json({ error: "Payment not found" }, 404);
+  }
+
+  // Check manager+ role on the lease's property
+  const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
   }
 
   const payment = result[0].payments;
@@ -481,17 +517,23 @@ paymentsRouter.post("/:id/retry", async (c) => {
 // Cancel a pending GoCardless payment (PAY-06)
 paymentsRouter.post("/:id/cancel", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
 
-  // Find payment with ownership check
+  // Find payment with lease join
   const result = await db
     .select()
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
-    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(payments.id, id));
 
   if (!result[0]) {
     return c.json({ error: "Payment not found" }, 404);
+  }
+
+  // Check manager+ role on the lease's property
+  const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
   }
 
   const payment = result[0].payments;
@@ -549,18 +591,24 @@ paymentsRouter.post(
   ),
   async (c) => {
     const id = c.req.param("id");
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
     const data = c.req.valid("json");
 
-    // Find payment with ownership check
+    // Find payment with lease join
     const result = await db
       .select()
       .from(payments)
       .innerJoin(leases, eq(payments.leaseId, leases.id))
-      .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+      .where(eq(payments.id, id));
 
     if (!result[0]) {
       return c.json({ error: "Payment not found" }, 404);
+    }
+
+    // Check accountant+ role
+    const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+    if (!role || !hasMinimumRole(role, "accountant")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
     }
 
     await db
@@ -579,17 +627,23 @@ paymentsRouter.post(
 // Unmark a payment as ignored (restore it to normal tracking)
 paymentsRouter.post("/:id/unignore", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
 
-  // Find payment with ownership check
+  // Find payment with lease join
   const result = await db
     .select()
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
-    .where(and(eq(payments.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(payments.id, id));
 
   if (!result[0]) {
     return c.json({ error: "Payment not found" }, 404);
+  }
+
+  // Check accountant+ role
+  const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+  if (!role || !hasMinimumRole(role, "accountant")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
   }
 
   await db

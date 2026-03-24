@@ -1,9 +1,16 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
-import { getDb, leases, leaseTenants } from "@rentular/db";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
+import { getDb, leases, leaseTenants, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  canAccessDomain,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
+import type { PropertyManagerRole } from "@rentular/shared";
 
 const db = getDb();
 
@@ -40,11 +47,21 @@ const createLeaseSchema = z.object({
 
 export const leasesRouter = new Hono();
 
-// List all leases for owner
+// List all leases for accessible properties (filtered by role)
 leasesRouter.get("/", async (c) => {
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return c.json({ data: [], meta: { total: 0, page: 1, perPage: 100 } });
+
+  // Filter out properties where user is accountant (accountant blocked from leases per D-05)
+  const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+    .from(propertyManagers)
+    .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
+  const allowedIds = roles.filter(r => canAccessDomain(r.role as PropertyManagerRole, "leases")).map(r => r.propertyId);
+  if (allowedIds.length === 0) return c.json({ data: [], meta: { total: 0, page: 1, perPage: 100 } });
+
   const result = await db.select().from(leases)
-    .where(eq(leases.ownerId, ownerId));
+    .where(inArray(leases.propertyId, allowedIds));
   // For each lease, fetch tenant IDs from junction table
   const data = await Promise.all(result.map(async (lease) => {
     const tenantRows = await db.select().from(leaseTenants)
@@ -57,10 +74,16 @@ leasesRouter.get("/", async (c) => {
 // Get a single lease
 leasesRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const result = await db.select().from(leases)
-    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(leases.id, id));
   if (!result[0]) return c.json({ data: null });
+
+  // Check property access
+  const role = await getUserPropertyRole(userId, result[0].propertyId);
+  if (!role) return c.json({ data: null });
+  if (!canAccessDomain(role, "leases")) return c.json({ error: "Insufficient permissions" }, 403);
+
   const tenantRows = await db.select().from(leaseTenants)
     .where(eq(leaseTenants.leaseId, id));
   return c.json({ data: { ...result[0], tenantIds: tenantRows.map(t => t.tenantId) } });
@@ -69,7 +92,19 @@ leasesRouter.get("/:id", async (c) => {
 // Create a lease
 leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
   const data = c.req.valid("json");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+
+  // Check manager+ role on the target property
+  const role = await getUserPropertyRole(userId, data.propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
+
+  // Look up the property's actual owner to set ownerId correctly
+  const [property] = await db.select({ ownerId: properties.ownerId }).from(properties).where(eq(properties.id, data.propertyId));
+  if (!property) return c.json({ error: "Property not found" }, 404);
+  const ownerId = property.ownerId;
+
   const id = crypto.randomUUID();
   const leaseType = data.leaseType || data.type || "residential_long";
 
@@ -108,10 +143,16 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
 // Update a lease
 leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const existing = await db.select().from(leases)
-    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(leases.id, id));
   if (!existing[0]) return c.json({ error: "Lease not found" }, 404);
+
+  // Check manager+ role on the lease's property
+  const role = await getUserPropertyRole(userId, existing[0].propertyId);
+  if (!role || !hasMinimumRole(role, "manager")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
 
   const data = c.req.valid("json");
   const leaseType = data.leaseType || data.type;
@@ -132,7 +173,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
 
   if (Object.keys(updates).length > 0) {
     await db.update(leases).set(updates)
-      .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+      .where(eq(leases.id, id));
   }
 
   // Update tenant associations if provided
@@ -156,13 +197,20 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
 // Delete a lease
 leasesRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
   const existing = await db.select().from(leases)
-    .where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+    .where(eq(leases.id, id));
   if (!existing[0]) return c.json({ error: "Lease not found" }, 404);
+
+  // Check co_owner+ role on the lease's property
+  const role = await getUserPropertyRole(userId, existing[0].propertyId);
+  if (!role || !hasMinimumRole(role, "co_owner")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
+
   // Delete tenant associations first (foreign key)
   await db.delete(leaseTenants).where(eq(leaseTenants.leaseId, id));
-  await db.delete(leases).where(and(eq(leases.id, id), eq(leases.ownerId, ownerId)));
+  await db.delete(leases).where(eq(leases.id, id));
   return c.json({ message: "Lease deleted" });
 });
 
