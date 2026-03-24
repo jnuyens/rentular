@@ -10,6 +10,7 @@ import {
   LogOut,
 } from "lucide-react";
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -27,6 +28,24 @@ const navigationItems = [
   { key: "settings" as const, href: "/settings", icon: Settings },
 ];
 
+// Role-based nav filtering per D-09 and UI-SPEC sidebar table
+// Maps nav key -> roles that CANNOT see it
+const NAV_VISIBILITY: Record<string, string[]> = {
+  settings: ["co_owner", "manager", "accountant", "viewer"], // owner only
+  tenants: ["accountant"],
+  leases: ["accountant"],
+  indexation: ["accountant"],
+  maintenance: ["accountant"],
+};
+
+const ROLE_PRIORITY: Record<string, number> = {
+  owner: 5,
+  co_owner: 4,
+  manager: 3,
+  accountant: 2,
+  viewer: 1,
+};
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -36,6 +55,40 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
 
   const t = await getTranslations("nav");
+
+  // Determine user's highest role across all accessible properties
+  let highestRole = "owner"; // Default to owner for users who own properties directly
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore.toString();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+    const res = await fetch(`${apiUrl}/api/v1/properties`, {
+      headers: { Cookie: cookieHeader },
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const json = await res.json();
+      const properties = json.data || [];
+      if (properties.length > 0) {
+        // Find the highest role across all properties
+        highestRole = "viewer"; // Start from lowest if properties exist
+        for (const prop of properties) {
+          const propRole = prop.userRole as string;
+          if ((ROLE_PRIORITY[propRole] || 0) > (ROLE_PRIORITY[highestRole] || 0)) {
+            highestRole = propRole;
+          }
+        }
+      }
+    }
+  } catch {
+    // Default to owner if API unreachable -- show all nav items
+  }
+
+  const filteredNav = navigationItems.filter((item) => {
+    const blocked = NAV_VISIBILITY[item.key];
+    if (!blocked) return true; // visible to all roles
+    return !blocked.includes(highestRole);
+  });
 
   return (
     <div className="flex h-screen">
@@ -47,7 +100,7 @@ export default async function DashboardLayout({
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigationItems.map((item) => (
+          {filteredNav.map((item) => (
             <a
               key={item.key}
               href={item.href}

@@ -18,7 +18,10 @@
     "orContinueWith": "of doorgaan met",
     "invalidCredentials": "Ongeldig e-mailadres of wachtwoord.",
     "registrationFailed": "Registratie mislukt. Probeer het opnieuw.",
-    "resetEmailSent": "Als er een account met dat e-mailadres bestaat, is er een resetlink verstuurd."
+    "resetEmailSent": "Als er een account met dat e-mailadres bestaat, is er een resetlink verstuurd.",
+    "setNewPassword": "Nieuw wachtwoord instellen",
+    "resetPasswordSuccess": "Je wachtwoord is bijgewerkt. Je kunt nu inloggen.",
+    "resetTokenMissing": "Deze resetlink is ongeldig of onvolledig."
   },
   "nav": {
     "properties": "Eigendommen",
@@ -28,7 +31,8 @@
     "indexation": "Indexatie",
     "maintenance": "Onderhoud",
     "communications": "Communicatie",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "managers": "Beheerders"
   },
   "properties": {
     "title": "Eigendommen",
@@ -608,5 +612,44 @@
     "lawText": "Deze Voorwaarden worden beheerst door Belgisch recht. Geschillen worden voorgelegd aan de bevoegde rechtbanken van Belgi\u00eb. Dit doet geen afbreuk aan uw wettelijke consumentenrechten onder EU-recht.",
     "contactTitle": "11. Contact",
     "contactText": "Voor vragen over deze Voorwaarden, neem contact met ons op via"
+  },
+  "managers": {
+    "title": "Vastgoedbeheerders",
+    "subtitle": "Beheer wie toegang heeft tot uw eigendommen",
+    "inviteManager": "Beheerder uitnodigen",
+    "emptyTitle": "Nog geen vastgoedbeheerders",
+    "emptyDescription": "Nodig iemand uit om uw eigendommen te beheren. Ze ontvangen een e-mail met instructies om te beginnen.",
+    "loadError": "Kon vastgoedbeheerders niet laden. Vernieuw de pagina.",
+    "inviteError": "Kon uitnodiging niet versturen. Controleer het e-mailadres en probeer opnieuw.",
+    "inviteTitle": "Vastgoedbeheerder uitnodigen",
+    "emailLabel": "E-mailadres",
+    "emailPlaceholder": "beheerder@voorbeeld.com",
+    "roleLabel": "Rol",
+    "propertyLabel": "Eigendommen",
+    "sendInvitation": "Uitnodiging versturen",
+    "discardInvitation": "Uitnodiging annuleren",
+    "revokeConfirm": "Toegang van {name} tot {property} intrekken? Dit gaat onmiddellijk in.",
+    "revoke": "Toegang intrekken",
+    "duplicateError": "Deze gebruiker heeft al toegang tot het geselecteerde eigendom.",
+    "expiredToken": "Deze uitnodiging is verlopen. Vraag de eigenaar om een nieuwe uitnodiging te sturen.",
+    "invalidToken": "Deze uitnodigingslink is niet meer geldig.",
+    "acceptTitle": "U bent uitgenodigd",
+    "acceptBody": "{inviterName} heeft u uitgenodigd om {propertyName} te beheren als {role}.",
+    "acceptInvitation": "Uitnodiging accepteren",
+    "declineInvitation": "Weigeren",
+    "declineSuccess": "Uitnodiging geweigerd.",
+    "roleOwner": "Eigenaar",
+    "roleCoOwner": "Mede-eigenaar",
+    "roleManager": "Beheerder",
+    "roleAccountant": "Boekhouder",
+    "roleViewer": "Kijker",
+    "managingAs": "Beheert als {role}",
+    "invitedOn": "Uitgenodigd op {date}",
+    "pending": "In afwachting",
+    "headerName": "Naam",
+    "headerEmail": "E-mail",
+    "headerRole": "Rol",
+    "headerStatus": "Status",
+    "headerActions": "Acties"
   }
 }

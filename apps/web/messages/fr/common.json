@@ -18,7 +18,10 @@
     "orContinueWith": "ou continuer avec",
     "invalidCredentials": "E-mail ou mot de passe invalide.",
     "registrationFailed": "L'inscription a echoue. Veuillez reessayer.",
-    "resetEmailSent": "Si un compte existe avec cet e-mail, un lien de reinitialisation a ete envoye."
+    "resetEmailSent": "Si un compte existe avec cet e-mail, un lien de reinitialisation a ete envoye.",
+    "setNewPassword": "Definir un nouveau mot de passe",
+    "resetPasswordSuccess": "Votre mot de passe a ete mis a jour. Vous pouvez maintenant vous connecter.",
+    "resetTokenMissing": "Ce lien de reinitialisation est invalide ou incomplet."
   },
   "nav": {
     "properties": "Biens",
@@ -28,7 +31,8 @@
     "indexation": "Indexation",
     "maintenance": "Entretien",
     "communications": "Communications",
-    "settings": "Parametres"
+    "settings": "Parametres",
+    "managers": "Gestionnaires"
   },
   "properties": {
     "title": "Biens",
@@ -608,5 +612,44 @@
     "lawText": "Ces Conditions sont r\u00e9gies par le droit belge. Tout litige sera soumis aux tribunaux comp\u00e9tents de Belgique. Cela n'affecte pas vos droits statutaires en tant que consommateur en vertu du droit de l'UE.",
     "contactTitle": "11. Contact",
     "contactText": "Pour toute question concernant ces Conditions, contactez-nous \u00e0"
+  },
+  "managers": {
+    "title": "Gestionnaires",
+    "subtitle": "Gerez qui a acces a vos proprietes",
+    "inviteManager": "Inviter un gestionnaire",
+    "emptyTitle": "Aucun gestionnaire pour le moment",
+    "emptyDescription": "Invitez quelqu'un pour vous aider a gerer vos proprietes. Il recevra un e-mail avec les instructions pour commencer.",
+    "loadError": "Impossible de charger les gestionnaires. Veuillez rafraichir la page.",
+    "inviteError": "Impossible d'envoyer l'invitation. Verifiez l'adresse e-mail et reessayez.",
+    "inviteTitle": "Inviter un gestionnaire",
+    "emailLabel": "Adresse e-mail",
+    "emailPlaceholder": "gestionnaire@exemple.com",
+    "roleLabel": "Role",
+    "propertyLabel": "Proprietes",
+    "sendInvitation": "Envoyer l'invitation",
+    "discardInvitation": "Annuler l'invitation",
+    "revokeConfirm": "Retirer l'acces de {name} a {property} ? Cela prend effet immediatement.",
+    "revoke": "Revoquer l'acces",
+    "duplicateError": "Cet utilisateur a deja acces a la propriete selectionnee.",
+    "expiredToken": "Cette invitation a expire. Veuillez demander au proprietaire d'envoyer une nouvelle invitation.",
+    "invalidToken": "Ce lien d'invitation n'est plus valide.",
+    "acceptTitle": "Vous avez ete invite",
+    "acceptBody": "{inviterName} vous a invite a gerer {propertyName} en tant que {role}.",
+    "acceptInvitation": "Accepter l'invitation",
+    "declineInvitation": "Refuser",
+    "declineSuccess": "Invitation refusee.",
+    "roleOwner": "Proprietaire",
+    "roleCoOwner": "Coproprietaire",
+    "roleManager": "Gestionnaire",
+    "roleAccountant": "Comptable",
+    "roleViewer": "Lecteur",
+    "managingAs": "Gere en tant que {role}",
+    "invitedOn": "Invite le {date}",
+    "pending": "En attente",
+    "headerName": "Nom",
+    "headerEmail": "E-mail",
+    "headerRole": "Role",
+    "headerStatus": "Statut",
+    "headerActions": "Actions"
   }
 }

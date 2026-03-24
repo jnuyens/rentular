@@ -18,7 +18,10 @@
     "orContinueWith": "or continue with",
     "invalidCredentials": "Invalid email or password.",
     "registrationFailed": "Registration failed. Please try again.",
-    "resetEmailSent": "If an account with that email exists, a reset link has been sent."
+    "resetEmailSent": "If an account with that email exists, a reset link has been sent.",
+    "setNewPassword": "Set new password",
+    "resetPasswordSuccess": "Your password has been updated. You can sign in now.",
+    "resetTokenMissing": "This reset link is invalid or incomplete."
   },
   "nav": {
     "properties": "Properties",
@@ -28,7 +31,8 @@
     "indexation": "Indexation",
     "maintenance": "Maintenance",
     "communications": "Communications",
-    "settings": "Settings"
+    "settings": "Settings",
+    "managers": "Managers"
   },
   "properties": {
     "title": "Properties",
@@ -608,5 +612,44 @@
     "lawText": "These Terms are governed by Belgian law. Any disputes will be submitted to the competent courts of Belgium. This does not affect your statutory consumer rights under EU law.",
     "contactTitle": "11. Contact",
     "contactText": "For questions about these Terms, contact us at"
+  },
+  "managers": {
+    "title": "Property Managers",
+    "subtitle": "Manage who has access to your properties",
+    "inviteManager": "Invite Manager",
+    "emptyTitle": "No property managers yet",
+    "emptyDescription": "Invite someone to help manage your properties. They will receive an email with instructions to get started.",
+    "loadError": "Could not load property managers. Please refresh the page.",
+    "inviteError": "Could not send invitation. Please check the email address and try again.",
+    "inviteTitle": "Invite Property Manager",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "manager@example.com",
+    "roleLabel": "Role",
+    "propertyLabel": "Properties",
+    "sendInvitation": "Send Invitation",
+    "discardInvitation": "Discard Invitation",
+    "revokeConfirm": "Remove {name}'s access to {property}? This takes effect immediately.",
+    "revoke": "Revoke Access",
+    "duplicateError": "This user already has access to the selected property.",
+    "expiredToken": "This invitation has expired. Please ask the property owner to send a new invitation.",
+    "invalidToken": "This invitation link is no longer valid.",
+    "acceptTitle": "You have been invited",
+    "acceptBody": "{inviterName} has invited you to manage {propertyName} as {role}.",
+    "acceptInvitation": "Accept Invitation",
+    "declineInvitation": "Decline",
+    "declineSuccess": "Invitation declined.",
+    "roleOwner": "Owner",
+    "roleCoOwner": "Co-owner",
+    "roleManager": "Manager",
+    "roleAccountant": "Accountant",
+    "roleViewer": "Viewer",
+    "managingAs": "Managing as {role}",
+    "invitedOn": "Invited {date}",
+    "pending": "Pending",
+    "headerName": "Name",
+    "headerEmail": "Email",
+    "headerRole": "Role",
+    "headerStatus": "Status",
+    "headerActions": "Actions"
   }
 }

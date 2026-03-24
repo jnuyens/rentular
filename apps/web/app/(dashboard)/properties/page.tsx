@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Building2, Plus, X, MapPin, Pencil, Trash2 } from "lucide-react";
 import BelgianCityInput from "@/components/BelgianCityInput";
 import CountrySelect from "@/components/CountrySelect";
+import RoleBadge from "@/components/RoleBadge";
 
 interface Property {
   id: string;
@@ -23,10 +24,12 @@ interface Property {
   epcCertificateNumber?: string;
   epcExpiryDate?: string;
   notes?: string;
+  userRole?: string;
 }
 
 export default function PropertiesPage() {
   const t = useTranslations("properties");
+  const tm = useTranslations("managers");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [saving, setSaving] = useState(false);
@@ -183,7 +186,7 @@ export default function PropertiesPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold">{p.name}</h3>
-                  <div className="mt-0.5 flex items-center gap-1.5">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     <span className="inline-block rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-xs text-[hsl(var(--muted-foreground))]">
                       {typeLabels[p.type] || p.type}
                     </span>
@@ -192,6 +195,7 @@ export default function PropertiesPage() {
                         {heatingLabels[p.heatingType] || p.heatingType}
                       </span>
                     )}
+                    {p.userRole && <RoleBadge role={p.userRole} />}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -204,25 +208,40 @@ export default function PropertiesPage() {
                       EPC {p.epcLabel}
                     </span>
                   )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                    disabled={deleting === p.id}
-                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  {/* Edit button: visible for owner, co_owner, manager */}
+                  {(!p.userRole || ["owner", "co_owner", "manager"].includes(p.userRole)) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                      className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {/* Delete button: visible for owner, co_owner only */}
+                  {(!p.userRole || ["owner", "co_owner"].includes(p.userRole)) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                      disabled={deleting === p.id}
+                      className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="mt-3 flex items-start gap-1.5 text-sm text-[hsl(var(--muted-foreground))]">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{p.street} {p.streetNumber}{p.box ? ` / ${p.box}` : ""}, {p.postalCode} {p.city}</span>
               </div>
+              {(p.userRole === "owner" || p.userRole === "co_owner") && (
+                <a
+                  href={`/properties/${p.id}/managers`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-2 inline-block text-xs text-[hsl(var(--primary))] hover:underline"
+                >
+                  {tm("title")}
+                </a>
+              )}
             </div>
           ))}
         </div>

@@ -18,7 +18,10 @@
     "orContinueWith": "oder weiter mit",
     "invalidCredentials": "Ungueltige E-Mail oder ungueltigtes Passwort.",
     "registrationFailed": "Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
-    "resetEmailSent": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zuruecksetzen gesendet."
+    "resetEmailSent": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zuruecksetzen gesendet.",
+    "setNewPassword": "Neues Passwort setzen",
+    "resetPasswordSuccess": "Ihr Passwort wurde aktualisiert. Sie koennen sich jetzt anmelden.",
+    "resetTokenMissing": "Dieser Link zum Zuruecksetzen ist ungueltig oder unvollstaendig."
   },
   "nav": {
     "properties": "Immobilien",
@@ -28,7 +31,8 @@
     "indexation": "Indexierung",
     "maintenance": "Wartung",
     "communications": "Kommunikation",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "managers": "Verwalter"
   },
   "properties": {
     "title": "Immobilien",
@@ -608,5 +612,44 @@
     "lawText": "Diese Bedingungen unterliegen belgischem Recht. Streitigkeiten werden den zust\u00e4ndigen Gerichten Belgiens vorgelegt. Dies ber\u00fchrt nicht Ihre gesetzlichen Verbraucherrechte nach EU-Recht.",
     "contactTitle": "11. Kontakt",
     "contactText": "F\u00fcr Fragen zu diesen Bedingungen kontaktieren Sie uns unter"
+  },
+  "managers": {
+    "title": "Immobilienverwalter",
+    "subtitle": "Verwalten Sie, wer Zugang zu Ihren Immobilien hat",
+    "inviteManager": "Verwalter einladen",
+    "emptyTitle": "Noch keine Immobilienverwalter",
+    "emptyDescription": "Laden Sie jemanden ein, Ihnen bei der Verwaltung Ihrer Immobilien zu helfen. Die Person erhalt eine E-Mail mit Anweisungen.",
+    "loadError": "Immobilienverwalter konnten nicht geladen werden. Bitte aktualisieren Sie die Seite.",
+    "inviteError": "Einladung konnte nicht gesendet werden. Bitte uberprufen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
+    "inviteTitle": "Immobilienverwalter einladen",
+    "emailLabel": "E-Mail-Adresse",
+    "emailPlaceholder": "verwalter@beispiel.com",
+    "roleLabel": "Rolle",
+    "propertyLabel": "Immobilien",
+    "sendInvitation": "Einladung senden",
+    "discardInvitation": "Einladung verwerfen",
+    "revokeConfirm": "Zugang von {name} zu {property} entfernen? Dies wird sofort wirksam.",
+    "revoke": "Zugang widerrufen",
+    "duplicateError": "Dieser Benutzer hat bereits Zugang zur ausgewahlten Immobilie.",
+    "expiredToken": "Diese Einladung ist abgelaufen. Bitten Sie den Eigentumer, eine neue Einladung zu senden.",
+    "invalidToken": "Dieser Einladungslink ist nicht mehr gultig.",
+    "acceptTitle": "Sie wurden eingeladen",
+    "acceptBody": "{inviterName} hat Sie eingeladen, {propertyName} als {role} zu verwalten.",
+    "acceptInvitation": "Einladung annehmen",
+    "declineInvitation": "Ablehnen",
+    "declineSuccess": "Einladung abgelehnt.",
+    "roleOwner": "Eigentumer",
+    "roleCoOwner": "Miteigentumer",
+    "roleManager": "Verwalter",
+    "roleAccountant": "Buchhalter",
+    "roleViewer": "Betrachter",
+    "managingAs": "Verwaltet als {role}",
+    "invitedOn": "Eingeladen am {date}",
+    "pending": "Ausstehend",
+    "headerName": "Name",
+    "headerEmail": "E-Mail",
+    "headerRole": "Rolle",
+    "headerStatus": "Status",
+    "headerActions": "Aktionen"
   }
 }
