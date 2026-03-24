@@ -101,11 +101,13 @@ Plans:
   2. An accepted property manager sees only their assigned properties in the dashboard, not the owner's full portfolio
   3. Property manager permissions are enforced on all API endpoints -- a viewer cannot modify data, a manager cannot change billing settings, etc.
   4. Owner can revoke access or change a property manager's role at any time, with immediate effect
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md -- Schema extension, propertyAccess middleware, owner auto-register, migration endpoint
+- [ ] 05-02-PLAN.md -- Invitation flow API (invite, accept, decline, list, update, remove) and properties userRole
+- [ ] 05-03-PLAN.md -- Route retrofit for all property-scoped API endpoints (9 route files)
+- [ ] 05-04-PLAN.md -- Frontend: managers page, invite modal, accept page, sidebar filtering, role badges, i18n
 
 ### Phase 6: Smovin Import (Beta)
 **Goal**: Landlords migrating from Smovin can bring their existing data into Rentular without manual re-entry, reducing the biggest barrier to switching
@@ -150,6 +152,6 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 2. Payment Processing & Webhooks | 0/5 | Planning complete | - |
 | 3. Rent Indexation | 0/2 | Planning complete | - |
 | 4. Notifications & Payment Follow-Up | 0/3 | Planning complete | - |
-| 5. Property Manager Roles | 0/? | Not started | - |
+| 5. Property Manager Roles | 0/4 | Planning complete | - |
 | 6. Smovin Import (Beta) | 0/? | Not started | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/? | Not started | - |
