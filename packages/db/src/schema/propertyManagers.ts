@@ -17,7 +17,6 @@ export const propertyManagers = mysqlTable(
       .notNull()
       .references(() => properties.id, { onDelete: "cascade" }),
     userId: varchar("user_id", { length: 255 })
-      .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: mysqlEnum("role", [
       "owner",      // Full control, can add/remove managers
@@ -30,6 +29,10 @@ export const propertyManagers = mysqlTable(
       .references(() => users.id),
     invitedAt: timestamp("invited_at").defaultNow().notNull(),
     acceptedAt: timestamp("accepted_at"),
+    // Invitation fields: allow inviting users who may not have an account yet
+    invitationToken: varchar("invitation_token", { length: 36 }),
+    invitationExpiresAt: timestamp("invitation_expires_at"),
+    invitationEmail: varchar("invitation_email", { length: 255 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
@@ -37,6 +40,15 @@ export const propertyManagers = mysqlTable(
     uniqueUserProperty: uniqueIndex("unique_user_property").on(
       table.propertyId,
       table.userId
+    ),
+    // Each invitation token must be unique for lookup
+    uniqueInvitationToken: uniqueIndex("unique_invitation_token").on(
+      table.invitationToken
+    ),
+    // Prevent duplicate invitations to the same email for the same property
+    uniquePropertyEmail: uniqueIndex("unique_property_email").on(
+      table.propertyId,
+      table.invitationEmail
     ),
   })
 );

@@ -108,9 +108,12 @@ export interface BankAccount {
 export interface PropertyManager {
   id: string;
   propertyId: string;
-  userId: string;
+  userId: string | null;
   role: PropertyManagerRole;
   invitedBy?: string;
   invitedAt: string;
   acceptedAt?: string;
+  invitationToken?: string;
+  invitationExpiresAt?: string;
+  invitationEmail?: string;
 }
