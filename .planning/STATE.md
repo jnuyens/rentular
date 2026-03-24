@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-03-24T12:25:23.134Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-03-24T12:39:12.925Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 05 (property-manager-roles) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Plan: 2 of 4
 | Phase 04 P01 | 5min | 3 tasks | 9 files |
 | Phase 04 P02 | 4min | 2 tasks | 5 files |
 | Phase 05 P02 | 3min | 2 tasks | 2 files |
+| Phase 05 P03 | 10min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,10 @@ Recent decisions affecting current work:
 - [Phase 05]: D-01 implemented as full auto-accept (sets userId + acceptedAt + clears token) for all pending invitations on first token accept
 - [Phase 05]: Properties PATCH requires manager+ role, DELETE requires co_owner+ role -- graduated access replacing ownerId checks
 - [Phase 05]: Removed memoryStore fallback from properties.ts -- fail-fast with typed DB imports
+- [Phase 05]: Lease ownerId on creation set to property owner (not current user) so managers can create leases that belong to the property owner
+- [Phase 05]: Communications use OR filter (accessible leases OR ownerId=user) for backwards compatibility
+- [Phase 05]: Costs with no propertyId remain accessible only to ownerId user (general costs not property-scoped)
+- [Phase 05]: Tenant POST does not require property check; tenants linked to properties via leases
 
 ### Pending Todos
 
@@ -120,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T12:25:23.125Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-03-24T12:39:12.920Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
