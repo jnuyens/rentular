@@ -105,7 +105,7 @@ Plans:
 
 Plans:
 - [ ] 05-01-PLAN.md -- Schema extension, propertyAccess middleware, owner auto-register, migration endpoint
-- [ ] 05-02-PLAN.md -- Invitation flow API (invite, accept, decline, list, update, remove) and properties userRole
+- [x] 05-02-PLAN.md -- Invitation flow API (invite, accept, decline, list, update, remove) and properties userRole
 - [ ] 05-03-PLAN.md -- Route retrofit for all property-scoped API endpoints (9 route files)
 - [ ] 05-04-PLAN.md -- Frontend: managers page, invite modal, accept page, sidebar filtering, role badges, i18n
 

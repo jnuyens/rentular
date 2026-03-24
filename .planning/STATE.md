@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 5 context gathered
-last_updated: "2026-03-24T10:13:11.735Z"
+status: Ready to execute
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-24T12:25:23.134Z"
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 19
+  completed_plans: 16
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 04 — notifications-payment-follow-up
+**Current focus:** Phase 05 — property-manager-roles
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (property-manager-roles) — EXECUTING
+Plan: 2 of 4
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Plan: Not started
 | Phase 03 P02 | 5min | 2 tasks | 2 files |
 | Phase 04 P01 | 5min | 3 tasks | 9 files |
 | Phase 04 P02 | 4min | 2 tasks | 5 files |
+| Phase 05 P02 | 3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ Recent decisions affecting current work:
 - [Phase 04]: SMTP transport cache stores transport + fromAddress/fromName together to avoid extra DB query on cache hit
 - [Phase 04]: ownerId passed through email queue job data for per-landlord SMTP transport selection at send time
 - [Phase 04]: Communications send endpoint relies on queueEmail/queueSms auto-logging instead of manual db.insert
+- [Phase 05]: D-01 implemented as full auto-accept (sets userId + acceptedAt + clears token) for all pending invitations on first token accept
+- [Phase 05]: Properties PATCH requires manager+ role, DELETE requires co_owner+ role -- graduated access replacing ownerId checks
+- [Phase 05]: Removed memoryStore fallback from properties.ts -- fail-fast with typed DB imports
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T10:13:11.724Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-property-manager-roles/05-CONTEXT.md
+Last session: 2026-03-24T12:25:23.125Z
+Stopped at: Completed 05-02-PLAN.md
+Resume file: None

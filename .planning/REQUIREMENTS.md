@@ -43,12 +43,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Property Managers
 
-- [ ] **PM-01**: Owner can invite a property manager by email with a specified role (co_owner, manager, accountant, viewer)
-- [ ] **PM-02**: Invited property manager receives email invitation and can accept/decline
+- [x] **PM-01**: Owner can invite a property manager by email with a specified role (co_owner, manager, accountant, viewer)
+- [x] **PM-02**: Invited property manager receives email invitation and can accept/decline
 - [ ] **PM-03**: Property manager sees only their assigned properties in the dashboard
 - [ ] **PM-04**: Property manager permissions are enforced on all property-scoped API endpoints
-- [ ] **PM-05**: Owner can revoke a property manager's access
-- [ ] **PM-06**: Owner can change a property manager's role
+- [x] **PM-05**: Owner can revoke a property manager's access
+- [x] **PM-06**: Owner can change a property manager's role
 
 ### Security
 
@@ -181,12 +181,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | NTF-06 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | NTF-07 | Phase 4: Notifications & Payment Follow-Up | Complete |
 | I18N-02 | Phase 4: Notifications & Payment Follow-Up | Pending |
-| PM-01 | Phase 5: Property Manager Roles | Pending |
-| PM-02 | Phase 5: Property Manager Roles | Pending |
+| PM-01 | Phase 5: Property Manager Roles | Complete |
+| PM-02 | Phase 5: Property Manager Roles | Complete |
 | PM-03 | Phase 5: Property Manager Roles | Pending |
 | PM-04 | Phase 5: Property Manager Roles | Pending |
-| PM-05 | Phase 5: Property Manager Roles | Pending |
-| PM-06 | Phase 5: Property Manager Roles | Pending |
+| PM-05 | Phase 5: Property Manager Roles | Complete |
+| PM-06 | Phase 5: Property Manager Roles | Complete |
 | IMP-01 | Phase 6: Smovin Import (Beta) | Pending |
 | IMP-02 | Phase 6: Smovin Import (Beta) | Pending |
 | IMP-03 | Phase 6: Smovin Import (Beta) | Pending |
