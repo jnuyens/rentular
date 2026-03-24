@@ -52,11 +52,15 @@ Exceptions: none
 | Role | Size | Weight | Line Height | Tailwind Class |
 |------|------|--------|-------------|----------------|
 | Body | 14px | 400 (regular) | 1.5 | `text-sm` |
-| Label | 14px | 500 (medium) | 1.5 | `text-sm font-medium` |
-| Heading | 24px | 700 (bold) | 1.2 | `text-2xl font-bold` |
+| Label / UI emphasis | 14px | 600 (semibold) | 1.5 | `text-sm font-semibold` |
 | Subheading | 18px | 600 (semibold) | 1.3 | `text-lg font-semibold` |
+| Heading | 24px | 600 (semibold) | 1.2 | `text-2xl font-semibold` |
 
-**Source:** Established in existing dashboard pages (`properties/page.tsx`, `communications/page.tsx`, `layout.tsx`). This phase uses exactly the same typographic scale -- no new sizes or weights introduced.
+**Weights declared: 2** -- 400 (regular) and 600 (semibold).
+
+All emphasis previously split across `font-medium` (500) and `font-bold` (700) in this phase collapses to `font-semibold` (600). This applies to: page headings, subheadings, form labels, button text, badge text, and table headers. The existing codebase uses `font-bold` on page headings and `font-medium` on form labels/buttons, but this phase's new components will standardize on the 2-weight contract. Existing components outside this phase's scope are not affected.
+
+**Source:** Codebase audit of `apps/web/app/(dashboard)` pages. Dominant weights are 400 (body text) and 600 (subheadings, badges, table headers). Headings use 700 and labels use 500 in some existing pages, but this phase normalizes to 2 weights for design consistency.
 
 ---
 
@@ -90,13 +94,22 @@ Accent reserved for:
 
 ---
 
+## Focal Points
+
+| Page | Focal Element | Rationale |
+|------|--------------|-----------|
+| Property Managers list (`/properties/[id]/managers`) | "Invite Manager" CTA button (top-right, accent color, semibold label) | Primary action on the page. When the list is empty, the empty state illustration and CTA below it become the focal point instead. |
+| Invitation Accept page (`/invite/accept`) | "Accept Invitation" primary button (accent color, centered) | Single most important action on this page. |
+
+---
+
 ## Component Inventory
 
 ### New Components (this phase)
 
 | Component | Location | Description |
 |-----------|----------|-------------|
-| RoleBadge | `apps/web/components/RoleBadge.tsx` | Pill badge displaying role name with color coding. Props: `role: PropertyManagerRole`. Uses `rounded-full px-2 py-0.5 text-xs font-medium`. |
+| RoleBadge | `apps/web/components/RoleBadge.tsx` | Pill badge displaying role name with color coding. Props: `role: PropertyManagerRole`. Uses `rounded-full px-2 py-0.5 text-xs font-semibold`. |
 | PropertyManagerList | Inline in settings or property detail | Table/list of managers for a property. Columns: name/email, role, invited date, actions (change role, revoke). |
 | InviteManagerModal | Inline in property manager page | Modal form: email input, role select dropdown, property multi-select. Follows existing modal pattern (`fixed inset-0 z-50 bg-black/50`). |
 | InvitationAcceptPage | `apps/web/app/(auth)/invite/accept/page.tsx` | Token-based accept page. Shows invitation details (property name, role, invited by) with Accept and Decline buttons. |
@@ -127,7 +140,7 @@ Accent reserved for:
 - Role select: dropdown with options `co_owner`, `manager`, `accountant`, `viewer` (not `owner`)
 - Property select: multi-select of owned properties (pre-selected if inviting from a specific property context)
 - Submit button: "Send Invitation"
-- Cancel button: "Cancel"
+- Dismiss button: "Discard Invitation"
 
 **States:**
 | State | Behavior |
@@ -222,7 +235,7 @@ All copy below is the English (`en`) key. Translations for `nl`, `fr`, `de` must
 | Role label | `managers.roleLabel` | "Role" |
 | Property label | `managers.propertyLabel` | "Properties" |
 | Submit invite | `managers.sendInvitation` | "Send Invitation" |
-| Cancel | `managers.cancel` | "Cancel" |
+| Dismiss invite modal | `managers.discardInvitation` | "Discard Invitation" |
 | Revoke confirm | `managers.revokeConfirm` | "Remove {name}'s access to {property}? This takes effect immediately." |
 | Revoke button | `managers.revoke` | "Revoke Access" |
 | Duplicate error | `managers.duplicateError` | "This user already has access to the selected property." |
