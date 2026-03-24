@@ -1,22 +1,14 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import * as mem from "../lib/memoryStore";
-
-let db: any = null;
-let dbSchema: any = null;
-let pmSchema: any = null;
-let eq: any = null;
-
-try {
-  const dbMod = require("@rentular/db");
-  db = dbMod.getDb();
-  dbSchema = dbMod.properties;
-  pmSchema = dbMod.propertyManagers;
-  eq = require("drizzle-orm").eq;
-} catch {
-  console.log("[Properties] Database unavailable, using in-memory store");
-}
+import { eq, and, inArray } from "drizzle-orm";
+import { getDb, properties, propertyManagers } from "@rentular/db";
+import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 const createPropertySchema = z.object({
   name: z.string().min(1),
@@ -38,32 +30,60 @@ const createPropertySchema = z.object({
 
 export const propertiesRouter = new Hono();
 
-// List all properties
+// List all properties accessible to the current user
 propertiesRouter.get("/", async (c) => {
-  try {
-    if (db && dbSchema) {
-      const result = await db.select().from(dbSchema);
-      return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
-    }
-  } catch (err) {
-    console.error("DB read failed, falling back to memory:", err);
+  const userId = getRequiredUserId(c);
+  const db = getDb();
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+
+  if (accessibleIds.length === 0) {
+    return c.json({ data: [], meta: { total: 0, page: 1, perPage: 100 } });
   }
-  const result = mem.getAll("properties").filter((p: any) => !p.isArchived);
-  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+
+  const result = await db
+    .select()
+    .from(properties)
+    .where(inArray(properties.id, accessibleIds));
+
+  // D-07, D-08: Attach role info to each property for the dashboard
+  const propertyRoles = await db
+    .select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+    .from(propertyManagers)
+    .where(
+      and(
+        eq(propertyManagers.userId, userId),
+        inArray(propertyManagers.propertyId, accessibleIds)
+      )
+    );
+
+  const roleMap = new Map(propertyRoles.map((r) => [r.propertyId, r.role]));
+
+  const data = result.map((prop) => ({
+    ...prop,
+    userRole: roleMap.get(prop.id) || "viewer",
+  }));
+
+  return c.json({ data, meta: { total: data.length, page: 1, perPage: 100 } });
 });
 
 // Get a single property
 propertiesRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
-      return c.json({ data: result[0] || null });
-    }
-  } catch {
-    // fallback
+  const userId = getRequiredUserId(c);
+  const db = getDb();
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+
+  const result = await db
+    .select()
+    .from(properties)
+    .where(and(eq(properties.id, id), inArray(properties.id, accessibleIds)));
+
+  if (!result[0]) {
+    return c.json({ error: "Property not found" }, 404);
   }
-  return c.json({ data: mem.getById("properties", id) || null });
+
+  const role = await getUserPropertyRole(userId, id);
+  return c.json({ data: { ...result[0], userRole: role || "viewer" } });
 });
 
 // Create a property
@@ -73,51 +93,40 @@ propertiesRouter.post(
   async (c) => {
     const data = c.req.valid("json");
     const id = crypto.randomUUID();
-    const currentOwnerId = c.get("userId") || "system";
-    const record = { id, ownerId: currentOwnerId, ...data, isArchived: false, createdAt: new Date().toISOString() };
+    const ownerId = getRequiredUserId(c);
+    const db = getDb();
 
-    try {
-      if (db && dbSchema) {
-        const ownerId = c.get("userId") || "system";
-        await db.insert(dbSchema).values({
-          id,
-          ownerId,
-          name: data.name,
-          type: data.type,
-          street: data.street,
-          streetNumber: data.streetNumber,
-          box: data.box || null,
-          postalCode: data.postalCode,
-          city: data.city,
-          country: data.country,
-          cadastralReference: data.cadastralReference || null,
-          epcLabel: data.epcLabel || null,
-          epcScore: data.epcScore || null,
-          epcCertificateNumber: data.epcCertificateNumber || null,
-          epcExpiryDate: data.epcExpiryDate || null,
-          notes: data.notes || null,
-        });
+    await db.insert(properties).values({
+      id,
+      ownerId,
+      name: data.name,
+      type: data.type,
+      street: data.street,
+      streetNumber: data.streetNumber,
+      box: data.box || null,
+      postalCode: data.postalCode,
+      city: data.city,
+      country: data.country,
+      cadastralReference: data.cadastralReference || null,
+      epcLabel: data.epcLabel || null,
+      epcScore: data.epcScore || null,
+      epcCertificateNumber: data.epcCertificateNumber || null,
+      epcExpiryDate: data.epcExpiryDate || null,
+      notes: data.notes || null,
+    });
 
-        // Auto-register owner in propertyManagers (Pattern 6 from research)
-        if (pmSchema && ownerId !== "system") {
-          await db.insert(pmSchema).values({
-            id: crypto.randomUUID(),
-            propertyId: id,
-            userId: ownerId,
-            role: "owner",
-            invitedBy: null,
-            acceptedAt: new Date(),
-            invitedAt: new Date(),
-          });
-        }
+    // Auto-register owner in propertyManagers (Pattern 6 from research)
+    await db.insert(propertyManagers).values({
+      id: crypto.randomUUID(),
+      propertyId: id,
+      userId: ownerId,
+      role: "owner",
+      invitedBy: null,
+      acceptedAt: new Date(),
+      invitedAt: new Date(),
+    });
 
-        return c.json({ data: record, message: "Property created" }, 201);
-      }
-    } catch (err) {
-      console.error("DB insert failed, using memory store:", err);
-    }
-
-    mem.insert("properties", record);
+    const record = { id, ownerId, ...data, isArchived: false, createdAt: new Date().toISOString() };
     return c.json({ data: record, message: "Property created" }, 201);
   }
 );
@@ -129,30 +138,33 @@ propertiesRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    try {
-      if (db && dbSchema && eq) {
-        await db.update(dbSchema).set(data).where(eq(dbSchema.id, id));
-        const result = await db.select().from(dbSchema).where(eq(dbSchema.id, id));
-        return c.json({ data: result[0] || { id, ...data }, message: "Property updated" });
-      }
-    } catch {
-      // fallback
+    const userId = getRequiredUserId(c);
+    const db = getDb();
+
+    // Check user has manager+ role for this property
+    const userRole = await getUserPropertyRole(userId, id);
+    if (!userRole || !hasMinimumRole(userRole, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
     }
-    const existing = mem.getById("properties", id);
-    mem.update("properties", id, data);
-    return c.json({ data: { ...existing, ...data }, message: "Property updated" });
+
+    await db.update(properties).set(data as Record<string, unknown>).where(eq(properties.id, id));
+    const result = await db.select().from(properties).where(eq(properties.id, id));
+    return c.json({ data: result[0] || { id, ...data }, message: "Property updated" });
   }
 );
 
-// Delete a property
+// Delete (archive) a property
 propertiesRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  try {
-    if (db && dbSchema && eq) {
-      await db.update(dbSchema).set({ isArchived: true }).where(eq(dbSchema.id, id));
-    }
-  } catch {
-    mem.remove("properties", id);
+  const userId = getRequiredUserId(c);
+  const db = getDb();
+
+  // Check user has co_owner+ role for this property
+  const userRole = await getUserPropertyRole(userId, id);
+  if (!userRole || !hasMinimumRole(userRole, "co_owner")) {
+    return c.json({ error: "Insufficient permissions" }, 403);
   }
+
+  await db.update(properties).set({ isArchived: true }).where(eq(properties.id, id));
   return c.json({ message: "Property deleted" });
 });
