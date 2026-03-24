@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, inArray, isNotNull } from "drizzle-orm";
 import {
   getDb,
   healthIndexValues,
@@ -9,6 +9,7 @@ import {
   leases,
   leaseTenants,
   properties,
+  propertyManagers,
   tenants,
   users,
 } from "@rentular/db";
@@ -22,6 +23,13 @@ import {
 } from "@rentular/shared/constants";
 import { calculateIndexedRent } from "@rentular/shared/validation";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  canAccessDomain,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
+import type { PropertyManagerRole } from "@rentular/shared";
 import {
   getHealthIndexValue,
   getLatestHealthIndex,
@@ -84,15 +92,24 @@ async function calculateLeaseIndexation(
 ): Promise<CalculationResult> {
   const db = getDb();
 
-  // Fetch lease with ownership check
+  // Fetch lease and verify access via property role
   const leaseRows = await db
     .select()
     .from(leases)
-    .where(and(eq(leases.id, leaseId), eq(leases.ownerId, userId)))
+    .where(eq(leases.id, leaseId))
     .limit(1);
 
   if (leaseRows.length === 0) {
     throw { status: 404, message: "Lease not found" };
+  }
+
+  // Check property access -- accountant blocked from indexation (D-05)
+  const role = await getUserPropertyRole(userId, leaseRows[0]!.propertyId);
+  if (!role) {
+    throw { status: 404, message: "Lease not found" };
+  }
+  if (!canAccessDomain(role, "indexation")) {
+    throw { status: 403, message: "Insufficient permissions" };
   }
 
   const lease = leaseRows[0]!;
@@ -557,13 +574,23 @@ indexationRouter.get("/upcoming", async (c) => {
     const days = Number(c.req.query("days")) || 30;
     const db = getDb();
 
-    // Query active leases with indexation enabled for this owner
+    // Get accessible properties, filtering out accountant (blocked from indexation per D-05)
+    const accessibleIds = await getAccessiblePropertyIds(userId);
+    if (accessibleIds.length === 0) return c.json({ data: [], period: `next ${days} days` });
+
+    const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+      .from(propertyManagers)
+      .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
+    const allowedIds = roles.filter(r => canAccessDomain(r.role as PropertyManagerRole, "indexation")).map(r => r.propertyId);
+    if (allowedIds.length === 0) return c.json({ data: [], period: `next ${days} days` });
+
+    // Query active leases with indexation enabled for accessible properties
     const activeLeases = await db
       .select()
       .from(leases)
       .where(
         and(
-          eq(leases.ownerId, userId),
+          inArray(leases.propertyId, allowedIds),
           eq(leases.indexationEnabled, true),
           eq(leases.status, "active")
         )
@@ -838,6 +865,13 @@ indexationRouter.post(
       const { newRent, subject, body, sendNotification } = c.req.valid("json");
 
       const calc = await calculateLeaseIndexation(leaseId, userId);
+
+      // Apply requires manager+ role (write operation)
+      const applyRole = await getUserPropertyRole(userId, calc.lease.propertyId);
+      if (!applyRole || !hasMinimumRole(applyRole, "manager")) {
+        return c.json({ error: "Insufficient permissions" }, 403);
+      }
+
       const calculatedNewRent = calc.newRent;
 
       // D-08: EPC hard cap -- cannot exceed calculated indexed rent

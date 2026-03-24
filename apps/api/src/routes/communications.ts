@@ -1,21 +1,48 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, or } from "drizzle-orm";
 import { getDb, communications, leases, leaseTenants, tenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import { queueEmail, type CommunicationMeta } from "../jobs/emailQueueWorker";
 import { queueSms } from "../jobs/smsQueueWorker";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 const db = getDb();
 
 export const communicationsRouter = new Hono();
 
+// Helper: get lease IDs for accessible properties
+async function getAccessibleLeaseIds(userId: string): Promise<string[]> {
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return [];
+  const leaseRows = await db.select({ id: leases.id }).from(leases)
+    .where(inArray(leases.propertyId, accessibleIds));
+  return leaseRows.map(l => l.id);
+}
+
 // Stats summary must be registered before /:id to avoid route conflicts
 communicationsRouter.get("/stats/summary", async (c) => {
-  const ownerId = getRequiredUserId(c);
-  const conditions = [eq(communications.ownerId, ownerId)];
-  const all = await db.select().from(communications).where(and(...conditions));
+  const userId = getRequiredUserId(c);
+  const accessibleLeaseIds = await getAccessibleLeaseIds(userId);
+
+  // Show communications for accessible leases OR created by this user (backwards compatibility)
+  let all;
+  if (accessibleLeaseIds.length > 0) {
+    all = await db.select().from(communications).where(
+      or(
+        inArray(communications.leaseId, accessibleLeaseIds),
+        eq(communications.ownerId, userId)
+      )
+    );
+  } else {
+    all = await db.select().from(communications).where(eq(communications.ownerId, userId));
+  }
+
   const byChannel: Record<string, number> = { email: 0, sms: 0, letter: 0 };
   const byStatus: Record<string, number> = { queued: 0, sent: 0, delivered: 0, failed: 0, bounced: 0 };
   const byType: Record<string, number> = {};
@@ -38,18 +65,32 @@ communicationsRouter.get("/", async (c) => {
   const page = Number(c.req.query("page")) || 1;
   const perPage = Number(c.req.query("perPage")) || 20;
 
-  const ownerId = getRequiredUserId(c);
-  const conditions: ReturnType<typeof eq>[] = [eq(communications.ownerId, ownerId)];
+  const userId = getRequiredUserId(c);
+  const accessibleLeaseIds = await getAccessibleLeaseIds(userId);
+
+  // Base condition: communications for accessible leases OR owned by user
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (accessibleLeaseIds.length > 0) {
+    conditions.push(
+      or(
+        inArray(communications.leaseId, accessibleLeaseIds),
+        eq(communications.ownerId, userId)
+      )!
+    );
+  } else {
+    conditions.push(eq(communications.ownerId, userId));
+  }
+
   if (leaseId) conditions.push(eq(communications.leaseId, leaseId));
   if (channel) conditions.push(eq(communications.channel, channel as any));
   if (type) conditions.push(eq(communications.type, type as any));
   if (status) conditions.push(eq(communications.status, status as any));
 
-  // Filter by propertyId: find all leases for that property, then filter communications
+  // Filter by propertyId: find all leases for that property on accessible properties
   if (propertyId) {
     const propertyLeases = await db.select({ id: leases.id }).from(leases)
-      .where(and(eq(leases.ownerId, ownerId), eq(leases.propertyId, propertyId)));
-    const leaseIds = propertyLeases.map(l => l.id);
+      .where(eq(leases.propertyId, propertyId));
+    const leaseIds = propertyLeases.map(l => l.id).filter(id => accessibleLeaseIds.includes(id));
     if (leaseIds.length > 0) {
       conditions.push(inArray(communications.leaseId, leaseIds));
     } else {
@@ -81,19 +122,50 @@ communicationsRouter.get("/", async (c) => {
 // Get a single communication with full details
 communicationsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+
   const result = await db.select().from(communications)
-    .where(and(eq(communications.id, id), eq(communications.ownerId, ownerId)));
-  return result[0] ? c.json({ data: result[0] }) : c.json({ error: "Communication not found" }, 404);
+    .where(eq(communications.id, id));
+  if (!result[0]) return c.json({ error: "Communication not found" }, 404);
+
+  // Verify access: communication owned by user OR linked to an accessible lease
+  if (result[0].ownerId !== userId) {
+    if (result[0].leaseId) {
+      const lease = await db.select({ propertyId: leases.propertyId }).from(leases)
+        .where(eq(leases.id, result[0].leaseId));
+      if (!lease[0]) return c.json({ error: "Communication not found" }, 404);
+      const role = await getUserPropertyRole(userId, lease[0].propertyId);
+      if (!role) return c.json({ error: "Communication not found" }, 404);
+    } else {
+      return c.json({ error: "Communication not found" }, 404);
+    }
+  }
+
+  return c.json({ data: result[0] });
 });
 
 // Resend a failed communication via the email/SMS queue
 communicationsRouter.post("/:id/resend", async (c) => {
   const id = c.req.param("id");
-  const ownerId = getRequiredUserId(c);
+  const userId = getRequiredUserId(c);
+
   const original = await db.select().from(communications)
-    .where(and(eq(communications.id, id), eq(communications.ownerId, ownerId)));
+    .where(eq(communications.id, id));
   if (!original[0]) return c.json({ error: "Communication not found" }, 404);
+
+  // Check manager+ role: resending requires manager access
+  if (original[0].leaseId) {
+    const lease = await db.select({ propertyId: leases.propertyId }).from(leases)
+      .where(eq(leases.id, original[0].leaseId));
+    if (!lease[0]) return c.json({ error: "Communication not found" }, 404);
+    const role = await getUserPropertyRole(userId, lease[0].propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+  } else if (original[0].ownerId !== userId) {
+    return c.json({ error: "Insufficient permissions" }, 403);
+  }
+
   if (!["failed", "bounced"].includes(original[0].status)) {
     return c.json({ error: "Only failed or bounced communications can be resent" }, 400);
   }
@@ -139,12 +211,17 @@ communicationsRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
 
-    // Look up the lease and verify ownership
+    // Look up the lease and verify access with manager+ role
     const lease = await db.select().from(leases)
-      .where(and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId))).limit(1);
+      .where(eq(leases.id, data.leaseId)).limit(1);
     if (!lease[0]) return c.json({ error: "Lease not found" }, 404);
+
+    const role = await getUserPropertyRole(userId, lease[0].propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
 
     // Get primary tenant for this lease
     const tenantLink = await db.select().from(leaseTenants)
@@ -156,6 +233,7 @@ communicationsRouter.post(
     if (!tenant[0]) return c.json({ error: "Tenant not found" }, 404);
 
     const tenantName = `${tenant[0].firstName} ${tenant[0].lastName}`.trim();
+    const ownerId = lease[0].ownerId;
 
     if (data.channel === "email") {
       if (!tenant[0].email) {

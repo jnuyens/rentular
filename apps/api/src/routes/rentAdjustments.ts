@@ -1,22 +1,57 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, gte, lte, or, isNull } from "drizzle-orm";
-import { getDb, rentFreePeriods, rentDeductions } from "@rentular/db";
+import { eq, and, gte, lte, or, isNull, inArray } from "drizzle-orm";
+import { getDb, rentFreePeriods, rentDeductions, leases } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getAccessiblePropertyIds,
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 const db = getDb();
 
 export const rentAdjustmentsRouter = new Hono();
+
+// Helper: get lease IDs for accessible properties
+async function getAccessibleLeaseIds(userId: string): Promise<string[]> {
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return [];
+  const leaseRows = await db.select({ id: leases.id }).from(leases)
+    .where(inArray(leases.propertyId, accessibleIds));
+  return leaseRows.map(l => l.id);
+}
+
+// Helper: check role for a lease's property
+async function checkLeasePropertyRole(userId: string, leaseId: string, minRole: string): Promise<{ ok: boolean; propertyId: string | null }> {
+  const lease = await db.select({ propertyId: leases.propertyId }).from(leases).where(eq(leases.id, leaseId));
+  if (!lease[0]) return { ok: false, propertyId: null };
+  const role = await getUserPropertyRole(userId, lease[0].propertyId);
+  if (!role || !hasMinimumRole(role, minRole as any)) return { ok: false, propertyId: lease[0].propertyId };
+  return { ok: true, propertyId: lease[0].propertyId };
+}
 
 // === Rent-free periods ===
 
 // List rent-free periods for a lease
 rentAdjustmentsRouter.get("/free-periods", async (c) => {
   const leaseId = c.req.query("leaseId");
-  getRequiredUserId(c); // Ensure authenticated
+  const userId = getRequiredUserId(c);
+
+  const accessibleLeaseIds = await getAccessibleLeaseIds(userId);
+  if (accessibleLeaseIds.length === 0) return c.json({ data: [] });
+
   const conditions = [];
-  if (leaseId) conditions.push(eq(rentFreePeriods.leaseId, leaseId));
+  if (leaseId) {
+    // Check that the specific lease is accessible
+    if (!accessibleLeaseIds.includes(leaseId)) return c.json({ data: [] });
+    conditions.push(eq(rentFreePeriods.leaseId, leaseId));
+  } else {
+    // Filter to only accessible leases
+    conditions.push(inArray(rentFreePeriods.leaseId, accessibleLeaseIds));
+  }
+
   const result = await db.select().from(rentFreePeriods)
     .where(conditions.length > 0 ? and(...conditions) : undefined);
   return c.json({ data: result });
@@ -41,7 +76,12 @@ rentAdjustmentsRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    getRequiredUserId(c); // Ensure authenticated
+    const userId = getRequiredUserId(c);
+
+    // Check manager+ role on the lease's property
+    const { ok } = await checkLeasePropertyRole(userId, data.leaseId, "manager");
+    if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
     const id = crypto.randomUUID();
     await db.insert(rentFreePeriods).values({
       id,
@@ -73,9 +113,15 @@ rentAdjustmentsRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    getRequiredUserId(c); // Ensure authenticated
+    const userId = getRequiredUserId(c);
+
     const existing = await db.select().from(rentFreePeriods).where(eq(rentFreePeriods.id, id));
     if (!existing[0]) return c.json({ error: "Rent-free period not found" }, 404);
+
+    // Check manager+ role on the lease's property
+    const { ok } = await checkLeasePropertyRole(userId, existing[0].leaseId, "manager");
+    if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
     await db.update(rentFreePeriods).set(data).where(eq(rentFreePeriods.id, id));
     const [updated] = await db.select().from(rentFreePeriods).where(eq(rentFreePeriods.id, id));
     return c.json({ data: updated, message: "Rent-free period updated" });
@@ -85,9 +131,15 @@ rentAdjustmentsRouter.patch(
 // Delete a rent-free period
 rentAdjustmentsRouter.delete("/free-periods/:id", async (c) => {
   const id = c.req.param("id");
-  getRequiredUserId(c); // Ensure authenticated
+  const userId = getRequiredUserId(c);
+
   const existing = await db.select().from(rentFreePeriods).where(eq(rentFreePeriods.id, id));
   if (!existing[0]) return c.json({ error: "Rent-free period not found" }, 404);
+
+  // Check co_owner+ role for deletion
+  const { ok } = await checkLeasePropertyRole(userId, existing[0].leaseId, "co_owner");
+  if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
   await db.delete(rentFreePeriods).where(eq(rentFreePeriods.id, id));
   return c.json({ message: "Rent-free period deleted" });
 });
@@ -98,9 +150,19 @@ rentAdjustmentsRouter.delete("/free-periods/:id", async (c) => {
 rentAdjustmentsRouter.get("/deductions", async (c) => {
   const leaseId = c.req.query("leaseId");
   const active = c.req.query("active");
-  getRequiredUserId(c); // Ensure authenticated
+  const userId = getRequiredUserId(c);
+
+  const accessibleLeaseIds = await getAccessibleLeaseIds(userId);
+  if (accessibleLeaseIds.length === 0) return c.json({ data: [] });
+
   const conditions = [];
-  if (leaseId) conditions.push(eq(rentDeductions.leaseId, leaseId));
+  if (leaseId) {
+    if (!accessibleLeaseIds.includes(leaseId)) return c.json({ data: [] });
+    conditions.push(eq(rentDeductions.leaseId, leaseId));
+  } else {
+    conditions.push(inArray(rentDeductions.leaseId, accessibleLeaseIds));
+  }
+
   if (active === "true") {
     const today = new Date().toISOString().split("T")[0]!;
     // Active means: startDate <= today AND (endDate is null OR endDate >= today)
@@ -140,7 +202,12 @@ rentAdjustmentsRouter.post(
   ),
   async (c) => {
     const data = c.req.valid("json");
-    getRequiredUserId(c); // Ensure authenticated
+    const userId = getRequiredUserId(c);
+
+    // Check manager+ role on the lease's property
+    const { ok } = await checkLeasePropertyRole(userId, data.leaseId, "manager");
+    if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
     const id = crypto.randomUUID();
     await db.insert(rentDeductions).values({
       id,
@@ -173,9 +240,15 @@ rentAdjustmentsRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const data = c.req.valid("json");
-    getRequiredUserId(c); // Ensure authenticated
+    const userId = getRequiredUserId(c);
+
     const existing = await db.select().from(rentDeductions).where(eq(rentDeductions.id, id));
     if (!existing[0]) return c.json({ error: "Rent deduction not found" }, 404);
+
+    // Check manager+ role on the lease's property
+    const { ok } = await checkLeasePropertyRole(userId, existing[0].leaseId, "manager");
+    if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
     const updateData: Record<string, any> = {};
     if (data.amount !== undefined) updateData.amount = String(data.amount);
     if (data.startDate !== undefined) updateData.startDate = data.startDate;
@@ -191,9 +264,15 @@ rentAdjustmentsRouter.patch(
 // Delete a rent deduction
 rentAdjustmentsRouter.delete("/deductions/:id", async (c) => {
   const id = c.req.param("id");
-  getRequiredUserId(c); // Ensure authenticated
+  const userId = getRequiredUserId(c);
+
   const existing = await db.select().from(rentDeductions).where(eq(rentDeductions.id, id));
   if (!existing[0]) return c.json({ error: "Rent deduction not found" }, 404);
+
+  // Check co_owner+ role for deletion
+  const { ok } = await checkLeasePropertyRole(userId, existing[0].leaseId, "co_owner");
+  if (!ok) return c.json({ error: "Insufficient permissions" }, 403);
+
   await db.delete(rentDeductions).where(eq(rentDeductions.id, id));
   return c.json({ message: "Rent deduction deleted" });
 });

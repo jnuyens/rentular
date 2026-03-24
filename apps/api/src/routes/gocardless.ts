@@ -11,6 +11,10 @@ import {
   createCustomer,
 } from "../lib/gocardless";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  getUserPropertyRole,
+  hasMinimumRole,
+} from "../lib/propertyAccess";
 
 export const gocardlessRouter = new Hono();
 
@@ -50,15 +54,19 @@ gocardlessRouter.post(
     }
 
     const data = c.req.valid("json");
-
-    // Ownership check: verify lease belongs to authenticated user
-    const ownerId = getRequiredUserId(c);
+    const userId = getRequiredUserId(c);
     const db = getDb();
-    const lease = await db.query.leases.findFirst({
-      where: and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)),
-    });
-    if (!lease) {
+
+    // Verify lease exists and user has manager+ role on its property
+    const lease = await db.select().from(leases)
+      .where(eq(leases.id, data.leaseId)).limit(1);
+    if (!lease[0]) {
       return c.json({ error: "Lease not found" }, 404);
+    }
+
+    const role = await getUserPropertyRole(userId, lease[0].propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
     }
 
     try {
@@ -138,15 +146,19 @@ gocardlessRouter.post(
       }
 
       // Persist GoCardless IDs to database
-      const ownerId = getRequiredUserId(c);
+      const userId = getRequiredUserId(c);
       const db = getDb();
 
-      // Verify lease belongs to this owner
-      const lease = await db.query.leases.findFirst({
-        where: and(eq(leases.id, data.leaseId), eq(leases.ownerId, ownerId)),
-      });
-      if (!lease) {
+      // Verify lease exists and user has manager+ role on its property
+      const lease = await db.select().from(leases)
+        .where(eq(leases.id, data.leaseId)).limit(1);
+      if (!lease[0]) {
         return c.json({ error: "Lease not found" }, 404);
+      }
+
+      const role = await getUserPropertyRole(userId, lease[0].propertyId);
+      if (!role || !hasMinimumRole(role, "manager")) {
+        return c.json({ error: "Insufficient permissions" }, 403);
       }
 
       // Update lease with mandate ID
