@@ -118,11 +118,13 @@ Plans:
   2. The system scrapes properties, tenants, leases, and payment history from the user's Smovin account and imports them into Rentular
   3. User sees real-time import progress and a summary of what was imported (counts) and any errors encountered
   4. Smovin credentials are used only for the import session and are never stored in the database
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
+- [ ] 06-01-PLAN.md -- Schema foundation, Playwright+stealth installation, spike test gate (D-02)
+- [ ] 06-02-PLAN.md -- Import API routes and BullMQ discovery worker with Smovin scraper
+- [ ] 06-03-PLAN.md -- Data mapper (Smovin-to-Rentular) and import write worker with duplicate detection
+- [ ] 06-04-PLAN.md -- Frontend import page (6 view states), sidebar nav, i18n in 4 languages
 
 ### Phase 7: UI Polish, Onboarding & Launch Readiness
 **Goal**: The platform looks polished, works on mobile, guides new users to success, and every screen is fully translated -- ready for public launch
@@ -153,5 +155,5 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 3. Rent Indexation | 0/2 | Planning complete | - |
 | 4. Notifications & Payment Follow-Up | 0/3 | Planning complete | - |
 | 5. Property Manager Roles | 0/4 | Planning complete | - |
-| 6. Smovin Import (Beta) | 0/? | Not started | - |
+| 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/? | Not started | - |
