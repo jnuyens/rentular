@@ -74,7 +74,7 @@ async function runSpikeTest(): Promise<void> {
     for (const url of propertyUrls) {
       try {
         console.log(`[SpikeTest] Trying to navigate to ${url}...`);
-        await page.goto(url, { waitUntil: "networkidle", timeout: 10000 });
+        await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
         const pageTitle = await page.title();
         const pageUrl = page.url();
         console.log(

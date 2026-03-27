@@ -38,28 +38,40 @@ export async function loginToSmovin(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await page.goto("https://app.smovin.be/login", {
-      waitUntil: "networkidle",
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
     });
-    await randomDelay(1500, 3000);
+    await randomDelay(2000, 4000);
 
-    // Check for Cloudflare challenge page
-    const bodyText = await page.textContent("body");
-    if (
-      bodyText &&
-      (bodyText.includes("Checking your browser") ||
-        bodyText.includes("Just a moment"))
-    ) {
-      // Wait up to 15 seconds for Cloudflare challenge to resolve
-      await page.waitForNavigation({ timeout: 15000 }).catch(() => {});
-      await randomDelay(2000, 4000);
-      const afterChallengeText = await page.textContent("body");
+    // Check for Cloudflare challenge page and wait for it to resolve
+    const maxChallengeWait = 30000;
+    const challengeStart = Date.now();
+    while (Date.now() - challengeStart < maxChallengeWait) {
+      const bodyText = await page.textContent("body");
       if (
-        afterChallengeText &&
-        (afterChallengeText.includes("Checking your browser") ||
-          afterChallengeText.includes("Just a moment"))
+        bodyText &&
+        (bodyText.includes("Checking your browser") ||
+          bodyText.includes("Just a moment") ||
+          bodyText.includes("Verify you are human"))
       ) {
-        return { success: false, error: "cloudflare_blocked" };
+        console.log(
+          "[SmovinScraper] Cloudflare challenge detected, waiting for resolution...",
+        );
+        await randomDelay(3000, 5000);
+        continue;
       }
+      break;
+    }
+
+    // After challenge loop, check if we're still stuck
+    const postChallengeBody = await page.textContent("body");
+    if (
+      postChallengeBody &&
+      (postChallengeBody.includes("Checking your browser") ||
+        postChallengeBody.includes("Just a moment") ||
+        postChallengeBody.includes("Verify you are human"))
+    ) {
+      return { success: false, error: "cloudflare_blocked" };
     }
 
     // Find and fill login form - try common selectors
@@ -101,8 +113,12 @@ export async function loginToSmovin(
       await passwordInput.press("Enter");
     }
 
-    // Wait for navigation after login
-    await page.waitForNavigation({ timeout: 15000 }).catch(() => {});
+    // Wait for navigation after login — use URL change detection instead of networkidle
+    await page
+      .waitForURL((url) => !url.toString().includes("login"), {
+        timeout: 15000,
+      })
+      .catch(() => {});
     await randomDelay(2000, 4000);
 
     // Check if login succeeded by looking for dashboard indicators
