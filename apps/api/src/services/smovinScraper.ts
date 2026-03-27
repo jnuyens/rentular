@@ -74,21 +74,29 @@ export async function loginToSmovin(
       return { success: false, error: "cloudflare_blocked" };
     }
 
-    // Find and fill login form - try common selectors
-    const emailInput = await page.$(
-      'input[type="email"], input[name="email"], input[id="email"]',
-    );
-    const passwordInput = await page.$(
-      'input[type="password"], input[name="password"], input[id="password"]',
-    );
+    // Wait for SPA to hydrate and render the login form
+    console.log("[SmovinScraper] Waiting for SPA to render login form...");
+    const emailSelector =
+      'input[type="email"], input[name="email"], input[id="email"], input[autocomplete="email"], input[placeholder*="mail" i]';
+    const passwordSelector =
+      'input[type="password"], input[name="password"], input[id="password"]';
 
-    if (!emailInput || !passwordInput) {
+    try {
+      await page.waitForSelector(emailSelector, { timeout: 15000 });
+    } catch {
       // Log page HTML for debugging
       const html = await page.content();
       console.log(
-        "[SmovinScraper] Login form not found. Page HTML (first 2000 chars):",
-        html.substring(0, 2000),
+        "[SmovinScraper] Login form not found after SPA hydration. Page HTML (first 3000 chars):",
+        html.substring(0, 3000),
       );
+      return { success: false, error: "login_form_not_found" };
+    }
+
+    const emailInput = await page.$(emailSelector);
+    const passwordInput = await page.$(passwordSelector);
+
+    if (!emailInput || !passwordInput) {
       return { success: false, error: "login_form_not_found" };
     }
 
