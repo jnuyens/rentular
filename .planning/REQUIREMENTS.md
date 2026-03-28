@@ -57,11 +57,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Smovin Import (Beta)
 
-- [ ] **IMP-01**: User can enter Smovin credentials in Rentular import settings
-- [ ] **IMP-02**: System scrapes properties, tenants, leases, and payment history from user's own Smovin account
-- [ ] **IMP-03**: Scraped data is mapped to Rentular's data model and imported
-- [ ] **IMP-04**: User sees import progress and results (counts, errors)
-- [ ] **IMP-05**: Credentials are used once for import and never persisted
+- [x] **IMP-01**: User can enter Smovin credentials in Rentular import settings
+- [x] **IMP-02**: System scrapes properties, tenants, leases, and payment history from user's own Smovin account
+- [x] **IMP-03**: Scraped data is mapped to Rentular's data model and imported
+- [x] **IMP-04**: User sees import progress and results (counts, errors)
+- [x] **IMP-05**: Credentials are used once for import and never persisted
 
 ### Onboarding
 
@@ -187,11 +187,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PM-04 | Phase 5: Property Manager Roles | Complete |
 | PM-05 | Phase 5: Property Manager Roles | Complete |
 | PM-06 | Phase 5: Property Manager Roles | Complete |
-| IMP-01 | Phase 6: Smovin Import (Beta) | Pending |
-| IMP-02 | Phase 6: Smovin Import (Beta) | Pending |
-| IMP-03 | Phase 6: Smovin Import (Beta) | Pending |
-| IMP-04 | Phase 6: Smovin Import (Beta) | Pending |
-| IMP-05 | Phase 6: Smovin Import (Beta) | Pending |
+| IMP-01 | Phase 6: Smovin Import (Beta) | Complete |
+| IMP-02 | Phase 6: Smovin Import (Beta) | Complete |
+| IMP-03 | Phase 6: Smovin Import (Beta) | Complete |
+| IMP-04 | Phase 6: Smovin Import (Beta) | Complete |
+| IMP-05 | Phase 6: Smovin Import (Beta) | Complete |
 | UI-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
 | UI-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
 | UI-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
