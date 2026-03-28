@@ -37,44 +37,40 @@ export async function loginToSmovin(
   password: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Navigate and wait for all resources (scripts) to download
     await page.goto("https://app.smovin.be/login", {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
+      waitUntil: "load",
+      timeout: 60000,
+    });
+    console.log("[SmovinScraper] Page loaded, waiting for SPA hydration...");
+
+    // Wait for the SPA JS to execute and render — try networkidle after load
+    await page.waitForLoadState("networkidle").catch(() => {
+      console.log("[SmovinScraper] networkidle timeout, continuing...");
     });
     await randomDelay(2000, 4000);
 
-    // Check for Cloudflare challenge page and wait for it to resolve
-    const maxChallengeWait = 30000;
-    const challengeStart = Date.now();
-    while (Date.now() - challengeStart < maxChallengeWait) {
-      const bodyText = await page.textContent("body");
-      if (
-        bodyText &&
-        (bodyText.includes("Checking your browser") ||
-          bodyText.includes("Just a moment") ||
-          bodyText.includes("Verify you are human"))
-      ) {
-        console.log(
-          "[SmovinScraper] Cloudflare challenge detected, waiting for resolution...",
-        );
-        await randomDelay(3000, 5000);
-        continue;
-      }
-      break;
-    }
-
-    // After challenge loop, check if we're still stuck
-    const postChallengeBody = await page.textContent("body");
+    // Check for Cloudflare challenge page
+    const bodyText = await page.textContent("body");
     if (
-      postChallengeBody &&
-      (postChallengeBody.includes("Checking your browser") ||
-        postChallengeBody.includes("Just a moment") ||
-        postChallengeBody.includes("Verify you are human"))
+      bodyText &&
+      (bodyText.includes("Checking your browser") ||
+        bodyText.includes("Just a moment") ||
+        bodyText.includes("Verify you are human"))
     ) {
-      return { success: false, error: "cloudflare_blocked" };
+      console.log(
+        "[SmovinScraper] Cloudflare challenge detected, waiting up to 30s...",
+      );
+      // Wait for challenge to resolve by waiting for any input to appear
+      try {
+        await page.waitForSelector("input", { timeout: 30000 });
+      } catch {
+        return { success: false, error: "cloudflare_blocked" };
+      }
     }
 
     // Wait for SPA to hydrate and render the login form
+    // Use broad selector: any input element as first sign of SPA rendering
     console.log("[SmovinScraper] Waiting for SPA to render login form...");
     const emailSelector =
       'input[type="email"], input[name="email"], input[id="email"], input[autocomplete="email"], input[placeholder*="mail" i]';
@@ -82,13 +78,20 @@ export async function loginToSmovin(
       'input[type="password"], input[name="password"], input[id="password"]';
 
     try {
-      await page.waitForSelector(emailSelector, { timeout: 15000 });
+      // First wait for ANY input to appear (SPA mounted)
+      await page.waitForSelector("input", { timeout: 30000 });
+      console.log("[SmovinScraper] SPA rendered — input elements detected");
+      // Then wait specifically for email field
+      await page.waitForSelector(emailSelector, { timeout: 10000 });
     } catch {
-      // Log page HTML for debugging
+      // Log full page HTML from the end (body) for debugging
       const html = await page.content();
+      // Find body content specifically
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/);
+      const bodyHtml = bodyMatch ? bodyMatch[1] : html;
       console.log(
-        "[SmovinScraper] Login form not found after SPA hydration. Page HTML (first 3000 chars):",
-        html.substring(0, 3000),
+        "[SmovinScraper] Login form not found. Body HTML (first 3000 chars):",
+        bodyHtml.substring(0, 3000),
       );
       return { success: false, error: "login_form_not_found" };
     }
