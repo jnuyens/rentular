@@ -122,9 +122,9 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md -- Schema foundation, Playwright+stealth installation, spike test gate (D-02)
-- [ ] 06-02-PLAN.md -- Import API routes and BullMQ discovery worker with Smovin scraper
-- [ ] 06-03-PLAN.md -- Data mapper (Smovin-to-Rentular) and import write worker with duplicate detection
-- [ ] 06-04-PLAN.md -- Frontend import page (6 view states), sidebar nav, i18n in 4 languages
+- [x] 06-02-PLAN.md -- Import API routes and BullMQ discovery worker with Smovin scraper
+- [x] 06-03-PLAN.md -- Data mapper (Smovin-to-Rentular) and import write worker with duplicate detection
+- [x] 06-04-PLAN.md -- Frontend import page (6 view states), sidebar nav, i18n in 4 languages
 
 ### Phase 7: UI Polish, Onboarding & Launch Readiness
 **Goal**: The platform looks polished, works on mobile, guides new users to success, and every screen is fully translated -- ready for public launch

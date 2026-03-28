@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 06
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-03-27T22:46:50.050Z"
+status: Ready to execute
+stopped_at: "Completed 06-04-PLAN.md (checkpoint:human-verify pending)"
+last_updated: "2026-03-28T10:00:49.525Z"
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 23
-  completed_plans: 19
+  completed_plans: 23
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 06 (smovin-import-beta) — EXECUTING
-Plan: 1 of 4
+Plan: 4 of 4
 
 ## Performance Metrics
 
@@ -62,6 +62,9 @@ Plan: 1 of 4
 | Phase 04 P02 | 4min | 2 tasks | 5 files |
 | Phase 05 P02 | 3min | 2 tasks | 2 files |
 | Phase 05 P03 | 10min | 2 tasks | 9 files |
+| Phase 06 P02 | 4min | 2 tasks | 3 files |
+| Phase 06 P03 | 3min | 2 tasks | 3 files |
+| Phase 06 P04 | 5min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -112,6 +115,13 @@ Recent decisions affecting current work:
 - [Phase 05]: Communications use OR filter (accessible leases OR ownerId=user) for backwards compatibility
 - [Phase 05]: Costs with no propertyId remain accessible only to ownerId user (general costs not property-scoped)
 - [Phase 05]: Tenant POST does not require property check; tenants linked to properties via leases
+- [Phase 06]: Dynamic import for importWriteWorker to avoid compile-time dependency on Plan 03 (concurrent execution)
+- [Phase 06]: sessionPublicFields pattern excludes credential columns from all GET API responses
+- [Phase 06]: Discovery worker uses per-section try-catch for partial scraping resilience
+- [Phase 06]: Belgian address parser handles bus/bte/boite/slash box indicators for street number parsing
+- [Phase 06]: Duplicate property detection by street+streetNumber+postalCode+city for same owner (D-06)
+- [Phase 06]: Payments linked to first lease of property; skipped if no leases exist
+- [Phase 06]: NAV_VISIBILITY blocking pattern added to layout to restrict import and settings sidebar items to owner role
 
 ### Pending Todos
 
@@ -125,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T12:59:09.173Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-smovin-import-beta/06-UI-SPEC.md
+Last session: 2026-03-28T10:00:49.520Z
+Stopped at: Completed 06-04-PLAN.md (checkpoint:human-verify pending)
+Resume file: None
