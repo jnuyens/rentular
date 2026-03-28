@@ -6,6 +6,7 @@ import {
   text,
   timestamp,
   int,
+  boolean,
   primaryKey,
 } from "drizzle-orm/mysql-core";
 
@@ -19,6 +20,8 @@ export const users = mysqlTable("users", {
   // Password auth (bcrypt hash, null for OAuth-only users)
   passwordHash: varchar("password_hash", { length: 255 }),
   locale: varchar("locale", { length: 5 }).default("en"),
+  onboardingStep: int("onboarding_step").default(1),
+  onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

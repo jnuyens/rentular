@@ -40,7 +40,7 @@ export default async function DashboardLayout({
       {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--background))]">
         <div className="flex h-16 items-center gap-2 px-6">
-          <Image src="/rentular.png" alt="Rentular" width={36} height={36} />
+          <Image src="/rentular.png" alt="Rentular" width={48} height={48} />
           <span className="text-xl font-bold">Rentular</span>
         </div>
 
@@ -94,7 +94,7 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="relative flex-1 overflow-auto bg-[hsl(var(--muted))] p-8">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.03]">
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.02]">
           <Image src="/rentular.png" alt="" width={400} height={400} className="select-none" />
         </div>
         <div className="relative">{children}</div>
