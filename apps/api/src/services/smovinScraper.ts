@@ -96,40 +96,52 @@ export async function loginToSmovin(
       return { success: false, error: "login_form_not_found" };
     }
 
-    const emailInput = await page.$(emailSelector);
-    const passwordInput = await page.$(passwordSelector);
+    // Use Locator API (pressSequentially requires Locator, not ElementHandle)
+    const emailLocator = page.locator(emailSelector).first();
+    const passwordLocator = page.locator(passwordSelector).first();
 
-    if (!emailInput || !passwordInput) {
+    if ((await emailLocator.count()) === 0 || (await passwordLocator.count()) === 0) {
       return { success: false, error: "login_form_not_found" };
     }
 
-    // Type with human-like keystroke simulation (fill() may not trigger SPA events)
-    await emailInput.click();
+    // Type with human-like keystroke simulation
+    await emailLocator.click();
     await randomDelay(300, 600);
-    await emailInput.pressSequentially(email, { delay: 50 });
+    await emailLocator.pressSequentially(email, { delay: 50 });
     await randomDelay(500, 1000);
 
-    await passwordInput.click();
+    await passwordLocator.click();
     await randomDelay(300, 600);
-    await passwordInput.pressSequentially(password, { delay: 50 });
+    await passwordLocator.pressSequentially(password, { delay: 50 });
     await randomDelay(500, 1000);
 
     // Debug: log what we see before submitting
     console.log(`[SmovinScraper] URL before submit: ${page.url()}`);
 
     // Find and click submit button — broaden selectors for SPA frameworks
-    const submitButton = await page.$(
-      'button[type="submit"], input[type="submit"], button:has-text("Log in"), button:has-text("Connexion"), button:has-text("Inloggen"), button:has-text("Se connecter"), form button',
-    );
-    console.log(`[SmovinScraper] Submit button found: ${!!submitButton}`);
-
-    if (submitButton) {
-      const buttonText = await submitButton.textContent();
-      console.log(`[SmovinScraper] Submit button text: "${buttonText}"`);
-      await submitButton.click();
-    } else {
+    const submitSelectors = [
+      'button[type="submit"]',
+      'input[type="submit"]',
+      'button:has-text("Log in")',
+      'button:has-text("Connexion")',
+      'button:has-text("Inloggen")',
+      'button:has-text("Se connecter")',
+      "form button",
+    ];
+    let submitClicked = false;
+    for (const sel of submitSelectors) {
+      const btn = page.locator(sel).first();
+      if ((await btn.count()) > 0) {
+        const buttonText = await btn.textContent();
+        console.log(`[SmovinScraper] Submit button found: "${buttonText?.trim()}"`);
+        await btn.click();
+        submitClicked = true;
+        break;
+      }
+    }
+    if (!submitClicked) {
       console.log("[SmovinScraper] No submit button found, pressing Enter");
-      await passwordInput.press("Enter");
+      await passwordLocator.press("Enter");
     }
 
     // Wait for navigation after login
