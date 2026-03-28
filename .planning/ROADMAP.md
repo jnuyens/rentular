@@ -121,7 +121,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 06-01-PLAN.md -- Schema foundation, Playwright+stealth installation, spike test gate (D-02)
+- [x] 06-01-PLAN.md -- Schema foundation, Playwright+stealth installation, spike test gate (D-02)
 - [ ] 06-02-PLAN.md -- Import API routes and BullMQ discovery worker with Smovin scraper
 - [ ] 06-03-PLAN.md -- Data mapper (Smovin-to-Rentular) and import write worker with duplicate detection
 - [ ] 06-04-PLAN.md -- Frontend import page (6 view states), sidebar nav, i18n in 4 languages

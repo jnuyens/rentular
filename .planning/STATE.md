@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-25T11:48:12.531Z"
+status: Executing Phase 06
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-03-27T22:46:50.050Z"
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 19
+  total_plans: 23
   completed_plans: 19
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 05 — property-manager-roles
+**Current focus:** Phase 06 — smovin-import-beta
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (smovin-import-beta) — EXECUTING
+Plan: 1 of 4
 
 ## Performance Metrics
 
@@ -125,6 +125,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-25T11:48:12.522Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-smovin-import-beta/06-CONTEXT.md
+Last session: 2026-03-25T12:59:09.173Z
+Stopped at: Phase 6 UI-SPEC approved
+Resume file: .planning/phases/06-smovin-import-beta/06-UI-SPEC.md
