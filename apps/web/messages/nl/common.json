@@ -719,7 +719,11 @@
     "emptyLeasesDesc": "Maak een huurcontract aan om huur en betalingen bij te houden.",
     "deleteConfirm": "Weet je zeker dat je dit wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     "delete": "Verwijderen",
-    "keepItem": "Behouden"
+    "keepItem": "Behouden",
+    "emptyPaymentsTitle": "Nog geen betalingen",
+    "emptyPaymentsDesc": "Betalingen verschijnen hier zodra een huurcontract is ingesteld.",
+    "emptyCommunicationsTitle": "Nog geen communicatie",
+    "emptyCommunicationsDesc": "Verzonden e-mails en sms-berichten worden hier bijgehouden."
   },
   "marketing": {
     "getStarted": "Aan de slag",

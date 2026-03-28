@@ -719,7 +719,11 @@
     "emptyLeasesDesc": "Erstellen Sie einen Mietvertrag, um Miete und Zahlungen zu verfolgen.",
     "deleteConfirm": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "delete": "Loschen",
-    "keepItem": "Behalten"
+    "keepItem": "Behalten",
+    "emptyPaymentsTitle": "Noch keine Zahlungen",
+    "emptyPaymentsDesc": "Zahlungen erscheinen hier, sobald ein Mietvertrag eingerichtet ist.",
+    "emptyCommunicationsTitle": "Noch keine Kommunikation",
+    "emptyCommunicationsDesc": "Gesendete E-Mails und SMS-Nachrichten werden hier protokolliert."
   },
   "marketing": {
     "getStarted": "Loslegen",

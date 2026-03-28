@@ -719,7 +719,11 @@
     "emptyLeasesDesc": "Creez un bail pour commencer a suivre le loyer et les paiements.",
     "deleteConfirm": "Etes-vous sur de vouloir supprimer ceci ? Cette action est irreversible.",
     "delete": "Supprimer",
-    "keepItem": "Garder"
+    "keepItem": "Garder",
+    "emptyPaymentsTitle": "Pas encore de paiements",
+    "emptyPaymentsDesc": "Les paiements apparaitront ici une fois un bail configure.",
+    "emptyCommunicationsTitle": "Pas encore de communications",
+    "emptyCommunicationsDesc": "Les e-mails et SMS envoyes seront enregistres ici."
   },
   "marketing": {
     "getStarted": "Commencer",

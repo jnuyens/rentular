@@ -14,10 +14,49 @@ import {
   Receipt,
   CalendarOff,
   TrendingDown,
-  X,
   Search,
   ChevronDown,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Payment {
   id: string;
@@ -45,16 +84,12 @@ function LeaseSelect({
   onChange,
   leases,
   placeholder,
-  inputClass,
-  labelClass,
   label,
 }: {
   value: string;
   onChange: (id: string) => void;
   leases: LeaseOption[];
   placeholder: string;
-  inputClass: string;
-  labelClass: string;
   label: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -81,23 +116,24 @@ function LeaseSelect({
 
   return (
     <div ref={ref} className="relative">
-      <label className={labelClass}>{label}</label>
-      <button
+      <Label>{label}</Label>
+      <Button
         type="button"
+        variant="outline"
         onClick={() => setOpen(!open)}
-        className={`${inputClass} flex items-center justify-between text-left`}
+        className="mt-1 w-full justify-between text-left font-normal"
       >
-        <span className={selected ? "text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))]"}>
+        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
           {selected
-            ? `${selected.propertyName} — ${selected.tenantNames || "?"} (€${selected.monthlyRent}/m)`
+            ? `${selected.propertyName} -- ${selected.tenantNames || "?"} (${selected.monthlyRent}/m)`
             : placeholder}
         </span>
-        <ChevronDown className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-      </button>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </Button>
       {open && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] shadow-lg">
-          <div className="flex items-center border-b border-[hsl(var(--border))] px-3 py-2">
-            <Search className="mr-2 h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-lg border bg-background shadow-lg">
+          <div className="flex items-center border-b px-3 py-2">
+            <Search className="mr-2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               value={query}
@@ -109,8 +145,8 @@ function LeaseSelect({
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-[hsl(var(--muted-foreground))]">
-                Geen contracten gevonden
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                No contracts found
               </div>
             ) : (
               filtered.map((l) => (
@@ -122,13 +158,13 @@ function LeaseSelect({
                     setOpen(false);
                     setQuery("");
                   }}
-                  className={`flex w-full flex-col px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--muted))] ${
-                    l.id === value ? "bg-[hsl(var(--primary))]/10" : ""
+                  className={`flex w-full flex-col px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${
+                    l.id === value ? "bg-primary/10" : ""
                   }`}
                 >
                   <span className="font-medium">{l.propertyName}</span>
-                  <span className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {l.tenantNames || "—"} · €{l.monthlyRent}/m · {l.type}
+                  <span className="text-xs text-muted-foreground">
+                    {l.tenantNames || "--"} . {l.monthlyRent}/m . {l.type}
                   </span>
                 </button>
               ))
@@ -145,19 +181,19 @@ type ModalType = "payment" | "cost" | "rent-free" | "deduction" | "ignore" | nul
 function StatusBadge({ status, isIgnored }: { status: string; isIgnored: boolean }) {
   if (isIgnored) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+      <Badge variant="outline" className="gap-1">
         <EyeOff className="h-3 w-3" />
         Ignored
-      </span>
+      </Badge>
     );
   }
-  const styles: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-700",
-    processing: "bg-blue-100 text-blue-700",
-    paid: "bg-green-100 text-green-700",
-    failed: "bg-red-100 text-red-700",
-    cancelled: "bg-gray-100 text-gray-600",
-    refunded: "bg-purple-100 text-purple-700",
+  const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
+    pending: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 border-transparent" },
+    processing: { variant: "secondary", className: "bg-blue-100 text-blue-700 border-transparent" },
+    paid: { variant: "default", className: "bg-green-100 text-green-700 border-transparent" },
+    failed: { variant: "destructive", className: "" },
+    cancelled: { variant: "outline", className: "" },
+    refunded: { variant: "secondary", className: "bg-purple-100 text-purple-700 border-transparent" },
   };
   const icons: Record<string, React.ReactNode> = {
     pending: <Clock className="h-3 w-3" />,
@@ -165,37 +201,23 @@ function StatusBadge({ status, isIgnored }: { status: string; isIgnored: boolean
     paid: <CheckCircle2 className="h-3 w-3" />,
     failed: <XCircle className="h-3 w-3" />,
   };
+  const config = variants[status] || variants.pending;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] || styles.pending}`}>
+    <Badge variant={config.variant} className={`gap-1 ${config.className}`}>
       {icons[status]}
       {status.charAt(0).toUpperCase() + status.slice(1)}
-    </span>
-  );
-}
-
-function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-[hsl(var(--background))] p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1 hover:bg-[hsl(var(--muted))]">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    </Badge>
   );
 }
 
 export default function PaymentsPage() {
   const t = useTranslations("payments");
+  const tc = useTranslations("dashboard");
   const [showIgnored, setShowIgnored] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [ignorePaymentId, setIgnorePaymentId] = useState<string | null>(null);
   const [ignoreReason, setIgnoreReason] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form states
   const [paymentForm, setPaymentForm] = useState({ leaseId: "", amount: "", date: "", method: "bank_transfer" as string, reference: "", notes: "" });
@@ -231,9 +253,11 @@ export default function PaymentsPage() {
         }))
       );
     } catch {
-      // API unavailable
+      toast.error(t("loadError") || "Failed to load data");
+    } finally {
+      setIsLoading(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, t]);
 
   useEffect(() => {
     fetchLeases();
@@ -247,359 +271,533 @@ export default function PaymentsPage() {
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/api/v1/payments/record`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...paymentForm, amount: parseFloat(paymentForm.amount) }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/record`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...paymentForm, amount: parseFloat(paymentForm.amount) }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.created") || "Payment recorded");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to record payment");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
     setPaymentForm({ leaseId: "", amount: "", date: "", method: "bank_transfer", reference: "", notes: "" });
     closeModal();
   };
 
   const handleAddCost = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/api/v1/costs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...costForm, amount: parseFloat(costForm.amount) }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/costs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...costForm, amount: parseFloat(costForm.amount) }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.created") || "Cost recorded");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to record cost");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
     setCostForm({ propertyId: "", category: "maintenance", description: "", amount: "", date: "", rechargedToTenant: false, reference: "", notes: "" });
     closeModal();
   };
 
   const handleAddFreePeriod = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/api/v1/rent-adjustments/free-periods`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(freePeriodForm),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/rent-adjustments/free-periods`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(freePeriodForm),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.created") || "Rent-free period added");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to add rent-free period");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
     setFreePeriodForm({ leaseId: "", startDate: "", endDate: "", reason: "", waiveCharges: false, notes: "" });
     closeModal();
   };
 
   const handleAddDeduction = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch(`${apiUrl}/api/v1/rent-adjustments/deductions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...deductionForm, amount: parseFloat(deductionForm.amount) }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/rent-adjustments/deductions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...deductionForm, amount: parseFloat(deductionForm.amount) }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.created") || "Deduction added");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to add deduction");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
     setDeductionForm({ leaseId: "", type: "temporary", amount: "", startDate: "", endDate: "", reason: "", notes: "" });
     closeModal();
   };
 
   const handleIgnore = async (paymentId: string) => {
-    await fetch(`${apiUrl}/api/v1/payments/${paymentId}/ignore`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: ignoreReason }),
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/ignore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: ignoreReason }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.updated") || "Payment ignored");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to ignore payment");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
     closeModal();
   };
 
   const handleUnignore = async (paymentId: string) => {
-    await fetch(`${apiUrl}/api/v1/payments/${paymentId}/unignore`, {
-      method: "POST",
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/unignore`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.updated") || "Payment restored");
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to restore payment");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
   };
-
-  const inputClass = "w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm";
-  const labelClass = "mb-1 block text-sm font-medium";
-  const btnPrimary = "rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50";
-  const btnSecondary = "rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]";
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="mt-1 text-[hsl(var(--muted-foreground))]">{t("subtitle")}</p>
+          <p className="mt-1 text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setActiveModal("payment")} className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-3 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90">
-            <Plus className="h-4 w-4" /> {t("addPayment")}
-          </button>
-          <button onClick={() => setActiveModal("cost")} className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]">
-            <Receipt className="h-4 w-4" /> {t("addCost")}
-          </button>
-          <button onClick={() => setActiveModal("rent-free")} className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]">
-            <CalendarOff className="h-4 w-4" /> {t("addRentFree")}
-          </button>
-          <button onClick={() => setActiveModal("deduction")} className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-3 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]">
-            <TrendingDown className="h-4 w-4" /> {t("addDeduction")}
-          </button>
-          <button
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setActiveModal("payment")} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> {t("addPayment")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setActiveModal("cost")}>
+            <Receipt className="mr-1 h-4 w-4" /> {t("addCost")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setActiveModal("rent-free")}>
+            <CalendarOff className="mr-1 h-4 w-4" /> {t("addRentFree")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setActiveModal("deduction")}>
+            <TrendingDown className="mr-1 h-4 w-4" /> {t("addDeduction")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowIgnored(!showIgnored)}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${showIgnored ? "border-[hsl(var(--primary))] text-[hsl(var(--primary))]" : "border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]"} hover:bg-[hsl(var(--muted))]`}
+            className={showIgnored ? "border-primary text-primary" : "text-muted-foreground"}
           >
-            {showIgnored ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {showIgnored ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
             {t("showIgnored")}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">{t("overdue")}</p>
-          <p className="mt-1 text-2xl font-bold text-red-600">0</p>
-        </div>
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">{t("pending")}</p>
-          <p className="mt-1 text-2xl font-bold text-yellow-600">0</p>
-        </div>
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">{t("paid")}</p>
-          <p className="mt-1 text-2xl font-bold text-green-600">0</p>
-        </div>
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">{t("overdue")}</p>
+            <p className="mt-1 text-2xl font-bold text-red-600">0</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">{t("pending")}</p>
+            <p className="mt-1 text-2xl font-bold text-yellow-600">0</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-sm text-muted-foreground">{t("paid")}</p>
+            <p className="mt-1 text-2xl font-bold text-green-600">0</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Payments table */}
-      <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-        {visiblePayments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <CreditCard className="mb-4 h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-            <h3 className="text-lg font-semibold">{t("emptyTitle")}</h3>
-            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{t("emptyDescription")}</p>
+      {/* Skeleton loading */}
+      {isLoading && (
+        <Card>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <TableHead key={i}><Skeleton className="h-4 w-20" /></TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[hsl(var(--border))]">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("tenant")}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("property")}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("amountLabel")}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("dueDate")}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("statusLabel")}</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("remindersLabel")}</th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">{t("actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePayments.map((payment) => (
-                <tr key={payment.id} className={`border-b border-[hsl(var(--border))] ${payment.isIgnored ? "opacity-50" : ""}`}>
-                  <td className="px-4 py-3 text-sm">{payment.tenantName}</td>
-                  <td className="px-4 py-3 text-sm">{payment.propertyName}</td>
-                  <td className="px-4 py-3 text-right text-sm font-medium">&euro;{payment.amount.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-sm">{payment.dueDate}</td>
-                  <td className="px-4 py-3"><StatusBadge status={payment.status} isIgnored={payment.isIgnored} /></td>
-                  <td className="px-4 py-3 text-sm">{payment.reminders.length > 0 && <span className="text-xs text-[hsl(var(--muted-foreground))]">{payment.reminders.length} sent</span>}</td>
-                  <td className="px-4 py-3 text-right">
-                    {payment.isIgnored ? (
-                      <button onClick={() => handleUnignore(payment.id)} className="text-xs text-[hsl(var(--primary))] hover:underline" title={payment.ignoreReason || ""}>{t("restore")}</button>
-                    ) : (
-                      <button onClick={() => { setIgnorePaymentId(payment.id); setActiveModal("ignore"); }} className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">{t("markIgnored")}</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+          <div className="md:hidden space-y-3 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-lg" />
+            ))}
+          </div>
+        </Card>
+      )}
 
-      {/* Record payment modal */}
-      <Modal open={activeModal === "payment"} onClose={closeModal} title={t("addPaymentTitle")}>
-        <form onSubmit={handleRecordPayment} className="space-y-4">
-          <LeaseSelect
-            value={paymentForm.leaseId}
-            onChange={(id) => setPaymentForm({ ...paymentForm, leaseId: id })}
-            leases={leaseOptions}
-            placeholder={t("leaseIdPlaceholder")}
-            inputClass={inputClass}
-            labelClass={labelClass}
-            label={t("leaseId")}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t("amountLabel")}</label>
-              <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} className={inputClass} />
+      {/* Payments table / empty state */}
+      {!isLoading && (
+        <Card>
+          {visiblePayments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <CreditCard className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">{tc("emptyPaymentsTitle")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{tc("emptyPaymentsDesc")}</p>
             </div>
-            <div>
-              <label className={labelClass}>{t("paymentDate")}</label>
-              <input type="date" required value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} className={inputClass} />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>{t("paymentMethod")}</label>
-            <select value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })} className={inputClass}>
-              <option value="bank_transfer">{t("methodBankTransfer")}</option>
-              <option value="cash">{t("methodCash")}</option>
-              <option value="other">{t("methodOther")}</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>{t("reference")}</label>
-            <input type="text" value={paymentForm.reference} onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })} placeholder="+++xxx/xxxx/xxxxx+++" className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>{t("notesLabel")}</label>
-            <textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} rows={2} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className={btnSecondary}>{t("cancel")}</button>
-            <button type="submit" className={btnPrimary}>{t("recordPayment")}</button>
-          </div>
-        </form>
-      </Modal>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs uppercase">{t("tenant")}</TableHead>
+                      <TableHead className="text-xs uppercase">{t("property")}</TableHead>
+                      <TableHead className="text-right text-xs uppercase">{t("amountLabel")}</TableHead>
+                      <TableHead className="text-xs uppercase">{t("dueDate")}</TableHead>
+                      <TableHead className="text-xs uppercase">{t("statusLabel")}</TableHead>
+                      <TableHead className="text-xs uppercase">{t("remindersLabel")}</TableHead>
+                      <TableHead className="text-right text-xs uppercase">{t("actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visiblePayments.map((payment) => (
+                      <TableRow key={payment.id} className={payment.isIgnored ? "opacity-50" : ""}>
+                        <TableCell className="text-sm">{payment.tenantName}</TableCell>
+                        <TableCell className="text-sm">{payment.propertyName}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">&euro;{payment.amount.toFixed(2)}</TableCell>
+                        <TableCell className="text-sm">{payment.dueDate}</TableCell>
+                        <TableCell><StatusBadge status={payment.status} isIgnored={payment.isIgnored} /></TableCell>
+                        <TableCell className="text-sm">{payment.reminders.length > 0 && <span className="text-xs text-muted-foreground">{payment.reminders.length} sent</span>}</TableCell>
+                        <TableCell className="text-right">
+                          {payment.isIgnored ? (
+                            <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)} title={payment.ignoreReason || ""}>{t("restore")}</Button>
+                          ) : (
+                            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setIgnorePaymentId(payment.id); setActiveModal("ignore"); }}>{t("markIgnored")}</Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-      {/* Add cost modal */}
-      <Modal open={activeModal === "cost"} onClose={closeModal} title={t("addCostTitle")}>
-        <form onSubmit={handleAddCost} className="space-y-4">
-          <div>
-            <label className={labelClass}>{t("costCategory")}</label>
-            <select value={costForm.category} onChange={(e) => setCostForm({ ...costForm, category: e.target.value })} className={inputClass}>
-              <option value="maintenance">{t("catMaintenance")}</option>
-              <option value="repair">{t("catRepair")}</option>
-              <option value="insurance">{t("catInsurance")}</option>
-              <option value="tax">{t("catTax")}</option>
-              <option value="management_fee">{t("catManagementFee")}</option>
-              <option value="utility">{t("catUtility")}</option>
-              <option value="legal">{t("catLegal")}</option>
-              <option value="renovation">{t("catRenovation")}</option>
-              <option value="other">{t("catOther")}</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>{t("costDescription")}</label>
-            <input type="text" required value={costForm.description} onChange={(e) => setCostForm({ ...costForm, description: e.target.value })} className={inputClass} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t("amountLabel")}</label>
-              <input type="number" step="0.01" min="0.01" required value={costForm.amount} onChange={(e) => setCostForm({ ...costForm, amount: e.target.value })} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>{t("costDate")}</label>
-              <input type="date" required value={costForm.date} onChange={(e) => setCostForm({ ...costForm, date: e.target.value })} className={inputClass} />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>{t("reference")}</label>
-            <input type="text" value={costForm.reference} onChange={(e) => setCostForm({ ...costForm, reference: e.target.value })} placeholder={t("invoiceNumber")} className={inputClass} />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="recharge" checked={costForm.rechargedToTenant} onChange={(e) => setCostForm({ ...costForm, rechargedToTenant: e.target.checked })} />
-            <label htmlFor="recharge" className="text-sm">{t("rechargeToTenant")}</label>
-          </div>
-          <div>
-            <label className={labelClass}>{t("notesLabel")}</label>
-            <textarea value={costForm.notes} onChange={(e) => setCostForm({ ...costForm, notes: e.target.value })} rows={2} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className={btnSecondary}>{t("cancel")}</button>
-            <button type="submit" className={btnPrimary}>{t("saveCost")}</button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Rent-free period modal */}
-      <Modal open={activeModal === "rent-free"} onClose={closeModal} title={t("addRentFreeTitle")}>
-        <form onSubmit={handleAddFreePeriod} className="space-y-4">
-          <LeaseSelect
-            value={freePeriodForm.leaseId}
-            onChange={(id) => setFreePeriodForm({ ...freePeriodForm, leaseId: id })}
-            leases={leaseOptions}
-            placeholder={t("leaseIdPlaceholder")}
-            inputClass={inputClass}
-            labelClass={labelClass}
-            label={t("leaseId")}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t("startDate")}</label>
-              <input type="date" required value={freePeriodForm.startDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, startDate: e.target.value })} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>{t("endDate")}</label>
-              <input type="date" required value={freePeriodForm.endDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, endDate: e.target.value })} className={inputClass} />
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>{t("reason")}</label>
-            <input type="text" required value={freePeriodForm.reason} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, reason: e.target.value })} placeholder={t("rentFreeReasonPlaceholder")} className={inputClass} />
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="waiveCharges" checked={freePeriodForm.waiveCharges} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, waiveCharges: e.target.checked })} />
-            <label htmlFor="waiveCharges" className="text-sm">{t("waiveCharges")}</label>
-          </div>
-          <div>
-            <label className={labelClass}>{t("notesLabel")}</label>
-            <textarea value={freePeriodForm.notes} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, notes: e.target.value })} rows={2} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className={btnSecondary}>{t("cancel")}</button>
-            <button type="submit" className={btnPrimary}>{t("saveRentFree")}</button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Rent deduction modal */}
-      <Modal open={activeModal === "deduction"} onClose={closeModal} title={t("addDeductionTitle")}>
-        <form onSubmit={handleAddDeduction} className="space-y-4">
-          <LeaseSelect
-            value={deductionForm.leaseId}
-            onChange={(id) => setDeductionForm({ ...deductionForm, leaseId: id })}
-            leases={leaseOptions}
-            placeholder={t("leaseIdPlaceholder")}
-            inputClass={inputClass}
-            labelClass={labelClass}
-            label={t("leaseId")}
-          />
-          <div>
-            <label className={labelClass}>{t("deductionType")}</label>
-            <select value={deductionForm.type} onChange={(e) => setDeductionForm({ ...deductionForm, type: e.target.value })} className={inputClass}>
-              <option value="temporary">{t("typeTemporary")}</option>
-              <option value="permanent">{t("typePermanent")}</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t("deductionAmount")}</label>
-              <input type="number" step="0.01" min="0.01" required value={deductionForm.amount} onChange={(e) => setDeductionForm({ ...deductionForm, amount: e.target.value })} className={inputClass} />
-            </div>
-            <div>
-              <label className={labelClass}>{t("startDate")}</label>
-              <input type="date" required value={deductionForm.startDate} onChange={(e) => setDeductionForm({ ...deductionForm, startDate: e.target.value })} className={inputClass} />
-            </div>
-          </div>
-          {deductionForm.type === "temporary" && (
-            <div>
-              <label className={labelClass}>{t("endDate")}</label>
-              <input type="date" required value={deductionForm.endDate} onChange={(e) => setDeductionForm({ ...deductionForm, endDate: e.target.value })} className={inputClass} />
-            </div>
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3 p-4">
+                {visiblePayments.map((payment) => (
+                  <Card key={payment.id} className={payment.isIgnored ? "opacity-50" : ""}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">{payment.tenantName}</p>
+                          <p className="text-sm text-muted-foreground">{payment.propertyName}</p>
+                        </div>
+                        <StatusBadge status={payment.status} isIgnored={payment.isIgnored} />
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">{t("amountLabel")}:</span>
+                          <span className="ml-1 font-medium">&euro;{payment.amount.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">{t("dueDate")}:</span>
+                          <span className="ml-1">{payment.dueDate}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex justify-end">
+                        {payment.isIgnored ? (
+                          <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)}>{t("restore")}</Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setIgnorePaymentId(payment.id); setActiveModal("ignore"); }}>{t("markIgnored")}</Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           )}
-          <div>
-            <label className={labelClass}>{t("reason")}</label>
-            <input type="text" required value={deductionForm.reason} onChange={(e) => setDeductionForm({ ...deductionForm, reason: e.target.value })} placeholder={t("deductionReasonPlaceholder")} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>{t("notesLabel")}</label>
-            <textarea value={deductionForm.notes} onChange={(e) => setDeductionForm({ ...deductionForm, notes: e.target.value })} rows={2} className={inputClass} />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={closeModal} className={btnSecondary}>{t("cancel")}</button>
-            <button type="submit" className={btnPrimary}>{t("saveDeduction")}</button>
-          </div>
-        </form>
-      </Modal>
+        </Card>
+      )}
 
-      {/* Ignore modal */}
-      <Modal open={activeModal === "ignore"} onClose={closeModal} title={t("ignoreTitle")}>
-        <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">{t("ignoreDescription")}</p>
-        <textarea value={ignoreReason} onChange={(e) => setIgnoreReason(e.target.value)} placeholder={t("ignoreReasonPlaceholder")} rows={3} className={`mb-4 ${inputClass}`} />
-        <div className="flex justify-end gap-2">
-          <button onClick={closeModal} className={btnSecondary}>{t("cancel")}</button>
-          <button onClick={() => ignorePaymentId && handleIgnore(ignorePaymentId)} disabled={!ignoreReason.trim()} className={btnPrimary}>{t("confirmIgnore")}</button>
-        </div>
-      </Modal>
+      {/* Record payment dialog */}
+      <Dialog open={activeModal === "payment"} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("addPaymentTitle")}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleRecordPayment} className="space-y-4">
+            <LeaseSelect
+              value={paymentForm.leaseId}
+              onChange={(id) => setPaymentForm({ ...paymentForm, leaseId: id })}
+              leases={leaseOptions}
+              placeholder={t("leaseIdPlaceholder")}
+              label={t("leaseId")}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("amountLabel")}</Label>
+                <Input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>{t("paymentDate")}</Label>
+                <Input type="date" required value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label>{t("paymentMethod")}</Label>
+              <Select value={paymentForm.method} onValueChange={(val) => setPaymentForm({ ...paymentForm, method: val })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_transfer">{t("methodBankTransfer")}</SelectItem>
+                  <SelectItem value="cash">{t("methodCash")}</SelectItem>
+                  <SelectItem value="other">{t("methodOther")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("reference")}</Label>
+              <Input type="text" value={paymentForm.reference} onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })} placeholder="+++xxx/xxxx/xxxxx+++" className="mt-1" />
+            </div>
+            <div>
+              <Label>{t("notesLabel")}</Label>
+              <textarea value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} rows={2} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>{t("cancel")}</Button>
+              <Button type="submit">{t("recordPayment")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add cost dialog */}
+      <Dialog open={activeModal === "cost"} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("addCostTitle")}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddCost} className="space-y-4">
+            <div>
+              <Label>{t("costCategory")}</Label>
+              <Select value={costForm.category} onValueChange={(val) => setCostForm({ ...costForm, category: val })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="maintenance">{t("catMaintenance")}</SelectItem>
+                  <SelectItem value="repair">{t("catRepair")}</SelectItem>
+                  <SelectItem value="insurance">{t("catInsurance")}</SelectItem>
+                  <SelectItem value="tax">{t("catTax")}</SelectItem>
+                  <SelectItem value="management_fee">{t("catManagementFee")}</SelectItem>
+                  <SelectItem value="utility">{t("catUtility")}</SelectItem>
+                  <SelectItem value="legal">{t("catLegal")}</SelectItem>
+                  <SelectItem value="renovation">{t("catRenovation")}</SelectItem>
+                  <SelectItem value="other">{t("catOther")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>{t("costDescription")}</Label>
+              <Input type="text" required value={costForm.description} onChange={(e) => setCostForm({ ...costForm, description: e.target.value })} className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("amountLabel")}</Label>
+                <Input type="number" step="0.01" min="0.01" required value={costForm.amount} onChange={(e) => setCostForm({ ...costForm, amount: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>{t("costDate")}</Label>
+                <Input type="date" required value={costForm.date} onChange={(e) => setCostForm({ ...costForm, date: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label>{t("reference")}</Label>
+              <Input type="text" value={costForm.reference} onChange={(e) => setCostForm({ ...costForm, reference: e.target.value })} placeholder={t("invoiceNumber")} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="recharge" checked={costForm.rechargedToTenant} onChange={(e) => setCostForm({ ...costForm, rechargedToTenant: e.target.checked })} />
+              <label htmlFor="recharge" className="text-sm">{t("rechargeToTenant")}</label>
+            </div>
+            <div>
+              <Label>{t("notesLabel")}</Label>
+              <textarea value={costForm.notes} onChange={(e) => setCostForm({ ...costForm, notes: e.target.value })} rows={2} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>{t("cancel")}</Button>
+              <Button type="submit">{t("saveCost")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rent-free period dialog */}
+      <Dialog open={activeModal === "rent-free"} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("addRentFreeTitle")}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddFreePeriod} className="space-y-4">
+            <LeaseSelect
+              value={freePeriodForm.leaseId}
+              onChange={(id) => setFreePeriodForm({ ...freePeriodForm, leaseId: id })}
+              leases={leaseOptions}
+              placeholder={t("leaseIdPlaceholder")}
+              label={t("leaseId")}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("startDate")}</Label>
+                <Input type="date" required value={freePeriodForm.startDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, startDate: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>{t("endDate")}</Label>
+                <Input type="date" required value={freePeriodForm.endDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, endDate: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+            <div>
+              <Label>{t("reason")}</Label>
+              <Input type="text" required value={freePeriodForm.reason} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, reason: e.target.value })} placeholder={t("rentFreeReasonPlaceholder")} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="waiveCharges" checked={freePeriodForm.waiveCharges} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, waiveCharges: e.target.checked })} />
+              <label htmlFor="waiveCharges" className="text-sm">{t("waiveCharges")}</label>
+            </div>
+            <div>
+              <Label>{t("notesLabel")}</Label>
+              <textarea value={freePeriodForm.notes} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, notes: e.target.value })} rows={2} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>{t("cancel")}</Button>
+              <Button type="submit">{t("saveRentFree")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rent deduction dialog */}
+      <Dialog open={activeModal === "deduction"} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("addDeductionTitle")}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddDeduction} className="space-y-4">
+            <LeaseSelect
+              value={deductionForm.leaseId}
+              onChange={(id) => setDeductionForm({ ...deductionForm, leaseId: id })}
+              leases={leaseOptions}
+              placeholder={t("leaseIdPlaceholder")}
+              label={t("leaseId")}
+            />
+            <div>
+              <Label>{t("deductionType")}</Label>
+              <Select value={deductionForm.type} onValueChange={(val) => setDeductionForm({ ...deductionForm, type: val })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="temporary">{t("typeTemporary")}</SelectItem>
+                  <SelectItem value="permanent">{t("typePermanent")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>{t("deductionAmount")}</Label>
+                <Input type="number" step="0.01" min="0.01" required value={deductionForm.amount} onChange={(e) => setDeductionForm({ ...deductionForm, amount: e.target.value })} className="mt-1" />
+              </div>
+              <div>
+                <Label>{t("startDate")}</Label>
+                <Input type="date" required value={deductionForm.startDate} onChange={(e) => setDeductionForm({ ...deductionForm, startDate: e.target.value })} className="mt-1" />
+              </div>
+            </div>
+            {deductionForm.type === "temporary" && (
+              <div>
+                <Label>{t("endDate")}</Label>
+                <Input type="date" required value={deductionForm.endDate} onChange={(e) => setDeductionForm({ ...deductionForm, endDate: e.target.value })} className="mt-1" />
+              </div>
+            )}
+            <div>
+              <Label>{t("reason")}</Label>
+              <Input type="text" required value={deductionForm.reason} onChange={(e) => setDeductionForm({ ...deductionForm, reason: e.target.value })} placeholder={t("deductionReasonPlaceholder")} className="mt-1" />
+            </div>
+            <div>
+              <Label>{t("notesLabel")}</Label>
+              <textarea value={deductionForm.notes} onChange={(e) => setDeductionForm({ ...deductionForm, notes: e.target.value })} rows={2} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>{t("cancel")}</Button>
+              <Button type="submit">{t("saveDeduction")}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ignore dialog using AlertDialog */}
+      <AlertDialog open={activeModal === "ignore"} onOpenChange={(open) => !open && closeModal()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ignoreTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("ignoreDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <textarea
+            value={ignoreReason}
+            onChange={(e) => setIgnoreReason(e.target.value)}
+            placeholder={t("ignoreReasonPlaceholder")}
+            rows={3}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={closeModal}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => ignorePaymentId && handleIgnore(ignorePaymentId)}
+              disabled={!ignoreReason.trim()}
+            >
+              {t("confirmIgnore")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

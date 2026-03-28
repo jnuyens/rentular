@@ -719,7 +719,11 @@
     "emptyLeasesDesc": "Create a lease to start tracking rent and payments.",
     "deleteConfirm": "Are you sure you want to delete this? This action cannot be undone.",
     "delete": "Delete",
-    "keepItem": "Keep it"
+    "keepItem": "Keep it",
+    "emptyPaymentsTitle": "No payments yet",
+    "emptyPaymentsDesc": "Payments will appear here once a lease has been set up.",
+    "emptyCommunicationsTitle": "No communications yet",
+    "emptyCommunicationsDesc": "Sent emails and SMS messages will be logged here."
   },
   "marketing": {
     "getStarted": "Get Started",

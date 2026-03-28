@@ -3,6 +3,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { TrendingUp, Calculator, AlertTriangle, Check, X as XIcon } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface Property {
   id: string;
@@ -61,7 +81,6 @@ function daysUntilNextIndexation(startDate: string): number {
 
 function getIndexationStatus(startDate: string): "overdue" | "due_soon" | "ok" {
   const daysUntil = daysUntilNextIndexation(startDate);
-  // If the anniversary date has passed and we haven't indexed yet this year
   const daysSince = daysSinceLastIndexation(startDate);
   if (daysSince > 365) return "overdue";
   if (daysUntil <= 30) return "due_soon";
@@ -70,10 +89,12 @@ function getIndexationStatus(startDate: string): "overdue" | "due_soon" | "ok" {
 
 export default function IndexationPage() {
   const t = useTranslations("indexation");
+  const tc = useTranslations("dashboard");
   const [leases, setLeases] = useState<Lease[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewLease, setPreviewLease] = useState<Lease | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -97,11 +118,11 @@ export default function IndexationPage() {
         setTenants(json.data || []);
       }
     } catch {
-      // API unavailable
+      toast.error(tc("toast.loadFailed") || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, tc]);
 
   useEffect(() => {
     fetchData();
@@ -112,13 +133,12 @@ export default function IndexationPage() {
     (l) => l.status === "active" && l.indexationEnabled !== false
   );
 
-  // Sort: most overdue first (highest daysSinceLastIndexation), then by next due date ascending
+  // Sort: most overdue first, then by next due date ascending
   const sortedLeases = [...activeLeases].sort((a, b) => {
     const statusA = getIndexationStatus(a.startDate);
     const statusB = getIndexationStatus(b.startDate);
     const order = { overdue: 0, due_soon: 1, ok: 2 };
     if (order[statusA] !== order[statusB]) return order[statusA] - order[statusB];
-    // Within same status, sort by days until next (ascending = soonest first)
     return daysUntilNextIndexation(a.startDate) - daysUntilNextIndexation(b.startDate);
   });
 
@@ -140,69 +160,75 @@ export default function IndexationPage() {
     if (!ids || ids.length === 0) return "-";
     return ids
       .map((id) => {
-        const tenant = tenants.find((t) => t.id === id);
+        const tenant = tenants.find((tn) => tn.id === id);
         return tenant ? `${tenant.firstName} ${tenant.lastName}` : "";
       })
       .filter(Boolean)
       .join(", ") || "-";
   };
 
-  const statusColors: Record<string, string> = {
-    overdue: "bg-red-100 text-red-700",
-    due_soon: "bg-yellow-100 text-yellow-700",
-    ok: "bg-green-100 text-green-700",
+  const statusBadgeConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string; label: string }> = {
+    overdue: { variant: "destructive", className: "", label: t("statusOverdue") },
+    due_soon: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 border-transparent", label: t("statusDueSoon") },
+    ok: { variant: "default", className: "bg-green-100 text-green-700 border-transparent", label: t("statusOk") },
   };
 
-  const statusLabels: Record<string, string> = {
-    overdue: t("statusOverdue"),
-    due_soon: t("statusDueSoon"),
-    ok: t("statusOk"),
+  const handleApplyIndexation = async (leaseId: string) => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/indexation/${leaseId}/apply`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.updated") || "Indexation applied");
+        setPreviewLease(null);
+        fetchData();
+      } else {
+        toast.error(tc("toast.saveFailed") || "Failed to apply indexation");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-[hsl(var(--muted-foreground))]">
+          <p className="text-muted-foreground">
             {t("subtitle")}
           </p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90">
-          <Calculator className="h-4 w-4" />
+        <Button>
+          <Calculator className="mr-1 h-4 w-4" />
           {t("calculate")}
-        </button>
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {t("overdueIndexations")}
-          </p>
-          <p className={`mt-2 text-3xl font-bold ${overdueCount > 0 ? "text-red-600" : ""}`}>{overdueCount}</p>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            {t("leasesOverdue")}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {t("nextIndexation")}
-          </p>
-          <p className={`mt-2 text-3xl font-bold ${dueSoonCount > 0 ? "text-yellow-600" : ""}`}>{dueSoonCount}</p>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            {t("leasesUpcoming")}
-          </p>
-        </div>
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {t("epcRestrictions")}
-          </p>
-          <p className="mt-2 text-3xl font-bold">{epcRestrictedCount}</p>
-          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-            {t("leasesRestricted")}
-          </p>
-        </div>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground">{t("overdueIndexations")}</p>
+            <p className={`mt-2 text-3xl font-bold ${overdueCount > 0 ? "text-red-600" : ""}`}>{overdueCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("leasesOverdue")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground">{t("nextIndexation")}</p>
+            <p className={`mt-2 text-3xl font-bold ${dueSoonCount > 0 ? "text-yellow-600" : ""}`}>{dueSoonCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("leasesUpcoming")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-sm text-muted-foreground">{t("epcRestrictions")}</p>
+            <p className="mt-2 text-3xl font-bold">{epcRestrictedCount}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("leasesRestricted")}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* EPC warning */}
@@ -220,109 +246,269 @@ export default function IndexationPage() {
         </div>
       )}
 
+      {/* Skeleton loading */}
+      {loading && (
+        <>
+          <div className="hidden md:block">
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <TableHead key={i}><Skeleton className="h-4 w-20" /></TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+          <div className="md:hidden space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-lg" />
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Lease list */}
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-        </div>
-      ) : sortedLeases.length === 0 && disabledLeases.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-16">
-          <TrendingUp className="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
+      {!loading && sortedLeases.length === 0 && disabledLeases.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
+          <TrendingUp className="h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-medium">{t("emptyTitle")}</h3>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+          <p className="mt-1 text-sm text-muted-foreground">
             {t("emptyDescription")}
           </p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {sortedLeases.map((lease) => {
-            const prop = getProp(lease.propertyId);
-            const status = getIndexationStatus(lease.startDate);
-            const daysUntil = daysUntilNextIndexation(lease.startDate);
-            const nextDate = getNextIndexationDate(lease.startDate);
-            const epcRestricted = prop?.epcLabel && ["E", "F", "G"].includes(prop.epcLabel) && ["flanders", "brussels"].includes(lease.region);
+      )}
 
-            return (
-              <div
-                key={lease.id}
-                className={`rounded-xl border bg-[hsl(var(--background))] p-5 shadow-sm ${
-                  status === "overdue" ? "border-red-300 bg-red-50/30" : "border-[hsl(var(--border))]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{prop?.name || lease.propertyId}</h3>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[status] || ""}`}>
-                        {statusLabels[status] || status}
-                      </span>
-                      {epcRestricted && (
-                        <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
-                          EPC {prop?.epcLabel}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-                      {getTenantNames(lease.tenantIds)} &middot; {prop?.city || ""}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {t("nextDue")}: {nextDate.toLocaleDateString()}
-                    </p>
-                    {status === "overdue" ? (
-                      <p className="text-xs font-medium text-red-600">
-                        {t("daysOverdue", { days: Math.abs(daysUntil) })}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                        {t("daysUntil", { days: daysUntil })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {!loading && (sortedLeases.length > 0 || disabledLeases.length > 0) && (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs uppercase">{t("property") || "Property"}</TableHead>
+                    <TableHead className="text-xs uppercase">{t("tenantLabel") || "Tenant"}</TableHead>
+                    <TableHead className="text-right text-xs uppercase">{t("rent") || "Rent"}</TableHead>
+                    <TableHead className="text-xs uppercase">{t("nextDue")}</TableHead>
+                    <TableHead className="text-xs uppercase">{t("statusLabel") || "Status"}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedLeases.map((lease) => {
+                    const prop = getProp(lease.propertyId);
+                    const status = getIndexationStatus(lease.startDate);
+                    const daysUntil = daysUntilNextIndexation(lease.startDate);
+                    const nextDate = getNextIndexationDate(lease.startDate);
+                    const epcRestricted = prop?.epcLabel && ["E", "F", "G"].includes(prop.epcLabel) && ["flanders", "brussels"].includes(lease.region);
 
-          {/* Disabled indexation leases */}
-          {disabledLeases.length > 0 && (
-            <>
-              <div className="mt-6 flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                <XIcon className="h-4 w-4" />
-                <span>{t("indexationDisabled")} ({disabledLeases.length})</span>
-              </div>
-              {disabledLeases.map((lease) => {
-                const prop = getProp(lease.propertyId);
-                return (
-                  <div
-                    key={lease.id}
-                    className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 opacity-60"
-                  >
+                    return (
+                      <TableRow
+                        key={lease.id}
+                        className={`cursor-pointer ${status === "overdue" ? "bg-red-50/30" : ""}`}
+                        onClick={() => setPreviewLease(lease)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{prop?.name || lease.propertyId}</span>
+                            {epcRestricted && (
+                              <Badge variant="outline" className="bg-orange-100 text-orange-700 border-transparent text-xs">
+                                EPC {prop?.epcLabel}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{prop?.city || ""}</p>
+                        </TableCell>
+                        <TableCell className="text-sm">{getTenantNames(lease.tenantIds)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">&euro;{lease.monthlyRent}/m</TableCell>
+                        <TableCell className="text-sm">
+                          <div>
+                            <span>{nextDate.toLocaleDateString()}</span>
+                            {status === "overdue" ? (
+                              <p className="text-xs font-medium text-red-600">
+                                {t("daysOverdue", { days: Math.abs(daysUntil) })}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                {t("daysUntil", { days: daysUntil })}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={statusBadgeConfig[status]?.variant || "outline"}
+                            className={statusBadgeConfig[status]?.className || ""}
+                          >
+                            {statusBadgeConfig[status]?.label || status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {disabledLeases.map((lease) => {
+                    const prop = getProp(lease.propertyId);
+                    return (
+                      <TableRow key={lease.id} className="opacity-60">
+                        <TableCell>
+                          <span className="font-medium">{prop?.name || lease.propertyId}</span>
+                        </TableCell>
+                        <TableCell className="text-sm">{getTenantNames(lease.tenantIds)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">&euro;{lease.monthlyRent}/m</TableCell>
+                        <TableCell className="text-sm">-</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{t("indexationOff")}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {sortedLeases.map((lease) => {
+              const prop = getProp(lease.propertyId);
+              const status = getIndexationStatus(lease.startDate);
+              const daysUntil = daysUntilNextIndexation(lease.startDate);
+              const nextDate = getNextIndexationDate(lease.startDate);
+              const epcRestricted = prop?.epcLabel && ["E", "F", "G"].includes(prop.epcLabel) && ["flanders", "brussels"].includes(lease.region);
+
+              return (
+                <Card
+                  key={lease.id}
+                  className={`cursor-pointer ${status === "overdue" ? "border-red-300 bg-red-50/30" : ""}`}
+                  onClick={() => setPreviewLease(lease)}
+                >
+                  <CardContent className="p-5">
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{prop?.name || lease.propertyId}</h3>
-                          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                            {t("indexationOff")}
-                          </span>
+                          <Badge
+                            variant={statusBadgeConfig[status]?.variant || "outline"}
+                            className={statusBadgeConfig[status]?.className || ""}
+                          >
+                            {statusBadgeConfig[status]?.label || status}
+                          </Badge>
+                          {epcRestricted && (
+                            <Badge variant="outline" className="bg-orange-100 text-orange-700 border-transparent">
+                              EPC {prop?.epcLabel}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-                          {getTenantNames(lease.tenantIds)}
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {getTenantNames(lease.tenantIds)} &middot; {prop?.city || ""}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("nextDue")}: {nextDate.toLocaleDateString()}
+                        </p>
+                        {status === "overdue" ? (
+                          <p className="text-xs font-medium text-red-600">
+                            {t("daysOverdue", { days: Math.abs(daysUntil) })}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            {t("daysUntil", { days: daysUntil })}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {/* Disabled indexation leases */}
+            {disabledLeases.length > 0 && (
+              <>
+                <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
+                  <XIcon className="h-4 w-4" />
+                  <span>{t("indexationDisabled")} ({disabledLeases.length})</span>
+                </div>
+                {disabledLeases.map((lease) => {
+                  const prop = getProp(lease.propertyId);
+                  return (
+                    <Card key={lease.id} className="opacity-60">
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">{prop?.name || lease.propertyId}</h3>
+                              <Badge variant="outline">{t("indexationOff")}</Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {getTenantNames(lease.tenantIds)}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </>
       )}
+
+      {/* Indexation preview dialog */}
+      <Dialog open={!!previewLease} onOpenChange={(open) => !open && setPreviewLease(null)}>
+        {previewLease && (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t("previewTitle") || "Indexation Preview"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">{t("property") || "Property"}:</span>
+                  <p className="font-medium">{getProp(previewLease.propertyId)?.name || previewLease.propertyId}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("tenantLabel") || "Tenant"}:</span>
+                  <p className="font-medium">{getTenantNames(previewLease.tenantIds)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("currentRent") || "Current Rent"}:</span>
+                  <p className="font-medium">&euro;{previewLease.monthlyRent}/m</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("region") || "Region"}:</span>
+                  <p className="font-medium">{previewLease.region}</p>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPreviewLease(null)}>
+                {t("cancel") || "Cancel"}
+              </Button>
+              <Button onClick={() => handleApplyIndexation(previewLease.id)}>
+                {t("applyIndexation") || "Apply Indexation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
