@@ -144,37 +144,46 @@ export async function loginToSmovin(
       await passwordLocator.press("Enter");
     }
 
-    // Wait for navigation after login
+    // Wait for page to settle after submit
     console.log("[SmovinScraper] Waiting for post-login navigation...");
-    await page
-      .waitForURL((url) => !url.toString().includes("/login"), {
-        timeout: 15000,
-      })
-      .catch(() => {});
+    await page.waitForTimeout(5000);
     await randomDelay(2000, 4000);
 
     // Debug: log post-login state
     const currentUrl = page.url();
     console.log(`[SmovinScraper] URL after submit: ${currentUrl}`);
 
-    // Check for error messages on the page
-    const errorText = await page
-      .textContent('[class*="error"], [class*="alert"], [role="alert"]')
-      .catch(() => null);
-    if (errorText) {
-      console.log(`[SmovinScraper] Error message on page: "${errorText.trim()}"`);
-    }
+    // Detect login success by checking for authenticated page indicators
+    // (URL check is unreliable — Smovin uses /login as a post-auth route too)
+    const pageText = await page.textContent("body").catch(() => "");
+    const hasAuthIndicators =
+      pageText !== null &&
+      (pageText.includes("Dashboard") ||
+        pageText.includes("Eigendommen") ||
+        pageText.includes("Patrimoine") ||
+        pageText.includes("Contracten") ||
+        pageText.includes("Contrats") ||
+        pageText.includes("Afmelden") ||
+        pageText.includes("Déconnexion") ||
+        pageText.includes("Account"));
 
-    // Log visible page text for debugging
-    const visibleText = await page.textContent("body");
-    if (visibleText) {
-      console.log(
-        `[SmovinScraper] Page body (first 500 chars): ${visibleText.substring(0, 500).trim()}`,
-      );
-    }
+    console.log(`[SmovinScraper] Auth indicators found: ${hasAuthIndicators}`);
 
-    // Check if login succeeded
-    if (currentUrl.includes("/login")) {
+    if (!hasAuthIndicators) {
+      // Check for explicit error messages
+      const errorText = await page
+        .textContent('[class*="error"], [class*="alert"], [role="alert"]')
+        .catch(() => null);
+      if (errorText) {
+        console.log(`[SmovinScraper] Error on page: "${errorText.trim()}"`);
+      }
+
+      // Still on sign_in form means credentials were rejected
+      const hasLoginForm = (await page.locator('input[type="password"]').count()) > 0;
+      if (hasLoginForm) {
+        return { success: false, error: "login_failed" };
+      }
+
       return { success: false, error: "login_failed" };
     }
 
