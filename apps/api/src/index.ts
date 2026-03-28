@@ -32,6 +32,7 @@ import { setupHealthIndexSchedule } from "./jobs/healthIndexWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
 import { importDiscoveryQueue } from "./jobs/importDiscoveryWorker";
+import { importWriteQueue } from "./jobs/importWriteWorker";
 import { authMiddleware } from "./lib/authMiddleware";
 import { requireAuth } from "./lib/routeAuth";
 
@@ -161,6 +162,7 @@ setupHealthIndexSchedule().catch((err) =>
 console.log(`[EmailQueue] Worker started (rate limit: ${process.env.EMAIL_RATE_LIMIT || 30}/min)`);
 console.log(`[SmsQueue] Worker started (rate limit: ${process.env.SMS_RATE_LIMIT || 10}/min, provider: ${process.env.SMS_PROVIDER || "console"})`);
 console.log("[ImportDiscovery] Worker started");
+console.log("[ImportWrite] Worker started");
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));
