@@ -143,7 +143,7 @@ Plans:
 - [x] 07-02-PLAN.md -- Mobile responsive layout: hamburger drawer, sidebar extraction + properties/tenants/leases shadcn migration
 - [x] 07-03-PLAN.md -- Landing page rewrite: auth routing, marketing page with hero/features/pricing/footer, Stripe plans endpoint
 - [x] 07-04-PLAN.md -- Dashboard migration batch 2: payments, communications, indexation, maintenance to shadcn/ui
-- [ ] 07-05-PLAN.md -- Onboarding wizard: 4-step wizard, middleware redirect, session extension, import detection
+- [x] 07-05-PLAN.md -- Onboarding wizard: 4-step wizard, middleware redirect, session extension, import detection
 - [ ] 07-06-PLAN.md -- Settings/import migration + comprehensive i18n audit across all 4 locales
 
 ## Progress
