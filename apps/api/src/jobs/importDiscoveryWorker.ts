@@ -114,60 +114,47 @@ const worker = new Worker(
       // 5. Scrape property list
       const discoveredProperties: SmovinDiscoveredProperty[] = [];
 
-      // Try to find property links/cards on the patrimony page
-      // Smovin likely renders properties as cards or list items with links
+      // Smovin redirects /patrimony to /nl/patrimony/contracts/ which lists contracts with UUIDs
       try {
-        // Wait for content to render
-        await page.waitForSelector("a[href*='/patrimony/'], a[href*='/property/'], table tr, [class*='card'], [class*='property']", {
+        // Wait for contract links to render
+        await page.waitForSelector("a[href*='/patrimony/contracts/']", {
           timeout: 15000,
         }).catch(() => {
-          console.log("[ImportDiscovery] No property elements found with specific selectors, trying broader search...");
+          console.log("[ImportDiscovery] No contract links found, trying units page...");
         });
 
-        // Try to find property links - multiple selector strategies
+        // Find contract detail links (UUID pattern)
         let propertyLinks: string[] = [];
 
-        // Strategy 1: Links containing patrimony/ with a property ID
-        const patrimonyLinks = await page.$$eval(
-          "a[href*='/patrimony/']",
+        const contractLinks = await page.$$eval(
+          "a[href*='/patrimony/contracts/']",
           (links: HTMLAnchorElement[]) =>
             links
               .map((a) => a.href)
-              .filter((href) => /\/patrimony\/\d+/.test(href)),
+              .filter((href) => /\/patrimony\/contracts\/[0-9a-f-]{36}\//.test(href)),
         ).catch(() => [] as string[]);
 
-        if (patrimonyLinks.length > 0) {
-          propertyLinks = [...new Set(patrimonyLinks)];
+        if (contractLinks.length > 0) {
+          propertyLinks = [...new Set(contractLinks)];
         }
 
-        // Strategy 2: Links containing property/
+        // Fallback: try units page
         if (propertyLinks.length === 0) {
-          const propLinks = await page.$$eval(
-            "a[href*='/property/']",
+          console.log("[ImportDiscovery] No contracts found, trying units page...");
+          await page.goto("https://web.smovin.app/nl/patrimony/units/", { waitUntil: "load", timeout: 30000 });
+          await page.waitForLoadState("networkidle").catch(() => {});
+          await randomDelay(2000, 4000);
+
+          const unitLinks = await page.$$eval(
+            "a[href*='/patrimony/units/']",
             (links: HTMLAnchorElement[]) =>
               links
                 .map((a) => a.href)
-                .filter((href) => /\/property\/\d+/.test(href)),
+                .filter((href) => /\/patrimony\/units\/[0-9a-f-]{36}\//.test(href)),
           ).catch(() => [] as string[]);
 
-          if (propLinks.length > 0) {
-            propertyLinks = [...new Set(propLinks)];
-          }
-        }
-
-        // Strategy 3: Try table rows if no links found
-        if (propertyLinks.length === 0) {
-          const tableRows = await page.$$eval(
-            "table tbody tr",
-            (rows: HTMLTableRowElement[]) =>
-              rows.map((row) => {
-                const link = row.querySelector("a");
-                return link ? link.href : "";
-              }).filter(Boolean),
-          ).catch(() => [] as string[]);
-
-          if (tableRows.length > 0) {
-            propertyLinks = [...new Set(tableRows)];
+          if (unitLinks.length > 0) {
+            propertyLinks = [...new Set(unitLinks)];
           }
         }
 
@@ -212,57 +199,64 @@ const worker = new Worker(
           };
 
           try {
-            // Navigate to property detail page
+            // Navigate to contract/property detail page
             await page.goto(propertyUrl, { waitUntil: "load", timeout: 30000 });
             await page.waitForLoadState("networkidle").catch(() => {});
             await randomDelay(1500, 3000);
 
-            // Extract property name and address
-            // Try common heading patterns
+            // Extract all text from the page for parsing
+            const bodyText = await page.textContent("body").catch(() => "") || "";
+
+            // Extract property/contract name from the page heading
+            // Smovin shows the contract name prominently (e.g. "Arendonck 001")
             property.name = await page
-              .textContent("h1, h2, [class*='title'], [class*='name']")
-              .then((t) => t?.trim() || `Property ${i + 1}`)
+              .textContent("h1, h2")
+              .then((t) => {
+                // Clean up — remove nav items, keep first meaningful heading
+                const cleaned = t?.split("\n").map((l) => l.trim()).filter(Boolean);
+                return cleaned?.find((l) => l.length > 2 && l.length < 100 && !["Dashboard", "Contracten", "Eigendommen", "Taken"].includes(l)) || `Property ${i + 1}`;
+              })
               .catch(() => `Property ${i + 1}`);
 
-            property.address = await page
-              .textContent("[class*='address'], [class*='location'], [class*='adres']")
-              .then((t) => t?.trim() || "")
-              .catch(() => "");
+            // Extract address from the page — look for street pattern near the property name
+            const addressMatch = bodyText.match(/(?:Gebouw|Bâtiment|Building)\s*\n?\s*([^\n]+(?:straat|laan|weg|steenweg|plein|dreef|lei|singel|boulevard|avenue|rue|Str)[^\n]*)/i)
+              || bodyText.match(/([A-Z][a-z]+(?:straat|laan|weg|steenweg|plein|dreef|lei)[^\n]*\d+[^\n]*)/);
+            property.address = addressMatch ? addressMatch[1].trim() : "";
 
-            // Try to determine property type
-            property.type = await page
-              .textContent("[class*='type'], [class*='category']")
-              .then((t) => t?.trim() || "unknown")
-              .catch(() => "unknown");
+            // Extract type from contract info
+            const typeMatch = bodyText.match(/(?:Hoofdverblijfplaats|Résidence principale|Primary residence)/i);
+            property.type = typeMatch ? "residential" : "unknown";
 
-            // 7. Scrape tenants/contacts
+            // 7. Extract tenants from the contract detail page
+            // Smovin shows "Huurder(s)" section with names, emails, phones
             try {
-              // Look for tenant/contact sections
-              const tenantSection = page.locator("text=Huurder, text=Locataire, text=Tenant, text=Contact").first();
-              if ((await tenantSection.count()) > 0) {
-                await tenantSection.click().catch(() => {});
-                await randomDelay(1000, 2000);
-              }
-
-              // Try table-based tenant extraction
-              const tenantRows = await page.$$eval(
-                "table tr",
-                (rows: HTMLTableRowElement[]) =>
-                  rows.slice(1).map((row) => {
-                    const cells = Array.from(row.querySelectorAll("td"));
-                    return cells.map((c) => c.textContent?.trim() || "");
-                  }),
-              ).catch(() => [] as string[][]);
-
-              for (const row of tenantRows) {
-                if (row.length >= 2) {
-                  // Try to parse name into first/last
-                  const nameParts = row[0].split(" ");
+              const tenantSection = bodyText.split(/Huurder\(s\)|Locataire\(s\)|Tenant\(s\)/i)[1] || "";
+              // Find names with email patterns
+              const nameEmailMatches = tenantSection.match(/([A-Z][.\s][\w\s]+)\s*<([^>]+)>/g) || [];
+              for (const match of nameEmailMatches) {
+                const parts = match.match(/([A-Z][.\s][\w\s]+)\s*<([^>]+)>/);
+                if (parts) {
+                  const fullName = parts[1].trim();
+                  const email = parts[2].trim();
+                  const nameParts = fullName.split(/\s+/);
+                  // Find phone number near this tenant
+                  const phoneMatch = tenantSection.match(/(\+\d[\d\s]{8,})/);
                   property.tenants.push({
                     firstName: nameParts[0] || "",
                     lastName: nameParts.slice(1).join(" ") || "",
-                    email: row.find((cell) => cell.includes("@")) || undefined,
-                    phone: row.find((cell) => /[\d\s+]{8,}/.test(cell)) || undefined,
+                    email,
+                    phone: phoneMatch ? phoneMatch[1].trim() : undefined,
+                  });
+                }
+              }
+              // If no email-style matches, try just names
+              if (property.tenants.length === 0) {
+                const nameMatches = tenantSection.match(/([A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/g) || [];
+                for (const name of nameMatches.slice(0, 3)) { // Max 3 tenants
+                  const nameParts = name.trim().split(/\s+/);
+                  property.tenants.push({
+                    firstName: nameParts[0] || "",
+                    lastName: nameParts.slice(1).join(" ") || "",
                   });
                 }
               }
@@ -270,86 +264,32 @@ const worker = new Worker(
               console.log(`[ImportDiscovery] Could not scrape tenants for property ${i + 1}:`, tenantErr);
             }
 
-            // 8. Scrape leases/contracts
+            // 8. Extract lease/contract info from the same page
             try {
-              // Navigate to contracts sub-page if available
-              const contractLink = page.locator("a:has-text('Contract'), a:has-text('Contrat'), a:has-text('Lease'), a:has-text('Bail')").first();
-              if ((await contractLink.count()) > 0) {
-                await contractLink.click();
-                await randomDelay(1500, 3000);
-                await page.waitForLoadState("networkidle").catch(() => {});
-              }
+              // Dates: "Begindatum" -> start, "einddatum/eindigen" -> end
+              const startMatch = bodyText.match(/(?:Begindatum|Date de début|Start date)\s*\n?\s*(\d{2}\/\d{2}\/\d{4})/i);
+              const endMatch = bodyText.match(/(?:einddatum|eindigen op|Date de fin|End date)\s*\n?\s*(\d{2}\/\d{2}\/\d{4})/i);
+              // Rent: "Initiële huur" and "Huidige huur"
+              const currentRentMatch = bodyText.match(/(?:Huidige huur|Loyer actuel|Current rent)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
+              const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
 
-              // Try to extract lease data from tables or detail sections
-              const leaseData = await page.$$eval(
-                "table tr",
-                (rows: HTMLTableRowElement[]) =>
-                  rows.slice(1).map((row) => {
-                    const cells = Array.from(row.querySelectorAll("td"));
-                    return cells.map((c) => c.textContent?.trim() || "");
-                  }),
-              ).catch(() => [] as string[][]);
-
-              for (const row of leaseData) {
-                if (row.length >= 2) {
-                  // Extract date patterns (DD/MM/YYYY or YYYY-MM-DD)
-                  const dates = row.filter((cell) => /\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}[/.-]\d{2}[/.-]\d{2}/.test(cell));
-                  // Extract amount patterns
-                  const amounts = row.filter((cell) => /[\d.,]+\s*[EUR€]|[EUR€]\s*[\d.,]+|^\d+[.,]\d{2}$/.test(cell));
-
-                  property.leases.push({
-                    startDate: dates[0] || "",
-                    endDate: dates[1] || undefined,
-                    monthlyRent: amounts[0] || "",
-                    charges: amounts[1] || undefined,
-                    type: row.find((cell) => /bail|huur|lease|contract/i.test(cell)) || undefined,
-                  });
-                }
+              if (startMatch || currentRentMatch) {
+                property.leases.push({
+                  startDate: startMatch ? startMatch[1] : "",
+                  endDate: endMatch ? endMatch[1] : undefined,
+                  monthlyRent: currentRentMatch ? currentRentMatch[1].replace(/\s/g, "").trim() + " €" : initialRentMatch ? initialRentMatch[1].replace(/\s/g, "").trim() + " €" : "",
+                  type: typeMatch ? "residential" : undefined,
+                });
               }
             } catch (leaseErr) {
               console.log(`[ImportDiscovery] Could not scrape leases for property ${i + 1}:`, leaseErr);
             }
 
-            // 9. Scrape payments if accessible
-            try {
-              // Navigate to payments/management sub-page
-              const paymentLink = page.locator("a:has-text('Paiement'), a:has-text('Betaling'), a:has-text('Payment'), a:has-text('Gestion')").first();
-              if ((await paymentLink.count()) > 0) {
-                await paymentLink.click();
-                await randomDelay(1500, 3000);
-                await page.waitForLoadState("networkidle").catch(() => {});
-              }
+            // 9. Skip per-contract payment scraping to keep discovery fast
+            // Payments will be scraped during import phase if needed
 
-              const paymentRows = await page.$$eval(
-                "table tr",
-                (rows: HTMLTableRowElement[]) =>
-                  rows.slice(1).map((row) => {
-                    const cells = Array.from(row.querySelectorAll("td"));
-                    return cells.map((c) => c.textContent?.trim() || "");
-                  }),
-              ).catch(() => [] as string[][]);
-
-              for (const row of paymentRows) {
-                if (row.length >= 2) {
-                  const dates = row.filter((cell) => /\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}[/.-]\d{2}[/.-]\d{2}/.test(cell));
-                  const amounts = row.filter((cell) => /[\d.,]+\s*[EUR€]|[EUR€]\s*[\d.,]+|^\d+[.,]\d{2}$/.test(cell));
-                  const statusKeywords = ["paid", "unpaid", "overdue", "pending", "payé", "impayé", "betaald", "onbetaald", "en retard"];
-                  const status = row.find((cell) => statusKeywords.some((kw) => cell.toLowerCase().includes(kw))) || "unknown";
-
-                  property.payments.push({
-                    date: dates[0] || "",
-                    amount: amounts[0] || "",
-                    status,
-                    description: row.find((cell) => cell.length > 10 && !dates.includes(cell) && !amounts.includes(cell)) || undefined,
-                  });
-                }
-              }
-            } catch (paymentErr) {
-              console.log(`[ImportDiscovery] Could not scrape payments for property ${i + 1}:`, paymentErr);
-            }
-
-            // Navigate back to property list for next iteration
-            await page.goto("https://web.smovin.app/patrimony", {
+            // Navigate back to contracts list for next iteration
+            await page.goto("https://web.smovin.app/nl/patrimony/contracts/", {
               waitUntil: "load",
               timeout: 30000,
             });
