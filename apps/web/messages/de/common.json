@@ -770,5 +770,24 @@
     "copyright": "Rentular. Alle Rechte vorbehalten.",
     "privacy": "Datenschutzrichtlinie",
     "terms": "Nutzungsbedingungen"
+  },
+  "onboarding": {
+    "step1Title": "Fuegen Sie Ihre erste Immobilie hinzu",
+    "step1Desc": "Geben Sie die Adresse und Details einer Immobilie ein, die Sie verwalten.",
+    "step2Title": "Fuegen Sie einen Mieter hinzu",
+    "step2Desc": "Fuegen Sie den Mieter hinzu, der diese Immobilie mietet.",
+    "step3Title": "Erstellen Sie einen Mietvertrag",
+    "step3Desc": "Verknuepfen Sie den Mieter mit der Immobilie durch einen Mietvertrag.",
+    "step4Title": "Mietzahlung einrichten",
+    "step4Desc": "Konfigurieren Sie, wie Sie die Miete fuer diesen Vertrag einziehen moechten.",
+    "skip": "Ueberspringen",
+    "back": "Zurueck",
+    "next": "Weiter",
+    "finish": "Einrichtung abschliessen",
+    "goToDashboard": "Zum Dashboard",
+    "importedSummary": "{count} {entity} importiert",
+    "importedMore": "+{count} weitere",
+    "completeTitle": "Alles bereit!",
+    "completeDesc": "Ihr Konto ist bereit. Beginnen Sie mit der Verwaltung Ihrer Immobilien im Dashboard."
   }
 }

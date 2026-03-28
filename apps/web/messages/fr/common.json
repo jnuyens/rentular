@@ -770,5 +770,24 @@
     "copyright": "Rentular. Tous droits reserves.",
     "privacy": "Politique de confidentialite",
     "terms": "Conditions generales"
+  },
+  "onboarding": {
+    "step1Title": "Ajoutez votre premier bien",
+    "step1Desc": "Entrez l'adresse et les details d'un bien que vous gerez.",
+    "step2Title": "Ajoutez un locataire",
+    "step2Desc": "Ajoutez le locataire qui loue ce bien.",
+    "step3Title": "Creez un bail",
+    "step3Desc": "Liez le locataire au bien avec un contrat de bail.",
+    "step4Title": "Configurez la perception du loyer",
+    "step4Desc": "Configurez comment vous souhaitez percevoir le loyer pour ce bail.",
+    "skip": "Passer",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer la configuration",
+    "goToDashboard": "Aller au tableau de bord",
+    "importedSummary": "{count} {entity} importes",
+    "importedMore": "+{count} de plus",
+    "completeTitle": "Tout est pret !",
+    "completeDesc": "Votre compte est pret. Commencez a gerer vos biens depuis le tableau de bord."
   }
 }

@@ -770,5 +770,24 @@
     "copyright": "Rentular. Alle rechten voorbehouden.",
     "privacy": "Privacybeleid",
     "terms": "Algemene voorwaarden"
+  },
+  "onboarding": {
+    "step1Title": "Voeg uw eerste eigendom toe",
+    "step1Desc": "Voer het adres en de gegevens in van een eigendom dat u beheert.",
+    "step2Title": "Voeg een huurder toe",
+    "step2Desc": "Voeg de huurder toe die dit eigendom huurt.",
+    "step3Title": "Maak een huurcontract aan",
+    "step3Desc": "Koppel de huurder aan het eigendom met een huurovereenkomst.",
+    "step4Title": "Stel huurinning in",
+    "step4Desc": "Configureer hoe u de huur voor dit contract wilt innen.",
+    "skip": "Overslaan",
+    "back": "Terug",
+    "next": "Volgende",
+    "finish": "Installatie voltooien",
+    "goToDashboard": "Ga naar Dashboard",
+    "importedSummary": "{count} {entity} geimporteerd",
+    "importedMore": "+{count} meer",
+    "completeTitle": "Alles is klaar!",
+    "completeDesc": "Uw account is klaar. Begin met het beheren van uw eigendommen vanuit het dashboard."
   }
 }
