@@ -750,6 +750,24 @@
     "pricingCta": "Commencer",
     "copyright": "Rentular. Tous droits reserves.",
     "privacy": "Politique de confidentialite",
-    "terms": "Conditions generales"
+    "terms": "Conditions generales",
+    "onboarding": {
+    "step1Title": "Ajoutez votre premiere propriete",
+    "step1Desc": "Entrez l'adresse et les details d'une propriete que vous gerez.",
+    "step2Title": "Ajoutez un locataire",
+    "step2Desc": "Ajoutez le locataire qui loue cette propriete.",
+    "step3Title": "Creez un bail",
+    "step3Desc": "Liez le locataire a la propriete avec un contrat de bail.",
+    "step4Title": "Configurez l'encaissement",
+    "step4Desc": "Configurez comment vous souhaitez encaisser le loyer pour ce bail.",
+    "skip": "Passer la configuration",
+    "back": "Retour",
+    "next": "Suivant",
+    "finish": "Terminer la configuration",
+    "goToDashboard": "Aller au tableau de bord",
+    "importedSummary": "{count} {entity} importes",
+    "importedMore": "+{count} de plus",
+    "completeTitle": "Vous etes pret !",
+    "completeDesc": "Votre compte est pret. Commencez a gerer vos proprietes depuis le tableau de bord."
   }
 }

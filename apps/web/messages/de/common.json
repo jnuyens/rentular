@@ -750,6 +750,24 @@
     "pricingCta": "Loslegen",
     "copyright": "Rentular. Alle Rechte vorbehalten.",
     "privacy": "Datenschutzrichtlinie",
-    "terms": "Nutzungsbedingungen"
+    "terms": "Nutzungsbedingungen",
+    "onboarding": {
+    "step1Title": "Fugen Sie Ihre erste Immobilie hinzu",
+    "step1Desc": "Geben Sie die Adresse und Details einer Immobilie ein, die Sie verwalten.",
+    "step2Title": "Fugen Sie einen Mieter hinzu",
+    "step2Desc": "Fugen Sie den Mieter hinzu, der diese Immobilie mietet.",
+    "step3Title": "Erstellen Sie einen Mietvertrag",
+    "step3Desc": "Verbinden Sie den Mieter mit der Immobilie uber einen Mietvertrag.",
+    "step4Title": "Zahlungseinzug einrichten",
+    "step4Desc": "Konfigurieren Sie, wie Sie die Miete fur diesen Vertrag einziehen mochten.",
+    "skip": "Einrichtung uberspringen",
+    "back": "Zuruck",
+    "next": "Weiter",
+    "finish": "Einrichtung abschliessen",
+    "goToDashboard": "Zum Dashboard",
+    "importedSummary": "{count} {entity} importiert",
+    "importedMore": "+{count} weitere",
+    "completeTitle": "Alles bereit!",
+    "completeDesc": "Ihr Konto ist bereit. Beginnen Sie mit der Verwaltung Ihrer Immobilien uber das Dashboard."
   }
 }

@@ -99,6 +99,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.provider = account?.provider;
+
+        // Fetch onboarding status from database to avoid per-request DB queries
+        try {
+          const db = getDb();
+          const dbUser = await db
+            .select({ onboardingComplete: users.onboardingComplete })
+            .from(users)
+            .where(eq(users.email, user.email!))
+            .limit(1);
+          token.onboardingComplete = dbUser[0]?.onboardingComplete ?? false;
+        } catch {
+          // Database unavailable at sign-in; default to incomplete
+          token.onboardingComplete = false;
+        }
       }
       return token;
     },
@@ -107,6 +121,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         if (token.email) session.user.email = token.email as string;
       }
+      session.onboardingComplete = token.onboardingComplete;
       return session;
     },
     async redirect({ url, baseUrl }) {

@@ -750,6 +750,24 @@
     "pricingCta": "Aan de slag",
     "copyright": "Rentular. Alle rechten voorbehouden.",
     "privacy": "Privacybeleid",
-    "terms": "Algemene voorwaarden"
+    "terms": "Algemene voorwaarden",
+    "onboarding": {
+    "step1Title": "Voeg uw eerste pand toe",
+    "step1Desc": "Vul het adres en de details in van een pand dat u beheert.",
+    "step2Title": "Voeg een huurder toe",
+    "step2Desc": "Voeg de huurder toe die dit pand huurt.",
+    "step3Title": "Maak een huurcontract aan",
+    "step3Desc": "Koppel de huurder aan het pand met een huurovereenkomst.",
+    "step4Title": "Stel betalingsinning in",
+    "step4Desc": "Configureer hoe u de huur voor dit contract wilt innen.",
+    "skip": "Instellen overslaan",
+    "back": "Terug",
+    "next": "Volgende",
+    "finish": "Setup voltooien",
+    "goToDashboard": "Ga naar Dashboard",
+    "importedSummary": "{count} {entity} geimporteerd",
+    "importedMore": "+{count} meer",
+    "completeTitle": "U bent klaar!",
+    "completeDesc": "Uw account is gereed. Begin met het beheren van uw panden vanuit het dashboard."
   }
 }

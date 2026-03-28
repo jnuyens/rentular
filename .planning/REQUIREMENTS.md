@@ -92,7 +92,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Internationalization
 
-- [ ] **I18N-01**: All new UI screens and features are translated in EN, NL, FR, DE
+- [x] **I18N-01**: All new UI screens and features are translated in EN, NL, FR, DE
 - [ ] **I18N-02**: Notification templates support all four languages
 
 ## v2 Requirements
@@ -200,7 +200,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ONB-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | ONB-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
-| I18N-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| I18N-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 
 **Coverage:**
 - v1 requirements: 55 total

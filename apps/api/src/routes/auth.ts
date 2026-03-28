@@ -237,3 +237,49 @@ authRouter.put(
     return c.json({ message: "Password changed" });
   }
 );
+
+// GET /onboarding - Get onboarding status
+authRouter.get("/onboarding", async (c) => {
+  const userId = c.get("userId") as string | null;
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  if (!db) return c.json({ error: "Database unavailable" }, 503);
+
+  const result = await db
+    .select({
+      onboardingStep: users.onboardingStep,
+      onboardingComplete: users.onboardingComplete,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!result[0]) return c.json({ error: "User not found" }, 404);
+
+  return c.json(result[0]);
+});
+
+// PATCH /onboarding - Update onboarding progress
+authRouter.patch("/onboarding", async (c) => {
+  const userId = c.get("userId") as string | null;
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  if (!db) return c.json({ error: "Database unavailable" }, 503);
+
+  const body = await c.req.json();
+  const { step, complete } = body;
+
+  const updates: Record<string, number | boolean> = {};
+  if (typeof step === "number" && step >= 1 && step <= 4) {
+    updates.onboardingStep = step;
+  }
+  if (typeof complete === "boolean") {
+    updates.onboardingComplete = complete;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return c.json({ error: "No valid fields to update" }, 400);
+  }
+
+  await db.update(users).set(updates).where(eq(users.id, userId));
+
+  return c.json({ success: true, ...updates });
+});
