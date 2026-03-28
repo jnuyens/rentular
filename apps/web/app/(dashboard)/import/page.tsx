@@ -4,6 +4,32 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Info, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -140,6 +166,7 @@ export default function ImportPage() {
     },
     onError: () => {
       setIsSubmitting(false);
+      toast.error(t("errorGeneric"));
     },
   });
 
@@ -156,6 +183,9 @@ export default function ImportPage() {
       setLogMessages([]);
       queryClient.invalidateQueries({ queryKey: ["import-status", sessionId] });
     },
+    onError: () => {
+      toast.error(t("errorGeneric"));
+    },
   });
 
   // Delete credentials mutation
@@ -170,6 +200,10 @@ export default function ImportPage() {
       setLogMessages([]);
       setSelectedIndices(new Set());
       queryClient.invalidateQueries({ queryKey: ["import-latest"] });
+      toast.success(t("credentialsDeleted"));
+    },
+    onError: () => {
+      toast.error(t("errorGeneric"));
     },
   });
 
@@ -194,12 +228,6 @@ export default function ImportPage() {
   const handleStartImport = () => {
     if (selectedIndices.size === 0) return;
     startImportMutation.mutate();
-  };
-
-  const handleDeleteCredentials = () => {
-    if (window.confirm(t("deleteConfirmation"))) {
-      deleteCredentialsMutation.mutate();
-    }
   };
 
   const handleStartNew = () => {
@@ -237,6 +265,15 @@ export default function ImportPage() {
       ? Math.round((session.progress.current / session.progress.total) * 100)
       : 0;
 
+  // Notify on import completion or failure
+  useEffect(() => {
+    if (session?.status === "completed") {
+      toast.success(t("importCompleted"));
+    } else if (session?.status === "failed") {
+      toast.error(t("importFailed"));
+    }
+  }, [session?.status, t]);
+
   // Determine which state to render
   const status = session?.status;
 
@@ -246,16 +283,15 @@ export default function ImportPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-semibold">
             {t("title")}{" "}
-            <span className="rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
-              {t("betaBadge")}
-            </span>
+            <Badge variant="secondary">{t("betaBadge")}</Badge>
           </h1>
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {t("subtitle")}
           </p>
         </div>
-        <div className="max-w-lg">
-          <div className="rounded-lg bg-[hsl(var(--muted))] h-48 animate-pulse" />
+        <div className="max-w-2xl mx-auto space-y-4">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       </div>
     );
@@ -267,319 +303,364 @@ export default function ImportPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold">
           {t("title")}{" "}
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
-            {t("betaBadge")}
-          </span>
+          <Badge variant="secondary">{t("betaBadge")}</Badge>
         </h1>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {t("subtitle")}
         </p>
       </div>
 
       {/* State 1: No session - Credential form */}
       {!session && (
-        <div className="max-w-lg">
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="smovin-email"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    {t("emailLabel")}
-                  </label>
-                  <input
-                    id="smovin-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t("emailPlaceholder")}
-                    className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="smovin-password"
-                    className="block text-sm font-medium mb-1"
-                  >
-                    {t("passwordLabel")}
-                  </label>
-                  <input
-                    id="smovin-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={t("passwordPlaceholder")}
-                    className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("credentialFormTitle")}</CardTitle>
+              <CardDescription>{t("credentialFormDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="smovin-email">{t("emailLabel")}</Label>
+                    <Input
+                      id="smovin-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t("emailPlaceholder")}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="smovin-password">{t("passwordLabel")}</Label>
+                    <Input
+                      id="smovin-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={t("passwordPlaceholder")}
+                      className="mt-1"
+                    />
+                  </div>
 
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800 flex items-start gap-2">
-                  <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                  <span>{t("credentialNotice")}</span>
-                </div>
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>{t("credentialNotice")}</AlertDescription>
+                  </Alert>
 
-                <button
-                  type="submit"
-                  disabled={!email || !password || isSubmitting}
-                  aria-disabled={!email || !password || isSubmitting}
-                  className={`w-full rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 text-sm font-semibold ${
-                    !email || !password || isSubmitting
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
-                >
-                  {isSubmitting ? "..." : t("startDiscovery")}
-                </button>
-              </div>
-            </form>
-          </div>
+                  <Button
+                    type="submit"
+                    disabled={!email || !password || isSubmitting}
+                    className="w-full"
+                  >
+                    {isSubmitting ? "..." : t("startDiscovery")}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* State 2: Discovering */}
       {status === "discovering" && (
-        <div className="max-w-lg" aria-live="polite">
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-yellow-100 text-yellow-700">
-            {t("statusDiscovering")}
-          </span>
-          {session?.progress?.message && (
-            <p className="text-sm mt-2">{session.progress.message}</p>
-          )}
-          <div className="w-full bg-[hsl(var(--muted))] rounded-full h-2.5 mt-4">
-            <div
-              className="bg-[hsl(var(--primary))] h-2.5 rounded-full transition-all duration-300"
-              style={{ width: progressPercent + "%" }}
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-          {session?.progress?.step && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">
-              {session.progress.step}
-            </p>
-          )}
-          <div
-            ref={logRef}
-            className="rounded-lg bg-[hsl(var(--muted))] p-4 mt-6 max-h-48 overflow-y-auto font-mono text-xs"
-          >
-            {logMessages.map((msg, i) => (
-              <div key={i}>{msg}</div>
-            ))}
-          </div>
+        <div className="max-w-2xl mx-auto" aria-live="polite">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-700 border-yellow-200">
+                {t("statusDiscovering")}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {session?.progress?.message && (
+                <p className="text-sm">{session.progress.message}</p>
+              )}
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: progressPercent + "%" }}
+                  role="progressbar"
+                  aria-valuenow={progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              {session?.progress?.step && (
+                <p className="text-xs text-muted-foreground">
+                  {session.progress.step}
+                </p>
+              )}
+              <div
+                ref={logRef}
+                className="rounded-lg bg-muted p-4 max-h-48 overflow-y-auto font-mono text-xs"
+              >
+                {logMessages.map((msg, i) => (
+                  <div key={i}>{msg}</div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* State 3: Discovered - Property selection */}
       {status === "discovered" && session?.discoveredData && (
-        <div>
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-700">
-            {t("statusDiscovered")}
-          </span>
-          <p className="text-sm mt-2">
-            {t("foundSummary", {
-              properties: session.discoveredData.length,
-              tenants: session.discoveredData.reduce(
-                (sum, p) => sum + p.tenants.length,
-                0
-              ),
-              leases: session.discoveredData.reduce(
-                (sum, p) => sum + p.leases.length,
-                0
-              ),
-            })}
-          </p>
-
-          <div className="mt-4">
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-[hsl(var(--border))]"
-                checked={selectedIndices.size === session.discoveredData.length}
-                onChange={handleToggleAll}
-              />
-              {t("selectAll")}
-            </label>
-          </div>
-
-          <div className="max-w-2xl rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] overflow-hidden mt-4">
-            {session.discoveredData.map((prop, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 px-4 py-3 border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50"
-              >
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-[hsl(var(--border))]"
-                  checked={selectedIndices.has(i)}
-                  onChange={() => handleToggleProperty(i)}
-                />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium">{prop.name}</span>
-                  <span className="block text-xs text-[hsl(var(--muted-foreground))]">
-                    {prop.address}
-                  </span>
-                  <span className="block text-xs text-[hsl(var(--muted-foreground))]">
-                    {prop.tenants.length} tenants, {prop.leases.length} leases,{" "}
-                    {prop.payments.length} payments
-                  </span>
-                </div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-blue-50 text-blue-700 border-blue-200">
+                {t("statusDiscovered")}
+              </Badge>
+              <CardDescription className="mt-2">
+                {t("foundSummary", {
+                  properties: session.discoveredData.length,
+                  tenants: session.discoveredData.reduce(
+                    (sum, p) => sum + p.tenants.length,
+                    0
+                  ),
+                  leases: session.discoveredData.reduce(
+                    (sum, p) => sum + p.leases.length,
+                    0
+                  ),
+                })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input"
+                    checked={selectedIndices.size === session.discoveredData.length}
+                    onChange={handleToggleAll}
+                  />
+                  {t("selectAll")}
+                </Label>
               </div>
-            ))}
-          </div>
 
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={handleStartImport}
-              disabled={selectedIndices.size === 0}
-              aria-disabled={selectedIndices.size === 0}
-              className={`rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 text-sm font-semibold ${
-                selectedIndices.size === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {t("importSelected")}
-            </button>
-            <button
-              onClick={handleDeleteCredentials}
-              className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm font-medium"
-            >
-              {t("cancel")}
-            </button>
-          </div>
+              <div className="rounded-lg border border-border overflow-hidden">
+                {session.discoveredData.map((prop, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input"
+                      checked={selectedIndices.has(i)}
+                      onChange={() => handleToggleProperty(i)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{prop.name}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {prop.address}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {prop.tenants.length} tenants, {prop.leases.length} leases,{" "}
+                        {prop.payments.length} payments
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter className="gap-3">
+              <Button
+                onClick={handleStartImport}
+                disabled={selectedIndices.size === 0}
+              >
+                {t("importSelected")}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline">{t("cancel")}</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("deleteCredentialsTitle")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("deleteConfirmation")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("cancelAction")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteCredentialsMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t("deleteCredentials")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardFooter>
+          </Card>
         </div>
       )}
 
       {/* State 4: Importing */}
       {status === "importing" && (
-        <div className="max-w-lg" aria-live="polite">
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-yellow-100 text-yellow-700">
-            {t("statusImporting")}
-          </span>
-          {session?.progress?.message && (
-            <p className="text-sm mt-2">{session.progress.message}</p>
-          )}
-          <div className="w-full bg-[hsl(var(--muted))] rounded-full h-2.5 mt-4">
-            <div
-              className="bg-[hsl(var(--primary))] h-2.5 rounded-full transition-all duration-300"
-              style={{ width: progressPercent + "%" }}
-              role="progressbar"
-              aria-valuenow={progressPercent}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-          {session?.progress?.step && (
-            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2">
-              {session.progress.step}
-            </p>
-          )}
-          <div
-            ref={logRef}
-            className="rounded-lg bg-[hsl(var(--muted))] p-4 mt-6 max-h-48 overflow-y-auto font-mono text-xs"
-          >
-            {logMessages.map((msg, i) => (
-              <div key={i}>{msg}</div>
-            ))}
-          </div>
+        <div className="max-w-2xl mx-auto" aria-live="polite">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-700 border-yellow-200">
+                {t("statusImporting")}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {session?.progress?.message && (
+                <p className="text-sm">{session.progress.message}</p>
+              )}
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: progressPercent + "%" }}
+                  role="progressbar"
+                  aria-valuenow={progressPercent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
+              {session?.progress?.step && (
+                <p className="text-xs text-muted-foreground">
+                  {session.progress.step}
+                </p>
+              )}
+              <div
+                ref={logRef}
+                className="rounded-lg bg-muted p-4 max-h-48 overflow-y-auto font-mono text-xs"
+              >
+                {logMessages.map((msg, i) => (
+                  <div key={i}>{msg}</div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
       {/* State 5: Completed */}
       {status === "completed" && session?.importedCounts && (
-        <div>
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700">
-            {t("statusCompleted")}
-          </span>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-green-50 text-green-700 border-green-200">
+                {t("statusCompleted")}
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <div className="text-2xl font-semibold">
+                      {session.importedCounts.properties}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t("resultsProperties")}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <div className="text-2xl font-semibold">
+                      {session.importedCounts.tenants}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t("resultsTenants")}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <div className="text-2xl font-semibold">
+                      {session.importedCounts.leases}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t("resultsLeases")}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4 text-center">
+                    <div className="text-2xl font-semibold">
+                      {session.importedCounts.payments}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {t("resultsPayments")}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-4 max-w-lg">
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-center">
-              <div className="text-2xl font-semibold">
-                {session.importedCounts.properties}
-              </div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                {t("resultsProperties")}
-              </div>
-            </div>
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-center">
-              <div className="text-2xl font-semibold">
-                {session.importedCounts.tenants}
-              </div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                {t("resultsTenants")}
-              </div>
-            </div>
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-center">
-              <div className="text-2xl font-semibold">
-                {session.importedCounts.leases}
-              </div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                {t("resultsLeases")}
-              </div>
-            </div>
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4 text-center">
-              <div className="text-2xl font-semibold">
-                {session.importedCounts.payments}
-              </div>
-              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                {t("resultsPayments")}
-              </div>
-            </div>
-          </div>
-
-          {session.importedCounts.skipped > 0 && (
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-4">
-              {t("skippedSummary", { count: session.importedCounts.skipped })}
-            </p>
-          )}
-
-          <button
-            onClick={handleStartNew}
-            className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 py-2.5 text-sm font-medium mt-6"
-          >
-            {t("startNew")}
-          </button>
+              {session.importedCounts.skipped > 0 && (
+                <p className="text-sm text-muted-foreground mt-4">
+                  {t("skippedSummary", { count: session.importedCounts.skipped })}
+                </p>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" onClick={handleStartNew}>
+                {t("startNew")}
+              </Button>
+            </CardFooter>
+          </Card>
         </div>
       )}
 
       {/* State 6: Failed */}
       {status === "failed" && (
-        <div className="max-w-lg">
-          <span className="rounded-full px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700">
-            {t("statusFailed")}
-          </span>
-
-          <div
-            className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800 flex items-start gap-2 mt-4"
-            role="alert"
-          >
-            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <span>
-              {session?.errorMessage?.includes("login")
-                ? t("errorLoginFailed")
-                : session?.errorMessage?.includes("cloudflare") ||
-                    session?.errorMessage?.includes("Cloudflare")
-                  ? t("errorCloudflare")
-                  : t("errorGeneric")}
-            </span>
-          </div>
-
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => retryMutation.mutate()}
-              className="rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 text-sm font-semibold"
-            >
-              {t("retry")}
-            </button>
-            <button
-              onClick={handleDeleteCredentials}
-              className="rounded-lg border border-[hsl(var(--destructive))] text-[hsl(var(--destructive))] px-4 py-2.5 text-sm font-medium"
-            >
-              {t("deleteCredentials")}
-            </button>
-          </div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <Badge variant="destructive" className="w-fit">
+                {t("statusFailed")}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{t("statusFailed")}</AlertTitle>
+                <AlertDescription>
+                  {session?.errorMessage?.includes("login")
+                    ? t("errorLoginFailed")
+                    : session?.errorMessage?.includes("cloudflare") ||
+                        session?.errorMessage?.includes("Cloudflare")
+                      ? t("errorCloudflare")
+                      : t("errorGeneric")}
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+            <CardFooter className="gap-3">
+              <Button onClick={() => retryMutation.mutate()}>
+                {t("retry")}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    {t("deleteCredentials")}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t("deleteCredentialsTitle")}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t("deleteConfirmation")}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t("cancelAction")}</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteCredentialsMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {t("deleteCredentials")}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardFooter>
+          </Card>
         </div>
       )}
     </div>

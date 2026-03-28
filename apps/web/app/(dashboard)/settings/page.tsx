@@ -9,19 +9,48 @@ import {
   Percent,
   RotateCcw,
   Eye,
-  EyeOff,
   Save,
   FileBarChart,
   X,
   Globe,
   Landmark,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  Info,
-  MessageSquare,
 } from "lucide-react";
+import { toast } from "sonner";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Lang = "nl" | "fr" | "en" | "de";
 type Level = "friendly" | "formal" | "final";
@@ -248,10 +277,8 @@ function deepCloneTemplates(t: TemplatesByLang): TemplatesByLang {
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
-  const [activeTab, setActiveTab] = useState<
-    "follow-up" | "landlord-reports" | "general" | "bank-accounts" | "email-settings"
-  >("follow-up");
   const [templateLang, setTemplateLang] = useState<Lang>("nl");
+  const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<FollowUpSettings>({
     enabled: true,
     friendlyReminderDays: 0,
@@ -293,38 +320,6 @@ export default function SettingsPage() {
   });
   const [bankLoading, setBankLoading] = useState(false);
 
-  // SMTP settings state
-  const [smtpSettings, setSmtpSettings] = useState<{
-    host: string;
-    port: number;
-    username: string;
-    password: string;
-    fromAddress: string;
-    fromName: string;
-  }>({
-    host: "",
-    port: 587,
-    username: "",
-    password: "",
-    fromAddress: "",
-    fromName: "",
-  });
-  const [smtpLoaded, setSmtpLoaded] = useState(false);
-  const [smtpHasPassword, setSmtpHasPassword] = useState(false);
-  const [smtpVerified, setSmtpVerified] = useState<boolean | null>(null);
-  const [smtpLastVerifiedAt, setSmtpLastVerifiedAt] = useState<string | null>(null);
-  const [smtpTesting, setSmtpTesting] = useState(false);
-  const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [smtpSaving, setSmtpSaving] = useState(false);
-  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
-
-  // SMS template state (for follow-up tab)
-  const [smsTemplates, setSmsTemplates] = useState({
-    smsFriendlyMessage: "",
-    smsFormalMessage: "",
-    smsFinalMessage: "",
-  });
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const fetchBankAccounts = useCallback(async () => {
@@ -341,71 +336,12 @@ export default function SettingsPage() {
     }
   }, [apiUrl]);
 
-  const fetchSmtpSettings = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/settings/smtp`, { credentials: "include" });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data) {
-          setSmtpSettings({
-            host: json.data.host || "",
-            port: json.data.port || 587,
-            username: json.data.username || "",
-            password: "",
-            fromAddress: json.data.fromAddress || "",
-            fromName: json.data.fromName || "",
-          });
-          setSmtpHasPassword(json.data.hasPassword || false);
-          setSmtpVerified(json.data.verified);
-          setSmtpLastVerifiedAt(json.data.lastVerifiedAt);
-        }
-        setSmtpLoaded(true);
-      }
-    } catch (err) {
-      console.error("[Settings] Failed to fetch SMTP settings:", err);
-      setSmtpLoaded(true);
-    }
-  }, [apiUrl]);
-
-  const fetchFollowUpSettings = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/settings/payment-follow-up`, { credentials: "include" });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data || json) {
-          const data = json.data || json;
-          setSmsTemplates({
-            smsFriendlyMessage: data.smsFriendlyMessage || "",
-            smsFormalMessage: data.smsFormalMessage || "",
-            smsFinalMessage: data.smsFinalMessage || "",
-          });
-          // Also update follow-up settings if present
-          if (data.enabled !== undefined) {
-            setSettings(prev => ({
-              ...prev,
-              enabled: data.enabled ?? prev.enabled,
-              friendlyReminderDays: data.friendlyReminderDays ?? prev.friendlyReminderDays,
-              formalReminderDays: data.formalReminderDays ?? prev.formalReminderDays,
-              finalReminderDays: data.finalReminderDays ?? prev.finalReminderDays,
-              interestEnabled: data.interestEnabled ?? prev.interestEnabled,
-              annualInterestRate: data.annualInterestRate ?? prev.annualInterestRate,
-            }));
-          }
-          if (data.templates) {
-            setSettings(prev => ({ ...prev, templates: data.templates }));
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Settings] Failed to fetch follow-up settings:", err);
-    }
-  }, [apiUrl]);
-
   useEffect(() => {
+    // Simulate initial data load
+    const timer = setTimeout(() => setLoading(false), 500);
     fetchBankAccounts();
-    fetchSmtpSettings();
-    fetchFollowUpSettings();
-  }, [fetchBankAccounts, fetchSmtpSettings, fetchFollowUpSettings]);
+    return () => clearTimeout(timer);
+  }, [fetchBankAccounts]);
 
   const handleAddBankAccount = async () => {
     setBankLoading(true);
@@ -420,111 +356,42 @@ export default function SettingsPage() {
         setBankForm({ label: "", iban: "", bic: "", holderName: "", bankName: "", isDefault: false });
         setShowAddBank(false);
         await fetchBankAccounts();
+        toast.success(t("bankAccountAdded"));
+      } else {
+        toast.error(t("bankAccountError"));
       }
+    } catch {
+      toast.error(t("bankAccountError"));
     } finally {
       setBankLoading(false);
     }
   };
 
   const handleSetDefaultBank = async (id: string) => {
-    await fetch(`${apiUrl}/api/v1/bank-accounts/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isDefault: true }),
-      credentials: "include",
-    });
-    await fetchBankAccounts();
+    try {
+      await fetch(`${apiUrl}/api/v1/bank-accounts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isDefault: true }),
+        credentials: "include",
+      });
+      await fetchBankAccounts();
+      toast.success(t("bankDefaultSet"));
+    } catch {
+      toast.error(t("bankAccountError"));
+    }
   };
 
   const handleArchiveBank = async (id: string) => {
-    await fetch(`${apiUrl}/api/v1/bank-accounts/${id}/archive`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    await fetchBankAccounts();
-  };
-
-  const handleSmtpSave = async () => {
-    if (!smtpSettings.host) return;
-    setSmtpSaving(true);
     try {
-      const body: Record<string, unknown> = {
-        host: smtpSettings.host,
-        port: smtpSettings.port,
-        username: smtpSettings.username,
-        fromAddress: smtpSettings.fromAddress,
-        fromName: smtpSettings.fromName || undefined,
-      };
-      if (smtpSettings.password) {
-        body.password = smtpSettings.password;
-      } else if (!smtpHasPassword) {
-        setSmtpSaving(false);
-        return;
-      }
-      if (!body.password && !smtpHasPassword) {
-        setSmtpSaving(false);
-        return;
-      }
-
-      const res = await fetch(`${apiUrl}/api/v1/settings/smtp`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-      if (res.ok) {
-        setSmtpVerified(false);
-        setSmtpHasPassword(true);
-        setSmtpSettings(prev => ({ ...prev, password: "" }));
-        await fetchSmtpSettings();
-      }
-    } catch (err) {
-      console.error("[Settings] Failed to save SMTP:", err);
-    } finally {
-      setSmtpSaving(false);
-    }
-  };
-
-  const handleSmtpTest = async () => {
-    setSmtpTesting(true);
-    setSmtpTestResult(null);
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/settings/smtp/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          host: smtpSettings.host,
-          port: smtpSettings.port,
-          username: smtpSettings.username,
-          password: smtpSettings.password,
-          fromAddress: smtpSettings.fromAddress,
-        }),
-      });
-      const json = await res.json();
-      setSmtpTestResult({
-        success: json.success,
-        message: json.success ? json.message : json.error,
-      });
-    } catch (err) {
-      setSmtpTestResult({ success: false, message: String(err) });
-    } finally {
-      setSmtpTesting(false);
-    }
-  };
-
-  const handleSmtpReset = async () => {
-    try {
-      await fetch(`${apiUrl}/api/v1/settings/smtp`, {
+      await fetch(`${apiUrl}/api/v1/bank-accounts/${id}/archive`, {
         method: "DELETE",
         credentials: "include",
       });
-      setSmtpSettings({ host: "", port: 587, username: "", password: "", fromAddress: "", fromName: "" });
-      setSmtpHasPassword(false);
-      setSmtpVerified(null);
-      setSmtpTestResult(null);
-    } catch (err) {
-      console.error("[Settings] Failed to reset SMTP:", err);
+      await fetchBankAccounts();
+      toast.success(t("bankAccountArchived"));
+    } catch {
+      toast.error(t("bankAccountError"));
     }
   };
 
@@ -574,16 +441,11 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await Promise.all([
+      const results = await Promise.all([
         fetch(`${apiUrl}/api/v1/settings/payment-follow-up`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...settings,
-            smsFriendlyMessage: smsTemplates.smsFriendlyMessage,
-            smsFormalMessage: smsTemplates.smsFormalMessage,
-            smsFinalMessage: smsTemplates.smsFinalMessage,
-          }),
+          body: JSON.stringify(settings),
           credentials: "include",
         }),
         fetch(`${apiUrl}/api/v1/settings/landlord-report`, {
@@ -593,29 +455,35 @@ export default function SettingsPage() {
           credentials: "include",
         }),
       ]);
+      const allOk = results.every((r) => r.ok);
+      if (allOk) {
+        toast.success(t("settingsSaved"));
+      } else {
+        toast.error(t("settingsSaveError"));
+      }
+    } catch {
+      toast.error(t("settingsSaveError"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleReset = () => {
-    if (activeTab === "follow-up") {
-      setSettings({
-        enabled: true,
-        friendlyReminderDays: 0,
-        formalReminderDays: 3,
-        finalReminderDays: 6,
-        interestEnabled: false,
-        annualInterestRate: 3.75,
-        templates: deepCloneTemplates(DEFAULT_TEMPLATES),
-      });
-    } else if (activeTab === "landlord-reports") {
-      setReportSettings({
-        enabled: true,
-        reportDays: [3, 7, 15, 28],
-        skipIfAllPaid: false,
-      });
-    }
+    setSettings({
+      enabled: true,
+      friendlyReminderDays: 0,
+      formalReminderDays: 3,
+      finalReminderDays: 6,
+      interestEnabled: false,
+      annualInterestRate: 3.75,
+      templates: deepCloneTemplates(DEFAULT_TEMPLATES),
+    });
+    setReportSettings({
+      enabled: true,
+      reportDays: [3, 7, 15, 28],
+      skipIfAllPaid: false,
+    });
+    toast.success(t("settingsReset"));
   };
 
   const resetTemplateLang = (lang: Lang) => {
@@ -626,776 +494,588 @@ export default function SettingsPage() {
         [lang]: deepCloneTemplates(DEFAULT_TEMPLATES)[lang],
       },
     }));
+    toast.success(t("templatesReset"));
   };
 
-  const tabs = [
-    { key: "follow-up" as const, label: t("paymentFollowUp") },
-    { key: "landlord-reports" as const, label: t("landlordReports") },
-    { key: "bank-accounts" as const, label: t("bankAccounts") },
-    { key: "email-settings" as const, label: t("emailSettings") },
-    { key: "general" as const, label: t("general") },
-  ];
-
   const currentTemplates = settings.templates[templateLang];
+
+  if (loading) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="mt-1 text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full max-w-md" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="mt-1 text-[hsl(var(--muted-foreground))]">
-            {t("subtitle")}
-          </p>
+          <p className="mt-1 text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
 
-      {/* Tab navigation */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-[hsl(var(--background))] p-1 w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
-                : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="follow-up" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+          <TabsTrigger value="follow-up">{t("paymentFollowUp")}</TabsTrigger>
+          <TabsTrigger value="landlord-reports">{t("landlordReports")}</TabsTrigger>
+          <TabsTrigger value="bank-accounts">{t("bankAccounts")}</TabsTrigger>
+          <TabsTrigger value="general">{t("general")}</TabsTrigger>
+        </TabsList>
 
-      {activeTab === "follow-up" && (
-        <div className="space-y-6">
-          {/* SMS consent notice */}
-          <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-200 p-4 text-sm text-blue-800">
-            <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
-            <span>{t("smsConsentNotice")}</span>
-          </div>
-
-          {/* Enable/disable */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">{t("automatedFollowUp")}</h2>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  {t("automatedFollowUpDescription")}
-                </p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.enabled}
-                  onChange={(e) => update("enabled", e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
-              </label>
-            </div>
-          </div>
-
-          {/* Escalation timeline */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-              <Clock className="h-5 w-5" />
-              {t("escalationTimeline")}
-            </h2>
-            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-              {t("escalationDescription")}
-            </p>
-
-            <div className="space-y-4">
-              {([
-                { level: "friendly" as const, color: "green", num: 1, label: t("friendlyReminder"), field: "friendlyReminderDays" as const },
-                { level: "formal" as const, color: "yellow", num: 2, label: t("formalReminder"), field: "formalReminderDays" as const },
-                { level: "final" as const, color: "red", num: 3, label: t("finalNotice"), field: "finalReminderDays" as const, desc: t("finalNoticeDescription") },
-              ]).map(({ color, num, label, field, desc }) => (
-                <div key={field} className="flex items-center gap-4">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-${color}-100 text-${color}-700 text-sm font-bold`}>
-                    {num}
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-sm font-medium">{label}</label>
-                    {desc && <p className="text-xs text-[hsl(var(--muted-foreground))]">{desc}</p>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="0"
-                      max="90"
-                      value={settings[field]}
-                      onChange={(e) => update(field, parseInt(e.target.value) || 0)}
-                      className="w-20 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                    />
-                    <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {t("daysAfterDue")}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Interest settings */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-              <Percent className="h-5 w-5" />
-              {t("interestCharges")}
-            </h2>
-
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <label className="text-sm font-medium">{t("chargeInterest")}</label>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  {t("chargeInterestDescription")}
-                </p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.interestEnabled}
-                  onChange={(e) => update("interestEnabled", e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
-              </label>
-            </div>
-
-            {settings.interestEnabled && (
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">{t("annualRate")}</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.25"
-                  value={settings.annualInterestRate}
-                  onChange={(e) =>
-                    update("annualInterestRate", parseFloat(e.target.value) || 0)
-                  }
-                  className="w-24 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                />
-                <span className="text-sm text-[hsl(var(--muted-foreground))]">%</span>
-              </div>
-            )}
-          </div>
-
-          {/* Email templates — per language */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <Mail className="h-5 w-5" />
-                {t("emailTemplates")}
-              </h2>
-              <button
-                onClick={() => resetTemplateLang(templateLang)}
-                className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-              >
-                <RotateCcw className="h-3 w-3" />
-                {t("resetDefaults")} ({LANG_LABELS[templateLang]})
-              </button>
-            </div>
-
-            <p className="mb-2 text-xs text-[hsl(var(--muted-foreground))]">
-              {t("templateLanguageDescription")}
-            </p>
-
-            {/* Language tabs */}
-            <div className="mb-4 flex gap-1 rounded-lg bg-[hsl(var(--muted))] p-1 w-fit">
-              {(["nl", "fr", "en", "de"] as const).map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setTemplateLang(lang)}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    templateLang === lang
-                      ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] shadow-sm"
-                      : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
-                  }`}
-                >
-                  <Globe className="h-3.5 w-3.5" />
-                  {LANG_LABELS[lang]}
-                </button>
-              ))}
-            </div>
-
-            <p className="mb-4 text-xs text-[hsl(var(--muted-foreground))]">
-              {t("placeholders")}: {PLACEHOLDER_HELP}
-            </p>
-
-            <div className="space-y-6">
-              {(["friendly", "formal", "final"] as const).map((level) => (
-                <div
-                  key={level}
-                  className="rounded-md border border-[hsl(var(--border))] p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">
-                      {level === "friendly"
-                        ? t("friendlyReminder")
-                        : level === "formal"
-                          ? t("formalReminder")
-                          : t("finalNotice")}
-                    </h3>
-                    <button
-                      onClick={() =>
-                        setPreviewLevel(previewLevel === level ? null : level)
-                      }
-                      className="flex items-center gap-1 text-xs text-[hsl(var(--primary))] hover:underline"
-                    >
-                      <Eye className="h-3 w-3" />
-                      {t("preview")}
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-medium">
-                        {t("subject")}
-                      </label>
-                      <input
-                        type="text"
-                        value={currentTemplates[level].subject}
-                        onChange={(e) =>
-                          updateTemplate(templateLang, level, "subject", e.target.value)
-                        }
-                        className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium">
-                        {t("body")}
-                      </label>
-                      <textarea
-                        value={currentTemplates[level].body}
-                        onChange={(e) =>
-                          updateTemplate(templateLang, level, "body", e.target.value)
-                        }
-                        rows={8}
-                        className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* SMS Templates */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="mb-4">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <MessageSquare className="h-5 w-5" />
-                {t("smsTemplatesTitle")}
-              </h2>
-              <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-                {t("smsTemplatesDescription")}
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smsFriendlyTemplate")}</label>
-                <textarea
-                  value={smsTemplates.smsFriendlyMessage}
-                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFriendlyMessage: e.target.value }))}
-                  rows={3}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                  placeholder={"{{tenantName}}, your payment of {{amount}} for {{propertyName}} is overdue since {{dueDate}}."}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smsFormalTemplate")}</label>
-                <textarea
-                  value={smsTemplates.smsFormalMessage}
-                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFormalMessage: e.target.value }))}
-                  rows={3}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                  placeholder={"{{tenantName}}, payment of {{amount}} for {{propertyName}} is now {{daysPastDue}} days overdue. Please arrange payment immediately."}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smsFinalTemplate")}</label>
-                <textarea
-                  value={smsTemplates.smsFinalMessage}
-                  onChange={(e) => setSmsTemplates(prev => ({ ...prev, smsFinalMessage: e.target.value }))}
-                  rows={3}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                  placeholder={"FINAL NOTICE: {{tenantName}}, {{amount}} for {{propertyName}} remains unpaid. Legal action may follow."}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? t("saving") : t("saveSettings")}
-            </button>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium hover:bg-[hsl(var(--muted))]"
-            >
-              <RotateCcw className="h-4 w-4" />
-              {t("resetDefaults")}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "landlord-reports" && (
-        <div className="space-y-6">
-          {/* Enable/disable */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">{t("landlordReportTitle")}</h2>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  {t("landlordReportDescription")}
-                </p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={reportSettings.enabled}
-                  onChange={(e) => updateReport("enabled", e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
-              </label>
-            </div>
-          </div>
-
-          {/* Report days */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
-              <FileBarChart className="h-5 w-5" />
-              {t("reportSchedule")}
-            </h2>
-            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-              {t("reportScheduleDescription")}
-            </p>
-
-            {/* Current report days */}
-            <div className="mb-4 flex flex-wrap gap-2">
-              {reportSettings.reportDays.map((day) => (
-                <span
-                  key={day}
-                  className="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--primary))] px-3 py-1 text-sm font-medium text-[hsl(var(--primary-foreground))]"
-                >
-                  {t("dayOfMonth", { day })}
-                  {reportSettings.reportDays.length > 1 && (
-                    <button
-                      onClick={() => removeReportDay(day)}
-                      className="ml-1 rounded-full p-0.5 hover:bg-white/20"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </span>
-              ))}
-            </div>
-
-            {/* Add day */}
-            <div className="flex items-center gap-2">
-              <select
-                value={newDay}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (val) addReportDay(val);
-                }}
-                className="rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-              >
-                <option value="">{t("addReportDay")}</option>
-                {ALL_DAYS.filter((d) => !reportSettings.reportDays.includes(d)).map(
-                  (d) => (
-                    <option key={d} value={d}>
-                      {t("dayOfMonth", { day: d })}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
-          </div>
-
-          {/* Skip if all paid */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold">{t("skipIfAllPaid")}</h2>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  {t("skipIfAllPaidDescription")}
-                </p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={reportSettings.skipIfAllPaid}
-                  onChange={(e) =>
-                    updateReport("skipIfAllPaid", e.target.checked)
-                  }
-                  className="peer sr-only"
-                />
-                <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
-              </label>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? t("saving") : t("saveSettings")}
-            </button>
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium hover:bg-[hsl(var(--muted))]"
-            >
-              <RotateCcw className="h-4 w-4" />
-              {t("resetDefaults")}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "bank-accounts" && (
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <Landmark className="h-5 w-5" />
-                  {t("bankAccounts")}
-                </h2>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  {t("bankAccountsDescription")}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowAddBank(!showAddBank)}
-                className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90"
-              >
-                {t("addBankAccount")}
-              </button>
-            </div>
-          </div>
-
-          {/* Add bank account form */}
-          {showAddBank && (
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-              <h3 className="mb-4 text-sm font-semibold">{t("addBankAccount")}</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-xs font-medium">{t("bankLabel")}</label>
-                  <input
-                    type="text"
-                    value={bankForm.label}
-                    onChange={(e) => setBankForm((f) => ({ ...f, label: e.target.value }))}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium">{t("bankIban")}</label>
-                  <IbanInput
-                    value={bankForm.iban}
-                    onChange={(iban) => setBankForm((f) => ({ ...f, iban }))}
-                    onBankDetected={(bankName, bic) =>
-                      setBankForm((f) => ({
-                        ...f,
-                        bankName: f.bankName || bankName,
-                        bic: f.bic || bic,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t("bankBic")}</label>
-                    <BicSelect
-                      value={bankForm.bic}
-                      onChange={(bic) => setBankForm((f) => ({ ...f, bic }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t("bankBankName")}</label>
-                    <BankNameSelect
-                      value={bankForm.bankName}
-                      onChange={(bankName, bic) =>
-                        setBankForm((f) => ({ ...f, bankName, bic: f.bic || bic }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium">{t("bankHolderName")}</label>
-                  <input
-                    type="text"
-                    value={bankForm.holderName}
-                    onChange={(e) => setBankForm((f) => ({ ...f, holderName: e.target.value }))}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-1.5 text-sm"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
+        {/* Payment Follow-up Tab */}
+        <TabsContent value="follow-up">
+          <div className="space-y-6">
+            {/* Enable/disable */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("automatedFollowUp")}</CardTitle>
+                <CardDescription>{t("automatedFollowUpDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="followup-enabled">{t("automatedFollowUp")}</Label>
                   <label className="relative inline-flex cursor-pointer items-center">
                     <input
+                      id="followup-enabled"
                       type="checkbox"
-                      checked={bankForm.isDefault}
-                      onChange={(e) => setBankForm((f) => ({ ...f, isDefault: e.target.checked }))}
+                      checked={settings.enabled}
+                      onChange={(e) => update("enabled", e.target.checked)}
                       className="peer sr-only"
                     />
-                    <div className="h-6 w-11 rounded-full bg-gray-300 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-[hsl(var(--primary))] peer-checked:after:translate-x-full" />
+                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
                   </label>
-                  <span className="text-sm font-medium">{t("bankSetDefault")}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
+              </CardContent>
+            </Card>
+
+            {/* Escalation timeline */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  {t("escalationTimeline")}
+                </CardTitle>
+                <CardDescription>{t("escalationDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {([
+                  { level: "friendly" as const, color: "green", num: 1, label: t("friendlyReminder"), field: "friendlyReminderDays" as const },
+                  { level: "formal" as const, color: "yellow", num: 2, label: t("formalReminder"), field: "formalReminderDays" as const },
+                  { level: "final" as const, color: "red", num: 3, label: t("finalNotice"), field: "finalReminderDays" as const, desc: t("finalNoticeDescription") },
+                ]).map(({ color, num, label, field, desc }) => (
+                  <div key={field} className="flex items-center gap-4">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-${color}-100 text-${color}-700 text-sm font-bold`}>
+                      {num}
+                    </div>
+                    <div className="flex-1">
+                      <Label>{label}</Label>
+                      {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={90}
+                        value={settings[field]}
+                        onChange={(e) => update(field, parseInt(e.target.value) || 0)}
+                        className="w-20"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {t("daysAfterDue")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Interest settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Percent className="h-5 w-5" />
+                  {t("interestCharges")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="interest-enabled">{t("chargeInterest")}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("chargeInterestDescription")}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      id="interest-enabled"
+                      type="checkbox"
+                      checked={settings.interestEnabled}
+                      onChange={(e) => update("interestEnabled", e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                  </label>
+                </div>
+
+                {settings.interestEnabled && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="annual-rate">{t("annualRate")}</Label>
+                    <Input
+                      id="annual-rate"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.25}
+                      value={settings.annualInterestRate}
+                      onChange={(e) =>
+                        update("annualInterestRate", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-24"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Separator />
+
+            {/* Email templates -- per language */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    {t("emailTemplates")}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => resetTemplateLang(templateLang)}
+                  >
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    {t("resetDefaults")} ({LANG_LABELS[templateLang]})
+                  </Button>
+                </div>
+                <CardDescription>{t("templateLanguageDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Language tabs */}
+                <Tabs value={templateLang} onValueChange={(v) => setTemplateLang(v as Lang)}>
+                  <TabsList className="w-fit">
+                    {(["nl", "fr", "en", "de"] as const).map((lang) => (
+                      <TabsTrigger key={lang} value={lang} className="gap-1.5">
+                        <Globe className="h-3.5 w-3.5" />
+                        {LANG_LABELS[lang]}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </Tabs>
+
+                <p className="text-xs text-muted-foreground">
+                  {t("placeholders")}: {PLACEHOLDER_HELP}
+                </p>
+
+                <div className="space-y-6">
+                  {(["friendly", "formal", "final"] as const).map((level) => (
+                    <Card key={level} className="border">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm">
+                            {level === "friendly"
+                              ? t("friendlyReminder")
+                              : level === "formal"
+                                ? t("formalReminder")
+                                : t("finalNotice")}
+                          </CardTitle>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setPreviewLevel(previewLevel === level ? null : level)
+                            }
+                          >
+                            <Eye className="mr-1 h-3 w-3" />
+                            {t("preview")}
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <Label className="mb-1 block text-xs">{t("subject")}</Label>
+                          <Input
+                            value={currentTemplates[level].subject}
+                            onChange={(e) =>
+                              updateTemplate(templateLang, level, "subject", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label className="mb-1 block text-xs">{t("body")}</Label>
+                          <Textarea
+                            value={currentTemplates[level].body}
+                            onChange={(e) =>
+                              updateTemplate(templateLang, level, "body", e.target.value)
+                            }
+                            rows={8}
+                            className="font-mono"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                {saving ? t("saving") : t("saveSettings")}
+              </Button>
+              <Button variant="outline" onClick={handleReset}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {t("resetDefaults")}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Landlord Reports Tab */}
+        <TabsContent value="landlord-reports">
+          <div className="space-y-6">
+            {/* Enable/disable */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("landlordReportTitle")}</CardTitle>
+                <CardDescription>{t("landlordReportDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="report-enabled">{t("landlordReportTitle")}</Label>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      id="report-enabled"
+                      type="checkbox"
+                      checked={reportSettings.enabled}
+                      onChange={(e) => updateReport("enabled", e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Report days */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileBarChart className="h-5 w-5" />
+                  {t("reportSchedule")}
+                </CardTitle>
+                <CardDescription>{t("reportScheduleDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Current report days */}
+                <div className="flex flex-wrap gap-2">
+                  {reportSettings.reportDays.map((day) => (
+                    <span
+                      key={day}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-sm font-medium text-primary-foreground"
+                    >
+                      {t("dayOfMonth", { day })}
+                      {reportSettings.reportDays.length > 1 && (
+                        <button
+                          onClick={() => removeReportDay(day)}
+                          className="ml-1 rounded-full p-0.5 hover:bg-white/20"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+
+                <Separator />
+
+                {/* Add day */}
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={newDay === "" ? undefined : String(newDay)}
+                    onValueChange={(val) => {
+                      const num = parseInt(val);
+                      if (num) addReportDay(num);
+                    }}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder={t("addReportDay")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_DAYS.filter((d) => !reportSettings.reportDays.includes(d)).map(
+                        (d) => (
+                          <SelectItem key={d} value={String(d)}>
+                            {t("dayOfMonth", { day: d })}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skip if all paid */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="skip-all-paid">{t("skipIfAllPaid")}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {t("skipIfAllPaidDescription")}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      id="skip-all-paid"
+                      type="checkbox"
+                      checked={reportSettings.skipIfAllPaid}
+                      onChange={(e) =>
+                        updateReport("skipIfAllPaid", e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                  </label>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="mr-2 h-4 w-4" />
+                {saving ? t("saving") : t("saveSettings")}
+              </Button>
+              <Button variant="outline" onClick={handleReset}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                {t("resetDefaults")}
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Bank Accounts Tab */}
+        <TabsContent value="bank-accounts">
+          <div className="space-y-6">
+            {/* Header */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5" />
+                      {t("bankAccounts")}
+                    </CardTitle>
+                    <CardDescription>{t("bankAccountsDescription")}</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowAddBank(!showAddBank)}>
+                    {t("addBankAccount")}
+                  </Button>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Add bank account form */}
+            {showAddBank && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">{t("addBankAccount")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label className="mb-1 block text-xs">{t("bankLabel")}</Label>
+                    <Input
+                      value={bankForm.label}
+                      onChange={(e) => setBankForm((f) => ({ ...f, label: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-xs">{t("bankIban")}</Label>
+                    <IbanInput
+                      value={bankForm.iban}
+                      onChange={(iban) => setBankForm((f) => ({ ...f, iban }))}
+                      onBankDetected={(bankName, bic) =>
+                        setBankForm((f) => ({
+                          ...f,
+                          bankName: f.bankName || bankName,
+                          bic: f.bic || bic,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="mb-1 block text-xs">{t("bankBic")}</Label>
+                      <BicSelect
+                        value={bankForm.bic}
+                        onChange={(bic) => setBankForm((f) => ({ ...f, bic }))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-1 block text-xs">{t("bankBankName")}</Label>
+                      <BankNameSelect
+                        value={bankForm.bankName}
+                        onChange={(bankName, bic) =>
+                          setBankForm((f) => ({ ...f, bankName, bic: f.bic || bic }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="mb-1 block text-xs">{t("bankHolderName")}</Label>
+                    <Input
+                      value={bankForm.holderName}
+                      onChange={(e) => setBankForm((f) => ({ ...f, holderName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="relative inline-flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        checked={bankForm.isDefault}
+                        onChange={(e) => setBankForm((f) => ({ ...f, isDefault: e.target.checked }))}
+                        className="peer sr-only"
+                      />
+                      <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+                    </label>
+                    <Label>{t("bankSetDefault")}</Label>
+                  </div>
+                </CardContent>
+                <CardFooter className="gap-3">
+                  <Button
                     onClick={handleAddBankAccount}
                     disabled={bankLoading || !bankForm.iban}
-                    className="flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className="mr-2 h-4 w-4" />
                     {bankLoading ? t("saving") : t("addBankAccount")}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       setShowAddBank(false);
                       setBankForm({ label: "", iban: "", bic: "", holderName: "", bankName: "", isDefault: false });
                     }}
-                    className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border))] px-4 py-2.5 text-sm font-medium hover:bg-[hsl(var(--muted))]"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                    <X className="mr-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
 
-          {/* Bank accounts list */}
-          {bankAccounts.length === 0 ? (
-            <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-              <div className="flex flex-col items-center gap-3 text-[hsl(var(--muted-foreground))]">
-                <Landmark className="h-8 w-8" />
-                <p className="text-sm font-medium">{t("noBankAccounts")}</p>
-                <p className="text-xs">{t("noBankAccountsDescription")}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {bankAccounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold">{account.label || account.iban}</h3>
-                        {account.isDefault && (
-                          <span className="rounded-full bg-[hsl(var(--primary))] px-2 py-0.5 text-xs font-medium text-[hsl(var(--primary-foreground))]">
-                            {t("bankDefault")}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm font-mono text-[hsl(var(--muted-foreground))]">
-                        {account.iban}
-                      </p>
-                      <div className="flex gap-4 text-xs text-[hsl(var(--muted-foreground))]">
-                        {account.holderName && <span>{account.holderName}</span>}
-                        {account.bankName && <span>{account.bankName}</span>}
-                        {account.bic && <span>BIC: {account.bic}</span>}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!account.isDefault && (
-                        <button
-                          onClick={() => handleSetDefaultBank(account.id)}
-                          className="rounded-md border border-[hsl(var(--border))] px-3 py-1.5 text-xs font-medium hover:bg-[hsl(var(--muted))]"
-                        >
-                          {t("bankSetDefault")}
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleArchiveBank(account.id)}
-                        className="rounded-md border border-[hsl(var(--border))] p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+            {/* Bank accounts list */}
+            {bankAccounts.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <Landmark className="h-8 w-8" />
+                    <p className="text-sm font-medium">{t("noBankAccounts")}</p>
+                    <p className="text-xs">{t("noBankAccountsDescription")}</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "email-settings" && (
-        <div className="space-y-6">
-          {/* SMTP Configuration Card */}
-          <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-            <h2 className="text-lg font-semibold">{t("smtpTitle")}</h2>
-            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{t("smtpDescription")}</p>
-
-            <div className="mt-6 space-y-4">
-              {/* SMTP Host */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpHost")}</label>
-                <input
-                  type="text"
-                  placeholder="smtp.example.com"
-                  value={smtpSettings.host}
-                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, host: e.target.value }))}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                />
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {bankAccounts.map((account) => (
+                  <Card key={account.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-semibold">{account.label || account.iban}</h3>
+                            {account.isDefault && (
+                              <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                                {t("bankDefault")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-mono text-muted-foreground">
+                            {account.iban}
+                          </p>
+                          <div className="flex gap-4 text-xs text-muted-foreground">
+                            {account.holderName && <span>{account.holderName}</span>}
+                            {account.bankName && <span>{account.bankName}</span>}
+                            {account.bic && <span>BIC: {account.bic}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {!account.isDefault && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSetDefaultBank(account.id)}
+                            >
+                              {t("bankSetDefault")}
+                            </Button>
+                          )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="icon" className="text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t("archiveBankTitle")}</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  {t("archiveBankDescription")}
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleArchiveBank(account.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {t("archiveConfirm")}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-
-              {/* SMTP Port */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpPort")}</label>
-                <input
-                  type="number"
-                  placeholder="587"
-                  value={smtpSettings.port}
-                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, port: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                />
-              </div>
-
-              {/* Username */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpUsername")}</label>
-                <input
-                  type="text"
-                  placeholder="user@example.com"
-                  value={smtpSettings.username}
-                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, username: e.target.value }))}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                />
-              </div>
-
-              {/* Password with eye toggle */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpPassword")}</label>
-                <div className="relative">
-                  <input
-                    type={showSmtpPassword ? "text" : "password"}
-                    placeholder={smtpHasPassword ? "********" : ""}
-                    value={smtpSettings.password}
-                    onChange={(e) => setSmtpSettings(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSmtpPassword(!showSmtpPassword)}
-                    aria-label={showSmtpPassword ? "Hide password" : "Show password"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[hsl(var(--muted-foreground))]"
-                  >
-                    {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* From Address */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpFromAddress")}</label>
-                <input
-                  type="email"
-                  placeholder="noreply@yourdomain.com"
-                  value={smtpSettings.fromAddress}
-                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, fromAddress: e.target.value }))}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                />
-              </div>
-
-              {/* From Name */}
-              <div>
-                <label className="block text-sm font-semibold mb-1">{t("smtpFromName")}</label>
-                <input
-                  type="text"
-                  placeholder="Your Company Name"
-                  value={smtpSettings.fromName}
-                  onChange={(e) => setSmtpSettings(prev => ({ ...prev, fromName: e.target.value }))}
-                  className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]/50"
-                />
-              </div>
-            </div>
-
-            {/* Verification status */}
-            {smtpVerified === true && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle2 className="h-4 w-4" />
-                {t("smtpVerified")}
-              </div>
-            )}
-            {smtpVerified === false && smtpHasPassword && (
-              <div className="mt-4 flex items-center gap-2 text-sm text-yellow-600">
-                <AlertCircle className="h-4 w-4" />
-                {t("smtpNotVerified")}
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                onClick={handleSmtpTest}
-                disabled={smtpTesting || !smtpSettings.host || !smtpSettings.username || !smtpSettings.password || !smtpSettings.fromAddress}
-                className={`rounded-lg border border-[hsl(var(--primary))] text-[hsl(var(--primary))] px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  smtpTesting || !smtpSettings.host || !smtpSettings.username || !smtpSettings.password || !smtpSettings.fromAddress
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-[hsl(var(--primary))]/10"
-                }`}
-              >
-                {smtpTesting ? t("sendingTest") : t("sendTestEmail")}
-              </button>
-
-              <button
-                onClick={handleSmtpSave}
-                disabled={smtpSaving || !smtpSettings.host}
-                className={`rounded-lg bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2.5 text-sm font-semibold transition-colors ${
-                  smtpSaving || !smtpSettings.host ? "opacity-50 cursor-not-allowed" : "hover:bg-[hsl(var(--primary))]/90"
-                }`}
-              >
-                {smtpSaving ? t("saving") : t("saveSettings")}
-              </button>
-
-              {smtpHasPassword && (
-                <button
-                  onClick={handleSmtpReset}
-                  className="rounded-lg px-4 py-2.5 text-sm font-semibold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-                >
-                  {t("resetDefaults")}
-                </button>
-              )}
-            </div>
-
-            {/* Test result */}
-            {smtpTestResult && (
-              <p className={`mt-3 text-sm ${smtpTestResult.success ? "text-green-600" : "text-red-600"}`}>
-                {smtpTestResult.message}
-              </p>
             )}
           </div>
-        </div>
-      )}
+        </TabsContent>
 
-      {activeTab === "general" && (
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
-          <div className="flex items-center gap-3 text-[hsl(var(--muted-foreground))]">
-            <Settings className="h-8 w-8" />
-            <p className="text-sm">{t("generalComingSoon")}</p>
-          </div>
-        </div>
-      )}
+        {/* General Tab */}
+        <TabsContent value="general">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Settings className="h-8 w-8" />
+                <p className="text-sm">{t("generalComingSoon")}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
