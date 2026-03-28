@@ -70,10 +70,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 - [ ] Monthly/yearly payment overview for landlords
 - [ ] Payment status summary (collected, overdue, fees)
 
-**Smovin Import**
-- [ ] In-app import flow: user enters Smovin credentials
-- [ ] Scrape properties, tenants/contacts, lease data, payment history from user's own Smovin account
-- [ ] Map Smovin data to Rentular data model and import
+**Smovin Import** — *Validated in Phase 6 (beta, human verification pending)*
 
 **Onboarding**
 - [ ] Guided setup wizard: add property -> add tenant -> create lease -> set up payment collection
@@ -101,7 +98,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 ## Context
 
 - **Existing codebase:** Monorepo (Turborepo) with Next.js 15 frontend, Hono API, Drizzle ORM, MySQL
-- **Current state:** Phases 1-3 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring, and Belgian rent indexation with Statbel health index pipeline, regional EPC-restricted calculations, and multilingual tenant notifications. Notifications & payment follow-up is next (Phase 4).
+- **Current state:** Phases 1-6 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring, Belgian rent indexation, notifications & payment follow-up, property manager roles, and Smovin import (beta). UI polish, onboarding & launch readiness is next (Phase 7).
 - **Competitive landscape:** Smovin, Rentila are established Belgian alternatives. Rentular differentiates on price.
 - **Target market:** Belgian landlords (1-10 properties) and professional property managers
 - **Infrastructure:** Proxmox on Hetzner, Docker deployment. SMTP available on server but needs domain configuration.
@@ -146,4 +143,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-23 after Phase 3 completion*
+*Last updated: 2026-03-28 after Phase 6 completion*
