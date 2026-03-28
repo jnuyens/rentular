@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-03-28T10:31:43.232Z",
+  "phase": "06",
+  "phase_name": "smovin-import-beta",
+  "phase_dir": ".planning/phases/06-smovin-import-beta",
+  "plan": 4,
+  "task": 3,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "06-01: Schema + Spike Test", "status": "done", "commit": "094594f"},
+    {"id": 2, "name": "06-02: Import API routes + discovery worker", "status": "done", "commit": "90d3c52"},
+    {"id": 3, "name": "06-03: Data mapper + import write worker", "status": "done", "commit": "1f05d2e"},
+    {"id": 4, "name": "06-04: Frontend import page + i18n", "status": "done", "commit": "c1b7eb2"}
+  ],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [
+    {"action": "Test end-to-end Smovin import flow on live website", "context": "Scraping a live Nuxt.js SPA with Playwright stealth — cannot be validated statically. User will test after deployment.", "blocking": false},
+    {"action": "Verify API credential isolation (no credential fields in GET responses)", "context": "Part of 06-HUMAN-UAT.md items", "blocking": false},
+    {"action": "Verify DB credential cleanup after successful import", "context": "Credentials should be NULL after import completes", "blocking": false},
+    {"action": "Verify real-time progress bar and log updates in browser", "context": "Polling behavior needs live browser session", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Smovin import targets web.smovin.app (not app.smovin.be)", "rationale": "Smovin redirects to new Nuxt.js SPA domain", "phase": "06"},
+    {"decision": "Login detection via auth indicators not URL check", "rationale": "Smovin dashboard URL contains /login", "phase": "06"},
+    {"decision": "SPA hydration requires load + networkidle + waitForSelector chain", "rationale": "domcontentloaded alone races with JS rendering", "phase": "06"},
+    {"decision": "Locator API (pressSequentially) for form input", "rationale": "ElementHandle fill() doesn't trigger SPA events reliably", "phase": "06"},
+    {"decision": "Dynamic import for importWriteQueue in import route", "rationale": "Avoids compile-time dependency on Plan 03's file during parallel execution", "phase": "06"},
+    {"decision": "Import nav item restricted to owner role only", "rationale": "Credential-based import is owner-level operation", "phase": "06"}
+  ],
+  "uncommitted_files": [
+    "README.md", "apps/api/src/lib/gocardless.ts", "apps/api/src/routes/auth.ts",
+    "apps/api/tsconfig.json", "apps/web/app/(auth)/login/page.tsx", "apps/web/lib/auth.ts",
+    "apps/web/middleware.ts", "apps/web/package.json", "docker-compose.postgres.yml",
+    "package.json", "packages/db/drizzle.config.ts", "packages/db/package.json",
+    "packages/db/src/connection.ts", "pnpm-lock.yaml"
+  ],
+  "next_action": "Deploy to live site, then test Smovin import end-to-end. After that, proceed to Phase 7: UI Polish, Onboarding & Launch Readiness (/gsd:plan-phase 7).",
+  "context_notes": "Phase 6 fully executed (4/4 plans), verification passed with human_needed status. User confirmed they will test on live website after deployment, not locally. 14 unstaged files are pre-existing changes unrelated to Phase 6 work. Next milestone phase is Phase 7 (final phase)."
+}
