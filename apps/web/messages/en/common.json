@@ -354,7 +354,19 @@
     "smsFormalTemplate": "SMS formal reminder template",
     "smsFinalTemplate": "SMS final warning template",
     "smsTemplatesTitle": "SMS Templates",
-    "smsTemplatesDescription": "Customize the SMS messages sent at each reminder level. Use placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}."
+    "smsTemplatesDescription": "Customize the SMS messages sent at each reminder level. Use placeholders: {{tenantName}}, {{amount}}, {{dueDate}}, {{propertyName}}.",
+    "settingsSaved": "Settings saved successfully",
+    "settingsSaveError": "Failed to save settings",
+    "settingsReset": "Settings reset to defaults",
+    "templatesReset": "Templates reset to defaults",
+    "bankAccountAdded": "Bank account added successfully",
+    "bankAccountError": "An error occurred with the bank account",
+    "bankDefaultSet": "Default bank account updated",
+    "bankAccountArchived": "Bank account archived",
+    "archiveBankTitle": "Archive bank account?",
+    "archiveBankDescription": "This bank account will be archived and no longer available for new leases.",
+    "archiveConfirm": "Archive",
+    "cancel": "Cancel"
   },
   "landing": {
     "navFeatures": "Features",
@@ -612,7 +624,14 @@
     "emptyDescription": "Enter your Smovin credentials to discover and import your property portfolio. No data will be modified in your Smovin account.",
     "loadError": "Could not load import status. Please refresh the page.",
     "noPropertiesSelected": "Select at least one property to import.",
-    "navLabel": "Import"
+    "navLabel": "Import",
+    "credentialFormTitle": "Smovin Credentials",
+    "credentialFormDescription": "Enter your Smovin login details to discover and import your properties.",
+    "credentialsDeleted": "Credentials deleted successfully",
+    "deleteCredentialsTitle": "Delete credentials?",
+    "cancelAction": "Cancel",
+    "importCompleted": "Import completed successfully!",
+    "importFailed": "Import failed. Please try again."
   },
   "terms": {
     "backToHome": "Back to home",
