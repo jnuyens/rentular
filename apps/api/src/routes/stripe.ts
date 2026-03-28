@@ -20,6 +20,53 @@ const PLANS: Record<string, { priceId: string; name: string }> = {
   },
 };
 
+// GET /plans - Return pricing plans (D-04: real Stripe pricing)
+stripeRouter.get("/plans", async (c) => {
+  // If Stripe is not configured, return static fallback prices
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return c.json({
+      plans: [
+        { id: "starter", name: "Starter", price: 400, currency: "eur", interval: "month", features: ["Up to 5 leases", "SEPA direct debit", "Email reminders"] },
+        { id: "standard", name: "Standard", price: 1000, currency: "eur", interval: "month", features: ["Up to 20 leases", "SEPA direct debit", "Email + SMS reminders", "Rent indexation"] },
+        { id: "professional", name: "Professional", price: 1900, currency: "eur", interval: "month", features: ["Unlimited leases", "SEPA direct debit", "Email + SMS reminders", "Rent indexation", "Property managers", "Priority support"] },
+      ],
+    });
+  }
+
+  try {
+    const priceIds = [
+      process.env.STRIPE_PRICE_STARTER,
+      process.env.STRIPE_PRICE_STANDARD,
+      process.env.STRIPE_PRICE_PROFESSIONAL,
+    ].filter(Boolean) as string[];
+
+    const prices = await Promise.all(
+      priceIds.map((id) => stripe.prices.retrieve(id, { expand: ["product"] }))
+    );
+
+    return c.json({
+      plans: prices.map((p) => ({
+        id: ((p.product as Stripe.Product).metadata?.plan) || p.id,
+        name: (p.product as Stripe.Product).name || "Plan",
+        price: p.unit_amount,
+        currency: p.currency,
+        interval: p.recurring?.interval || "month",
+        features: ((p.product as Stripe.Product).metadata?.features || "").split(",").filter(Boolean),
+      })),
+    });
+  } catch (err) {
+    console.error("[Stripe] Failed to fetch plans:", err);
+    // Fallback to static prices on error
+    return c.json({
+      plans: [
+        { id: "starter", name: "Starter", price: 400, currency: "eur", interval: "month", features: [] },
+        { id: "standard", name: "Standard", price: 1000, currency: "eur", interval: "month", features: [] },
+        { id: "professional", name: "Professional", price: 1900, currency: "eur", interval: "month", features: [] },
+      ],
+    });
+  }
+});
+
 // Create a Stripe Checkout session
 stripeRouter.post("/checkout", async (c) => {
   const body = await c.req.json();
