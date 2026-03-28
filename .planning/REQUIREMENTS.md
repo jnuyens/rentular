@@ -72,9 +72,9 @@ Requirements for initial release. Each maps to roadmap phases.
 ### UI & Layout
 
 - [x] **UI-01**: Dashboard has bigger logo in top-left position
-- [ ] **UI-02**: Landing page has properly aligned watermark/branding
+- [x] **UI-02**: Landing page has properly aligned watermark/branding
 - [ ] **UI-03**: Dashboard is responsive and usable on mobile devices (collapsible sidebar)
-- [ ] **UI-04**: Landing page is refreshed with better layout and visual consistency
+- [x] **UI-04**: Landing page is refreshed with better layout and visual consistency
 - [x] **UI-05**: All pages have consistent visual styling and spacing
 
 ### Infrastructure
@@ -193,9 +193,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IMP-04 | Phase 6: Smovin Import (Beta) | Complete |
 | IMP-05 | Phase 6: Smovin Import (Beta) | Complete |
 | UI-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
-| UI-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | UI-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
-| UI-04 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| UI-04 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | UI-05 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | ONB-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
 | ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
