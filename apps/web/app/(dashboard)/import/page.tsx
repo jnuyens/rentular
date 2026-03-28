@@ -157,7 +157,7 @@ export default function ImportPage() {
   // Initialize selected indices when discovered data arrives
   useEffect(() => {
     if (session?.status === "discovered" && session?.discoveredData) {
-      setSelectedIndices(new Set(session.discoveredData.map((_, i) => i)));
+      setSelectedIndices(new Set(session.discoveredData.map((_: unknown, i: number) => i)));
     }
   }, [session?.status, session?.discoveredData]);
 
@@ -288,7 +288,7 @@ export default function ImportPage() {
     if (selectedIndices.size === session.discoveredData.length) {
       setSelectedIndices(new Set());
     } else {
-      setSelectedIndices(new Set(session.discoveredData.map((_, i) => i)));
+      setSelectedIndices(new Set(session.discoveredData.map((_: unknown, i: number) => i)));
     }
   };
 
