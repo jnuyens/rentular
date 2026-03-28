@@ -550,5 +550,24 @@
     "lawText": "These Terms are governed by Belgian law. Any disputes will be submitted to the competent courts of Belgium. This does not affect your statutory consumer rights under EU law.",
     "contactTitle": "11. Contact",
     "contactText": "For questions about these Terms, contact us at"
+  },
+  "onboarding": {
+    "step1Title": "Add your first property",
+    "step1Desc": "Enter the address and details of a property you manage.",
+    "step2Title": "Add a tenant",
+    "step2Desc": "Add the tenant who rents this property.",
+    "step3Title": "Create a lease",
+    "step3Desc": "Link the tenant to the property with a lease agreement.",
+    "step4Title": "Set up payment collection",
+    "step4Desc": "Configure how you want to collect rent for this lease.",
+    "skip": "Skip setup",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish Setup",
+    "goToDashboard": "Go to Dashboard",
+    "importedSummary": "{count} {entity} imported",
+    "importedMore": "+{count} more",
+    "completeTitle": "You're all set!",
+    "completeDesc": "Your account is ready. Start managing your properties from the dashboard."
   }
 }
