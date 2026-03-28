@@ -119,7 +119,20 @@ export default function ImportPage() {
     },
   });
 
-  const session: ImportSession | null = statusData?.data || null;
+  const rawSession: ImportSession | null = statusData?.data || null;
+  // API may return JSON columns as strings — parse them
+  const session = rawSession ? {
+    ...rawSession,
+    discoveredData: typeof rawSession.discoveredData === "string"
+      ? JSON.parse(rawSession.discoveredData)
+      : rawSession.discoveredData,
+    importedCounts: typeof rawSession.importedCounts === "string"
+      ? JSON.parse(rawSession.importedCounts)
+      : rawSession.importedCounts,
+    progress: typeof rawSession.progress === "string"
+      ? JSON.parse(rawSession.progress)
+      : rawSession.progress,
+  } : null;
 
   // Accumulate log messages from progress updates
   useEffect(() => {
