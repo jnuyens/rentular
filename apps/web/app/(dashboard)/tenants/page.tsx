@@ -2,36 +2,62 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Users, Plus, Search, Mail, Phone, X, Pencil, Trash2 } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import PhoneInput from "@/components/PhoneInput";
 import IbanInput from "@/components/IbanInput";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Avatar options: diverse set of people + abstract icons
 const AVATARS = [
-  // Young
-  { id: "ym1", label: "Young man", svg: "👨" },
-  { id: "yw1", label: "Young woman", svg: "👩" },
-  { id: "ym2", label: "Young man (dark)", svg: "👨🏾" },
-  { id: "yw2", label: "Young woman (dark)", svg: "👩🏾" },
-  { id: "ym3", label: "Young man (Asian)", svg: "👨🏻" },
-  { id: "yw3", label: "Young woman (Asian)", svg: "👩🏻" },
-  // Middle-aged
-  { id: "mm1", label: "Man", svg: "🧔" },
-  { id: "mw1", label: "Woman", svg: "👩‍🦰" },
-  { id: "mm2", label: "Man (dark)", svg: "🧔🏾" },
-  { id: "mw2", label: "Woman (dark)", svg: "👩🏾‍🦱" },
-  { id: "mm3", label: "Man (olive)", svg: "🧔🏽" },
-  { id: "mw3", label: "Woman (olive)", svg: "👩🏽" },
-  // Older
-  { id: "om1", label: "Older man", svg: "👴" },
-  { id: "ow1", label: "Older woman", svg: "👵" },
-  { id: "om2", label: "Older man (dark)", svg: "👴🏾" },
-  { id: "ow2", label: "Older woman (dark)", svg: "👵🏾" },
-  // Abstract
-  { id: "abs1", label: "Person", svg: "🧑" },
-  { id: "abs2", label: "Person (dark)", svg: "🧑🏾" },
-  { id: "abs3", label: "Silhouette", svg: "👤" },
-  { id: "abs4", label: "People", svg: "👥" },
+  { id: "ym1", label: "Young man", svg: "\u{1F468}" },
+  { id: "yw1", label: "Young woman", svg: "\u{1F469}" },
+  { id: "ym2", label: "Young man (dark)", svg: "\u{1F468}\u{1F3FE}" },
+  { id: "yw2", label: "Young woman (dark)", svg: "\u{1F469}\u{1F3FE}" },
+  { id: "ym3", label: "Young man (Asian)", svg: "\u{1F468}\u{1F3FB}" },
+  { id: "yw3", label: "Young woman (Asian)", svg: "\u{1F469}\u{1F3FB}" },
+  { id: "mm1", label: "Man", svg: "\u{1F9D4}" },
+  { id: "mw1", label: "Woman", svg: "\u{1F469}\u{200D}\u{1F9B0}" },
+  { id: "mm2", label: "Man (dark)", svg: "\u{1F9D4}\u{1F3FE}" },
+  { id: "mw2", label: "Woman (dark)", svg: "\u{1F469}\u{1F3FE}\u{200D}\u{1F9B1}" },
+  { id: "mm3", label: "Man (olive)", svg: "\u{1F9D4}\u{1F3FD}" },
+  { id: "mw3", label: "Woman (olive)", svg: "\u{1F469}\u{1F3FD}" },
+  { id: "om1", label: "Older man", svg: "\u{1F474}" },
+  { id: "ow1", label: "Older woman", svg: "\u{1F475}" },
+  { id: "om2", label: "Older man (dark)", svg: "\u{1F474}\u{1F3FE}" },
+  { id: "ow2", label: "Older woman (dark)", svg: "\u{1F475}\u{1F3FE}" },
+  { id: "abs1", label: "Person", svg: "\u{1F9D1}" },
+  { id: "abs2", label: "Person (dark)", svg: "\u{1F9D1}\u{1F3FE}" },
+  { id: "abs3", label: "Silhouette", svg: "\u{1F464}" },
+  { id: "abs4", label: "People", svg: "\u{1F465}" },
 ];
 
 interface Tenant {
@@ -49,10 +75,13 @@ interface Tenant {
 
 export default function TenantsPage() {
   const t = useTranslations("tenants");
+  const td = useTranslations("dashboard");
+  const tt = useTranslations("toast");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -67,13 +96,15 @@ export default function TenantsPage() {
       if (res.ok) {
         const json = await res.json();
         setTenants(json.data || []);
+      } else {
+        toast.error(tt("loadFailed"));
       }
     } catch {
-      // API unavailable
+      toast.error(tt("networkError"));
     } finally {
       setLoading(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, tt]);
 
   useEffect(() => {
     fetchTenants();
@@ -101,6 +132,7 @@ export default function TenantsPage() {
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
+    setDeleteTarget(null);
     try {
       const res = await fetch(`${apiUrl}/api/v1/tenants/${id}`, {
         method: "DELETE",
@@ -108,9 +140,12 @@ export default function TenantsPage() {
       });
       if (res.ok) {
         setTenants((prev) => prev.filter((t) => t.id !== id));
+        toast.success(tt("deleted"));
+      } else {
+        toast.error(tt("deleteFailed"));
       }
     } catch {
-      // ignore
+      toast.error(tt("deleteFailed"));
     } finally {
       setDeleting(null);
     }
@@ -138,16 +173,20 @@ export default function TenantsPage() {
         const json = await res.json();
         if (editing) {
           setTenants((prev) => prev.map((t) => (t.id === editing.id ? json.data : t)));
+          toast.success(tt("updated"));
         } else {
           setTenants((prev) => [...prev, json.data]);
+          toast.success(tt("created"));
         }
         closeModal();
       } else {
         const errJson = await res.json().catch(() => null);
         setError(errJson?.error || `Error ${res.status}`);
+        toast.error(tt("saveFailed"));
       }
     } catch {
       setError(t("saveError"));
+      toast.error(tt("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -166,240 +205,343 @@ export default function TenantsPage() {
 
   const getAvatar = (avatarId?: string) => {
     const av = AVATARS.find((a) => a.id === avatarId);
-    return av?.svg || "🧑";
+    return av?.svg || "\u{1F9D1}";
   };
 
-  const ic = "w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm";
+  const ic = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-[hsl(var(--muted-foreground))]">
-            {t("subtitle")}
-          </p>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90"
-        >
+        <Button onClick={openAdd}>
           <Plus className="h-4 w-4" />
           {t("addTenant")}
-        </button>
+        </Button>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("searchPlaceholder")}
-          className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-2.5 pl-10 pr-4 text-sm"
+          className="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-sm"
         />
       </div>
 
-      {/* Tenant list or empty state */}
+      {/* Loading skeletons */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-        </div>
-      ) : filteredTenants.length === 0 && !search ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-16">
-          <Users className="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <h3 className="mt-4 text-lg font-medium">{t("emptyTitle")}</h3>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            {t("emptyDescription")}
-          </p>
-        </div>
-      ) : filteredTenants.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-12">
-          <Search className="h-8 w-8 text-[hsl(var(--muted-foreground))]" />
-          <p className="mt-3 text-sm text-[hsl(var(--muted-foreground))]">{t("noResults")}</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredTenants.map((tenant) => (
-            <div
-              key={tenant.id}
-              onClick={() => openEdit(tenant)}
-              className="cursor-pointer rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-all hover:shadow-md hover:border-[hsl(var(--primary))]/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-xl">
-                  {getAvatar(tenant.avatar)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{tenant.firstName} {tenant.lastName}</h3>
-                  <div className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))]">
-                    <span className="uppercase">{tenant.language}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}
-                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(tenant.id); }}
-                    disabled={deleting === tenant.id}
-                    className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 space-y-1.5 text-sm text-[hsl(var(--muted-foreground))]">
-                {tenant.email && (
-                  <div className="flex items-center gap-2 truncate">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{tenant.email}</span>
-                  </div>
-                )}
-                {tenant.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <span>{tenant.phone}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add/Edit tenant modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-[hsl(var(--background))] p-6 shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {editing ? t("editTenantTitle") : t("addTenantTitle")}
-              </h2>
-              <button onClick={closeModal}>
-                <X className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
-              </button>
-            </div>
-
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <form className="space-y-4" onSubmit={handleSubmit} key={editing?.id || "new"}>
-              {/* Avatar selection */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">Avatar</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {AVATARS.map((av) => (
-                    <button
-                      key={av.id}
-                      type="button"
-                      onClick={() => setSelectedAvatar(av.id)}
-                      title={av.label}
-                      className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition-all ${
-                        selectedAvatar === av.id
-                          ? "ring-2 ring-[hsl(var(--primary))] ring-offset-2 bg-[hsl(var(--muted))]"
-                          : "hover:bg-[hsl(var(--muted))]"
-                      }`}
-                    >
-                      {av.svg}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("firstName")}
-                  </label>
-                  <input name="firstName" type="text" required defaultValue={editing?.firstName || ""} className={ic} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("lastName")}
-                  </label>
-                  <input name="lastName" type="text" required defaultValue={editing?.lastName || ""} className={ic} />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  <Mail className="mr-1 inline h-4 w-4" />
-                  {t("email")}
-                </label>
-                <input name="email" type="email" required defaultValue={editing?.email || ""} className={ic} />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  <Phone className="mr-1 inline h-4 w-4" />
-                  {t("phone")}
-                </label>
-                <PhoneInput name="phone" defaultCountry="BE" value={editing?.phone} />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("language")}
-                </label>
-                <select name="language" defaultValue={editing?.language || "nl"} className={ic}>
-                  <option value="nl">{t("langNl")}</option>
-                  <option value="fr">{t("langFr")}</option>
-                  <option value="en">{t("langEn")}</option>
-                  <option value="de">{t("langDe")}</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("nationalRegister")}
-                </label>
-                <input
-                  name="nationalRegister"
-                  type="text"
-                  placeholder={t("nationalRegisterPlaceholder")}
-                  defaultValue={editing?.nationalRegister || ""}
-                  className={ic}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("iban")}
-                </label>
-                <IbanInput
-                  name="bankAccount"
-                  value={editing?.bankAccount || ""}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("notes")}
-                </label>
-                <textarea name="notes" rows={3} defaultValue={editing?.notes || ""} className={ic} />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]"
-                >
-                  {t("cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
-                >
-                  {saving ? "..." : editing ? t("updateTenant") : t("saveTenant")}
-                </button>
-              </div>
-            </form>
+        <>
+          {/* Desktop skeleton */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>{t("firstName")}</TableHead>
+                  <TableHead>{t("lastName")}</TableHead>
+                  <TableHead>{t("email")}</TableHead>
+                  <TableHead>{t("phone")}</TableHead>
+                  <TableHead>{t("language")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[40px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        </div>
+          {/* Mobile skeleton */}
+          <div className="md:hidden space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-[150px]" />
+                      <Skeleton className="h-3 w-[100px]" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-3 w-[200px]" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      ) : filteredTenants.length === 0 && !search ? (
+        <Card className="p-8 text-center">
+          <Users className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-lg font-semibold">{td("emptyTenantsTitle")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{td("emptyTenantsDesc")}</p>
+          <Button className="mt-4" onClick={openAdd}>
+            {t("addTenant")}
+          </Button>
+        </Card>
+      ) : filteredTenants.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Search className="mx-auto h-8 w-8 text-muted-foreground" />
+          <p className="mt-3 text-sm text-muted-foreground">{t("noResults")}</p>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead>{t("firstName")}</TableHead>
+                  <TableHead>{t("lastName")}</TableHead>
+                  <TableHead>{t("email")}</TableHead>
+                  <TableHead>{t("phone")}</TableHead>
+                  <TableHead>{t("language")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTenants.map((tenant) => (
+                  <TableRow
+                    key={tenant.id}
+                    className="cursor-pointer"
+                    onClick={() => openEdit(tenant)}
+                  >
+                    <TableCell>
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-lg">
+                        {getAvatar(tenant.avatar)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">{tenant.firstName}</TableCell>
+                    <TableCell>{tenant.lastName}</TableCell>
+                    <TableCell>{tenant.email}</TableCell>
+                    <TableCell>{tenant.phone || "-"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="uppercase text-xs">
+                        {tenant.language}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                          disabled={deleting === tenant.id}
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(tenant.id); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filteredTenants.map((tenant) => (
+              <Card
+                key={tenant.id}
+                className="cursor-pointer transition-all hover:shadow-md"
+                onClick={() => openEdit(tenant)}
+              >
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xl">
+                        {getAvatar(tenant.avatar)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{tenant.firstName} {tenant.lastName}</p>
+                        <Badge variant="secondary" className="uppercase text-xs">
+                          {tenant.language}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                        disabled={deleting === tenant.id}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(tenant.id); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    {tenant.email && (
+                      <div className="flex items-center gap-2 truncate">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{tenant.email}</span>
+                      </div>
+                    )}
+                    {tenant.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                        <span>{tenant.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
+
+      {/* Delete confirmation AlertDialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{td("delete")}</AlertDialogTitle>
+            <AlertDialogDescription>{td("deleteConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{td("keepItem")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            >
+              {td("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add/Edit tenant Dialog */}
+      <Dialog open={showModal} onOpenChange={(open) => { if (!open) closeModal(); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? t("editTenantTitle") : t("addTenantTitle")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {error && (
+            <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit} key={editing?.id || "new"}>
+            {/* Avatar selection */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">Avatar</label>
+              <div className="flex flex-wrap gap-1.5">
+                {AVATARS.map((av) => (
+                  <button
+                    key={av.id}
+                    type="button"
+                    onClick={() => setSelectedAvatar(av.id)}
+                    title={av.label}
+                    className={`flex h-9 w-9 items-center justify-center rounded-full text-lg transition-all ${
+                      selectedAvatar === av.id
+                        ? "ring-2 ring-primary ring-offset-2 bg-muted"
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    {av.svg}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("firstName")}</label>
+                <input name="firstName" type="text" required defaultValue={editing?.firstName || ""} className={ic} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("lastName")}</label>
+                <input name="lastName" type="text" required defaultValue={editing?.lastName || ""} className={ic} />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                <Mail className="mr-1 inline h-4 w-4" />
+                {t("email")}
+              </label>
+              <input name="email" type="email" required defaultValue={editing?.email || ""} className={ic} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                <Phone className="mr-1 inline h-4 w-4" />
+                {t("phone")}
+              </label>
+              <PhoneInput name="phone" defaultCountry="BE" value={editing?.phone} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("language")}</label>
+              <select name="language" defaultValue={editing?.language || "nl"} className={ic}>
+                <option value="nl">{t("langNl")}</option>
+                <option value="fr">{t("langFr")}</option>
+                <option value="en">{t("langEn")}</option>
+                <option value="de">{t("langDe")}</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("nationalRegister")}</label>
+              <input
+                name="nationalRegister"
+                type="text"
+                placeholder={t("nationalRegisterPlaceholder")}
+                defaultValue={editing?.nationalRegister || ""}
+                className={ic}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("iban")}</label>
+              <IbanInput name="bankAccount" value={editing?.bankAccount || ""} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("notes")}</label>
+              <textarea name="notes" rows={3} defaultValue={editing?.notes || ""} className={ic} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("cancel")}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "..." : editing ? t("updateTenant") : t("saveTenant")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

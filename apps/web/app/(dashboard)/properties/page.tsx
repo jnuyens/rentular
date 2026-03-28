@@ -2,10 +2,40 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Building2, Plus, X, MapPin, Pencil, Trash2 } from "lucide-react";
+import { Building2, Plus, MapPin, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import BelgianCityInput from "@/components/BelgianCityInput";
 import CountrySelect from "@/components/CountrySelect";
 import RoleBadge from "@/components/RoleBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Property {
   id: string;
@@ -29,10 +59,13 @@ interface Property {
 
 export default function PropertiesPage() {
   const t = useTranslations("properties");
+  const td = useTranslations("dashboard");
+  const tt = useTranslations("toast");
   const tm = useTranslations("managers");
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [properties, setProperties] = useState<Property[]>([]);
@@ -46,13 +79,15 @@ export default function PropertiesPage() {
       if (res.ok) {
         const json = await res.json();
         setProperties(json.data || []);
+      } else {
+        toast.error(tt("loadFailed"));
       }
     } catch {
-      // API unavailable
+      toast.error(tt("networkError"));
     } finally {
       setLoading(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, tt]);
 
   useEffect(() => {
     fetchProperties();
@@ -78,6 +113,7 @@ export default function PropertiesPage() {
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
+    setDeleteTarget(null);
     try {
       const res = await fetch(`${apiUrl}/api/v1/properties/${id}`, {
         method: "DELETE",
@@ -85,9 +121,12 @@ export default function PropertiesPage() {
       });
       if (res.ok) {
         setProperties((prev) => prev.filter((p) => p.id !== id));
+        toast.success(tt("deleted"));
+      } else {
+        toast.error(tt("deleteFailed"));
       }
     } catch {
-      // ignore
+      toast.error(tt("deleteFailed"));
     } finally {
       setDeleting(null);
     }
@@ -113,16 +152,20 @@ export default function PropertiesPage() {
         const json = await res.json();
         if (editing) {
           setProperties((prev) => prev.map((p) => (p.id === editing.id ? json.data : p)));
+          toast.success(tt("updated"));
         } else {
           setProperties((prev) => [...prev, json.data]);
+          toast.success(tt("created"));
         }
         closeModal();
       } else {
         const errJson = await res.json().catch(() => null);
         setError(errJson?.error || `Error ${res.status}`);
+        toast.error(tt("saveFailed"));
       }
     } catch {
       setError(t("saveError"));
+      toast.error(tt("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -147,228 +190,369 @@ export default function PropertiesPage() {
     none: t("heatingNone"),
   };
 
-  const ic = "w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm";
+  const ic = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-[hsl(var(--muted-foreground))]">{t("subtitle")}</p>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90"
-        >
+        <Button onClick={openAdd}>
           <Plus className="h-4 w-4" />
           {t("addProperty")}
-        </button>
+        </Button>
       </div>
 
+      {/* Loading skeletons */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-        </div>
-      ) : properties.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-16">
-          <Building2 className="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <h3 className="mt-4 text-lg font-medium">{t("emptyTitle")}</h3>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{t("emptyDescription")}</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {properties.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => openEdit(p)}
-              className="cursor-pointer rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-all hover:shadow-md hover:border-[hsl(var(--primary))]/50"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold">{p.name}</h3>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <span className="inline-block rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-xs text-[hsl(var(--muted-foreground))]">
-                      {typeLabels[p.type] || p.type}
-                    </span>
-                    {p.heatingType && p.heatingType !== "none" && (
-                      <span className="inline-block rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
-                        {heatingLabels[p.heatingType] || p.heatingType}
-                      </span>
-                    )}
-                    {p.userRole && <RoleBadge role={p.userRole} />}
+        <>
+          {/* Desktop skeleton */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("name")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>EPC</TableHead>
+                  <TableHead>{t("city")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[80px] rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[60px] rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {/* Mobile skeleton */}
+          <div className="md:hidden grid gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-5 space-y-3">
+                  <Skeleton className="h-5 w-[180px]" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-4 w-[80px]" />
+                    <Skeleton className="h-4 w-[60px]" />
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  {p.epcLabel && (
-                    <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${
-                      ["A++", "A+", "A"].includes(p.epcLabel) ? "bg-green-100 text-green-700" :
-                      ["B", "C"].includes(p.epcLabel) ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-700"
-                    }`}>
-                      EPC {p.epcLabel}
-                    </span>
-                  )}
-                  {/* Edit button: visible for owner, co_owner, manager */}
-                  {(!p.userRole || ["owner", "co_owner", "manager"].includes(p.userRole)) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openEdit(p); }}
-                      className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {/* Delete button: visible for owner, co_owner only */}
-                  {(!p.userRole || ["owner", "co_owner"].includes(p.userRole)) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      disabled={deleting === p.id}
-                      className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-3 flex items-start gap-1.5 text-sm text-[hsl(var(--muted-foreground))]">
-                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>{p.street} {p.streetNumber}{p.box ? ` / ${p.box}` : ""}, {p.postalCode} {p.city}</span>
-              </div>
-              {(p.userRole === "owner" || p.userRole === "co_owner") && (
-                <a
-                  href={`/properties/${p.id}/managers`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-2 inline-block text-xs text-[hsl(var(--primary))] hover:underline"
-                >
-                  {tm("title")}
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
+                  <Skeleton className="h-4 w-[220px]" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      ) : properties.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-lg font-semibold">{td("emptyPropertiesTitle")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{td("emptyPropertiesDesc")}</p>
+          <Button className="mt-4" onClick={openAdd}>
+            {td("addFirstProperty")}
+          </Button>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("name")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>EPC</TableHead>
+                  <TableHead>{t("city")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {properties.map((p) => (
+                  <TableRow
+                    key={p.id}
+                    className="cursor-pointer"
+                    onClick={() => openEdit(p)}
+                  >
+                    <TableCell>
+                      <div>
+                        <span className="font-medium">{p.name}</span>
+                        {p.userRole && <span className="ml-2"><RoleBadge role={p.userRole} /></span>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{typeLabels[p.type] || p.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {p.epcLabel ? (
+                        <Badge
+                          variant="outline"
+                          className={
+                            ["A++", "A+", "A"].includes(p.epcLabel) ? "bg-green-100 text-green-700 border-green-200" :
+                            ["B", "C"].includes(p.epcLabel) ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                            "bg-red-100 text-red-700 border-red-200"
+                          }
+                        >
+                          {p.epcLabel}
+                        </Badge>
+                      ) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span>{p.street} {p.streetNumber}, {p.postalCode} {p.city}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {(!p.userRole || ["owner", "co_owner", "manager"].includes(p.userRole)) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {(!p.userRole || ["owner", "co_owner"].includes(p.userRole)) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                            disabled={deleting === p.id}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(p.id); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {properties.map((p) => (
+              <Card
+                key={p.id}
+                className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+                onClick={() => openEdit(p)}
+              >
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="font-medium text-sm">{p.name}</span>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                        <Badge variant="secondary">{typeLabels[p.type] || p.type}</Badge>
+                        {p.heatingType && p.heatingType !== "none" && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                            {heatingLabels[p.heatingType] || p.heatingType}
+                          </Badge>
+                        )}
+                        {p.userRole && <RoleBadge role={p.userRole} />}
+                      </div>
+                    </div>
+                    {p.epcLabel && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          ["A++", "A+", "A"].includes(p.epcLabel) ? "bg-green-100 text-green-700 border-green-200" :
+                          ["B", "C"].includes(p.epcLabel) ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                          "bg-red-100 text-red-700 border-red-200"
+                        }
+                      >
+                        EPC {p.epcLabel}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>{p.street} {p.streetNumber}{p.box ? ` / ${p.box}` : ""}, {p.postalCode} {p.city}</span>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    {(!p.userRole || ["owner", "co_owner", "manager"].includes(p.userRole)) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => { e.stopPropagation(); openEdit(p); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {(!p.userRole || ["owner", "co_owner"].includes(p.userRole)) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                        disabled={deleting === p.id}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(p.id); }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {(p.userRole === "owner" || p.userRole === "co_owner") && (
+                      <a
+                        href={`/properties/${p.id}/managers`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="ml-auto text-xs text-primary hover:underline self-center"
+                      >
+                        {tm("title")}
+                      </a>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Add/Edit property modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-[hsl(var(--background))] p-6 shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {editing ? t("editPropertyTitle") : t("addPropertyTitle")}
-              </h2>
-              <button onClick={closeModal}>
-                <X className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
-              </button>
+      {/* Delete confirmation AlertDialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{td("delete")}</AlertDialogTitle>
+            <AlertDialogDescription>{td("deleteConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{td("keepItem")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            >
+              {td("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add/Edit property Dialog */}
+      <Dialog open={showModal} onOpenChange={(open) => { if (!open) closeModal(); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editing ? t("editPropertyTitle") : t("addPropertyTitle")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {error && (
+            <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit} key={editing?.id || "new"}>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("name")}</label>
+              <input name="name" type="text" required defaultValue={editing?.name || ""} className={ic} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("type")}</label>
+              <select name="type" required defaultValue={editing?.type || "apartment"} className={ic}>
+                <option value="apartment">{t("typeApartment")}</option>
+                <option value="house">{t("typeHouse")}</option>
+                <option value="studio">{t("typeStudio")}</option>
+                <option value="commercial">{t("typeCommercial")}</option>
+                <option value="garage">{t("typeGarage")}</option>
+                <option value="other">{t("typeOther")}</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("street")}</label>
+                <input name="street" type="text" required defaultValue={editing?.street || ""} className={ic} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">{t("streetNumber")}</label>
+                  <input name="streetNumber" type="text" required defaultValue={editing?.streetNumber || ""} className={ic} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium">{t("box")}</label>
+                  <input name="box" type="text" defaultValue={editing?.box || ""} className={ic} />
+                </div>
+              </div>
             </div>
 
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-            )}
+            <BelgianCityInput
+              postalCodeLabel={t("postalCode")}
+              cityLabel={t("city")}
+              required
+              postalCodeValue={editing?.postalCode}
+              cityValue={editing?.city}
+            />
 
-            <form className="space-y-4" onSubmit={handleSubmit} key={editing?.id || "new"}>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("country")}</label>
+              <CountrySelect name="country" defaultValue={editing?.country || "BE"} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("name")}</label>
-                <input name="name" type="text" required defaultValue={editing?.name || ""} className={ic} />
+                <label className="mb-1 block text-sm font-medium">{t("cadastralReference")}</label>
+                <input name="cadastralReference" type="text" defaultValue={editing?.cadastralReference || ""} className={ic} />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("type")}</label>
-                <select name="type" required defaultValue={editing?.type || "apartment"} className={ic}>
-                  <option value="apartment">{t("typeApartment")}</option>
-                  <option value="house">{t("typeHouse")}</option>
-                  <option value="studio">{t("typeStudio")}</option>
-                  <option value="commercial">{t("typeCommercial")}</option>
-                  <option value="garage">{t("typeGarage")}</option>
-                  <option value="other">{t("typeOther")}</option>
+                <label className="mb-1 block text-sm font-medium">{t("heatingType")}</label>
+                <select name="heatingType" defaultValue={editing?.heatingType || ""} className={ic}>
+                  <option value="">{t("selectHeatingType")}</option>
+                  <option value="gas">{t("heatingGas")}</option>
+                  <option value="oil">{t("heatingOil")}</option>
+                  <option value="electric">{t("heatingElectric")}</option>
+                  <option value="heat_pump">{t("heatingHeatPump")}</option>
+                  <option value="wood">{t("heatingWood")}</option>
+                  <option value="pellet">{t("heatingPellet")}</option>
+                  <option value="none">{t("heatingNone")}</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("street")}</label>
-                  <input name="street" type="text" required defaultValue={editing?.street || ""} className={ic} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t("streetNumber")}</label>
-                    <input name="streetNumber" type="text" required defaultValue={editing?.streetNumber || ""} className={ic} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">{t("box")}</label>
-                    <input name="box" type="text" defaultValue={editing?.box || ""} className={ic} />
-                  </div>
-                </div>
-              </div>
-
-              <BelgianCityInput
-                postalCodeLabel={t("postalCode")}
-                cityLabel={t("city")}
-                required
-                postalCodeValue={editing?.postalCode}
-                cityValue={editing?.city}
-              />
-
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("country")}</label>
-                <CountrySelect name="country" defaultValue={editing?.country || "BE"} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("cadastralReference")}</label>
-                  <input name="cadastralReference" type="text" defaultValue={editing?.cadastralReference || ""} className={ic} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("heatingType")}</label>
-                  <select name="heatingType" defaultValue={editing?.heatingType || ""} className={ic}>
-                    <option value="">{t("selectHeatingType")}</option>
-                    <option value="gas">{t("heatingGas")}</option>
-                    <option value="oil">{t("heatingOil")}</option>
-                    <option value="electric">{t("heatingElectric")}</option>
-                    <option value="heat_pump">{t("heatingHeatPump")}</option>
-                    <option value="wood">{t("heatingWood")}</option>
-                    <option value="pellet">{t("heatingPellet")}</option>
-                    <option value="none">{t("heatingNone")}</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("epcLabel")}</label>
-                  <select name="epcLabel" defaultValue={editing?.epcLabel || ""} className={ic}>
-                    <option value="">{t("selectEpcLabel")}</option>
-                    {["A++", "A+", "A", "B", "C", "D", "E", "F", "G"].map((l) => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("epcScore")}</label>
-                  <input name="epcScore" type="text" placeholder="kWh/m²" defaultValue={editing?.epcScore || ""} className={ic} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("epcCertificateNumber")}</label>
-                  <input name="epcCertificateNumber" type="text" defaultValue={editing?.epcCertificateNumber || ""} className={ic} />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">{t("epcExpiryDate")}</label>
-                  <input name="epcExpiryDate" type="date" defaultValue={editing?.epcExpiryDate || ""} className={ic} />
-                </div>
+                <label className="mb-1 block text-sm font-medium">{t("epcLabel")}</label>
+                <select name="epcLabel" defaultValue={editing?.epcLabel || ""} className={ic}>
+                  <option value="">{t("selectEpcLabel")}</option>
+                  {["A++", "A+", "A", "B", "C", "D", "E", "F", "G"].map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("notes")}</label>
-                <textarea name="notes" rows={3} defaultValue={editing?.notes || ""} className={ic} />
+                <label className="mb-1 block text-sm font-medium">{t("epcScore")}</label>
+                <input name="epcScore" type="text" placeholder="kWh/m2" defaultValue={editing?.epcScore || ""} className={ic} />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={closeModal} className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]">
-                  {t("cancel")}
-                </button>
-                <button type="submit" disabled={saving} className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50">
-                  {saving ? "..." : editing ? t("updateProperty") : t("saveProperty")}
-                </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("epcCertificateNumber")}</label>
+                <input name="epcCertificateNumber" type="text" defaultValue={editing?.epcCertificateNumber || ""} className={ic} />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("epcExpiryDate")}</label>
+                <input name="epcExpiryDate" type="date" defaultValue={editing?.epcExpiryDate || ""} className={ic} />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("notes")}</label>
+              <textarea name="notes" rows={3} defaultValue={editing?.notes || ""} className={ic} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("cancel")}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "..." : editing ? t("updateProperty") : t("saveProperty")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

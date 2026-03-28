@@ -2,7 +2,37 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, Plus, Search, X, Users, Pencil, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, Users, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Property {
   id: string;
@@ -36,10 +66,13 @@ interface Lease {
 
 export default function LeasesPage() {
   const t = useTranslations("leases");
+  const td = useTranslations("dashboard");
+  const tt = useTranslations("toast");
   const [showModal, setShowModal] = useState(false);
   const [editingLease, setEditingLease] = useState<Lease | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [leases, setLeases] = useState<Lease[]>([]);
@@ -48,6 +81,8 @@ export default function LeasesPage() {
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const openAdd = () => {
     setEditingLease(null);
@@ -74,6 +109,7 @@ export default function LeasesPage() {
 
   const handleDelete = async (id: string) => {
     setDeleting(id);
+    setDeleteTarget(null);
     try {
       const res = await fetch(`${apiUrl}/api/v1/leases/${id}`, {
         method: "DELETE",
@@ -81,15 +117,16 @@ export default function LeasesPage() {
       });
       if (res.ok) {
         setLeases((prev) => prev.filter((l) => l.id !== id));
+        toast.success(tt("deleted"));
+      } else {
+        toast.error(tt("deleteFailed"));
       }
     } catch {
-      // ignore
+      toast.error(tt("deleteFailed"));
     } finally {
       setDeleting(null);
     }
   };
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const fetchData = useCallback(async () => {
     try {
@@ -111,11 +148,11 @@ export default function LeasesPage() {
         setTenants(json.data || []);
       }
     } catch {
-      // API unavailable
+      toast.error(tt("networkError"));
     } finally {
       setLoading(false);
     }
-  }, [apiUrl]);
+  }, [apiUrl, tt]);
 
   useEffect(() => {
     fetchData();
@@ -129,6 +166,48 @@ export default function LeasesPage() {
     );
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    const form = e.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    const body = { ...data, tenantIds: selectedTenants, indexationEnabled };
+    try {
+      const url = editingLease
+        ? `${apiUrl}/api/v1/leases/${editingLease.id}`
+        : `${apiUrl}/api/v1/leases`;
+      const res = await fetch(url, {
+        method: editingLease ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (editingLease) {
+          setLeases((prev) =>
+            prev.map((l) => (l.id === editingLease.id ? json.data : l))
+          );
+          toast.success(tt("updated"));
+        } else {
+          setLeases((prev) => [...prev, json.data]);
+          toast.success(tt("created"));
+        }
+        closeModal();
+      } else {
+        const errJson = await res.json().catch(() => null);
+        setError(errJson?.error || `Error ${res.status}`);
+        toast.error(tt("saveFailed"));
+      }
+    } catch {
+      setError(t("saveError"));
+      toast.error(tt("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const typeLabels: Record<string, string> = {
     residential_long: t("typeResidentialLong"),
     residential_short: t("typeResidentialShort"),
@@ -137,51 +216,51 @@ export default function LeasesPage() {
     commercial: t("typeCommercial"),
   };
 
-  const statusColors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-700",
-    active: "bg-green-100 text-green-700",
-    terminated: "bg-red-100 text-red-700",
-    expired: "bg-yellow-100 text-yellow-700",
+  const statusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case "active": return "default";
+      case "draft": return "secondary";
+      case "terminated": return "destructive";
+      case "expired": return "outline";
+      default: return "secondary";
+    }
   };
+
+  const ic = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-[hsl(var(--muted-foreground))]">
-            {t("subtitle")}
-          </p>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-4 py-2.5 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-colors hover:opacity-90"
-        >
+        <Button onClick={openAdd}>
           <Plus className="h-4 w-4" />
           {t("addLease")}
-        </button>
+        </Button>
       </div>
 
       {/* Search and filters */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("searchPlaceholder")}
-            className="w-full rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-2.5 pl-10 pr-4 text-sm"
+            className="w-full rounded-lg border border-input bg-background py-2.5 pl-10 pr-4 text-sm"
           />
         </div>
-        <select className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm">
+        <select className={`${ic} sm:w-auto`}>
           <option value="">{t("allStatuses")}</option>
           <option value="draft">{t("statusDraft")}</option>
           <option value="active">{t("statusActive")}</option>
           <option value="terminated">{t("statusTerminated")}</option>
           <option value="expired">{t("statusExpired")}</option>
         </select>
-        <select className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm">
+        <select className={`${ic} sm:w-auto`}>
           <option value="">{t("allRegions")}</option>
           <option value="flanders">{t("regionFlanders")}</option>
           <option value="wallonia">{t("regionWallonia")}</option>
@@ -189,357 +268,432 @@ export default function LeasesPage() {
         </select>
       </div>
 
-      {/* Lease list or empty state */}
+      {/* Loading skeletons */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-        </div>
+        <>
+          {/* Desktop skeleton */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("property")}</TableHead>
+                  <TableHead>{t("leaseType")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead>{t("startDate")}</TableHead>
+                  <TableHead>{t("endDate")}</TableHead>
+                  <TableHead>{t("monthlyRent")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-[70px] rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[90px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-[60px]" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {/* Mobile skeleton */}
+          <div className="md:hidden space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-5 w-[150px]" />
+                    <Skeleton className="h-5 w-[70px] rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-4 w-[120px]" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       ) : leases.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[hsl(var(--border))] py-16">
-          <FileText className="h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <h3 className="mt-4 text-lg font-medium">{t("emptyTitle")}</h3>
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            {t("emptyDescription")}
-          </p>
-        </div>
+        <Card className="p-8 text-center">
+          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+          <p className="mt-4 text-lg font-semibold">{td("emptyLeasesTitle")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{td("emptyLeasesDesc")}</p>
+          <Button className="mt-4" onClick={openAdd}>
+            {t("addLease")}
+          </Button>
+        </Card>
       ) : (
-        <div className="space-y-3">
-          {leases.map((lease) => {
-            const prop = properties.find((p) => p.id === lease.propertyId);
-            return (
-              <div
-                key={lease.id}
-                onClick={() => openEdit(lease)}
-                className="flex cursor-pointer items-center justify-between rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-5 shadow-sm transition-colors hover:border-[hsl(var(--primary))]/50"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{prop?.name || lease.propertyId}</h3>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[lease.status] || ""}`}>
-                      {t(`status${lease.status.charAt(0).toUpperCase()}${lease.status.slice(1)}`) || lease.status}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-                    {typeLabels[lease.type] || lease.type} &middot; {lease.startDate} - {lease.endDate || "..."}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
-                    {Number(lease.monthlyCharges) > 0 && (
-                      <p className="text-xs text-[hsl(var(--muted-foreground))]">+ &euro;{lease.monthlyCharges}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); openEdit(lease); }}
-                      className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-                      title={t("editLease")}
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("property")}</TableHead>
+                  <TableHead>{t("leaseType")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead>{t("startDate")}</TableHead>
+                  <TableHead>{t("endDate")}</TableHead>
+                  <TableHead>{t("monthlyRent")}</TableHead>
+                  <TableHead className="w-[100px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {leases.map((lease) => {
+                  const prop = properties.find((p) => p.id === lease.propertyId);
+                  return (
+                    <TableRow
+                      key={lease.id}
+                      className="cursor-pointer"
+                      onClick={() => openEdit(lease)}
                     >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(lease.id); }}
-                      disabled={deleting === lease.id}
-                      className="rounded-lg p-2 text-[hsl(var(--muted-foreground))] hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                      title={t("deleteLease")}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                      <TableCell className="font-medium">
+                        {prop?.name || lease.propertyId}
+                      </TableCell>
+                      <TableCell>{typeLabels[lease.type] || lease.type}</TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant(lease.status)}>
+                          {t(`status${lease.status.charAt(0).toUpperCase()}${lease.status.slice(1)}`) || lease.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{lease.startDate}</TableCell>
+                      <TableCell>{lease.endDate || "..."}</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="font-semibold">&euro;{lease.monthlyRent}/m</span>
+                          {Number(lease.monthlyCharges) > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">+ &euro;{lease.monthlyCharges}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => { e.stopPropagation(); openEdit(lease); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                            disabled={deleting === lease.id}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(lease.id); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {leases.map((lease) => {
+              const prop = properties.find((p) => p.id === lease.propertyId);
+              return (
+                <Card
+                  key={lease.id}
+                  className="cursor-pointer transition-all hover:shadow-md"
+                  onClick={() => openEdit(lease)}
+                >
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-sm">{prop?.name || lease.propertyId}</span>
+                      <Badge variant={statusVariant(lease.status)}>
+                        {t(`status${lease.status.charAt(0).toUpperCase()}${lease.status.slice(1)}`) || lease.status}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("leaseType")}</span>
+                        <span>{typeLabels[lease.type] || lease.type}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("startDate")}</span>
+                        <span>{lease.startDate}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("endDate")}</span>
+                        <span>{lease.endDate || "..."}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{t("monthlyRent")}</span>
+                        <span className="font-semibold">
+                          &euro;{lease.monthlyRent}/m
+                          {Number(lease.monthlyCharges) > 0 && (
+                            <span className="text-xs text-muted-foreground ml-1">+ &euro;{lease.monthlyCharges}</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); openEdit(lease); }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        {t("editLease")}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                        disabled={deleting === lease.id}
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(lease.id); }}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        {t("deleteLease")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Add/Edit lease modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-[hsl(var(--background))] p-6 shadow-xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                {editingLease ? t("editLeaseTitle") : t("addLeaseTitle")}
-              </h2>
-              <button onClick={closeModal}>
-                <X className="h-5 w-5 text-[hsl(var(--muted-foreground))]" />
+      {/* Delete confirmation AlertDialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{td("delete")}</AlertDialogTitle>
+            <AlertDialogDescription>{td("deleteConfirm")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{td("keepItem")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            >
+              {td("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add/Edit lease Dialog */}
+      <Dialog open={showModal} onOpenChange={(open) => { if (!open) closeModal(); }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLease ? t("editLeaseTitle") : t("addLeaseTitle")}
+            </DialogTitle>
+          </DialogHeader>
+
+          {error && (
+            <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("property")}</label>
+                <select
+                  name="propertyId"
+                  required
+                  defaultValue={editingLease?.propertyId || ""}
+                  className={ic}
+                >
+                  <option value="">{t("selectProperty")}</option>
+                  {properties.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.city})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("leaseType")}</label>
+                <select
+                  name="leaseType"
+                  required
+                  defaultValue={editingLease?.type || "residential_long"}
+                  className={ic}
+                >
+                  <option value="residential_long">{t("typeResidentialLong")}</option>
+                  <option value="residential_short">{t("typeResidentialShort")}</option>
+                  <option value="residential_lifetime">{t("typeLifetime")}</option>
+                  <option value="student">{t("typeStudent")}</option>
+                  <option value="commercial">{t("typeCommercial")}</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tenant selection */}
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                <Users className="mr-1 inline h-4 w-4" />
+                {t("tenants")}
+              </label>
+              {tenants.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("noTenantsYet")}</p>
+              ) : (
+                <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-input p-2">
+                  {tenants.map((tenant) => (
+                    <label
+                      key={tenant.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
+                        selectedTenants.includes(tenant.id)
+                          ? "bg-primary/10 border border-primary"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedTenants.includes(tenant.id)}
+                        onChange={() => toggleTenant(tenant.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium">
+                        {tenant.firstName} {tenant.lastName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{tenant.email}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedTenants.length > 1 && (
+                <p className="mt-1 text-xs text-muted-foreground">{t("coTenantsNote")}</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("region")}</label>
+                <select
+                  name="region"
+                  required
+                  defaultValue={editingLease?.region || "flanders"}
+                  className={ic}
+                >
+                  <option value="flanders">{t("regionFlanders")}</option>
+                  <option value="wallonia">{t("regionWallonia")}</option>
+                  <option value="brussels">{t("regionBrussels")}</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("status")}</label>
+                <select
+                  name="status"
+                  defaultValue={editingLease?.status || "active"}
+                  className={ic}
+                >
+                  <option value="active">{t("statusActive")}</option>
+                  <option value="draft">{t("statusDraft")}</option>
+                  <option value="terminated">{t("statusTerminated")}</option>
+                  <option value="expired">{t("statusExpired")}</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("signingDate")}</label>
+                <input
+                  name="signingDate"
+                  type="date"
+                  required
+                  defaultValue={editingLease?.signingDate || ""}
+                  className={ic}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("startDate")}</label>
+                <input
+                  name="startDate"
+                  type="date"
+                  required
+                  defaultValue={editingLease?.startDate || ""}
+                  className={ic}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("endDate")}</label>
+              <input
+                name="endDate"
+                type="date"
+                defaultValue={editingLease?.endDate || ""}
+                className={ic}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("monthlyRent")}</label>
+                <input
+                  name="monthlyRent"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  defaultValue={editingLease?.monthlyRent || ""}
+                  className={ic}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("monthlyCharges")}</label>
+                <input
+                  name="monthlyCharges"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={editingLease?.monthlyCharges || "0"}
+                  className={ic}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("bankAccount")}</label>
+              <select
+                name="bankAccountId"
+                defaultValue={editingLease?.bankAccountId || ""}
+                className={ic}
+              >
+                <option value="">{t("selectBankAccount")}</option>
+              </select>
+            </div>
+            {/* Indexation toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-input px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">{t("indexation")}</p>
+                <p className="text-xs text-muted-foreground">{t("indexationDescription")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIndexationEnabled(!indexationEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  indexationEnabled ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    indexationEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
               </button>
             </div>
 
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            <form
-              className="space-y-4"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setSaving(true);
-                setError("");
-                const form = e.currentTarget;
-                const data = Object.fromEntries(new FormData(form));
-                const body = { ...data, tenantIds: selectedTenants, indexationEnabled };
-                try {
-                  const url = editingLease
-                    ? `${apiUrl}/api/v1/leases/${editingLease.id}`
-                    : `${apiUrl}/api/v1/leases`;
-                  const res = await fetch(url, {
-                    method: editingLease ? "PUT" : "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body),
-                    credentials: "include",
-                  });
-                  if (res.ok) {
-                    const json = await res.json();
-                    if (editingLease) {
-                      setLeases((prev) =>
-                        prev.map((l) => (l.id === editingLease.id ? json.data : l))
-                      );
-                    } else {
-                      setLeases((prev) => [...prev, json.data]);
-                    }
-                    closeModal();
-                  } else {
-                    const errJson = await res.json().catch(() => null);
-                    setError(errJson?.error || `Error ${res.status}`);
-                  }
-                } catch {
-                  setError(t("saveError"));
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("property")}
-                  </label>
-                  <select
-                    name="propertyId"
-                    required
-                    defaultValue={editingLease?.propertyId || ""}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  >
-                    <option value="">{t("selectProperty")}</option>
-                    {properties.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.city})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("leaseType")}
-                  </label>
-                  <select
-                    name="leaseType"
-                    required
-                    defaultValue={editingLease?.type || "residential_long"}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  >
-                    <option value="residential_long">{t("typeResidentialLong")}</option>
-                    <option value="residential_short">{t("typeResidentialShort")}</option>
-                    <option value="residential_lifetime">{t("typeLifetime")}</option>
-                    <option value="student">{t("typeStudent")}</option>
-                    <option value="commercial">{t("typeCommercial")}</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Tenant selection - supports multiple tenants (couples) */}
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  <Users className="mr-1 inline h-4 w-4" />
-                  {t("tenants")}
-                </label>
-                {tenants.length === 0 ? (
-                  <p className="text-sm text-[hsl(var(--muted-foreground))]">{t("noTenantsYet")}</p>
-                ) : (
-                  <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-[hsl(var(--border))] p-2">
-                    {tenants.map((tenant) => (
-                      <label
-                        key={tenant.id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
-                          selectedTenants.includes(tenant.id)
-                            ? "bg-[hsl(var(--primary))]/10 border border-[hsl(var(--primary))]"
-                            : "hover:bg-[hsl(var(--muted))]"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedTenants.includes(tenant.id)}
-                          onChange={() => toggleTenant(tenant.id)}
-                          className="rounded"
-                        />
-                        <span className="text-sm font-medium">
-                          {tenant.firstName} {tenant.lastName}
-                        </span>
-                        <span className="text-xs text-[hsl(var(--muted-foreground))]">{tenant.email}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-                {selectedTenants.length > 1 && (
-                  <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                    {t("coTenantsNote")}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("region")}
-                  </label>
-                  <select
-                    name="region"
-                    required
-                    defaultValue={editingLease?.region || "flanders"}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  >
-                    <option value="flanders">{t("regionFlanders")}</option>
-                    <option value="wallonia">{t("regionWallonia")}</option>
-                    <option value="brussels">{t("regionBrussels")}</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("status")}
-                  </label>
-                  <select
-                    name="status"
-                    defaultValue={editingLease?.status || "active"}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  >
-                    <option value="active">{t("statusActive")}</option>
-                    <option value="draft">{t("statusDraft")}</option>
-                    <option value="terminated">{t("statusTerminated")}</option>
-                    <option value="expired">{t("statusExpired")}</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("signingDate")}
-                  </label>
-                  <input
-                    name="signingDate"
-                    type="date"
-                    required
-                    defaultValue={editingLease?.signingDate || ""}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("startDate")}
-                  </label>
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    defaultValue={editingLease?.startDate || ""}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("endDate")}
-                </label>
-                <input
-                  name="endDate"
-                  type="date"
-                  defaultValue={editingLease?.endDate || ""}
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("monthlyRent")}
-                  </label>
-                  <input
-                    name="monthlyRent"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    defaultValue={editingLease?.monthlyRent || ""}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">
-                    {t("monthlyCharges")}
-                  </label>
-                  <input
-                    name="monthlyCharges"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    defaultValue={editingLease?.monthlyCharges || "0"}
-                    className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  {t("bankAccount")}
-                </label>
-                <select
-                  name="bankAccountId"
-                  defaultValue={editingLease?.bankAccountId || ""}
-                  className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                >
-                  <option value="">{t("selectBankAccount")}</option>
-                </select>
-              </div>
-              {/* Indexation toggle */}
-              <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">{t("indexation")}</p>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">{t("indexationDescription")}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIndexationEnabled(!indexationEnabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    indexationEnabled ? "bg-[hsl(var(--primary))]" : "bg-gray-300"
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      indexationEnabled ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-lg border border-[hsl(var(--border))] px-4 py-2 text-sm font-medium hover:bg-[hsl(var(--muted))]"
-                >
-                  {t("cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:opacity-50"
-                >
-                  {saving ? "..." : editingLease ? t("updateLease") : t("saveLease")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("cancel")}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "..." : editingLease ? t("updateLease") : t("saveLease")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

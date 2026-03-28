@@ -697,5 +697,28 @@
     "headerRole": "Role",
     "headerStatus": "Statut",
     "headerActions": "Actions"
+  },
+  "toast": {
+    "saved": "Modifications enregistrees",
+    "created": "Cree avec succes",
+    "deleted": "Supprime avec succes",
+    "updated": "Mis a jour avec succes",
+    "saveFailed": "Impossible d'enregistrer. Veuillez reessayer.",
+    "loadFailed": "Impossible de charger les donnees. Veuillez actualiser la page.",
+    "deleteFailed": "Impossible de supprimer. Veuillez reessayer.",
+    "saving": "Enregistrement...",
+    "networkError": "Connexion perdue. Verifiez votre connexion et reessayez."
+  },
+  "dashboard": {
+    "emptyPropertiesTitle": "Pas encore de proprietes",
+    "emptyPropertiesDesc": "Ajoutez votre premiere propriete pour commencer avec Rentular.",
+    "addFirstProperty": "Ajouter une propriete",
+    "emptyTenantsTitle": "Pas encore de locataires",
+    "emptyTenantsDesc": "Ajoutez un locataire pour le lier a un bail.",
+    "emptyLeasesTitle": "Pas encore de baux",
+    "emptyLeasesDesc": "Creez un bail pour commencer a suivre le loyer et les paiements.",
+    "deleteConfirm": "Etes-vous sur de vouloir supprimer ceci ? Cette action est irreversible.",
+    "delete": "Supprimer",
+    "keepItem": "Garder"
   }
 }

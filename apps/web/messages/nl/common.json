@@ -697,5 +697,28 @@
     "headerRole": "Rol",
     "headerStatus": "Status",
     "headerActions": "Acties"
+  },
+  "toast": {
+    "saved": "Wijzigingen opgeslagen",
+    "created": "Succesvol aangemaakt",
+    "deleted": "Succesvol verwijderd",
+    "updated": "Succesvol bijgewerkt",
+    "saveFailed": "Opslaan mislukt. Probeer opnieuw.",
+    "loadFailed": "Gegevens laden mislukt. Vernieuw de pagina.",
+    "deleteFailed": "Verwijderen mislukt. Probeer opnieuw.",
+    "saving": "Opslaan...",
+    "networkError": "Verbinding verbroken. Controleer je internet en probeer opnieuw."
+  },
+  "dashboard": {
+    "emptyPropertiesTitle": "Nog geen panden",
+    "emptyPropertiesDesc": "Voeg je eerste pand toe om te starten met Rentular.",
+    "addFirstProperty": "Pand toevoegen",
+    "emptyTenantsTitle": "Nog geen huurders",
+    "emptyTenantsDesc": "Voeg een huurder toe om ze aan een huurcontract te koppelen.",
+    "emptyLeasesTitle": "Nog geen huurcontracten",
+    "emptyLeasesDesc": "Maak een huurcontract aan om huur en betalingen bij te houden.",
+    "deleteConfirm": "Weet je zeker dat je dit wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+    "delete": "Verwijderen",
+    "keepItem": "Behouden"
   }
 }
