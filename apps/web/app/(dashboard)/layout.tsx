@@ -8,6 +8,7 @@ import {
   Wrench,
   Settings,
   LogOut,
+  Download,
 } from "lucide-react";
 import Image from "next/image";
 import { cookies } from "next/headers";
@@ -26,12 +27,14 @@ const navigationItems = [
   { key: "communications" as const, href: "/communications", icon: MessageSquare },
   { key: "maintenance" as const, href: "/maintenance", icon: Wrench },
   { key: "settings" as const, href: "/settings", icon: Settings },
+  { key: "import" as const, href: "/import", icon: Download },
 ];
 
 // Role-based nav filtering per D-09 and UI-SPEC sidebar table
 // Maps nav key -> roles that CANNOT see it
 const NAV_VISIBILITY: Record<string, string[]> = {
   settings: ["co_owner", "manager", "accountant", "viewer"], // owner only
+  import: ["co_owner", "manager", "accountant", "viewer"], // owner only
   tenants: ["accountant"],
   leases: ["accountant"],
   indexation: ["accountant"],
