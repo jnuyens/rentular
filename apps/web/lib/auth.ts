@@ -96,8 +96,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // all map to the same user when they share the same email.
         // The API middleware (authMiddleware.ts) looks up users by email
         // to ensure data consistency across login methods.
-        token.id = user.id;
-        token.email = user.email;
+        token.id = user.id!;
+        token.email = user.email!;
         token.provider = account?.provider;
 
         // Fetch onboarding status from database to avoid per-request DB queries
