@@ -65,9 +65,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Onboarding
 
-- [ ] **ONB-01**: New user sees a guided setup wizard after first login
-- [ ] **ONB-02**: Wizard walks through: add property -> add tenant -> create lease -> set up payment collection
-- [ ] **ONB-03**: Wizard tracks completion and can be resumed
+- [x] **ONB-01**: New user sees a guided setup wizard after first login
+- [x] **ONB-02**: Wizard walks through: add property -> add tenant -> create lease -> set up payment collection
+- [x] **ONB-03**: Wizard tracks completion and can be resumed
 
 ### UI & Layout
 
@@ -197,9 +197,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | UI-04 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | UI-05 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
-| ONB-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
-| ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
-| ONB-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
+| ONB-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
+| ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
+| ONB-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | I18N-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Pending |
 
 **Coverage:**
