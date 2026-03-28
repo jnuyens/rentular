@@ -590,7 +590,7 @@
     "passwordLabel": "Smovin password",
     "passwordPlaceholder": "Your Smovin password",
     "credentialNotice": "Your credentials are encrypted and used only to access your Smovin data. They are permanently deleted after import.",
-    "startDiscovery": "Start Discovery",
+    "startDiscovery": "Start Data Import",
     "statusDiscovering": "Discovering...",
     "statusDiscovered": "Discovery Complete",
     "statusImporting": "Importing...",

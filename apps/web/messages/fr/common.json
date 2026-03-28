@@ -590,7 +590,7 @@
     "passwordLabel": "Mot de passe Smovin",
     "passwordPlaceholder": "Votre mot de passe Smovin",
     "credentialNotice": "Vos identifiants sont chiffres et utilises uniquement pour acceder a vos donnees Smovin. Ils sont definitivement supprimes apres l'import.",
-    "startDiscovery": "Lancer la Decouverte",
+    "startDiscovery": "Lancer l import des donnees",
     "statusDiscovering": "Decouverte en cours...",
     "statusDiscovered": "Decouverte Terminee",
     "statusImporting": "Import en cours...",

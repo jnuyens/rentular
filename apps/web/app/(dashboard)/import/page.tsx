@@ -87,6 +87,7 @@ export default function ImportPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +101,7 @@ export default function ImportPage() {
   useEffect(() => {
     if (latestData?.data?.id) {
       setSessionId(latestData.data.id);
+      setShowProgress(false);
     }
   }, [latestData]);
 
@@ -154,18 +156,31 @@ export default function ImportPage() {
       return result;
     },
     onSuccess: async (result) => {
+      if (result?.error) {
+        setLogMessages((prev) => [...prev, `Error: ${result.error}`]);
+        setIsSubmitting(false);
+        toast.error(result.error);
+        return;
+      }
       if (result?.data?.sessionId) {
         const newSessionId = result.data.sessionId;
         setSessionId(newSessionId);
-        setLogMessages([]);
-        // Start discovery immediately
-        await apiFetch(`/start-discovery/${newSessionId}`, { method: "POST" });
-        queryClient.invalidateQueries({ queryKey: ["import-status", newSessionId] });
+        setLogMessages((prev) => [...prev, "Session created. Starting data discovery..."]);
+        try {
+          await apiFetch(`/start-discovery/${newSessionId}`, { method: "POST" });
+          queryClient.invalidateQueries({ queryKey: ["import-status", newSessionId] });
+        } catch {
+          setLogMessages((prev) => [...prev, "Failed to start discovery."]);
+          toast.error(t("errorGeneric"));
+        }
+      } else {
+        setLogMessages((prev) => [...prev, "Unexpected response from server."]);
       }
       setIsSubmitting(false);
     },
-    onError: () => {
+    onError: (err) => {
       setIsSubmitting(false);
+      setLogMessages((prev) => [...prev, `Connection failed: ${err instanceof Error ? err.message : "Unknown error"}`]);
       toast.error(t("errorGeneric"));
     },
   });
@@ -222,6 +237,8 @@ export default function ImportPage() {
     e.preventDefault();
     if (!email || !password) return;
     setIsSubmitting(true);
+    setShowProgress(true);
+    setLogMessages(["Connecting to Smovin..."]);
     submitCredentialsMutation.mutate();
   };
 
@@ -310,8 +327,37 @@ export default function ImportPage() {
         </p>
       </div>
 
+      {/* Immediate progress feedback after form submit */}
+      {showProgress && !session && (
+        <div className="max-w-2xl mx-auto mb-6">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-yellow-50 text-yellow-700 border-yellow-200">
+                {isSubmitting ? t("statusDiscovering") : "Waiting..."}
+              </Badge>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="w-full bg-muted rounded-full h-2.5">
+                <div
+                  className="bg-primary h-2.5 rounded-full transition-all duration-300 animate-pulse"
+                  style={{ width: isSubmitting ? "30%" : "5%" }}
+                />
+              </div>
+              <div
+                ref={logRef}
+                className="rounded-lg bg-muted p-4 max-h-48 overflow-y-auto font-mono text-xs"
+              >
+                {logMessages.map((msg, i) => (
+                  <div key={i}>{msg}</div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* State 1: No session - Credential form */}
-      {!session && (
+      {!session && !showProgress && (
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader>

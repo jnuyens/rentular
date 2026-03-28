@@ -590,7 +590,7 @@
     "passwordLabel": "Smovin Passwort",
     "passwordPlaceholder": "Ihr Smovin Passwort",
     "credentialNotice": "Ihre Anmeldedaten werden verschluesselt und nur fuer den Zugriff auf Ihre Smovin-Daten verwendet. Sie werden nach dem Import endgueltig geloescht.",
-    "startDiscovery": "Erkennung Starten",
+    "startDiscovery": "Datenimport starten",
     "statusDiscovering": "Erkennung laeuft...",
     "statusDiscovered": "Erkennung Abgeschlossen",
     "statusImporting": "Import laeuft...",
