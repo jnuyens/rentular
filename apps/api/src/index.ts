@@ -24,12 +24,14 @@ import { gocardlessRouter } from "./routes/gocardless";
 import { supportRouter } from "./routes/support";
 import { maintenanceRouter } from "./routes/maintenance";
 import { stripeRouter } from "./routes/stripe";
+import { importRouter } from "./routes/import";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
 import { setupHealthIndexSchedule } from "./jobs/healthIndexWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
+import { importDiscoveryQueue } from "./jobs/importDiscoveryWorker";
 import { authMiddleware } from "./lib/authMiddleware";
 import { requireAuth } from "./lib/routeAuth";
 
@@ -55,6 +57,7 @@ const protectedPrefixes = [
   "/communications",
   "/gocardless",
   "/maintenance",
+  "/import",
 ];
 
 // Middleware
@@ -138,6 +141,7 @@ app.route("/gocardless", gocardlessRouter);
 app.route("/support", supportRouter);
 app.route("/maintenance", maintenanceRouter);
 app.route("/stripe", stripeRouter);
+app.route("/import", importRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>
@@ -156,6 +160,7 @@ setupHealthIndexSchedule().catch((err) =>
 // Email queue is auto-started by importing the worker module
 console.log(`[EmailQueue] Worker started (rate limit: ${process.env.EMAIL_RATE_LIMIT || 30}/min)`);
 console.log(`[SmsQueue] Worker started (rate limit: ${process.env.SMS_RATE_LIMIT || 10}/min, provider: ${process.env.SMS_PROVIDER || "console"})`);
+console.log("[ImportDiscovery] Worker started");
 
 // 404 handler
 app.notFound((c) => c.json({ error: "Not found" }, 404));
