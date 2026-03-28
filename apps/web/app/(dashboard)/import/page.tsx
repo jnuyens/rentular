@@ -34,7 +34,9 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 async function apiFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_URL}/api/v1/import${path}`, {
+  // Ensure no double slashes and no trailing slash on base
+  const url = path === "/" ? `${API_URL}/api/v1/import` : `${API_URL}/api/v1/import${path}`;
+  const res = await fetch(url, {
     credentials: "include",
     ...options,
     headers: { "Content-Type": "application/json", ...options?.headers },
