@@ -136,11 +136,15 @@ Plans:
   3. All pages across the application have consistent visual styling, spacing, and layout
   4. New users see a guided setup wizard after first login that walks them through adding a property, tenant, lease, and payment collection -- and can resume it if they leave partway
   5. Every UI screen and feature added in Phases 1-6 has complete translations in EN, NL, FR, and DE
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] 07-01: TBD
-- [ ] 07-02: TBD
+- [ ] 07-01-PLAN.md -- shadcn/ui foundation: init, 18 components, cn() utility, CSS variables, Toaster, logo fix, DB onboarding columns
+- [ ] 07-02-PLAN.md -- Mobile responsive layout: hamburger drawer, sidebar extraction + properties/tenants/leases shadcn migration
+- [ ] 07-03-PLAN.md -- Landing page rewrite: auth routing, marketing page with hero/features/pricing/footer, Stripe plans endpoint
+- [ ] 07-04-PLAN.md -- Dashboard migration batch 2: payments, communications, indexation, maintenance to shadcn/ui
+- [ ] 07-05-PLAN.md -- Onboarding wizard: 4-step wizard, middleware redirect, session extension, import detection
+- [ ] 07-06-PLAN.md -- Settings/import migration + comprehensive i18n audit across all 4 locales
 
 ## Progress
 
@@ -156,4 +160,4 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 4. Notifications & Payment Follow-Up | 0/3 | Planning complete | - |
 | 5. Property Manager Roles | 0/4 | Planning complete | - |
 | 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
-| 7. UI Polish, Onboarding & Launch Readiness | 0/? | Not started | - |
+| 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
