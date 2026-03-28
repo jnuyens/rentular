@@ -720,5 +720,32 @@
     "deleteConfirm": "Sind Sie sicher, dass Sie dies loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
     "delete": "Loschen",
     "keepItem": "Behalten"
+  },
+  "marketing": {
+    "getStarted": "Loslegen",
+    "login": "Anmelden",
+    "heroTitle": "Immobilienverwaltung leicht gemacht",
+    "heroSubtitle": "Automatisieren Sie die Mieteinziehung, verfolgen Sie Zahlungen und verwalten Sie Ihre belgischen Mietobjekte auf einer erschwinglichen Plattform.",
+    "heroCta": "Kostenlos starten",
+    "featuresTitle": "Alles, was Sie fur die Verwaltung Ihrer Vermietungen brauchen",
+    "feature1Title": "SEPA-Lastschrift",
+    "feature1Desc": "Miete automatisch uber GoCardless einziehen. Keine Zahlungsverfolgung mehr.",
+    "feature2Title": "Belgische Mietindexierung",
+    "feature2Desc": "Automatische Berechnungen basierend auf offiziellen Gesundheitsindexdaten fur Brussel, Flandern und Wallonien.",
+    "feature3Title": "Mehrsprachige Plattform",
+    "feature3Desc": "Verfugbar auf Englisch, Niederlandisch, Franzosisch und Deutsch. Jeder Mieter kommuniziert in seiner bevorzugten Sprache.",
+    "feature4Title": "Zahlungsverfolgung",
+    "feature4Desc": "Automatisierte E-Mail- und SMS-Erinnerungen mit steigender Dringlichkeit. Vergessen Sie nie eine verspatete Zahlung.",
+    "feature5Title": "Verwalterrollen",
+    "feature5Desc": "Delegieren Sie die Verwaltung mit Miteigentumer-, Verwalter-, Buchhalter- und Betrachterrollen.",
+    "feature6Title": "Einfache Migration",
+    "feature6Desc": "Importieren Sie Ihre vorhandenen Daten mit einem Klick aus Smovin. Keine manuelle Neueingabe erforderlich.",
+    "pricingTitle": "Einfache, transparente Preise",
+    "pricingSubtitle": "Zahlen Sie nur fur das, was Sie nutzen. Keine versteckten Gebuhren.",
+    "pricingPerLease": "pro Mietvertrag / Monat",
+    "pricingCta": "Loslegen",
+    "copyright": "Rentular. Alle Rechte vorbehalten.",
+    "privacy": "Datenschutzrichtlinie",
+    "terms": "Nutzungsbedingungen"
   }
 }

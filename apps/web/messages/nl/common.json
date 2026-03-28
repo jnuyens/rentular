@@ -720,5 +720,32 @@
     "deleteConfirm": "Weet je zeker dat je dit wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
     "delete": "Verwijderen",
     "keepItem": "Behouden"
+  },
+  "marketing": {
+    "getStarted": "Aan de slag",
+    "login": "Inloggen",
+    "heroTitle": "Vastgoedbeheer eenvoudig gemaakt",
+    "heroSubtitle": "Automatiseer huurinning, volg betalingen op en beheer uw Belgische huurwoningen in een betaalbaar platform.",
+    "heroCta": "Gratis starten",
+    "featuresTitle": "Alles wat u nodig heeft om uw verhuur te beheren",
+    "feature1Title": "SEPA Domiciliering",
+    "feature1Desc": "Inning van huur automatisch via GoCardless. Geen betalingen meer achtervolgen.",
+    "feature2Title": "Belgische Huurindexering",
+    "feature2Desc": "Automatische berekeningen op basis van officiele gezondheidsindexgegevens voor Brussel, Vlaanderen en Wallonie.",
+    "feature3Title": "Meertalig Platform",
+    "feature3Desc": "Beschikbaar in het Engels, Nederlands, Frans en Duits. Elke huurder communiceert in de gewenste taal.",
+    "feature4Title": "Betalingsopvolging",
+    "feature4Desc": "Geautomatiseerde e-mail- en sms-herinneringen met oplopende urgentie. Vergeet nooit een late betaling.",
+    "feature5Title": "Vastgoedbeheerder Rollen",
+    "feature5Desc": "Delegeer beheer met mede-eigenaar, beheerder, boekhouder en kijker rollen.",
+    "feature6Title": "Eenvoudige Migratie",
+    "feature6Desc": "Importeer uw bestaande gegevens vanuit Smovin met een klik. Geen handmatige herinvoer nodig.",
+    "pricingTitle": "Eenvoudige, transparante prijzen",
+    "pricingSubtitle": "Betaal alleen voor wat u gebruikt. Geen verborgen kosten.",
+    "pricingPerLease": "per huurcontract / maand",
+    "pricingCta": "Aan de slag",
+    "copyright": "Rentular. Alle rechten voorbehouden.",
+    "privacy": "Privacybeleid",
+    "terms": "Algemene voorwaarden"
   }
 }

@@ -720,5 +720,32 @@
     "deleteConfirm": "Etes-vous sur de vouloir supprimer ceci ? Cette action est irreversible.",
     "delete": "Supprimer",
     "keepItem": "Garder"
+  },
+  "marketing": {
+    "getStarted": "Commencer",
+    "login": "Connexion",
+    "heroTitle": "La gestion immobiliere simplifiee",
+    "heroSubtitle": "Automatisez l'encaissement des loyers, suivez les paiements et gerez vos biens locatifs belges dans une plateforme abordable.",
+    "heroCta": "Commencer gratuitement",
+    "featuresTitle": "Tout ce dont vous avez besoin pour gerer vos locations",
+    "feature1Title": "Domiciliation SEPA",
+    "feature1Desc": "Encaissez le loyer automatiquement via GoCardless. Fini les relances de paiements.",
+    "feature2Title": "Indexation Belge des Loyers",
+    "feature2Desc": "Calculs automatiques bases sur les donnees officielles de l'indice sante pour Bruxelles, la Flandre et la Wallonie.",
+    "feature3Title": "Plateforme Multilingue",
+    "feature3Desc": "Disponible en anglais, neerlandais, francais et allemand. Chaque locataire communique dans sa langue preferee.",
+    "feature4Title": "Suivi des Paiements",
+    "feature4Desc": "Rappels automatises par e-mail et SMS avec urgence croissante. N'oubliez jamais un retard de paiement.",
+    "feature5Title": "Roles de Gestionnaire",
+    "feature5Desc": "Deleguez la gestion avec les roles co-proprietaire, gestionnaire, comptable et observateur.",
+    "feature6Title": "Migration Facile",
+    "feature6Desc": "Importez vos donnees existantes depuis Smovin en un clic. Aucune ressaisie manuelle necessaire.",
+    "pricingTitle": "Des tarifs simples et transparents",
+    "pricingSubtitle": "Payez uniquement ce que vous utilisez. Pas de frais caches.",
+    "pricingPerLease": "par bail / mois",
+    "pricingCta": "Commencer",
+    "copyright": "Rentular. Tous droits reserves.",
+    "privacy": "Politique de confidentialite",
+    "terms": "Conditions generales"
   }
 }

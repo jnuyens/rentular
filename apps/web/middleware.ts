@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const locales = ["en", "nl", "fr", "de"];
-const publicPatterns = [/^\/$/, /^\/login$/, /^\/register$/];
+const publicPatterns = [/^\/$/, /^\/login$/, /^\/register$/, /^\/privacy$/, /^\/terms$/, /^\/accept-invitation$/];
 
 function isPublicPage(pathname: string) {
   const strippedPath = locales.some(

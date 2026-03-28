@@ -720,5 +720,32 @@
     "deleteConfirm": "Are you sure you want to delete this? This action cannot be undone.",
     "delete": "Delete",
     "keepItem": "Keep it"
+  },
+  "marketing": {
+    "getStarted": "Get Started",
+    "login": "Login",
+    "heroTitle": "Property management made simple",
+    "heroSubtitle": "Automate rent collection, track payments, and manage your Belgian rental properties in one affordable platform.",
+    "heroCta": "Start for Free",
+    "featuresTitle": "Everything you need to manage your rentals",
+    "feature1Title": "SEPA Direct Debit",
+    "feature1Desc": "Collect rent automatically via GoCardless. No more chasing payments.",
+    "feature2Title": "Belgian Rent Indexation",
+    "feature2Desc": "Automatic calculations using official health index data for Brussels, Flanders, and Wallonia.",
+    "feature3Title": "Multilingual Platform",
+    "feature3Desc": "Available in English, Dutch, French, and German. Each tenant communicates in their preferred language.",
+    "feature4Title": "Payment Follow-Up",
+    "feature4Desc": "Automated email and SMS reminders with escalating urgency. Never forget a late payment.",
+    "feature5Title": "Property Manager Roles",
+    "feature5Desc": "Delegate management with co-owner, manager, accountant, and viewer roles.",
+    "feature6Title": "Easy Migration",
+    "feature6Desc": "Import your existing data from Smovin with one click. No manual re-entry needed.",
+    "pricingTitle": "Simple, transparent pricing",
+    "pricingSubtitle": "Pay only for what you use. No hidden fees.",
+    "pricingPerLease": "per lease / month",
+    "pricingCta": "Get Started",
+    "copyright": "Rentular. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
   }
 }
