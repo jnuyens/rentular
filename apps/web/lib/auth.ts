@@ -4,7 +4,8 @@ import Facebook from "next-auth/providers/facebook";
 import Twitter from "next-auth/providers/twitter";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-// import { db } from "@rentular/db";
+import { getDb, users } from "@rentular/db";
+import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // adapter: DrizzleAdapter(db),
@@ -66,6 +67,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.provider = account?.provider;
+
+        // Fetch onboarding status from database to avoid per-request DB queries
+        try {
+          const db = getDb();
+          const dbUser = await db
+            .select({ onboardingComplete: users.onboardingComplete })
+            .from(users)
+            .where(eq(users.email, user.email!))
+            .limit(1);
+          token.onboardingComplete = dbUser[0]?.onboardingComplete ?? false;
+        } catch {
+          // Database unavailable at sign-in; default to incomplete
+          token.onboardingComplete = false;
+        }
       }
       return token;
     },
@@ -74,6 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         if (token.email) session.user.email = token.email as string;
       }
+      session.onboardingComplete = token.onboardingComplete;
       return session;
     },
     async redirect({ url, baseUrl }) {

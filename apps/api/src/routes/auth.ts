@@ -1,6 +1,18 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
+
+let db: ReturnType<typeof import("@rentular/db").getDb> | null = null;
+let usersTable: typeof import("@rentular/db").users | null = null;
+
+try {
+  const dbMod = require("@rentular/db");
+  db = dbMod.getDb();
+  usersTable = dbMod.users;
+} catch {
+  console.log("[Auth] Database unavailable for onboarding endpoints");
+}
 
 export const authRouter = new Hono();
 
@@ -110,3 +122,49 @@ authRouter.put(
     return c.json({ message: "Password changed" });
   }
 );
+
+// GET /onboarding - Get onboarding status
+authRouter.get("/onboarding", async (c) => {
+  const userId = c.get("userId") as string | null;
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  if (!db || !usersTable) return c.json({ error: "Database unavailable" }, 503);
+
+  const result = await db
+    .select({
+      onboardingStep: usersTable.onboardingStep,
+      onboardingComplete: usersTable.onboardingComplete,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!result[0]) return c.json({ error: "User not found" }, 404);
+
+  return c.json(result[0]);
+});
+
+// PATCH /onboarding - Update onboarding progress
+authRouter.patch("/onboarding", async (c) => {
+  const userId = c.get("userId") as string | null;
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+  if (!db || !usersTable) return c.json({ error: "Database unavailable" }, 503);
+
+  const body = await c.req.json();
+  const { step, complete } = body;
+
+  const updates: Record<string, number | boolean> = {};
+  if (typeof step === "number" && step >= 1 && step <= 4) {
+    updates.onboardingStep = step;
+  }
+  if (typeof complete === "boolean") {
+    updates.onboardingComplete = complete;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return c.json({ error: "No valid fields to update" }, 400);
+  }
+
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, userId));
+
+  return c.json({ success: true, ...updates });
+});
