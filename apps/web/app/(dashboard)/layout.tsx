@@ -7,6 +7,7 @@ import {
   Wrench,
   Settings,
   LogOut,
+  Download,
 } from "lucide-react";
 import Image from "next/image";
 import { auth, signOut } from "@/lib/auth";
@@ -23,7 +24,17 @@ const navigationItems = [
   { key: "indexation" as const, href: "/indexation", icon: TrendingUp },
   { key: "maintenance" as const, href: "/maintenance", icon: Wrench },
   { key: "settings" as const, href: "/settings", icon: Settings },
+  { key: "import" as const, href: "/import", icon: Download },
 ];
+
+// NAV_VISIBILITY maps nav key -> roles that are BLOCKED from seeing it.
+// Roles listed in the array CANNOT see the nav item.
+// If a role is NOT listed, they CAN see it.
+// Owner role is never listed, so it always sees everything.
+const NAV_VISIBILITY: Record<string, string[]> = {
+  settings: ["co_owner", "manager", "accountant", "viewer"],
+  import: ["co_owner", "manager", "accountant", "viewer"],
+};
 
 export default async function DashboardLayout({
   children,
