@@ -30,7 +30,7 @@
 |-------|-----------|
 | Frontend | Next.js 15 (App Router) + Tailwind CSS |
 | API | Hono |
-| Database | MariaDB (default) or PostgreSQL |
+| Database | MySQL / MariaDB |
 | ORM | Drizzle |
 | Auth | Auth.js (Google, Facebook, Twitter/X) |
 | Payments | GoCardless + Stripe |
@@ -60,6 +60,15 @@ rentular/
 - pnpm >= 9
 - Docker and Docker Compose
 
+The repository includes [`.nvmrc`](/Users/jnuyens/rentular/source/.nvmrc), [`.node-version`](/Users/jnuyens/rentular/source/.node-version), and a Volta pin in [`package.json`](/Users/jnuyens/rentular/source/package.json) so local shells can stay on Node 20 consistently.
+
+If you use Homebrew on macOS:
+
+```bash
+brew install node@20
+export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+```
+
 ### Setup
 
 ```bash
@@ -88,12 +97,24 @@ The web app will be available at http://localhost:3000 and the API at http://loc
 
 For email testing, Mailpit UI is at http://localhost:8025.
 
-### Using PostgreSQL instead of MariaDB
+### Validation
 
 ```bash
-# Set DB_TYPE=postgres in .env, then:
-docker compose -f docker-compose.postgres.yml up -d
+# Validate the API
+pnpm --filter @rentular/api lint
+
+# Validate the web app
+pnpm --filter @rentular/web lint
+
+# Validate the full workspace
+pnpm lint
 ```
+
+### Current Scope
+
+- Database support is MySQL / MariaDB only.
+- Email/password registration, login, password reset, and account password/email changes are implemented.
+- Payment collection and payment mutation endpoints that do not persist data yet return `501 Not Implemented` instead of reporting false success.
 
 ## Belgian Rental Law
 

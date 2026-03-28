@@ -1,11 +1,42 @@
-import GoCardless from "gocardless-nodejs";
-import { Environments } from "gocardless-nodejs/constants";
 import { GOCARDLESS_SCHEME } from "@rentular/shared";
+const GoCardless = require("gocardless-nodejs");
+const { Environments } = require("gocardless-nodejs/constants");
+
+type GoCardlessClient = {
+  customers: {
+    create: (params: Record<string, unknown>) => Promise<{ id?: string }>;
+  };
+  billingRequests: {
+    create: (params: Record<string, unknown>) => Promise<{
+      id?: string;
+      links?: { customer?: string };
+    }>;
+  };
+  billingRequestFlows: {
+    create: (params: Record<string, unknown>) => Promise<{
+      id?: string;
+      authorisation_url?: string;
+    }>;
+  };
+  mandates: {
+    get: (id: string) => Promise<Record<string, any>>;
+    cancel: (id: string) => Promise<Record<string, any>>;
+  };
+  payments: {
+    create: (
+      params: Record<string, unknown>,
+      headers?: Record<string, string>
+    ) => Promise<{ id?: string; status?: string; charge_date?: string }>;
+    retry: (id: string) => Promise<Record<string, any>>;
+    cancel: (id: string) => Promise<Record<string, any>>;
+    list: (params: Record<string, unknown>) => Promise<Record<string, any>>;
+  };
+};
 
 // GoCardless client singleton
-let client: GoCardless | null = null;
+let client: GoCardlessClient | null = null;
 
-export function getGoCardlessClient(): GoCardless {
+export function getGoCardlessClient(): GoCardlessClient {
   if (client) return client;
 
   const accessToken = process.env.GOCARDLESS_ACCESS_TOKEN;
@@ -20,7 +51,7 @@ export function getGoCardlessClient(): GoCardless {
       ? Environments.Live
       : Environments.Sandbox;
 
-  client = new GoCardless(accessToken, environment);
+  client = new GoCardless(accessToken, environment) as GoCardlessClient;
   return client;
 }
 

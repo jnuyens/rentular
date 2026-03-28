@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Wrench,
   Settings,
-  LogOut,
   Download,
 } from "lucide-react";
 import Image from "next/image";
@@ -15,8 +14,9 @@ import { cookies } from "next/headers";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import SupportChat from "@/components/SupportChat";
+import DashboardSidebar from "@/components/DashboardSidebar";
+import MobileNav from "@/components/MobileNav";
 
 const navigationItems = [
   { key: "properties" as const, href: "/properties", icon: Building2 },
@@ -48,6 +48,11 @@ const ROLE_PRIORITY: Record<string, number> = {
   accountant: 2,
   viewer: 1,
 };
+
+async function handleSignOut() {
+  "use server";
+  await signOut();
+}
 
 export default async function DashboardLayout({
   children,
@@ -93,65 +98,29 @@ export default async function DashboardLayout({
     return !blocked.includes(highestRole);
   });
 
+  const navItems = filteredNav.map((item) => ({
+    ...item,
+    label: t(item.key),
+  }));
+
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-[hsl(var(--border))] bg-[hsl(var(--background))]">
-        <div className="flex h-16 items-center gap-2 px-6">
-          <Image src="/rentular.png" alt="Rentular" width={48} height={48} />
-          <span className="text-xl font-bold">Rentular</span>
-        </div>
-
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {filteredNav.map((item) => (
-            <a
-              key={item.key}
-              href={item.href}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
-            >
-              <item.icon className="h-5 w-5" />
-              {t(item.key)}
-            </a>
-          ))}
-        </nav>
-
-        <div className="border-t border-[hsl(var(--border))] p-4">
-          <div className="mb-3">
-            <LanguageSwitcher dropDirection="up" />
-          </div>
-          <div className="flex items-center gap-3">
-            {session.user?.image && (
-              <img
-                src={session.user.image}
-                alt=""
-                className="h-8 w-8 rounded-full"
-              />
-            )}
-            <div className="flex-1 truncate">
-              <p className="text-sm font-medium">{session.user?.name}</p>
-              <p className="truncate text-xs text-[hsl(var(--muted-foreground))]">
-                {session.user?.email}
-              </p>
-            </div>
-            <form
-              action={async () => {
-                "use server";
-                await signOut();
-              }}
-            >
-              <button
-                type="submit"
-                className="rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
+      <DashboardSidebar
+        items={navItems}
+        userName={session.user?.name}
+        userEmail={session.user?.email}
+        userImage={session.user?.image}
+        signOutAction={handleSignOut}
+      />
+      <MobileNav
+        items={navItems}
+        userName={session.user?.name}
+        userEmail={session.user?.email}
+        signOutAction={handleSignOut}
+      />
 
       {/* Main content */}
-      <main className="relative flex-1 overflow-auto bg-[hsl(var(--muted))] p-8">
+      <main className="relative flex-1 overflow-auto bg-muted pt-14 md:pt-0 p-4 md:p-8">
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.02]">
           <Image src="/rentular.png" alt="" width={400} height={400} className="select-none" />
         </div>

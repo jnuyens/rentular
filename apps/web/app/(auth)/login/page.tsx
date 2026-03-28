@@ -1,30 +1,48 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [resetSent, setResetSent] = useState(false);
+  const [resetComplete, setResetComplete] = useState(false);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const resetToken = searchParams.get("resetToken");
+
+  useEffect(() => {
+    if (resetToken) {
+      setMode("reset");
+      setResetSent(false);
+      setResetComplete(false);
+      setError("");
+    }
+  }, [resetToken]);
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (mode === "forgot") {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      await fetch(`${apiUrl}/api/v1/auth/forgot-password`, {
+      const res = await fetch(`${apiUrl}/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || t("registrationFailed"));
+        return;
+      }
       setResetSent(true);
       return;
     }
@@ -34,9 +52,30 @@ export default function LoginPage() {
       return;
     }
 
+    if (mode === "reset") {
+      if (!resetToken) {
+        setError(t("resetTokenMissing"));
+        return;
+      }
+
+      const res = await fetch(`${apiUrl}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || t("registrationFailed"));
+        return;
+      }
+
+      setResetComplete(true);
+      setMode("login");
+      return;
+    }
+
     if (mode === "register") {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
+      const res = await fetch(`${apiUrl}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -85,16 +124,18 @@ export default function LoginPage() {
 
         {/* Email/password form */}
         <form onSubmit={handleCredentials} className="mb-6 space-y-3">
-          <div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("emailPlaceholder")}
-              required
-              className="w-full rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
-            />
-          </div>
+          {mode !== "reset" && (
+            <div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t("emailPlaceholder")}
+                required
+                className="w-full rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+              />
+            </div>
+          )}
           {mode !== "forgot" && (
             <div>
               <input
@@ -117,6 +158,9 @@ export default function LoginPage() {
           {resetSent && (
             <p className="text-sm text-green-600">{t("resetEmailSent")}</p>
           )}
+          {resetComplete && (
+            <p className="text-sm text-green-600">{t("resetPasswordSuccess")}</p>
+          )}
           <button
             type="submit"
             className="w-full rounded-lg bg-[hsl(var(--primary))] px-4 py-3 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:opacity-90"
@@ -125,7 +169,9 @@ export default function LoginPage() {
               ? t("signIn")
               : mode === "register"
                 ? t("createAccount")
-                : t("sendResetLink")}
+                : mode === "forgot"
+                  ? t("sendResetLink")
+                  : t("setNewPassword")}
           </button>
 
           <div className="flex justify-between text-xs">
@@ -133,65 +179,69 @@ export default function LoginPage() {
               <>
                 <button
                   type="button"
-                  onClick={() => { setMode("register"); setError(""); }}
+                  onClick={() => { setMode("register"); setError(""); setResetSent(false); setResetComplete(false); }}
                   className="text-[hsl(var(--primary))] hover:underline"
                 >
                   {t("noAccount")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setMode("forgot"); setError(""); setResetSent(false); }}
+                  onClick={() => { setMode("forgot"); setError(""); setResetSent(false); setResetComplete(false); }}
                   className="text-[hsl(var(--primary))] hover:underline"
                 >
                   {t("forgotPassword")}
                 </button>
               </>
-            ) : (
+            ) : mode !== "reset" ? (
               <button
                 type="button"
-                onClick={() => { setMode("login"); setError(""); setResetSent(false); }}
+                onClick={() => { setMode("login"); setError(""); setResetSent(false); setResetComplete(false); }}
                 className="text-[hsl(var(--primary))] hover:underline"
               >
                 {t("backToLogin")}
               </button>
-            )}
+            ) : null}
           </div>
         </form>
 
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[hsl(var(--border))]" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[hsl(var(--background))] px-2 text-[hsl(var(--muted-foreground))]">
-              {t("orContinueWith")}
-            </span>
-          </div>
-        </div>
+        {mode !== "reset" && (
+          <>
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[hsl(var(--border))]" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-[hsl(var(--background))] px-2 text-[hsl(var(--muted-foreground))]">
+                  {t("orContinueWith")}
+                </span>
+              </div>
+            </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={() => signIn("google", { callbackUrl: "/properties" })}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
-          >
-            <GoogleIcon />
-            {t("continueWithGoogle")}
-          </button>
-          <button
-            onClick={() => signIn("facebook", { callbackUrl: "/properties" })}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
-          >
-            <FacebookIcon />
-            {t("continueWithFacebook")}
-          </button>
-          <button
-            onClick={() => signIn("twitter", { callbackUrl: "/properties" })}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
-          >
-            <TwitterIcon />
-            {t("continueWithTwitter")}
-          </button>
-        </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => signIn("google", { callbackUrl: "/properties" })}
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
+              >
+                <GoogleIcon />
+                {t("continueWithGoogle")}
+              </button>
+              <button
+                onClick={() => signIn("facebook", { callbackUrl: "/properties" })}
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
+              >
+                <FacebookIcon />
+                {t("continueWithFacebook")}
+              </button>
+              <button
+                onClick={() => signIn("twitter", { callbackUrl: "/properties" })}
+                className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
+              >
+                <TwitterIcon />
+                {t("continueWithTwitter")}
+              </button>
+            </div>
+          </>
+        )}
 
         <p className="mt-6 text-center text-xs text-[hsl(var(--muted-foreground))]">
           {t("termsNotice")}
