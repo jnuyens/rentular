@@ -452,8 +452,29 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* State 3: Discovered - Property selection */}
-      {status === "discovered" && session?.discoveredData && (
+      {/* State 3: Discovered - No properties found */}
+      {status === "discovered" && (!session?.discoveredData || !Array.isArray(session.discoveredData) || session.discoveredData.length === 0) && (
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader>
+              <Badge variant="outline" className="w-fit bg-blue-50 text-blue-700 border-blue-200">
+                {t("statusDiscovered")}
+              </Badge>
+              <CardDescription className="mt-2">
+                {session?.progress?.message || "No properties found on Smovin account."}
+              </CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button variant="outline" onClick={handleStartNew}>
+                {t("startNew")}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* State 3b: Discovered - Property selection */}
+      {status === "discovered" && Array.isArray(session?.discoveredData) && session.discoveredData.length > 0 && (
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader>
