@@ -63,22 +63,27 @@ Source: Existing dashboard layout uses `p-8` main content, `px-6` sidebar header
 
 ## Typography
 
+Global type scale (4 sizes, 2 weights):
+
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (text-sm) | 400 (normal) | 1.5 |
 | Label | 12px (text-xs) | 600 (semibold) | 1.5 |
 | Heading | 24px (text-2xl) | 600 (semibold) | 1.2 |
-| Display | 36px (text-4xl) | 700 (bold) | 1.1 |
+| Display | 36px (text-4xl) | 600 (semibold) | 1.1 |
 
-Additional marketing page roles:
+**Component-local overrides (NOT part of the global type scale):**
 
-| Role | Size | Weight | Line Height | Usage |
-|------|------|--------|-------------|-------|
-| Hero headline | 48px (text-5xl) | 700 (bold) | 1.1 | Landing page hero section |
-| Section heading | 30px (text-3xl) | 600 (semibold) | 1.2 | Landing page Features, Pricing headings |
-| Subheading | 18px (text-lg) | 600 (semibold) | 1.3 | Card titles, feature highlights, onboarding step titles |
-| Body large | 18px (text-lg) | 400 (normal) | 1.6 | Hero subtitle, marketing body copy |
-| Nav link | 14px (text-sm) | 500 (medium) | 1.5 | Sticky nav anchors, sidebar items |
+These sizes are scoped to specific marketing page components and the onboarding wizard. They must not be used outside their declared component context.
+
+| Component | Size | Weight | Line Height | Usage |
+|-----------|------|--------|-------------|-------|
+| Marketing hero headline | 48px (text-5xl) | 600 (semibold) | 1.1 | `apps/web/app/(marketing)/page.tsx` hero section only |
+| Marketing section heading | 30px (text-3xl) | 600 (semibold) | 1.2 | `apps/web/app/(marketing)/page.tsx` Features/Pricing headings only |
+| Marketing subheading / card title | 18px (text-lg) | 600 (semibold) | 1.3 | Marketing feature card titles, onboarding step titles |
+| Marketing body large | 18px (text-lg) | 400 (normal) | 1.6 | Hero subtitle, marketing body copy |
+
+**Weight rules:** Only 400 (normal) and 600 (semibold) are permitted globally and in component-local overrides. Nav links use 400. All headings, labels, and bold text use 600.
 
 Source: Existing pages use `text-2xl font-semibold` for page titles, `text-sm` for body. Marketing sizes follow Rentila reference per D-08.
 
@@ -105,7 +110,8 @@ Additional semantic colors:
 | Popover bg | hsl(0 0% 100%) / `--popover` | Dropdown menus, sheet overlays |
 
 Accent reserved for:
-- Primary CTA buttons: "Get Started", "Save", "Next" (onboarding), "Start Discovery"
+- Primary CTA buttons: `marketing.getStarted` ("Get Started"), `onboarding.next` ("Next"), `onboarding.finish` ("Finish Setup"), `marketing.heroCta` ("Start for Free"), `marketing.pricingCta` ("Get Started")
+- Save/update action buttons: `toast.saved` label context -- button copy must be specific (e.g. "Save Changes", "Save Settings", "Update Lease") never bare "Save"
 - Active sidebar nav item highlight
 - Marketing page CTA buttons
 - Step indicator active dot (onboarding wizard)
@@ -144,7 +150,7 @@ Full rewrite of the existing 702-line `app/page.tsx`. Server component with cond
 | Section | Layout | Key Elements |
 |---------|--------|-------------|
 | Sticky Nav | `fixed top-0 w-full h-16 bg-white/95 backdrop-blur border-b z-50` | Logo (28x28) + "Rentular" text, anchor links (Features, Pricing), "Login" ghost button, "Get Started" primary button, LanguageSwitcher |
-| Hero | `py-24 text-center max-w-4xl mx-auto` | Headline (text-5xl bold), subtitle (text-lg muted), "Get Started" CTA (Button size lg), dashboard screenshot/mockup below |
+| Hero | `py-24 text-center max-w-4xl mx-auto` | Headline (text-5xl semibold), subtitle (text-lg muted), "Start for Free" CTA (Button size lg), dashboard screenshot/mockup below |
 | Features | `py-24 bg-muted/50` with `max-w-6xl mx-auto` | Section heading (text-3xl semibold), 3-column grid (lg:grid-cols-3, md:grid-cols-2, grid-cols-1), feature cards with icon + title + description |
 | Pricing | `py-24` with `max-w-5xl mx-auto` | Section heading (text-3xl semibold), pricing cards from Stripe API (D-04), per-lease pricing model displayed |
 | Footer | `py-12 border-t bg-muted/30` | Logo, copyright, links (Privacy, Terms), language selector |
@@ -183,7 +189,7 @@ Full-page wizard at `/onboarding` per D-11. No dashboard chrome.
 |---------|---------------|
 | Container | `min-h-screen bg-background flex flex-col` |
 | Top bar | `h-16 border-b flex items-center justify-between px-6` |
-| Logo area | `flex items-center gap-2`: Image 36x36, text-xl font-bold |
+| Logo area | `flex items-center gap-2`: Image 36x36, text-xl font-semibold |
 | Skip link | `text-sm text-muted-foreground hover:text-foreground` at right of top bar |
 | Step indicator | `flex items-center justify-center gap-0 py-8` |
 | Step dot (active) | `w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold` |
@@ -328,9 +334,9 @@ Skeleton element specification:
 | Location | Current | Updated |
 |----------|---------|---------|
 | Dashboard sidebar | 36x36 (`width={36} height={36}`) | 48x48 (`width={48} height={48}`) |
-| Dashboard sidebar text | `text-xl font-bold` | `text-xl font-bold` (unchanged) |
+| Dashboard sidebar text | `text-xl font-semibold` | `text-xl font-semibold` |
 | Mobile top bar | N/A (new) | 28x28 |
-| Marketing nav | N/A (new) | 28x28 + "Rentular" text-lg font-bold |
+| Marketing nav | N/A (new) | 28x28 + "Rentular" text-lg font-semibold |
 | Marketing hero | N/A | No logo in hero -- headline text only |
 | Dashboard watermark | 400x400 opacity-[0.03] | 400x400 opacity-[0.02] (slightly lighter for cleaner look) |
 
@@ -425,7 +431,7 @@ All copy must exist in `apps/web/messages/{locale}/common.json` under the specif
 | Empty communications body | `dashboard.emptyCommunicationsDesc` | "Sent emails and SMS messages will be logged here." |
 | Delete confirmation | `dashboard.deleteConfirm` | "Are you sure you want to delete this? This action cannot be undone." |
 | Delete button | `dashboard.delete` | "Delete" |
-| Cancel button | `dashboard.cancel` | "Cancel" |
+| Dismiss delete dialog | `dashboard.keepItem` | "Keep it" |
 
 ---
 
@@ -479,11 +485,11 @@ Client-side validation with inline error messages (`text-xs text-destructive`) b
 
 | Action | Trigger | Confirmation Method |
 |--------|---------|-------------------|
-| Delete property | Click delete button on property row/card | shadcn AlertDialog: "Are you sure?" with delete/cancel buttons |
-| Delete tenant | Click delete button on tenant row/card | shadcn AlertDialog |
-| Delete lease | Click delete button on lease row/card | shadcn AlertDialog |
-| Cancel payment | Click cancel button on payment | shadcn AlertDialog |
-| Delete import credentials | Click "Delete Credentials" | shadcn AlertDialog |
+| Delete property | Click delete button on property row/card | shadcn AlertDialog: "Are you sure?" with `dashboard.delete` ("Delete") / `dashboard.keepItem` ("Keep it") buttons |
+| Delete tenant | Click delete button on tenant row/card | shadcn AlertDialog: same pattern |
+| Delete lease | Click delete button on lease row/card | shadcn AlertDialog: same pattern |
+| Cancel payment | Click cancel button on payment | shadcn AlertDialog: "Are you sure?" with destructive action / "Keep it" dismiss |
+| Delete import credentials | Click "Delete Credentials" | shadcn AlertDialog: same pattern |
 | Skip onboarding | Click "Skip setup" link | No confirmation (non-destructive, can return) |
 
 All destructive confirmations use shadcn AlertDialog instead of `window.confirm()`. This is a migration from Phase 6's browser confirm pattern.
