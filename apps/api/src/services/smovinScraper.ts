@@ -100,38 +100,66 @@ export async function loginToSmovin(
       return { success: false, error: "login_form_not_found" };
     }
 
-    // Type with human-like delays
+    // Type with human-like keystroke simulation (fill() may not trigger SPA events)
     await emailInput.click();
     await randomDelay(300, 600);
-    await emailInput.fill(email);
+    await emailInput.pressSequentially(email, { delay: 50 });
     await randomDelay(500, 1000);
 
     await passwordInput.click();
     await randomDelay(300, 600);
-    await passwordInput.fill(password);
+    await passwordInput.pressSequentially(password, { delay: 50 });
     await randomDelay(500, 1000);
 
-    // Find and click submit button
+    // Debug: log what we see before submitting
+    console.log(`[SmovinScraper] URL before submit: ${page.url()}`);
+
+    // Find and click submit button — broaden selectors for SPA frameworks
     const submitButton = await page.$(
-      'button[type="submit"], input[type="submit"]',
+      'button[type="submit"], input[type="submit"], button:has-text("Log in"), button:has-text("Connexion"), button:has-text("Inloggen"), button:has-text("Se connecter"), form button',
     );
+    console.log(`[SmovinScraper] Submit button found: ${!!submitButton}`);
+
     if (submitButton) {
+      const buttonText = await submitButton.textContent();
+      console.log(`[SmovinScraper] Submit button text: "${buttonText}"`);
       await submitButton.click();
     } else {
+      console.log("[SmovinScraper] No submit button found, pressing Enter");
       await passwordInput.press("Enter");
     }
 
-    // Wait for navigation after login — use URL change detection instead of networkidle
+    // Wait for navigation after login
+    console.log("[SmovinScraper] Waiting for post-login navigation...");
     await page
-      .waitForURL((url) => !url.toString().includes("login"), {
+      .waitForURL((url) => !url.toString().includes("/login"), {
         timeout: 15000,
       })
       .catch(() => {});
     await randomDelay(2000, 4000);
 
-    // Check if login succeeded by looking for dashboard indicators
+    // Debug: log post-login state
     const currentUrl = page.url();
-    if (currentUrl.includes("login")) {
+    console.log(`[SmovinScraper] URL after submit: ${currentUrl}`);
+
+    // Check for error messages on the page
+    const errorText = await page
+      .textContent('[class*="error"], [class*="alert"], [role="alert"]')
+      .catch(() => null);
+    if (errorText) {
+      console.log(`[SmovinScraper] Error message on page: "${errorText.trim()}"`);
+    }
+
+    // Log visible page text for debugging
+    const visibleText = await page.textContent("body");
+    if (visibleText) {
+      console.log(
+        `[SmovinScraper] Page body (first 500 chars): ${visibleText.substring(0, 500).trim()}`,
+      );
+    }
+
+    // Check if login succeeded
+    if (currentUrl.includes("/login")) {
       return { success: false, error: "login_failed" };
     }
 
