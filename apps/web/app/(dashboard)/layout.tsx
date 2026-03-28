@@ -1,14 +1,3 @@
-import {
-  Building2,
-  Users,
-  FileText,
-  CreditCard,
-  TrendingUp,
-  MessageSquare,
-  Wrench,
-  Settings,
-  Download,
-} from "lucide-react";
 import Image from "next/image";
 import { cookies } from "next/headers";
 import { auth, signOut } from "@/lib/auth";
@@ -19,15 +8,15 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import MobileNav from "@/components/MobileNav";
 
 const navigationItems = [
-  { key: "properties" as const, href: "/properties", icon: Building2 },
-  { key: "tenants" as const, href: "/tenants", icon: Users },
-  { key: "leases" as const, href: "/leases", icon: FileText },
-  { key: "payments" as const, href: "/payments", icon: CreditCard },
-  { key: "indexation" as const, href: "/indexation", icon: TrendingUp },
-  { key: "communications" as const, href: "/communications", icon: MessageSquare },
-  { key: "maintenance" as const, href: "/maintenance", icon: Wrench },
-  { key: "settings" as const, href: "/settings", icon: Settings },
-  { key: "import" as const, href: "/import", icon: Download },
+  { key: "properties" as const, href: "/properties", iconName: "Building2" as const },
+  { key: "tenants" as const, href: "/tenants", iconName: "Users" as const },
+  { key: "leases" as const, href: "/leases", iconName: "FileText" as const },
+  { key: "payments" as const, href: "/payments", iconName: "CreditCard" as const },
+  { key: "indexation" as const, href: "/indexation", iconName: "TrendingUp" as const },
+  { key: "communications" as const, href: "/communications", iconName: "MessageSquare" as const },
+  { key: "maintenance" as const, href: "/maintenance", iconName: "Wrench" as const },
+  { key: "settings" as const, href: "/settings", iconName: "Settings" as const },
+  { key: "import" as const, href: "/import", iconName: "Download" as const },
 ];
 
 // Role-based nav filtering per D-09 and UI-SPEC sidebar table
@@ -99,7 +88,9 @@ export default async function DashboardLayout({
   });
 
   const navItems = filteredNav.map((item) => ({
-    ...item,
+    key: item.key,
+    href: item.href,
+    iconName: item.iconName,
     label: t(item.key),
   }));
 

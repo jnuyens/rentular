@@ -3,15 +3,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import {
+  Building2, Users, FileText, CreditCard, TrendingUp,
+  MessageSquare, Wrench, Settings, Download, LogOut,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Building2, Users, FileText, CreditCard, TrendingUp,
+  MessageSquare, Wrench, Settings, Download,
+};
 
 interface NavItem {
   key: string;
   href: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  iconName: string;
 }
 
 interface DashboardSidebarProps {
@@ -51,7 +59,7 @@ export default function DashboardSidebar({
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <item.icon className="h-5 w-5" />
+              {(() => { const Icon = iconMap[item.iconName]; return Icon ? <Icon className="h-5 w-5" /> : null; })()}
               {item.label}
             </Link>
           );
