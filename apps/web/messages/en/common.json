@@ -697,5 +697,23 @@
     "headerRole": "Role",
     "headerStatus": "Status",
     "headerActions": "Actions"
+  },
+  "dashboard": {
+    "toast.saved": "Saved successfully",
+    "toast.created": "Created successfully",
+    "toast.deleted": "Deleted successfully",
+    "toast.updated": "Updated successfully",
+    "toast.saveFailed": "Failed to save",
+    "toast.loadFailed": "Failed to load data",
+    "toast.deleteFailed": "Failed to delete",
+    "toast.saving": "Saving...",
+    "toast.networkError": "Network error. Please try again.",
+    "deleteConfirm": "Are you sure you want to delete this item? This action cannot be undone.",
+    "delete": "Delete",
+    "keepItem": "Keep",
+    "emptyPaymentsTitle": "No payments yet",
+    "emptyPaymentsDesc": "Payments will appear here once a lease has been set up.",
+    "emptyCommunicationsTitle": "No communications yet",
+    "emptyCommunicationsDesc": "Sent emails and SMS messages will be logged here."
   }
 }

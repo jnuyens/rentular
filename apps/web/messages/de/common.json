@@ -697,5 +697,23 @@
     "headerRole": "Rolle",
     "headerStatus": "Status",
     "headerActions": "Aktionen"
+  },
+  "dashboard": {
+    "toast.saved": "Erfolgreich gespeichert",
+    "toast.created": "Erfolgreich erstellt",
+    "toast.deleted": "Erfolgreich geloscht",
+    "toast.updated": "Erfolgreich aktualisiert",
+    "toast.saveFailed": "Speichern fehlgeschlagen",
+    "toast.loadFailed": "Daten konnten nicht geladen werden",
+    "toast.deleteFailed": "Loschen fehlgeschlagen",
+    "toast.saving": "Speichern...",
+    "toast.networkError": "Netzwerkfehler. Bitte versuchen Sie es erneut.",
+    "deleteConfirm": "Sind Sie sicher, dass Sie dieses Element loschen mochten? Diese Aktion kann nicht ruckgangig gemacht werden.",
+    "delete": "Loschen",
+    "keepItem": "Behalten",
+    "emptyPaymentsTitle": "Noch keine Zahlungen",
+    "emptyPaymentsDesc": "Zahlungen erscheinen hier, sobald ein Mietvertrag eingerichtet ist.",
+    "emptyCommunicationsTitle": "Noch keine Kommunikation",
+    "emptyCommunicationsDesc": "Gesendete E-Mails und SMS-Nachrichten werden hier protokolliert."
   }
 }

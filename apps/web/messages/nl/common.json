@@ -697,5 +697,23 @@
     "headerRole": "Rol",
     "headerStatus": "Status",
     "headerActions": "Acties"
+  },
+  "dashboard": {
+    "toast.saved": "Succesvol opgeslagen",
+    "toast.created": "Succesvol aangemaakt",
+    "toast.deleted": "Succesvol verwijderd",
+    "toast.updated": "Succesvol bijgewerkt",
+    "toast.saveFailed": "Opslaan mislukt",
+    "toast.loadFailed": "Laden van gegevens mislukt",
+    "toast.deleteFailed": "Verwijderen mislukt",
+    "toast.saving": "Opslaan...",
+    "toast.networkError": "Netwerkfout. Probeer opnieuw.",
+    "deleteConfirm": "Weet u zeker dat u dit item wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
+    "delete": "Verwijderen",
+    "keepItem": "Behouden",
+    "emptyPaymentsTitle": "Nog geen betalingen",
+    "emptyPaymentsDesc": "Betalingen verschijnen hier zodra een huurcontract is ingesteld.",
+    "emptyCommunicationsTitle": "Nog geen communicatie",
+    "emptyCommunicationsDesc": "Verzonden e-mails en sms-berichten worden hier bijgehouden."
   }
 }

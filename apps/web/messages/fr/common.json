@@ -697,5 +697,23 @@
     "headerRole": "Role",
     "headerStatus": "Statut",
     "headerActions": "Actions"
+  },
+  "dashboard": {
+    "toast.saved": "Enregistre avec succes",
+    "toast.created": "Cree avec succes",
+    "toast.deleted": "Supprime avec succes",
+    "toast.updated": "Mis a jour avec succes",
+    "toast.saveFailed": "Echec de l'enregistrement",
+    "toast.loadFailed": "Echec du chargement des donnees",
+    "toast.deleteFailed": "Echec de la suppression",
+    "toast.saving": "Enregistrement...",
+    "toast.networkError": "Erreur reseau. Veuillez reessayer.",
+    "deleteConfirm": "Etes-vous sur de vouloir supprimer cet element ? Cette action est irreversible.",
+    "delete": "Supprimer",
+    "keepItem": "Garder",
+    "emptyPaymentsTitle": "Pas encore de paiements",
+    "emptyPaymentsDesc": "Les paiements apparaitront ici une fois un bail configure.",
+    "emptyCommunicationsTitle": "Pas encore de communications",
+    "emptyCommunicationsDesc": "Les e-mails et SMS envoyes seront enregistres ici."
   }
 }

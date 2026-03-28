@@ -8,6 +8,26 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Communication {
   id: string;
@@ -36,6 +56,7 @@ interface Tenant {
 
 export default function CommunicationsPage() {
   const t = useTranslations("communications");
+  const tc = useTranslations("dashboard");
 
   const [communications, setCommunications] = useState<Communication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,12 +83,12 @@ export default function CommunicationsPage() {
     other: t("typeOther"),
   };
 
-  const statusColors: Record<string, string> = {
-    queued: "bg-yellow-100 text-yellow-700",
-    sent: "bg-green-100 text-green-700",
-    delivered: "bg-green-100 text-green-700",
-    failed: "bg-red-100 text-red-700",
-    bounced: "bg-red-100 text-red-700",
+  const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; className: string }> = {
+    queued: { variant: "secondary", className: "bg-yellow-100 text-yellow-700 border-transparent" },
+    sent: { variant: "default", className: "bg-green-100 text-green-700 border-transparent" },
+    delivered: { variant: "default", className: "bg-green-100 text-green-700 border-transparent" },
+    failed: { variant: "destructive", className: "" },
+    bounced: { variant: "destructive", className: "" },
   };
 
   const statusLabels: Record<string, string> = {
@@ -96,9 +117,11 @@ export default function CommunicationsPage() {
         setCommunications(json.data || []);
       } else {
         setError(t("loadError"));
+        toast.error(t("loadError"));
       }
     } catch {
       setError(t("loadError"));
+      toast.error(t("loadError"));
     } finally {
       setLoading(false);
     }
@@ -147,223 +170,315 @@ export default function CommunicationsPage() {
       {/* Page header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+        <p className="mt-1 text-sm text-muted-foreground">
           {t("subtitle")}
         </p>
       </div>
 
       {/* Filter bar */}
-      <div className="flex gap-2 items-center mb-6">
-        <select
-          value={propertyFilter}
-          onChange={(e) => setPropertyFilter(e.target.value)}
-          className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-        >
-          <option value="">{t("allProperties")}</option>
-          {properties.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t("allProperties")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allProperties")}</SelectItem>
+            {properties.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          value={tenantFilter}
-          onChange={(e) => setTenantFilter(e.target.value)}
-          className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-        >
-          <option value="">{t("allTenants")}</option>
-          {tenants.map((tn) => (
-            <option key={tn.id} value={tn.id}>
-              {tn.firstName} {tn.lastName}
-            </option>
-          ))}
-        </select>
+        <Select value={tenantFilter} onValueChange={setTenantFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t("allTenants")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allTenants")}</SelectItem>
+            {tenants.map((tn) => (
+              <SelectItem key={tn.id} value={tn.id}>
+                {tn.firstName} {tn.lastName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-        >
-          <option value="">{t("allTypes")}</option>
-          {Object.entries(typeLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder={t("allTypes")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("allTypes")}</SelectItem>
+            {Object.entries(typeLabels).map(([value, label]) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800 mb-6 flex items-center gap-2">
+        <div className="mb-6 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading skeleton */}
       {loading && (
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] overflow-hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="border-b border-[hsl(var(--border))] px-4 py-3"
-            >
-              <div className="animate-pulse bg-[hsl(var(--muted))] h-12 rounded" />
-            </div>
-          ))}
-        </div>
+        <Card>
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <TableHead key={i}><Skeleton className="h-4 w-20" /></TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="md:hidden space-y-3 p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-lg" />
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Empty state */}
       {!loading && !error && communications.length === 0 && (
         <div className="py-16 text-center">
-          <Mail className="mx-auto h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <h2 className="mt-4 text-lg font-semibold">{t("emptyTitle")}</h2>
-          <p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-            {t("emptyDescription")}
+          <Mail className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h2 className="mt-4 text-lg font-semibold">{tc("emptyCommunicationsTitle")}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {tc("emptyCommunicationsDesc")}
           </p>
         </div>
       )}
 
       {/* Communications table */}
       {!loading && !error && communications.length > 0 && (
-        <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] overflow-hidden">
-          {/* Table header */}
-          <div className="bg-[hsl(var(--muted))] grid grid-cols-[15%_8%_20%_30%_15%_12%] px-4 py-3">
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("typeLabel")}
-            </span>
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("channelLabel")}
-            </span>
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("recipientLabel")}
-            </span>
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("subjectLabel")}
-            </span>
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("dateLabel")}
-            </span>
-            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
-              {t("statusLabel")}
-            </span>
+        <Card>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs uppercase">{t("typeLabel")}</TableHead>
+                  <TableHead className="text-xs uppercase">{t("channelLabel")}</TableHead>
+                  <TableHead className="text-xs uppercase">{t("recipientLabel")}</TableHead>
+                  <TableHead className="text-xs uppercase">{t("subjectLabel")}</TableHead>
+                  <TableHead className="text-xs uppercase">{t("dateLabel")}</TableHead>
+                  <TableHead className="text-xs uppercase">{t("statusLabel")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {communications.map((comm) => (
+                  <>
+                    <TableRow
+                      key={comm.id}
+                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleExpanded(comm.id)}
+                      onKeyDown={(e) => handleKeyDown(e, comm.id)}
+                    >
+                      <TableCell className="text-sm">
+                        {typeLabels[comm.type] || comm.type}
+                      </TableCell>
+                      <TableCell>
+                        {comm.channel === "email" ? (
+                          <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-700 border-transparent">
+                            <Mail className="h-3 w-3" />
+                            {t("channelEmail")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-700 border-transparent">
+                            <MessageSquare className="h-3 w-3" />
+                            {t("channelSms")}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="text-sm">{comm.recipientName || "-"}</span>
+                          {comm.recipientEmail && (
+                            <p className="text-xs text-muted-foreground">{comm.recipientEmail}</p>
+                          )}
+                          {comm.recipientPhone && !comm.recipientEmail && (
+                            <p className="text-xs text-muted-foreground">{comm.recipientPhone}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-sm">
+                        {comm.subject || "-"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(comm.createdAt).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-between">
+                          <Badge
+                            variant={statusConfig[comm.status]?.variant || "outline"}
+                            className={statusConfig[comm.status]?.className || ""}
+                          >
+                            {statusLabels[comm.status] || comm.status}
+                          </Badge>
+                          <ChevronDown
+                            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
+                              expandedId === comm.id ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {expandedId === comm.id && (
+                      <TableRow key={`${comm.id}-expanded`}>
+                        <TableCell colSpan={6} className="bg-muted/30 px-6 py-4">
+                          {comm.subject && (
+                            <div className="mb-3">
+                              <span className="text-xs font-semibold uppercase text-muted-foreground">
+                                {t("subjectLabel")}
+                              </span>
+                              <p className="mt-1 text-sm">{comm.subject}</p>
+                            </div>
+                          )}
+                          <div className="mb-2">
+                            <span className="text-xs font-semibold uppercase text-muted-foreground">
+                              {t("bodyLabel")}
+                            </span>
+                            <div className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg bg-background p-4 font-mono text-sm">
+                              {comm.body || "-"}
+                            </div>
+                          </div>
+                          {comm.status === "failed" && comm.errorMessage && (
+                            <div className="mt-2 flex items-center gap-1 text-sm text-red-600">
+                              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                              <span>
+                                {t("errorLabel")}: {comm.errorMessage}
+                              </span>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
-          {/* Table rows */}
-          {communications.map((comm) => (
-            <div key={comm.id}>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => toggleExpanded(comm.id)}
-                onKeyDown={(e) => handleKeyDown(e, comm.id)}
-                className="grid grid-cols-[15%_8%_20%_30%_15%_12%] px-4 py-3 border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 cursor-pointer transition-colors items-center"
-              >
-                {/* Type */}
-                <span className="text-sm">
-                  {typeLabels[comm.type] || comm.type}
-                </span>
-
-                {/* Channel */}
-                <span>
-                  {comm.channel === "email" ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-700 px-2 py-0.5 text-xs font-semibold">
-                      <Mail className="h-3 w-3" />
-                      {t("channelEmail")}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 text-purple-700 px-2 py-0.5 text-xs font-semibold">
-                      <MessageSquare className="h-3 w-3" />
-                      {t("channelSms")}
-                    </span>
-                  )}
-                </span>
-
-                {/* Recipient */}
-                <div>
-                  <span className="text-sm">
-                    {comm.recipientName || "-"}
-                  </span>
-                  {comm.recipientEmail && (
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {comm.recipientEmail}
-                    </p>
-                  )}
-                  {comm.recipientPhone && !comm.recipientEmail && (
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                      {comm.recipientPhone}
-                    </p>
-                  )}
-                </div>
-
-                {/* Subject */}
-                <span className="text-sm truncate pr-2">
-                  {comm.subject || "-"}
-                </span>
-
-                {/* Date */}
-                <span className="text-sm text-[hsl(var(--muted-foreground))]">
-                  {new Date(comm.createdAt).toLocaleDateString(undefined, {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-
-                {/* Status + chevron */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      statusColors[comm.status] || "bg-gray-100 text-gray-700"
-                    }`}
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3 p-4">
+            {communications.map((comm) => (
+              <Card key={comm.id}>
+                <CardContent className="p-4">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleExpanded(comm.id)}
+                    onKeyDown={(e) => handleKeyDown(e, comm.id)}
+                    className="cursor-pointer"
                   >
-                    {statusLabels[comm.status] || comm.status}
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-[hsl(var(--muted-foreground))] transition-transform duration-200 ${
-                      expandedId === comm.id ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Expanded row */}
-              {expandedId === comm.id && (
-                <div className="bg-[hsl(var(--muted))]/30 px-6 py-4 border-b border-[hsl(var(--border))]">
-                  {comm.subject && (
-                    <div className="mb-3">
-                      <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase">
-                        {t("subjectLabel")}
-                      </span>
-                      <p className="text-sm mt-1">{comm.subject}</p>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{typeLabels[comm.type] || comm.type}</p>
+                        <p className="text-xs text-muted-foreground">{comm.recipientName || "-"}</p>
+                        {comm.recipientEmail && (
+                          <p className="text-xs text-muted-foreground">{comm.recipientEmail}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {comm.channel === "email" ? (
+                          <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-700 border-transparent">
+                            <Mail className="h-3 w-3" />
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-700 border-transparent">
+                            <MessageSquare className="h-3 w-3" />
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={statusConfig[comm.status]?.variant || "outline"}
+                          className={statusConfig[comm.status]?.className || ""}
+                        >
+                          {statusLabels[comm.status] || comm.status}
+                        </Badge>
+                      </div>
                     </div>
-                  )}
-                  <div className="mb-2">
-                    <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase">
-                      {t("bodyLabel")}
-                    </span>
-                    <div className="rounded-lg bg-[hsl(var(--background))] p-4 text-sm whitespace-pre-wrap font-mono max-h-64 overflow-y-auto mt-1">
-                      {comm.body || "-"}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="truncate text-sm text-muted-foreground">{comm.subject || "-"}</span>
+                      <ChevronDown
+                        className={`ml-2 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform duration-200 ${
+                          expandedId === comm.id ? "rotate-180" : ""
+                        }`}
+                      />
                     </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {new Date(comm.createdAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
                   </div>
-                  {comm.status === "failed" && comm.errorMessage && (
-                    <div className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      <span>
-                        {t("errorLabel")}: {comm.errorMessage}
-                      </span>
+
+                  {/* Expanded content */}
+                  {expandedId === comm.id && (
+                    <div className="mt-3 border-t pt-3">
+                      {comm.subject && (
+                        <div className="mb-3">
+                          <span className="text-xs font-semibold uppercase text-muted-foreground">
+                            {t("subjectLabel")}
+                          </span>
+                          <p className="mt-1 text-sm">{comm.subject}</p>
+                        </div>
+                      )}
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold uppercase text-muted-foreground">
+                          {t("bodyLabel")}
+                        </span>
+                        <div className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/30 p-3 font-mono text-sm">
+                          {comm.body || "-"}
+                        </div>
+                      </div>
+                      {comm.status === "failed" && comm.errorMessage && (
+                        <div className="mt-2 flex items-center gap-1 text-sm text-red-600">
+                          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                          <span>
+                            {t("errorLabel")}: {comm.errorMessage}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </Card>
       )}
     </div>
   );
