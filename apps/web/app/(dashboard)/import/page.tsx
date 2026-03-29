@@ -154,10 +154,16 @@ export default function ImportPage() {
     }
   }, [logMessages]);
 
-  // Initialize selected indices when discovered data arrives
+  // Initialize selected indices when discovered data arrives — select ALL by default
   useEffect(() => {
-    if (session?.status === "discovered" && session?.discoveredData) {
-      setSelectedIndices(new Set(session.discoveredData.map((_: unknown, i: number) => i)));
+    if (session?.status === "discovered" && Array.isArray(session?.discoveredData) && session.discoveredData.length > 0) {
+      setSelectedIndices((prev) => {
+        // Only set if not already initialized (avoid overwriting user deselections)
+        if (prev.size === 0) {
+          return new Set(session.discoveredData!.map((_: unknown, i: number) => i));
+        }
+        return prev;
+      });
     }
   }, [session?.status, session?.discoveredData]);
 
@@ -509,30 +515,28 @@ export default function ImportPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input"
-                    checked={selectedIndices.size === session.discoveredData.length}
-                    onChange={handleToggleAll}
-                  />
-                  {t("selectAll")}
-                </Label>
-              </div>
+              <button
+                type="button"
+                onClick={handleToggleAll}
+                className="flex items-center gap-2 text-sm cursor-pointer"
+              >
+                <span className={`flex h-5 w-5 items-center justify-center rounded border-2 ${selectedIndices.size === session.discoveredData.length ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}>
+                  {selectedIndices.size === session.discoveredData.length && <span className="text-xs">✓</span>}
+                </span>
+                {t("selectAll")} ({selectedIndices.size}/{session.discoveredData.length})
+              </button>
 
               <div className="rounded-lg border border-border overflow-hidden">
                 {session.discoveredData.map((prop, i) => (
-                  <div
+                  <button
+                    type="button"
                     key={i}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50"
+                    onClick={() => handleToggleProperty(i)}
+                    className="flex w-full items-center gap-3 px-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 text-left cursor-pointer"
                   >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-input"
-                      checked={selectedIndices.has(i)}
-                      onChange={() => handleToggleProperty(i)}
-                    />
+                    <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${selectedIndices.has(i) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"}`}>
+                      {selectedIndices.has(i) && <span className="text-xs">✓</span>}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium">{prop.name}</span>
                       <span className="block text-xs text-muted-foreground">
@@ -543,7 +547,7 @@ export default function ImportPage() {
                         {prop.payments.length} payments
                       </span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </CardContent>
@@ -551,6 +555,7 @@ export default function ImportPage() {
               <Button
                 onClick={handleStartImport}
                 disabled={selectedIndices.size === 0}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {t("importSelected")}
               </Button>
