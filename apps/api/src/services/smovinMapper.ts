@@ -51,37 +51,73 @@ export function parseAddress(fullAddress: string): {
   city: string;
 } {
   const trimmed = fullAddress.trim();
+  if (!trimmed) return { street: "", streetNumber: "", box: null, postalCode: "", city: "" };
 
-  // Split on the last comma to separate street from postal+city
-  const lastCommaIdx = trimmed.lastIndexOf(",");
   let streetPart = trimmed;
-  let postalCity = "";
+  let postalCode = "";
+  let city = "";
 
-  if (lastCommaIdx > -1) {
-    streetPart = trimmed.substring(0, lastCommaIdx).trim();
-    postalCity = trimmed.substring(lastCommaIdx + 1).trim();
+  // Format 1: "Street Number, PostalCode City" (comma-separated)
+  const commaIdx = trimmed.lastIndexOf(",");
+  if (commaIdx > -1) {
+    streetPart = trimmed.substring(0, commaIdx).trim();
+    const postalCity = trimmed.substring(commaIdx + 1).trim();
+    const postalMatch = postalCity.match(/^(\d{4})\s+(.+)$/);
+    if (postalMatch) {
+      postalCode = postalMatch[1];
+      city = postalMatch[2].trim();
+    } else {
+      city = postalCity;
+    }
   }
 
-  // Parse postal code and city from "1000 Bruxelles"
-  const postalMatch = postalCity.match(/^(\d{4})\s+(.+)$/);
-  const postalCode = postalMatch ? postalMatch[1] : "";
-  const city = postalMatch ? postalMatch[2].trim() : postalCity;
-
-  // Parse street name, number, and optional box from "Rue de la Loi 16 bus 3" or "Rue de la Loi 16/3"
+  // Parse street name, number, and optional box
   let street = streetPart;
   let streetNumber = "";
   let box: string | null = null;
 
-  // Try to find the street number (last number sequence in the street part, possibly followed by bus/boite)
-  const numberMatch = streetPart.match(
-    /^(.+?)\s+(\d+[\w]*)\s*(?:(?:bus|bte|boite|\/)\s*(\w+))?$/i,
+  // Try: "Streetname 123 bus/bte/boite/kamer/studio X" or "Streetname 123/X"
+  const boxMatch = streetPart.match(
+    /^(.+?)\s+(\d+[\w]*)\s*(?:(?:bus|bte|boite|kamer|studio|\/)\s*(\w+))$/i,
   );
-  if (numberMatch) {
-    street = numberMatch[1].trim();
-    streetNumber = numberMatch[2];
-    box = numberMatch[3] || null;
+  if (boxMatch) {
+    street = boxMatch[1].trim();
+    streetNumber = boxMatch[2];
+    box = boxMatch[3] || null;
+    return { street, streetNumber, box, postalCode, city };
   }
 
+  // Try: "Streetname 123 CityName" (no comma — Smovin format)
+  // Match street ending in a common Belgian suffix, then number, then city
+  const smovinMatch = streetPart.match(
+    /^(.+?(?:straat|laan|weg|steenweg|plein|dreef|lei|singel|boulevard|avenue|rue|chaussée|place|pad|dijk|kaai|gracht|berg|hof|park|ring|baan|vest|markt|dam|kade|wal))\s+(\d+[\w]*)\s+(.+)$/i,
+  );
+  if (smovinMatch) {
+    street = smovinMatch[1].trim();
+    streetNumber = smovinMatch[2];
+    // Only treat as city if no comma was found (otherwise city was already parsed)
+    if (!city) city = smovinMatch[3].trim();
+    return { street, streetNumber, box, postalCode, city };
+  }
+
+  // Try: "Streetname 123 Cityname" (generic — number followed by non-numeric word)
+  const genericMatch = streetPart.match(/^(.+?)\s+(\d+[\w]*)\s+([A-Za-z].+)$/);
+  if (genericMatch && !city) {
+    street = genericMatch[1].trim();
+    streetNumber = genericMatch[2];
+    city = genericMatch[3].trim();
+    return { street, streetNumber, box, postalCode, city };
+  }
+
+  // Try: "Streetname 123" (number at end, no city)
+  const simpleMatch = streetPart.match(/^(.+?)\s+(\d+[\w]*)$/);
+  if (simpleMatch) {
+    street = simpleMatch[1].trim();
+    streetNumber = simpleMatch[2];
+    return { street, streetNumber, box, postalCode, city };
+  }
+
+  // Fallback: entire string as street
   return { street, streetNumber, box, postalCode, city };
 }
 
