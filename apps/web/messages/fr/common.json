@@ -615,6 +615,7 @@
     "skippedSummary": "{count} biens ignores (existaient deja)",
     "startNew": "Nouvel Import",
     "errorGeneric": "Une erreur s'est produite pendant l'import. Vous pouvez reessayer avec vos identifiants enregistres ou les supprimer et recommencer.",
+    "errorCredentialsMissing": "Vos identifiants enregistres ont expire. Veuillez demarrer un nouvel import avec vos identifiants Smovin.",
     "errorLoginFailed": "Impossible de se connecter a Smovin. Veuillez verifier votre e-mail et votre mot de passe.",
     "errorCloudflare": "Le systeme de securite de Smovin a bloque l'import. C'est une limitation connue de la fonctionnalite beta. Veuillez reessayer plus tard.",
     "retry": "Reessayer",

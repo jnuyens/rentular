@@ -321,12 +321,7 @@ const worker = new Worker(
             skipped: skippedCount,
           },
           errorMessage: hasErrors ? `Partial import. ${errors.length} error(s):\n${errors.join("\n")}` : null,
-          credentialEmail: null,
-          credentialEmailIv: null,
-          credentialEmailTag: null,
-          credentialPassword: null,
-          credentialPasswordIv: null,
-          credentialPasswordTag: null,
+          // Keep credentials so user can retry without re-entering (user deletes explicitly via UI)
           progress: {
             step: "complete",
             message: resultMessage,

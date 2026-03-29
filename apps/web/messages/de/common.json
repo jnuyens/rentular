@@ -615,6 +615,7 @@
     "skippedSummary": "{count} Immobilien uebersprungen (existierten bereits)",
     "startNew": "Neuen Import Starten",
     "errorGeneric": "Beim Import ist ein Fehler aufgetreten. Sie koennen es mit Ihren gespeicherten Anmeldedaten erneut versuchen oder diese loeschen und von vorne beginnen.",
+    "errorCredentialsMissing": "Ihre gespeicherten Anmeldedaten sind abgelaufen. Bitte starten Sie einen neuen Import mit Ihren Smovin-Anmeldedaten.",
     "errorLoginFailed": "Anmeldung bei Smovin fehlgeschlagen. Bitte ueberpruefen Sie Ihre E-Mail und Ihr Passwort.",
     "errorCloudflare": "Das Sicherheitssystem von Smovin hat den Import blockiert. Dies ist eine bekannte Einschraenkung der Beta-Funktion. Bitte versuchen Sie es spaeter erneut.",
     "retry": "Erneut versuchen",

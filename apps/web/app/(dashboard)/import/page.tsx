@@ -717,12 +717,14 @@ export default function ImportPage() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>{t("statusFailed")}</AlertTitle>
                 <AlertDescription>
-                  {session?.errorMessage?.includes("login")
-                    ? t("errorLoginFailed")
-                    : session?.errorMessage?.includes("cloudflare") ||
-                        session?.errorMessage?.includes("Cloudflare")
-                      ? t("errorCloudflare")
-                      : t("errorGeneric")}
+                  {session?.errorMessage?.includes("Credentials missing")
+                    ? t("errorCredentialsMissing") || "Credentials expired. Please start a new import with your login details."
+                    : session?.errorMessage?.includes("login")
+                      ? t("errorLoginFailed")
+                      : session?.errorMessage?.includes("cloudflare") ||
+                          session?.errorMessage?.includes("Cloudflare")
+                        ? t("errorCloudflare")
+                        : t("errorGeneric")}
                 </AlertDescription>
               </Alert>
               {/* Show detailed error message for debugging/support */}

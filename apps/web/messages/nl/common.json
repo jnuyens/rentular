@@ -615,6 +615,7 @@
     "skippedSummary": "{count} eigendommen overgeslagen (bestonden al)",
     "startNew": "Nieuwe Import Starten",
     "errorGeneric": "Er ging iets mis tijdens het importeren. U kunt het opnieuw proberen met uw opgeslagen inloggegevens of deze verwijderen en opnieuw beginnen.",
+    "errorCredentialsMissing": "Uw opgeslagen inloggegevens zijn verlopen. Start een nieuwe import met uw Smovin-inloggegevens.",
     "errorLoginFailed": "Kon niet inloggen bij Smovin. Controleer uw e-mail en wachtwoord.",
     "errorCloudflare": "Het beveiligingssysteem van Smovin heeft de import geblokkeerd. Dit is een bekende beperking van de betafunctie. Probeer het later opnieuw.",
     "retry": "Opnieuw proberen",

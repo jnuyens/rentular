@@ -615,6 +615,7 @@
     "skippedSummary": "{count} properties skipped (already existed)",
     "startNew": "Start New Import",
     "errorGeneric": "Something went wrong during the import. You can retry with your stored credentials or delete them and start over.",
+    "errorCredentialsMissing": "Your stored credentials have expired. Please start a new import with your Smovin login details.",
     "errorLoginFailed": "Could not log into Smovin. Please check your email and password.",
     "errorCloudflare": "Smovin's security system blocked the import. This is a known limitation of the beta feature. Please try again later.",
     "retry": "Retry",
