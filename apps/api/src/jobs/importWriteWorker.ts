@@ -98,9 +98,11 @@ const worker = new Worker(
 
       if (!session) throw new Error("Import session not found");
 
-      // 2. Parse discoveredData and selectedProperties
-      const discoveredData = (session.discoveredData || []) as SmovinProperty[];
-      const selectedIndices = (session.selectedProperties || []) as number[];
+      // 2. Parse discoveredData and selectedProperties (MySQL JSON columns may return strings)
+      const rawDiscovered = session.discoveredData;
+      const discoveredData = (typeof rawDiscovered === "string" ? JSON.parse(rawDiscovered) : rawDiscovered || []) as SmovinProperty[];
+      const rawSelected = session.selectedProperties;
+      const selectedIndices = (typeof rawSelected === "string" ? JSON.parse(rawSelected) : rawSelected || []) as number[];
 
       if (selectedIndices.length === 0) {
         throw new Error("No properties selected for import");
