@@ -1,42 +1,39 @@
 {
   "version": "1.0",
-  "timestamp": "2026-03-28T10:31:43.232Z",
-  "phase": "06",
-  "phase_name": "smovin-import-beta",
-  "phase_dir": ".planning/phases/06-smovin-import-beta",
-  "plan": 4,
-  "task": 3,
-  "total_tasks": 3,
+  "timestamp": "2026-03-29T20:52:02.204Z",
+  "phase": "07",
+  "phase_name": "ui-polish-onboarding-launch-readiness",
+  "phase_dir": ".planning/phases/07-ui-polish-onboarding-launch-readiness",
+  "plan": null,
+  "task": null,
+  "total_tasks": 11,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "06-01: Schema + Spike Test", "status": "done", "commit": "094594f"},
-    {"id": 2, "name": "06-02: Import API routes + discovery worker", "status": "done", "commit": "90d3c52"},
-    {"id": 3, "name": "06-03: Data mapper + import write worker", "status": "done", "commit": "1f05d2e"},
-    {"id": 4, "name": "06-04: Frontend import page + i18n", "status": "done", "commit": "c1b7eb2"}
+    {"id": "07-01", "name": "shadcn/ui foundation, CSS vars, Toaster, logo fix, DB schema", "status": "done"},
+    {"id": "07-02", "name": "Mobile responsive dashboard + properties/tenants/leases migration", "status": "done"},
+    {"id": "07-03", "name": "Landing page rewrite with auth routing + Stripe pricing", "status": "done"},
+    {"id": "07-04", "name": "Payments/communications/indexation/maintenance migration", "status": "done"},
+    {"id": "07-05", "name": "Onboarding wizard with 4 steps, middleware redirect, NextAuth types", "status": "done"},
+    {"id": "07-06", "name": "Settings/import migration + i18n audit (751 keys)", "status": "done"}
   ],
   "remaining_tasks": [],
-  "blockers": [],
+  "blockers": [
+    {"description": "Smovin scraper finds contracts but lease/tenant data extraction is incomplete for some properties", "type": "technical", "workaround": "Scraper updated to UUID-based URLs. Per-contract detail extraction needs further tuning."},
+    {"description": "Production DB schema drift — missing tables/columns required manual ALTER TABLE", "type": "technical", "workaround": "Manually added: onboarding columns, import_sessions, bank_connections, maintenance_tasks, smtp_settings, webhook_events tables, heating_type column. Need automated migration strategy."}
+  ],
   "human_actions_pending": [
-    {"action": "Test end-to-end Smovin import flow on live website", "context": "Scraping a live Nuxt.js SPA with Playwright stealth — cannot be validated statically. User will test after deployment.", "blocking": false},
-    {"action": "Verify API credential isolation (no credential fields in GET responses)", "context": "Part of 06-HUMAN-UAT.md items", "blocking": false},
-    {"action": "Verify DB credential cleanup after successful import", "context": "Credentials should be NULL after import completes", "blocking": false},
-    {"action": "Verify real-time progress bar and log updates in browser", "context": "Polling behavior needs live browser session", "blocking": false}
+    {"action": "Test onboarding wizard end-to-end in browser", "context": "Phase 7 human verification item", "blocking": false},
+    {"action": "Test mobile drawer navigation on actual mobile device", "context": "Phase 7 human verification item", "blocking": false},
+    {"action": "Test language switching across all pages", "context": "Phase 7 human verification item", "blocking": false},
+    {"action": "Verify Stripe pricing cards on landing page", "context": "Phase 7 human verification item", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Smovin import targets web.smovin.app (not app.smovin.be)", "rationale": "Smovin redirects to new Nuxt.js SPA domain", "phase": "06"},
-    {"decision": "Login detection via auth indicators not URL check", "rationale": "Smovin dashboard URL contains /login", "phase": "06"},
-    {"decision": "SPA hydration requires load + networkidle + waitForSelector chain", "rationale": "domcontentloaded alone races with JS rendering", "phase": "06"},
-    {"decision": "Locator API (pressSequentially) for form input", "rationale": "ElementHandle fill() doesn't trigger SPA events reliably", "phase": "06"},
-    {"decision": "Dynamic import for importWriteQueue in import route", "rationale": "Avoids compile-time dependency on Plan 03's file during parallel execution", "phase": "06"},
-    {"decision": "Import nav item restricted to owner role only", "rationale": "Credential-based import is owner-level operation", "phase": "06"}
+    {"decision": "Pass icon names as strings instead of Lucide components across server/client boundary", "rationale": "Next.js cannot serialize React components from server to client components", "phase": "07"},
+    {"decision": "Added QueryClientProvider to root layout", "rationale": "Import page uses @tanstack/react-query but provider was missing", "phase": "07"},
+    {"decision": "Parse MySQL JSON columns on both client and server side", "rationale": "Drizzle ORM with MySQL returns JSON columns as strings, not parsed objects", "phase": "07"},
+    {"decision": "Force dynamic rendering on root page.tsx", "rationale": "auth() requires runtime, cannot be statically pre-rendered", "phase": "07"}
   ],
-  "uncommitted_files": [
-    "README.md", "apps/api/src/lib/gocardless.ts", "apps/api/src/routes/auth.ts",
-    "apps/api/tsconfig.json", "apps/web/app/(auth)/login/page.tsx", "apps/web/lib/auth.ts",
-    "apps/web/middleware.ts", "apps/web/package.json", "docker-compose.postgres.yml",
-    "package.json", "packages/db/drizzle.config.ts", "packages/db/package.json",
-    "packages/db/src/connection.ts", "pnpm-lock.yaml"
-  ],
-  "next_action": "Deploy to live site, then test Smovin import end-to-end. After that, proceed to Phase 7: UI Polish, Onboarding & Launch Readiness (/gsd:plan-phase 7).",
-  "context_notes": "Phase 6 fully executed (4/4 plans), verification passed with human_needed status. User confirmed they will test on live website after deployment, not locally. 14 unstaged files are pre-existing changes unrelated to Phase 6 work. Next milestone phase is Phase 7 (final phase)."
+  "uncommitted_files": [],
+  "next_action": "Fix Smovin import write worker (import fails after discovery). Refine per-contract data extraction. Set up proper DB migration strategy for production deploys.",
+  "context_notes": "All 7 phases of v1.0 milestone are complete and verified. Post-deploy fixes applied: build errors, server/client boundary issues, missing DB schema, Smovin scraper selectors, MySQL JSON parsing. Import discovery works (finds 12 contracts) but import write still failing. Deploy procedure: ssh jnuyens@m1.linuxbe.com 'cd /var/www/rentular.com && git pull && pnpm install && pnpm build && pm2 restart ecosystem.config.cjs'"
 }
