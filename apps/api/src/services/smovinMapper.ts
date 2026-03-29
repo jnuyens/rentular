@@ -387,10 +387,11 @@ export function mapSmovinLease(
     ? parseDate(smovinLease.signingDate)
     : startDate;
 
-  // Validate required fields -- MySQL rejects empty strings for DATE / DECIMAL columns
+  // Fallback for missing startDate — use today so the user can fix it later
+  const effectiveStartDate = startDate || new Date().toISOString().split("T")[0];
   if (!startDate) {
-    throw new Error(
-      `[SmovinMapper] Lease has no valid startDate (raw: "${smovinLease.startDate}"). Cannot insert into DB.`,
+    console.warn(
+      `[SmovinMapper] Lease has no startDate (raw: "${smovinLease.startDate}"), using today as fallback`,
     );
   }
 
@@ -417,8 +418,8 @@ export function mapSmovinLease(
     type: mapLeaseType(smovinLease.type),
     region: guessRegion(postalCode),
     status,
-    signingDate: signingDate || startDate, // fallback to startDate if signingDate unparseable
-    startDate,
+    signingDate: signingDate || effectiveStartDate,
+    startDate: effectiveStartDate,
     endDate,
     monthlyRent,
     monthlyCharges: smovinLease.charges

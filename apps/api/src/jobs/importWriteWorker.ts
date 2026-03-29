@@ -41,19 +41,23 @@ async function findExistingProperty(
   streetNumber: string,
   postalCode: string,
   city: string,
+  box: string | null,
 ) {
+  const conditions = [
+    eq(properties.ownerId, ownerId),
+    eq(properties.street, street),
+    eq(properties.streetNumber, streetNumber),
+    eq(properties.postalCode, postalCode),
+    eq(properties.city, city),
+  ];
+  // Include box in duplicate check so units at same address are distinct
+  if (box) {
+    conditions.push(eq(properties.box, box));
+  }
   const results = await db
     .select({ id: properties.id })
     .from(properties)
-    .where(
-      and(
-        eq(properties.ownerId, ownerId),
-        eq(properties.street, street),
-        eq(properties.streetNumber, streetNumber),
-        eq(properties.postalCode, postalCode),
-        eq(properties.city, city),
-      ),
-    )
+    .where(and(...conditions))
     .limit(1);
   return results[0] || null;
 }
@@ -156,6 +160,7 @@ const worker = new Worker(
             addr.streetNumber || "0",
             addr.postalCode,
             addr.city,
+            addr.box,
           );
 
           if (existingProp) {
