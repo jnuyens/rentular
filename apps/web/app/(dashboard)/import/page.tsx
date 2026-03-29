@@ -740,9 +740,15 @@ export default function ImportPage() {
               )}
             </CardContent>
             <CardFooter className="gap-3">
-              <Button onClick={() => retryMutation.mutate()}>
-                {t("retry")}
-              </Button>
+              {session?.errorMessage?.includes("Credentials missing") ? (
+                <Button onClick={handleStartNew}>
+                  {t("startNew")}
+                </Button>
+              ) : (
+                <Button onClick={() => retryMutation.mutate()}>
+                  {t("retry")}
+                </Button>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">
