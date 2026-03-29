@@ -154,18 +154,14 @@ export default function ImportPage() {
     }
   }, [logMessages]);
 
-  // Initialize selected indices when discovered data arrives — select ALL by default
+  // Initialize selected indices ONCE when discovered data first arrives — select ALL by default
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
   useEffect(() => {
-    if (session?.status === "discovered" && Array.isArray(session?.discoveredData) && session.discoveredData.length > 0) {
-      setSelectedIndices((prev) => {
-        // Only set if not already initialized (avoid overwriting user deselections)
-        if (prev.size === 0) {
-          return new Set(session.discoveredData!.map((_: unknown, i: number) => i));
-        }
-        return prev;
-      });
+    if (!selectionInitialized && session?.status === "discovered" && Array.isArray(session?.discoveredData) && session.discoveredData.length > 0) {
+      setSelectedIndices(new Set(session.discoveredData.map((_: unknown, i: number) => i)));
+      setSelectionInitialized(true);
     }
-  }, [session?.status, session?.discoveredData]);
+  }, [selectionInitialized, session?.status, session?.discoveredData]);
 
   // Submit credentials mutation
   const submitCredentialsMutation = useMutation({
