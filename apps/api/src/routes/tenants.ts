@@ -28,37 +28,53 @@ const createTenantSchema = z.object({
 
 export const tenantsRouter = new Hono();
 
-// Helper: get tenant IDs accessible to the user (join chain: properties -> leases -> leaseTenants)
+// Helper: get tenant IDs accessible to the user
+// Includes: tenants linked via leases on accessible properties + tenants owned directly (ownerId)
 async function getAccessibleTenantIds(userId: string): Promise<string[]> {
+  const tenantIdSet = new Set<string>();
+
+  // 1. Include tenants owned directly by the user (covers imported tenants without leases)
+  const ownedTenants = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.ownerId, userId));
+  for (const t of ownedTenants) tenantIdSet.add(t.id);
+
+  // 2. Include tenants linked via leases on accessible properties
   const accessibleIds = await getAccessiblePropertyIds(userId);
-  if (accessibleIds.length === 0) return [];
+  if (accessibleIds.length > 0) {
+    // Filter out properties where user is accountant (accountant blocked from tenants per D-05)
+    const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+      .from(propertyManagers)
+      .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
+    const allowedIds = roles.filter(r => canAccessDomain(r.role as PropertyManagerRole, "tenants")).map(r => r.propertyId);
 
-  // Filter out properties where user is accountant (accountant blocked from tenants per D-05)
-  const roles = await db.select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
-    .from(propertyManagers)
-    .where(and(eq(propertyManagers.userId, userId), isNotNull(propertyManagers.acceptedAt), inArray(propertyManagers.propertyId, accessibleIds)));
-  const allowedIds = roles.filter(r => canAccessDomain(r.role as PropertyManagerRole, "tenants")).map(r => r.propertyId);
-  if (allowedIds.length === 0) return [];
+    if (allowedIds.length > 0) {
+      const leaseRows = await db.select({ id: leases.id }).from(leases).where(inArray(leases.propertyId, allowedIds));
+      const leaseIds = leaseRows.map(l => l.id);
 
-  // Join chain: properties -> leases -> leaseTenants -> tenants
-  const leaseRows = await db.select({ id: leases.id }).from(leases).where(inArray(leases.propertyId, allowedIds));
-  const leaseIds = leaseRows.map(l => l.id);
-  if (leaseIds.length === 0) return [];
+      if (leaseIds.length > 0) {
+        const tenantLinks = await db.select({ tenantId: leaseTenants.tenantId }).from(leaseTenants).where(inArray(leaseTenants.leaseId, leaseIds));
+        for (const t of tenantLinks) tenantIdSet.add(t.tenantId);
+      }
+    }
+  }
 
-  const tenantLinks = await db.select({ tenantId: leaseTenants.tenantId }).from(leaseTenants).where(inArray(leaseTenants.leaseId, leaseIds));
-  return [...new Set(tenantLinks.map(t => t.tenantId))];
+  return [...tenantIdSet];
 }
 
 tenantsRouter.get("/", async (c) => {
-  const userId = getRequiredUserId(c);
-  const tenantIds = await getAccessibleTenantIds(userId);
-  if (tenantIds.length === 0) return c.json({ data: [], meta: { total: 0, page: 1, perPage: 100 } });
+  try {
+    const userId = getRequiredUserId(c);
+    const tenantIds = await getAccessibleTenantIds(userId);
+    if (tenantIds.length === 0) return c.json({ data: [], meta: { total: 0, page: 1, perPage: 100 } });
 
-  const result = await db
-    .select()
-    .from(tenants)
-    .where(inArray(tenants.id, tenantIds));
-  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    const result = await db
+      .select()
+      .from(tenants)
+      .where(inArray(tenants.id, tenantIds));
+    return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+  } catch (err) {
+    console.error("[Tenants] GET / error:", err);
+    return c.json({ error: "Failed to fetch tenants" }, 500);
+  }
 });
 
 tenantsRouter.get("/:id", async (c) => {
