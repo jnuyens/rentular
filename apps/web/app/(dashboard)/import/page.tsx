@@ -681,6 +681,18 @@ export default function ImportPage() {
                   {t("skippedSummary", { count: session.importedCounts.skipped })}
                 </p>
               )}
+
+              {/* Show partial errors for completed-with-errors imports */}
+              {session?.errorMessage && (
+                <details className="mt-4 rounded-lg border border-yellow-300 bg-yellow-50">
+                  <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-yellow-800">
+                    {t("errorDetails")}
+                  </summary>
+                  <pre className="px-4 py-3 text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-64 overflow-y-auto font-mono">
+                    {session.errorMessage}
+                  </pre>
+                </details>
+              )}
             </CardContent>
             <CardFooter>
               <Button variant="outline" onClick={handleStartNew}>
@@ -713,6 +725,17 @@ export default function ImportPage() {
                       : t("errorGeneric")}
                 </AlertDescription>
               </Alert>
+              {/* Show detailed error message for debugging/support */}
+              {session?.errorMessage && (
+                <details className="rounded-lg border border-destructive/30 bg-destructive/5">
+                  <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-destructive">
+                    {t("errorDetails") || "Error Details"}
+                  </summary>
+                  <pre className="px-4 py-3 text-xs text-muted-foreground whitespace-pre-wrap break-words max-h-64 overflow-y-auto font-mono">
+                    {session.errorMessage}
+                  </pre>
+                </details>
+              )}
             </CardContent>
             <CardFooter className="gap-3">
               <Button onClick={() => retryMutation.mutate()}>

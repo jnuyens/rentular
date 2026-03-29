@@ -87,9 +87,11 @@ const worker = new Worker(
     let leaseCount = 0;
     let paymentCount = 0;
     let skippedCount = 0;
+    const errors: string[] = []; // Collect per-entity errors
 
     try {
       // 1. Load session from DB
+      console.log(`[ImportWrite] Loading session ${sessionId}...`);
       const [session] = await db
         .select()
         .from(importSessions)
@@ -104,6 +106,8 @@ const worker = new Worker(
       const rawSelected = session.selectedProperties;
       const selectedIndices = (typeof rawSelected === "string" ? JSON.parse(rawSelected) : rawSelected || []) as number[];
 
+      console.log(`[ImportWrite] Session loaded. discoveredData: ${discoveredData.length} properties, selectedIndices: ${JSON.stringify(selectedIndices)}`);
+
       if (selectedIndices.length === 0) {
         throw new Error("No properties selected for import");
       }
@@ -113,122 +117,180 @@ const worker = new Worker(
         .filter((idx) => idx >= 0 && idx < discoveredData.length)
         .map((idx) => discoveredData[idx]);
 
+      if (selectedProperties.length === 0) {
+        throw new Error(`Selected indices ${JSON.stringify(selectedIndices)} are out of range for discoveredData (length: ${discoveredData.length})`);
+      }
+
       const total = selectedProperties.length;
       console.log(`[ImportWrite] Starting import of ${total} properties for session ${sessionId}`);
 
-      // 4. Import each selected property
+      // 4. Import each selected property (per-property error handling for resilience)
       for (let i = 0; i < selectedProperties.length; i++) {
         const smovinProp = selectedProperties[i];
+        const propLabel = `"${smovinProp.name || "unnamed"}" (${smovinProp.address || "no address"})`;
 
-        // Update progress
+        try {
+          // Update progress
+          await db
+            .update(importSessions)
+            .set({
+              progress: {
+                step: "importing",
+                message: `Importing property ${i + 1} of ${total}: ${smovinProp.name || "unnamed"}...`,
+                current: i + 1,
+                total,
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(importSessions.id, sessionId));
+
+          // 4a. Duplicate check for property (D-06)
+          const addr = parseAddress(smovinProp.address || "");
+          console.log(`[ImportWrite] Property ${i + 1}/${total} ${propLabel} -> parsed address: street="${addr.street}" number="${addr.streetNumber}" postal="${addr.postalCode}" city="${addr.city}"`);
+
+          const existingProp = await findExistingProperty(
+            db,
+            session.userId,
+            addr.street,
+            addr.streetNumber || "0",
+            addr.postalCode,
+            addr.city,
+          );
+
+          if (existingProp) {
+            console.log(`[ImportWrite] Skipping duplicate property: ${propLabel}`);
+            skippedCount++;
+            continue;
+          }
+
+          // 4b. Insert property
+          const mappedProp = mapSmovinProperty(smovinProp, session.userId);
+          console.log(`[ImportWrite] Inserting property: ${mappedProp.name} (id=${mappedProp.id}, type=${mappedProp.type})`);
+          await db.insert(properties).values(mappedProp);
+          propCount++;
+
+          // 4c. Import tenants for this property
+          const tenantIds: string[] = [];
+          for (let tIdx = 0; tIdx < (smovinProp.tenants || []).length; tIdx++) {
+            const smovinTenant = smovinProp.tenants[tIdx];
+            const tenantLabel = `"${smovinTenant.firstName} ${smovinTenant.lastName}"`;
+            try {
+              // Duplicate check for tenant (D-06)
+              const existingTenant = smovinTenant.email
+                ? await findExistingTenant(db, session.userId, smovinTenant.email)
+                : null;
+
+              if (existingTenant) {
+                console.log(`[ImportWrite] Using existing tenant: ${tenantLabel} (${existingTenant.id})`);
+                tenantIds.push(existingTenant.id);
+              } else {
+                const mappedTenant = mapSmovinTenant(smovinTenant, session.userId);
+                await db.insert(tenants).values(mappedTenant);
+                tenantCount++;
+                tenantIds.push(mappedTenant.id);
+                console.log(`[ImportWrite] Imported tenant: ${tenantLabel} (${mappedTenant.id})`);
+              }
+            } catch (tenantErr) {
+              const msg = `Tenant ${tenantLabel} for property ${propLabel}: ${tenantErr instanceof Error ? tenantErr.message : String(tenantErr)}`;
+              console.error(`[ImportWrite] TENANT ERROR: ${msg}`);
+              errors.push(msg);
+            }
+          }
+
+          // 4d. Import leases for this property
+          const leaseIds: string[] = [];
+          for (let lIdx = 0; lIdx < (smovinProp.leases || []).length; lIdx++) {
+            const smovinLease = smovinProp.leases[lIdx];
+            const leaseLabel = `lease ${lIdx + 1} (start: "${smovinLease.startDate}", rent: "${smovinLease.monthlyRent}")`;
+            try {
+              const mappedLease = mapSmovinLease(
+                smovinLease,
+                session.userId,
+                mappedProp.id,
+                mappedProp.postalCode,
+              );
+              await db.insert(leases).values(mappedLease);
+              leaseCount++;
+              leaseIds.push(mappedLease.id);
+              console.log(`[ImportWrite] Imported ${leaseLabel} -> id=${mappedLease.id}`);
+
+              // Link tenants to this lease
+              for (let t = 0; t < tenantIds.length; t++) {
+                await db.insert(leaseTenants).values({
+                  leaseId: mappedLease.id,
+                  tenantId: tenantIds[t],
+                  isPrimary: t === 0,
+                });
+              }
+            } catch (leaseErr) {
+              const msg = `Lease ${leaseLabel} for property ${propLabel}: ${leaseErr instanceof Error ? leaseErr.message : String(leaseErr)}`;
+              console.error(`[ImportWrite] LEASE ERROR: ${msg}`);
+              errors.push(msg);
+            }
+          }
+
+          // 4e. Import payments for this property
+          // Use the first lease's ID for linking payments (or skip if no lease)
+          const paymentLeaseId = leaseIds[0];
+          if (paymentLeaseId) {
+            for (let pIdx = 0; pIdx < (smovinProp.payments || []).length; pIdx++) {
+              const smovinPayment = smovinProp.payments[pIdx];
+              const payLabel = `payment ${pIdx + 1} (date: "${smovinPayment.date}", amount: "${smovinPayment.amount}")`;
+              try {
+                const mappedPayment = mapSmovinPayment(smovinPayment, paymentLeaseId);
+                await db.insert(payments).values(mappedPayment);
+                paymentCount++;
+              } catch (payErr) {
+                const msg = `Payment ${payLabel} for property ${propLabel}: ${payErr instanceof Error ? payErr.message : String(payErr)}`;
+                console.error(`[ImportWrite] PAYMENT ERROR: ${msg}`);
+                errors.push(msg);
+              }
+            }
+            if ((smovinProp.payments || []).length > 0) {
+              console.log(`[ImportWrite] Imported payments for property ${mappedProp.name}: ${smovinProp.payments.length} attempted`);
+            }
+          } else if ((smovinProp.payments || []).length > 0) {
+            console.log(`[ImportWrite] Skipping ${smovinProp.payments.length} payments for property ${mappedProp.name} (no lease to link to)`);
+          }
+        } catch (propErr) {
+          const msg = `Property ${propLabel}: ${propErr instanceof Error ? propErr.message : String(propErr)}`;
+          console.error(`[ImportWrite] PROPERTY ERROR: ${msg}`);
+          errors.push(msg);
+          skippedCount++;
+        }
+      }
+
+      // 5. On success (or partial success) -- credential cleanup per D-04
+      const hasErrors = errors.length > 0;
+      const importedAnything = propCount > 0 || tenantCount > 0 || leaseCount > 0 || paymentCount > 0;
+
+      // If nothing was imported and there were errors, mark as failed
+      if (!importedAnything && hasErrors) {
+        const errorSummary = `Import failed for all ${total} properties. Errors:\n${errors.join("\n")}`;
+        console.error(`[ImportWrite] ${errorSummary}`);
         await db
           .update(importSessions)
           .set({
+            status: "failed",
+            errorMessage: errorSummary,
             progress: {
-              step: "importing",
-              message: `Importing property ${i + 1} of ${total}...`,
-              current: i + 1,
+              step: "failed",
+              message: `Import failed. ${errors.length} error(s).`,
+              current: 0,
               total,
             },
             updatedAt: new Date(),
           })
           .where(eq(importSessions.id, sessionId));
-
-        // 4a. Duplicate check for property (D-06)
-        const addr = parseAddress(smovinProp.address);
-        const existingProp = await findExistingProperty(
-          db,
-          session.userId,
-          addr.street,
-          addr.streetNumber || "0",
-          addr.postalCode,
-          addr.city,
-        );
-
-        if (existingProp) {
-          console.log(
-            `[ImportWrite] Skipping duplicate property: ${smovinProp.name} (${smovinProp.address})`,
-          );
-          skippedCount++;
-          continue;
-        }
-
-        // 4b. Insert property
-        const mappedProp = mapSmovinProperty(smovinProp, session.userId);
-        await db.insert(properties).values(mappedProp);
-        propCount++;
-        console.log(`[ImportWrite] Imported property: ${mappedProp.name} (${mappedProp.id})`);
-
-        // 4c. Import tenants for this property
-        const tenantIds: string[] = [];
-        for (const smovinTenant of smovinProp.tenants || []) {
-          // Duplicate check for tenant (D-06)
-          const existingTenant = smovinTenant.email
-            ? await findExistingTenant(db, session.userId, smovinTenant.email)
-            : null;
-
-          if (existingTenant) {
-            console.log(
-              `[ImportWrite] Using existing tenant: ${smovinTenant.firstName} ${smovinTenant.lastName} (${existingTenant.id})`,
-            );
-            tenantIds.push(existingTenant.id);
-          } else {
-            const mappedTenant = mapSmovinTenant(smovinTenant, session.userId);
-            await db.insert(tenants).values(mappedTenant);
-            tenantCount++;
-            tenantIds.push(mappedTenant.id);
-            console.log(
-              `[ImportWrite] Imported tenant: ${mappedTenant.firstName} ${mappedTenant.lastName} (${mappedTenant.id})`,
-            );
-          }
-        }
-
-        // 4d. Import leases for this property
-        const leaseIds: string[] = [];
-        for (const smovinLease of smovinProp.leases || []) {
-          const mappedLease = mapSmovinLease(
-            smovinLease,
-            session.userId,
-            mappedProp.id,
-            mappedProp.postalCode,
-          );
-          await db.insert(leases).values(mappedLease);
-          leaseCount++;
-          leaseIds.push(mappedLease.id);
-          console.log(`[ImportWrite] Imported lease: ${mappedLease.id} (${mappedLease.startDate} - ${mappedLease.endDate || "ongoing"})`);
-
-          // Link tenants to this lease
-          for (let t = 0; t < tenantIds.length; t++) {
-            await db.insert(leaseTenants).values({
-              leaseId: mappedLease.id,
-              tenantId: tenantIds[t],
-              isPrimary: t === 0,
-            });
-          }
-        }
-
-        // 4e. Import payments for this property
-        // Use the first lease's ID for linking payments (or skip if no lease)
-        const paymentLeaseId = leaseIds[0];
-        if (paymentLeaseId) {
-          for (const smovinPayment of smovinProp.payments || []) {
-            const mappedPayment = mapSmovinPayment(smovinPayment, paymentLeaseId);
-            await db.insert(payments).values(mappedPayment);
-            paymentCount++;
-          }
-          if ((smovinProp.payments || []).length > 0) {
-            console.log(
-              `[ImportWrite] Imported ${smovinProp.payments.length} payments for property ${mappedProp.name}`,
-            );
-          }
-        } else if ((smovinProp.payments || []).length > 0) {
-          console.log(
-            `[ImportWrite] Skipping ${smovinProp.payments.length} payments for property ${mappedProp.name} (no lease to link to)`,
-          );
-        }
+        return;
       }
 
-      // 5. On success -- credential cleanup per D-04
+      // Build a result message including any partial errors
+      let resultMessage = "Import complete";
+      if (hasErrors) {
+        resultMessage = `Import completed with ${errors.length} error(s). Some records were skipped.`;
+      }
+
       await db
         .update(importSessions)
         .set({
@@ -240,6 +302,7 @@ const worker = new Worker(
             payments: paymentCount,
             skipped: skippedCount,
           },
+          errorMessage: hasErrors ? `Partial import. ${errors.length} error(s):\n${errors.join("\n")}` : null,
           credentialEmail: null,
           credentialEmailIv: null,
           credentialEmailTag: null,
@@ -248,7 +311,7 @@ const worker = new Worker(
           credentialPasswordTag: null,
           progress: {
             step: "complete",
-            message: "Import complete",
+            message: resultMessage,
             current: total,
             total,
           },
@@ -257,18 +320,34 @@ const worker = new Worker(
         .where(eq(importSessions.id, sessionId));
 
       console.log(
-        `[ImportWrite] Import complete: ${propCount} properties, ${tenantCount} tenants, ${leaseCount} leases, ${paymentCount} payments imported (${skippedCount} skipped)`,
+        `[ImportWrite] Import complete: ${propCount} properties, ${tenantCount} tenants, ${leaseCount} leases, ${paymentCount} payments imported (${skippedCount} skipped, ${errors.length} errors)`,
       );
+      if (hasErrors) {
+        console.warn(`[ImportWrite] Partial errors:\n${errors.join("\n")}`);
+      }
     } catch (err) {
       // 6. On failure -- do NOT delete credentials per D-05 (user can retry)
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[ImportWrite] Failed for session ${sessionId}:`, errorMsg);
+      const fullStack = err instanceof Error && err.stack ? err.stack : "";
+      console.error(`[ImportWrite] FATAL for session ${sessionId}: ${errorMsg}`);
+      if (fullStack) {
+        console.error(`[ImportWrite] Stack trace: ${fullStack}`);
+      }
+
+      // Include partial import counts and per-entity errors in the error message
+      const errorParts = [errorMsg];
+      if (errors.length > 0) {
+        errorParts.push(`Additionally, ${errors.length} per-entity error(s):\n${errors.join("\n")}`);
+      }
+      if (propCount > 0 || tenantCount > 0) {
+        errorParts.push(`Before failure: ${propCount} properties, ${tenantCount} tenants, ${leaseCount} leases, ${paymentCount} payments were imported.`);
+      }
 
       await db
         .update(importSessions)
         .set({
           status: "failed",
-          errorMessage: errorMsg,
+          errorMessage: errorParts.join("\n\n"),
           updatedAt: new Date(),
         })
         .where(eq(importSessions.id, sessionId));

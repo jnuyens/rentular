@@ -631,7 +631,8 @@
     "deleteCredentialsTitle": "Supprimer les identifiants ?",
     "cancelAction": "Annuler",
     "importCompleted": "Importation terminee avec succes !",
-    "importFailed": "L importation a echoue. Veuillez reessayer."
+    "importFailed": "L importation a echoue. Veuillez reessayer.",
+    "errorDetails": "Details de l'erreur"
   },
   "terms": {
     "backToHome": "Retour à l'accueil",

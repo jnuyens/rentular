@@ -631,7 +631,8 @@
     "deleteCredentialsTitle": "Anmeldedaten loeschen?",
     "cancelAction": "Abbrechen",
     "importCompleted": "Import erfolgreich abgeschlossen!",
-    "importFailed": "Import fehlgeschlagen. Bitte versuchen Sie es erneut."
+    "importFailed": "Import fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "errorDetails": "Fehlerdetails"
   },
   "terms": {
     "backToHome": "Zurück zur Startseite",

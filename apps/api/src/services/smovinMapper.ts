@@ -162,10 +162,13 @@ export function mapLeaseType(
 /**
  * Parse a date string from Smovin into ISO format (YYYY-MM-DD).
  * Handles DD/MM/YYYY format common in Belgian apps.
+ * Returns null if the input is empty or unparseable (avoids inserting "" into MySQL DATE columns).
  */
-export function parseDate(dateStr: string): string {
+export function parseDate(dateStr: string): string | null {
+  if (!dateStr || !dateStr.trim()) return null;
+
   // Handle DD/MM/YYYY format common in Belgian apps
-  const ddmmyyyy = dateStr.match(
+  const ddmmyyyy = dateStr.trim().match(
     /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/,
   );
   if (ddmmyyyy) {
@@ -173,17 +176,35 @@ export function parseDate(dateStr: string): string {
     const month = ddmmyyyy[2].padStart(2, "0");
     return `${ddmmyyyy[3]}-${month}-${day}`;
   }
-  // Already ISO format or close to it
-  return dateStr.substring(0, 10);
+
+  // Check if it looks like a valid ISO date (YYYY-MM-DD)
+  const isoMatch = dateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return isoMatch[0];
+  }
+
+  // Could not parse -- return null to avoid MySQL errors
+  console.warn(`[SmovinMapper] Could not parse date: "${dateStr}"`);
+  return null;
 }
 
 /**
  * Parse an amount string from Smovin into a decimal string.
  * Handles European comma decimals (e.g., "1.250,00" -> "1250.00").
+ * Returns "0.00" if the input is empty or contains no digits (avoids inserting "" into MySQL DECIMAL columns).
  */
 export function parseAmount(amountStr: string): string {
+  if (!amountStr || !amountStr.trim()) return "0.00";
+
   // "1.250,00" -> "1250.00" or "850.00" -> "850.00"
   const cleaned = amountStr.replace(/[^\d,.\-]/g, "");
+
+  // No digits at all (e.g., just currency symbols)
+  if (!cleaned || !/\d/.test(cleaned)) {
+    console.warn(`[SmovinMapper] Could not parse amount: "${amountStr}", defaulting to 0.00`);
+    return "0.00";
+  }
+
   // If contains both comma and dot, comma is decimal separator if it comes last
   if (cleaned.includes(",") && cleaned.includes(".")) {
     if (cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")) {
@@ -330,6 +351,20 @@ export function mapSmovinLease(
     ? parseDate(smovinLease.signingDate)
     : startDate;
 
+  // Validate required fields -- MySQL rejects empty strings for DATE / DECIMAL columns
+  if (!startDate) {
+    throw new Error(
+      `[SmovinMapper] Lease has no valid startDate (raw: "${smovinLease.startDate}"). Cannot insert into DB.`,
+    );
+  }
+
+  const monthlyRent = parseAmount(smovinLease.monthlyRent);
+  if (monthlyRent === "0.00" && smovinLease.monthlyRent && smovinLease.monthlyRent.trim()) {
+    console.warn(
+      `[SmovinMapper] Lease monthlyRent parsed to 0.00 from raw: "${smovinLease.monthlyRent}"`,
+    );
+  }
+
   // Determine status: if endDate is in the past -> expired, otherwise active
   let status: "active" | "terminated" | "expired" | "draft" = "active";
   if (endDate) {
@@ -346,10 +381,10 @@ export function mapSmovinLease(
     type: mapLeaseType(smovinLease.type),
     region: guessRegion(postalCode),
     status,
-    signingDate,
+    signingDate: signingDate || startDate, // fallback to startDate if signingDate unparseable
     startDate,
     endDate,
-    monthlyRent: parseAmount(smovinLease.monthlyRent),
+    monthlyRent,
     monthlyCharges: smovinLease.charges
       ? parseAmount(smovinLease.charges)
       : "0.00",
@@ -378,6 +413,14 @@ export function mapSmovinPayment(
 } {
   const paymentStatus = mapPaymentStatus(smovinPayment.status);
   const paymentDate = parseDate(smovinPayment.date);
+
+  // Validate required fields -- MySQL rejects empty strings for DATE / DECIMAL columns
+  if (!paymentDate) {
+    throw new Error(
+      `[SmovinMapper] Payment has no valid date (raw: "${smovinPayment.date}"). Cannot insert into DB.`,
+    );
+  }
+
   return {
     id: crypto.randomUUID(),
     leaseId,

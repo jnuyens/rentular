@@ -157,6 +157,8 @@ importRouter.post(
       const { selectedProperties } = c.req.valid("json");
       const db = getDb();
 
+      console.log(`[Import] start-import request: session=${sessionId}, user=${userId}, selectedProperties=${JSON.stringify(selectedProperties)}`);
+
       const [session] = await db
         .select()
         .from(importSessions)
@@ -164,15 +166,23 @@ importRouter.post(
         .limit(1);
 
       if (!session) {
+        console.warn(`[Import] Session not found: ${sessionId} for user ${userId}`);
         return c.json({ error: "Import session not found" }, 404);
       }
 
       if (session.status !== "discovered") {
+        console.warn(`[Import] Cannot start import: session ${sessionId} status is "${session.status}", expected "discovered"`);
         return c.json(
           { error: `Cannot start import from status "${session.status}". Must be "discovered".` },
           400,
         );
       }
+
+      // Validate discoveredData exists
+      const rawDiscovered = session.discoveredData;
+      const discoveredCount = Array.isArray(rawDiscovered) ? rawDiscovered.length :
+        typeof rawDiscovered === "string" ? JSON.parse(rawDiscovered).length : 0;
+      console.log(`[Import] Session ${sessionId} has ${discoveredCount} discovered properties, user selected ${selectedProperties.length} indices`);
 
       const jobId = `import-${sessionId}`;
 
@@ -182,6 +192,7 @@ importRouter.post(
         .set({
           status: "importing",
           selectedProperties,
+          errorMessage: null, // Clear any previous error
           importJobId: jobId,
           updatedAt: new Date(),
         })
@@ -194,8 +205,11 @@ importRouter.post(
       console.log(`[Import] Started import job ${jobId} for session ${sessionId}`);
       return c.json({ data: { sessionId, status: "importing", jobId } });
     } catch (err) {
-      console.error("[Import] Failed to start import:", err);
-      return c.json({ error: "Failed to start import" }, 500);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : "";
+      console.error(`[Import] Failed to start import: ${errorMsg}`);
+      if (stack) console.error(`[Import] Stack: ${stack}`);
+      return c.json({ error: `Failed to start import: ${errorMsg}` }, 500);
     }
   },
 );

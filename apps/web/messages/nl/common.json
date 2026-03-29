@@ -631,7 +631,8 @@
     "deleteCredentialsTitle": "Inloggegevens verwijderen?",
     "cancelAction": "Annuleren",
     "importCompleted": "Import succesvol afgerond!",
-    "importFailed": "Import mislukt. Probeer het opnieuw."
+    "importFailed": "Import mislukt. Probeer het opnieuw.",
+    "errorDetails": "Foutdetails"
   },
   "terms": {
     "backToHome": "Terug naar home",

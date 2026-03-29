@@ -631,7 +631,8 @@
     "deleteCredentialsTitle": "Delete credentials?",
     "cancelAction": "Cancel",
     "importCompleted": "Import completed successfully!",
-    "importFailed": "Import failed. Please try again."
+    "importFailed": "Import failed. Please try again.",
+    "errorDetails": "Error Details"
   },
   "terms": {
     "backToHome": "Back to home",
