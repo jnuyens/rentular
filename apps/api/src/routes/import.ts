@@ -47,6 +47,9 @@ importRouter.post(
       const id = crypto.randomUUID();
       const db = getDb();
 
+      // Clean up previous sessions for this user (one active session per user)
+      await db.delete(importSessions).where(eq(importSessions.userId, userId));
+
       await db.insert(importSessions).values({
         id,
         userId,
