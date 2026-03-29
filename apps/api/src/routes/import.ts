@@ -109,15 +109,16 @@ importRouter.post("/start-discovery/:sessionId", async (c) => {
       return c.json({ error: "Import session not found" }, 404);
     }
 
-    // Only allow starting discovery from pending or failed (retry case per D-05)
-    if (session.status !== "pending" && session.status !== "failed") {
+    // Allow starting discovery from pending, failed, or completed (retry/re-import case)
+    if (session.status !== "pending" && session.status !== "failed" && session.status !== "completed") {
       return c.json(
-        { error: `Cannot start discovery from status "${session.status}". Must be "pending" or "failed".` },
+        { error: `Cannot start discovery from status "${session.status}". Must be "pending", "failed", or "completed".` },
         400,
       );
     }
 
-    const jobId = `discovery-${sessionId}`;
+    // Use timestamp suffix to avoid BullMQ deduplication on retry
+    const jobId = `discovery-${sessionId}-${Date.now()}`;
 
     // Update session status to discovering
     await db
@@ -184,7 +185,8 @@ importRouter.post(
         typeof rawDiscovered === "string" ? JSON.parse(rawDiscovered).length : 0;
       console.log(`[Import] Session ${sessionId} has ${discoveredCount} discovered properties, user selected ${selectedProperties.length} indices`);
 
-      const jobId = `import-${sessionId}`;
+      // Use timestamp suffix to avoid BullMQ deduplication on retry
+      const jobId = `import-${sessionId}-${Date.now()}`;
 
       // Update session status to importing
       await db
