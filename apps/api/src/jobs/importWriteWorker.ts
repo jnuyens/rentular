@@ -1,5 +1,6 @@
 import { Worker, Queue } from "bullmq";
-import { getDb, importSessions, properties, tenants, leases, leaseTenants, payments } from "@rentular/db";
+import { getDb, importSessions, properties, propertyManagers, tenants, leases, leaseTenants, payments } from "@rentular/db";
+import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import {
   mapSmovinProperty,
@@ -167,6 +168,18 @@ const worker = new Worker(
           const mappedProp = mapSmovinProperty(smovinProp, session.userId);
           console.log(`[ImportWrite] Inserting property: ${mappedProp.name} (id=${mappedProp.id}, type=${mappedProp.type})`);
           await db.insert(properties).values(mappedProp);
+
+          // Auto-register owner in propertyManagers so property is visible in dashboard
+          await db.insert(propertyManagers).values({
+            id: crypto.randomUUID(),
+            propertyId: mappedProp.id,
+            userId: session.userId,
+            role: "owner",
+            invitedBy: null,
+            acceptedAt: new Date(),
+            invitedAt: new Date(),
+          });
+
           propCount++;
 
           // 4c. Import tenants for this property
