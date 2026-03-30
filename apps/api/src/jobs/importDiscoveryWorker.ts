@@ -300,16 +300,25 @@ const worker = new Worker(
                 || currentRentMatch
                 || initialRentMatch;
 
+              // Extract charges/costs (Kosten, Provisie, Charges, Lasten)
+              const chargesMatch = bodyText.match(/(?:Kosten|Provisie|Charges|Lasten|Forfait|Maandelijkse kosten)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i);
+
+              // Log what was found for debugging
+              console.log(`[ImportDiscovery] Lease data for "${property.name}": start=${startMatch?.[1] || "none"}, end=${endMatch?.[1] || "none"}, rent=${rentSource?.[1] || "none"}, charges=${chargesMatch?.[1] || "none"}`);
+
               // Create lease if we found any rent amount OR any date
               if (startMatch || rentSource) {
                 property.leases.push({
                   startDate: startMatch ? startMatch[1] : "",
                   endDate: endMatch ? endMatch[1] : undefined,
                   monthlyRent: rentSource ? rentSource[1].replace(/\s/g, "").trim() + " €" : "",
+                  charges: chargesMatch ? chargesMatch[1].replace(/\s/g, "").trim() + " €" : undefined,
                   type: typeMatch ? "residential" : undefined,
                 });
               } else {
-                console.log(`[ImportDiscovery] No lease data found for property ${i + 1} "${property.name}" — no date or rent patterns matched`);
+                // Log a snippet of the page content to help debug what Smovin shows
+                const snippet = bodyText.replace(/\s+/g, " ").substring(0, 1500);
+                console.log(`[ImportDiscovery] No lease data for "${property.name}". Page snippet: ${snippet}`);
               }
             } catch (leaseErr) {
               console.log(`[ImportDiscovery] Could not scrape leases for property ${i + 1}:`, leaseErr);

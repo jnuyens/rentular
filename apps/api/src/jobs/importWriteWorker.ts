@@ -234,6 +234,7 @@ const worker = new Worker(
                 session.userId,
                 propertyId,
                 addr.postalCode,
+                addr.city,
               );
               await db.insert(leases).values(mappedLease);
               leaseCount++;

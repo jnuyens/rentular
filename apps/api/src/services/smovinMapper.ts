@@ -155,21 +155,37 @@ export function mapPropertyType(
 }
 
 /**
- * Guess the Belgian region from a postal code.
+ * Guess the Belgian region from a postal code or city name.
  * Brussels: 1000-1299
  * Flanders: 1500-3999, 8000-9999
  * Wallonia: 1300-1499, 4000-7999
  */
 export function guessRegion(
   postalCode: string,
+  city?: string,
 ): "flanders" | "wallonia" | "brussels" {
   const code = parseInt(postalCode, 10);
-  if (code >= 1000 && code <= 1299) return "brussels";
-  // Flemish postal codes: 1500-3999, 8000-9999
-  if ((code >= 1500 && code <= 3999) || (code >= 8000 && code <= 9999))
-    return "flanders";
-  // Walloon: 1300-1499, 4000-7999
-  return "wallonia";
+  if (!isNaN(code)) {
+    if (code >= 1000 && code <= 1299) return "brussels";
+    if ((code >= 1500 && code <= 3999) || (code >= 8000 && code <= 9999))
+      return "flanders";
+    if ((code >= 1300 && code <= 1499) || (code >= 4000 && code <= 7999))
+      return "wallonia";
+  }
+  // Fallback: guess from city name when postal code is empty/invalid
+  if (city) {
+    const c = city.toLowerCase().trim();
+    const flemish = ["antwerpen", "anvers", "gent", "gand", "brugge", "bruges", "leuven", "louvain",
+      "mechelen", "malines", "hasselt", "aalst", "sint-niklaas", "kortrijk", "roeselare", "oostende",
+      "turnhout", "genk", "diegem", "dendermonde", "herentals", "lier", "mol", "arendonk"];
+    const brussels = ["brussel", "brussels", "bruxelles"];
+    const walloon = ["liège", "luik", "namur", "namen", "charleroi", "mons", "bergen", "tournai",
+      "doornik", "arlon", "aarlen", "wavre", "waver", "ottignies", "verviers"];
+    if (flemish.some(f => c.includes(f))) return "flanders";
+    if (brussels.some(b => c.includes(b))) return "brussels";
+    if (walloon.some(w => c.includes(w))) return "wallonia";
+  }
+  return "flanders"; // Default to Flanders for Belgian properties without clear signals
 }
 
 /**
@@ -358,6 +374,7 @@ export function mapSmovinLease(
   ownerId: string,
   propertyId: string,
   postalCode: string,
+  city?: string,
 ): {
   id: string;
   ownerId: string;
@@ -421,7 +438,7 @@ export function mapSmovinLease(
     ownerId,
     propertyId,
     type: mapLeaseType(smovinLease.type),
-    region: guessRegion(postalCode),
+    region: guessRegion(postalCode, city),
     status,
     signingDate: signingDate || effectiveStartDate,
     startDate: effectiveStartDate,
