@@ -163,29 +163,31 @@ const worker = new Worker(
             addr.box,
           );
 
+          // 4b. Insert property or reuse existing duplicate
+          let propertyId: string;
           if (existingProp) {
-            console.log(`[ImportWrite] Skipping duplicate property: ${propLabel}`);
+            console.log(`[ImportWrite] Property exists, reusing for tenant/lease import: ${propLabel} (${existingProp.id})`);
+            propertyId = existingProp.id;
             skippedCount++;
-            continue;
+          } else {
+            const mappedProp = mapSmovinProperty(smovinProp, session.userId);
+            console.log(`[ImportWrite] Inserting property: ${mappedProp.name} (id=${mappedProp.id}, type=${mappedProp.type})`);
+            await db.insert(properties).values(mappedProp);
+
+            // Auto-register owner in propertyManagers so property is visible in dashboard
+            await db.insert(propertyManagers).values({
+              id: crypto.randomUUID(),
+              propertyId: mappedProp.id,
+              userId: session.userId,
+              role: "owner",
+              invitedBy: null,
+              acceptedAt: new Date(),
+              invitedAt: new Date(),
+            });
+
+            propertyId = mappedProp.id;
+            propCount++;
           }
-
-          // 4b. Insert property
-          const mappedProp = mapSmovinProperty(smovinProp, session.userId);
-          console.log(`[ImportWrite] Inserting property: ${mappedProp.name} (id=${mappedProp.id}, type=${mappedProp.type})`);
-          await db.insert(properties).values(mappedProp);
-
-          // Auto-register owner in propertyManagers so property is visible in dashboard
-          await db.insert(propertyManagers).values({
-            id: crypto.randomUUID(),
-            propertyId: mappedProp.id,
-            userId: session.userId,
-            role: "owner",
-            invitedBy: null,
-            acceptedAt: new Date(),
-            invitedAt: new Date(),
-          });
-
-          propCount++;
 
           // 4c. Import tenants for this property
           const tenantIds: string[] = [];
@@ -224,8 +226,8 @@ const worker = new Worker(
               const mappedLease = mapSmovinLease(
                 smovinLease,
                 session.userId,
-                mappedProp.id,
-                mappedProp.postalCode,
+                propertyId,
+                addr.postalCode,
               );
               await db.insert(leases).values(mappedLease);
               leaseCount++;
@@ -265,10 +267,10 @@ const worker = new Worker(
               }
             }
             if ((smovinProp.payments || []).length > 0) {
-              console.log(`[ImportWrite] Imported payments for property ${mappedProp.name}: ${smovinProp.payments.length} attempted`);
+              console.log(`[ImportWrite] Imported payments for property "${smovinProp.name}": ${smovinProp.payments.length} attempted`);
             }
           } else if ((smovinProp.payments || []).length > 0) {
-            console.log(`[ImportWrite] Skipping ${smovinProp.payments.length} payments for property ${mappedProp.name} (no lease to link to)`);
+            console.log(`[ImportWrite] Skipping ${smovinProp.payments.length} payments for property "${smovinProp.name}" (no lease to link to)`);
           }
         } catch (propErr) {
           const msg = `Property ${propLabel}: ${propErr instanceof Error ? propErr.message : String(propErr)}`;
