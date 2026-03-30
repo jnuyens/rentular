@@ -278,11 +278,18 @@ const worker = new Worker(
                 || bodyText.match(/€\s*([\d\s.,]+(?:,\d{2}))/);
               const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent|Basishuur|Basishuurprijs)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i);
 
-              // Also try to find any non-zero rent as "X,XX €" pattern on the page (common Smovin format)
-              // Skip "0,00 €" matches — those indicate no rent data was found on the page
-              const anyRentMatch = !currentRentMatch && !initialRentMatch
-                ? bodyText.match(/([1-9][\d.]*,\d{2})\s*€/)
-                : null;
+              // Fallback: find all non-zero "X,XX €" amounts on the page and pick the largest
+              // (monthly rent is typically the largest euro amount on a contract page)
+              let anyRentMatch: RegExpMatchArray | null = null;
+              if (!currentRentMatch && !initialRentMatch) {
+                const allAmounts = [...bodyText.matchAll(/([1-9][\d.]*,\d{2})\s*€/g)];
+                if (allAmounts.length > 0) {
+                  const parseEuro = (s: string) => parseFloat(s.replace(/\./g, "").replace(",", "."));
+                  allAmounts.sort((a, b) => parseEuro(b[1]) - parseEuro(a[1]));
+                  anyRentMatch = allAmounts[0]; // largest amount
+                  console.log(`[ImportDiscovery] Fallback rent for "${property.name}": picked ${anyRentMatch[1]} € (largest of ${allAmounts.length} amounts: ${allAmounts.map(m => m[1]).join(", ")})`);
+                }
+              }
 
               // Prefer non-zero rent sources: if currentRentMatch captured "0,00", try alternatives
               const isZeroRent = (match: RegExpMatchArray | null) =>
