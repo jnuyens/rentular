@@ -272,17 +272,26 @@ const worker = new Worker(
               const endMatch = bodyText.match(/(?:einddatum|eindigen|Einde|Date de fin|End date|Einddatum|Fin)\s*:?\s*\n?\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/i)
                 || bodyText.match(/(?:tot|à|until|-)\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/i);
 
-              // Rent: try multiple patterns (label + amount, or any €-prefixed/suffixed amount)
-              const currentRentMatch = bodyText.match(/(?:Huidige huur|Huurprijs|Loyer actuel|Current rent|Huur|Loyer|Maandelijkse huur)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i)
+              // Rent: try multiple patterns (label + amount, or any euro-prefixed/suffixed amount)
+              // Allow generous whitespace between label and value (Smovin often has newlines between them)
+              const currentRentMatch = bodyText.match(/(?:Huidige huur|Huurprijs|Loyer actuel|Current rent|Huur|Loyer|Maandelijkse huur|Huidige index)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i)
                 || bodyText.match(/€\s*([\d\s.,]+(?:,\d{2}))/);
-              const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent|Basishuur)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
+              const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent|Basishuur|Basishuurprijs)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i);
 
-              // Also try to find rent as "X,XX €" pattern anywhere on the page (common Smovin format)
+              // Also try to find any non-zero rent as "X,XX €" pattern on the page (common Smovin format)
+              // Skip "0,00 €" matches — those indicate no rent data was found on the page
               const anyRentMatch = !currentRentMatch && !initialRentMatch
-                ? bodyText.match(/([\d.]+,\d{2})\s*€/)
+                ? bodyText.match(/([1-9][\d.]*,\d{2})\s*€/)
                 : null;
 
-              const rentSource = currentRentMatch || initialRentMatch || anyRentMatch;
+              // Prefer non-zero rent sources: if currentRentMatch captured "0,00", try alternatives
+              const isZeroRent = (match: RegExpMatchArray | null) =>
+                match && /^[0\s.,]+$/.test(match[1].replace(/\s/g, ""));
+              const rentSource = (currentRentMatch && !isZeroRent(currentRentMatch) ? currentRentMatch : null)
+                || (initialRentMatch && !isZeroRent(initialRentMatch) ? initialRentMatch : null)
+                || anyRentMatch
+                || currentRentMatch
+                || initialRentMatch;
 
               // Create lease if we found any rent amount OR any date
               if (startMatch || rentSource) {

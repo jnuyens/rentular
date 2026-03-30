@@ -402,9 +402,14 @@ export function mapSmovinLease(
     );
   }
 
-  // Determine status: if endDate is in the past -> expired, otherwise active
+  // Determine status based on available data.
+  // Only mark as expired if we have a real startDate AND endDate is in the past.
+  // When startDate was missing (fell back to today), the endDate might be unreliable
+  // (e.g., Smovin shows a historical date for an ongoing lease). In that case, default
+  // to "active" so the user can review and correct manually.
   let status: "active" | "terminated" | "expired" | "draft" = "active";
-  if (endDate) {
+  if (endDate && startDate) {
+    // Both dates are real (scraped, not fallback) -- trust the end date
     const endDateObj = new Date(endDate);
     if (endDateObj < new Date()) {
       status = "expired";

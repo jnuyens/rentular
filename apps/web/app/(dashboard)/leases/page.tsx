@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, Plus, Search, Users, Pencil, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, Users, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,6 +81,20 @@ export default function LeasesPage() {
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
+
+  type SortColumn = "property" | "type" | "status" | "startDate" | "endDate" | "monthlyRent";
+  type SortDirection = "asc" | "desc";
+  const [sortColumn, setSortColumn] = useState<SortColumn>("property");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -228,6 +242,50 @@ export default function LeasesPage() {
 
   const ic = "w-full rounded-md border border-input bg-background px-3 py-2 text-sm";
 
+  // Sort indicator component for table headers
+  const SortHeader = ({ column, label }: { column: SortColumn; label: string }) => (
+    <button
+      type="button"
+      className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
+      onClick={(e) => { e.stopPropagation(); toggleSort(column); }}
+    >
+      {label}
+      {sortColumn === column ? (
+        sortDirection === "asc" ? (
+          <ChevronUp className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )
+      ) : (
+        <ChevronUp className="h-3.5 w-3.5 opacity-0 group-hover:opacity-30" />
+      )}
+    </button>
+  );
+
+  // Sort leases based on current sort column and direction
+  const sortedLeases = [...leases].sort((a, b) => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    switch (sortColumn) {
+      case "property": {
+        const propA = properties.find((p) => p.id === a.propertyId)?.name || a.propertyId;
+        const propB = properties.find((p) => p.id === b.propertyId)?.name || b.propertyId;
+        return propA.localeCompare(propB) * dir;
+      }
+      case "type":
+        return a.type.localeCompare(b.type) * dir;
+      case "status":
+        return a.status.localeCompare(b.status) * dir;
+      case "startDate":
+        return (a.startDate || "").localeCompare(b.startDate || "") * dir;
+      case "endDate":
+        return (a.endDate || "9999-12-31").localeCompare(b.endDate || "9999-12-31") * dir;
+      case "monthlyRent":
+        return (Number(a.monthlyRent) - Number(b.monthlyRent)) * dir;
+      default:
+        return 0;
+    }
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -332,17 +390,17 @@ export default function LeasesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("property")}</TableHead>
-                  <TableHead>{t("leaseType")}</TableHead>
-                  <TableHead>{t("status")}</TableHead>
-                  <TableHead>{t("startDate")}</TableHead>
-                  <TableHead>{t("endDate")}</TableHead>
-                  <TableHead>{t("monthlyRent")}</TableHead>
+                  <TableHead><SortHeader column="property" label={t("property")} /></TableHead>
+                  <TableHead><SortHeader column="type" label={t("leaseType")} /></TableHead>
+                  <TableHead><SortHeader column="status" label={t("status")} /></TableHead>
+                  <TableHead><SortHeader column="startDate" label={t("startDate")} /></TableHead>
+                  <TableHead><SortHeader column="endDate" label={t("endDate")} /></TableHead>
+                  <TableHead><SortHeader column="monthlyRent" label={t("monthlyRent")} /></TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {leases.map((lease) => {
+                {sortedLeases.map((lease) => {
                   const prop = properties.find((p) => p.id === lease.propertyId);
                   return (
                     <TableRow
@@ -399,7 +457,7 @@ export default function LeasesPage() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {leases.map((lease) => {
+            {sortedLeases.map((lease) => {
               const prop = properties.find((p) => p.id === lease.propertyId);
               return (
                 <Card
