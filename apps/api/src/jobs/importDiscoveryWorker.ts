@@ -266,20 +266,34 @@ const worker = new Worker(
 
             // 8. Extract lease/contract info from the same page
             try {
-              // Dates: "Begindatum" -> start, "einddatum/eindigen" -> end
-              const startMatch = bodyText.match(/(?:Begindatum|Date de début|Start date)\s*\n?\s*(\d{2}\/\d{2}\/\d{4})/i);
-              const endMatch = bodyText.match(/(?:einddatum|eindigen op|Date de fin|End date)\s*\n?\s*(\d{2}\/\d{2}\/\d{4})/i);
-              // Rent: "Initiële huur" and "Huidige huur"
-              const currentRentMatch = bodyText.match(/(?:Huidige huur|Loyer actuel|Current rent)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
-              const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
+              // Dates: try multiple patterns (label + date, or standalone dates near keywords)
+              const startMatch = bodyText.match(/(?:Begindatum|Date de début|Start date|Startdatum|Aanvang|Début)\s*:?\s*\n?\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/i)
+                || bodyText.match(/(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})\s*(?:tot|à|until|-)\s*\d/i);
+              const endMatch = bodyText.match(/(?:einddatum|eindigen|Einde|Date de fin|End date|Einddatum|Fin)\s*:?\s*\n?\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/i)
+                || bodyText.match(/(?:tot|à|until|-)\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/i);
 
-              if (startMatch || currentRentMatch) {
+              // Rent: try multiple patterns (label + amount, or any €-prefixed/suffixed amount)
+              const currentRentMatch = bodyText.match(/(?:Huidige huur|Huurprijs|Loyer actuel|Current rent|Huur|Loyer|Maandelijkse huur)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i)
+                || bodyText.match(/€\s*([\d\s.,]+(?:,\d{2}))/);
+              const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent|Basishuur)\s*:?\s*\n?\s*([\d\s.,]+)\s*€/i);
+
+              // Also try to find rent as "X,XX €" pattern anywhere on the page (common Smovin format)
+              const anyRentMatch = !currentRentMatch && !initialRentMatch
+                ? bodyText.match(/([\d.]+,\d{2})\s*€/)
+                : null;
+
+              const rentSource = currentRentMatch || initialRentMatch || anyRentMatch;
+
+              // Create lease if we found any rent amount OR any date
+              if (startMatch || rentSource) {
                 property.leases.push({
                   startDate: startMatch ? startMatch[1] : "",
                   endDate: endMatch ? endMatch[1] : undefined,
-                  monthlyRent: currentRentMatch ? currentRentMatch[1].replace(/\s/g, "").trim() + " €" : initialRentMatch ? initialRentMatch[1].replace(/\s/g, "").trim() + " €" : "",
+                  monthlyRent: rentSource ? rentSource[1].replace(/\s/g, "").trim() + " €" : "",
                   type: typeMatch ? "residential" : undefined,
                 });
+              } else {
+                console.log(`[ImportDiscovery] No lease data found for property ${i + 1} "${property.name}" — no date or rent patterns matched`);
               }
             } catch (leaseErr) {
               console.log(`[ImportDiscovery] Could not scrape leases for property ${i + 1}:`, leaseErr);
