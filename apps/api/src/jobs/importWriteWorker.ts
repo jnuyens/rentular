@@ -217,9 +217,15 @@ const worker = new Worker(
             }
           }
 
-          // 4d. Import leases for this property
-          const leaseIds: string[] = [];
-          for (let lIdx = 0; lIdx < (smovinProp.leases || []).length; lIdx++) {
+          // 4d. Import leases for this property (skip if property already has leases)
+          const existingLeases = await db.select({ id: leases.id }).from(leases).where(eq(leases.propertyId, propertyId)).limit(1);
+          const leaseIds: string[] = existingLeases.map(l => l.id);
+
+          if (existingLeases.length > 0) {
+            console.log(`[ImportWrite] Property ${propertyId} already has ${existingLeases.length} lease(s), skipping lease import`);
+          }
+
+          for (let lIdx = 0; lIdx < (existingLeases.length === 0 ? (smovinProp.leases || []).length : 0); lIdx++) {
             const smovinLease = smovinProp.leases[lIdx];
             const leaseLabel = `lease ${lIdx + 1} (start: "${smovinLease.startDate}", rent: "${smovinLease.monthlyRent}")`;
             try {
