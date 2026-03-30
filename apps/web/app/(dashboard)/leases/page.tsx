@@ -87,6 +87,14 @@ export default function LeasesPage() {
   const [sortColumn, setSortColumn] = useState<SortColumn>("property");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  // Format ISO date to Belgian dd/mm/yyyy
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "";
+    const iso = d.includes("T") ? d.split("T")[0] : d;
+    const [y, m, dd] = iso.split("-");
+    return y && m && dd ? `${dd}/${m}/${y}` : d;
+  };
+
   const toggleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -417,8 +425,8 @@ export default function LeasesPage() {
                           {t(`status${lease.status.charAt(0).toUpperCase()}${lease.status.slice(1)}`) || lease.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{lease.startDate}</TableCell>
-                      <TableCell>{lease.endDate || "..."}</TableCell>
+                      <TableCell>{fmtDate(lease.startDate)}</TableCell>
+                      <TableCell>{lease.endDate ? fmtDate(lease.endDate) : "..."}</TableCell>
                       <TableCell>
                         <div>
                           <span className="font-semibold">&euro;{lease.monthlyRent}/m</span>
@@ -479,11 +487,11 @@ export default function LeasesPage() {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("startDate")}</span>
-                        <span>{lease.startDate}</span>
+                        <span>{fmtDate(lease.startDate)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("endDate")}</span>
-                        <span>{lease.endDate || "..."}</span>
+                        <span>{lease.endDate ? fmtDate(lease.endDate) : "..."}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{t("monthlyRent")}</span>
