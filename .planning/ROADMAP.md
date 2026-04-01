@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 5: Property Manager Roles** - Invitation flow, role-based access control, scoped dashboard views, and access management
 - [ ] **Phase 6: Smovin Import (Beta)** - Authenticated scraping of Smovin accounts, data mapping, and guided import flow
 - [ ] **Phase 7: UI Polish, Onboarding & Launch Readiness** - Responsive dashboard, visual consistency, guided setup wizard, and full i18n coverage
+- [ ] **Phase 8: GoCardless Settings UI & SEPA Mandate Management** - GoCardless configuration tab, mandate management page, payment method on leases, onboarding integration
 
 ## Phase Details
 
@@ -146,10 +147,29 @@ Plans:
 - [x] 07-05-PLAN.md -- Onboarding wizard: 4-step wizard, middleware redirect, session extension, import detection
 - [ ] 07-06-PLAN.md -- Settings/import migration + comprehensive i18n audit across all 4 locales
 
+### Phase 8: GoCardless Settings UI & SEPA Mandate Management
+**Goal**: Landlords have a complete UI to configure GoCardless, manage SEPA mandates, and select payment methods on leases -- making the existing backend infrastructure (Phase 2) fully accessible through the dashboard
+**Depends on**: Phase 7
+**Requirements**: GC-SETTINGS, GC-SHARED-COMPONENTS, GC-MANDATES-PAGE, GC-LEASE-PAYMENT-METHOD, GC-LEASE-MANDATE-STATUS, GC-TENANT-MANDATE, GC-ONBOARDING, GC-I18N-AUDIT
+**Success Criteria** (what must be TRUE):
+  1. GoCardless settings tab shows connection status, creditor info, and default payment method selector
+  2. Dedicated Mandates page lists all mandates with status filtering, search, and per-mandate actions (view, cancel)
+  3. Lease creation/edit form has a payment method radio group (GoCardless/Bank Transfer/Manual) with conditional sub-content
+  4. Lease detail shows mandate status badge and quick actions (Setup/Cancel Mandate)
+  5. Mandate setup modal is accessible from lease detail, tenant profile, mandates page, and onboarding wizard step 4
+  6. All strings translated in EN, NL, FR, DE
+**Plans**: 4 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Shared components (MandateStatusBadge, MandateSetupModal, CancelMandateDialog, PaymentMethodRadioGroup), API extensions, GoCardless settings tab
+- [ ] 08-02-PLAN.md -- Mandates management page with table/card views, status filter, search, sidebar navigation
+- [ ] 08-03-PLAN.md -- Lease form payment method radio group, lease detail mandate status, tenant profile mandate display
+- [ ] 08-04-PLAN.md -- Onboarding wizard step 4 mandate integration and comprehensive i18n verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoretically be reordered, but the listed order prioritizes core value delivery (payments -> indexation -> notifications) before expansion features.
 
 | Phase | Plans Complete | Status | Completed |
@@ -161,3 +181,4 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 5. Property Manager Roles | 0/4 | Planning complete | - |
 | 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
+| 8. GoCardless Settings UI & SEPA Mandate Management | 0/4 | Planning complete | - |
