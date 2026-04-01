@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: default (slate base, CSS variables)
 created: 2026-04-01
+revised: 2026-04-01
 ---
 
 # Phase 8 -- UI Design Contract
@@ -50,11 +51,11 @@ Exceptions: none
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body | 14px (text-sm) | 400 (normal) | 1.5 (leading-normal) |
-| Label | 14px (text-sm) | 500 (medium) | 1.5 (leading-normal) |
+| Label | 14px (text-sm) | 400 (normal) | 1.5 (leading-normal) |
 | Heading | 20px (text-xl) | 600 (semibold) | 1.2 (leading-tight) |
-| Display | 24px (text-2xl) | 700 (bold) | 1.2 (leading-tight) |
+| Display | 24px (text-2xl) | 600 (semibold) | 1.2 (leading-tight) |
 
-Source: Matches existing Phase 7 shadcn/ui text conventions across dashboard pages.
+2 weights declared: 400 (normal) for Body and Label, 600 (semibold) for Heading and Display. Label is distinguished from Body by context and `text-muted-foreground` color on associated descriptions, not by a separate weight. Display is distinguished from Heading by size alone, sharing semibold weight.
 
 ---
 
@@ -69,7 +70,7 @@ Source: Matches existing Phase 7 shadcn/ui text conventions across dashboard pag
 
 Accent reserved for:
 - "Setup Mandate" primary button
-- "Save" primary button on GoCardless settings
+- "Update Default Method" primary button on GoCardless settings
 - Active mandate status badge background
 - Active sidebar nav item highlight
 - Primary CTA in empty states
@@ -155,8 +156,10 @@ Source: D-14 specifies "color-coded mandate status badge (green=active, yellow=p
 **Section 3: Default Payment Method (D-03)**
 - Label: "Default Payment Method for New Leases"
 - Select dropdown with 3 options: "GoCardless (SEPA Direct Debit)", "Bank Transfer", "Manual"
-- Save button below, right-aligned
+- "Update Default Method" button below, right-aligned (primary variant)
 - Toast on save: "Default payment method updated"
+
+**Focal point:** Connection status indicator (Section 1, top of card) -- the green/red circle immediately communicates GoCardless health at a glance and orients the user before they scroll to configuration options.
 
 ### 2. Mandates Page (D-09 through D-12)
 
@@ -164,9 +167,11 @@ Source: D-14 specifies "color-coded mandate status badge (green=active, yellow=p
 **Sidebar position:** Between "Payments" and "Communications" (nav key: `mandates`, icon: `FileSignature` from Lucide)
 
 **Page header:**
-- Title: "Mandates" (text-2xl font-bold)
+- Title: "Mandates" (text-2xl semibold)
 - Subtitle: "Manage SEPA direct debit mandates for your tenants" (text-muted-foreground text-sm)
 - "New Mandate" button (primary, top-right) -- opens MandateSetupModal
+
+**Focal point:** "New Mandate" primary button (top-right) paired with page title -- draws the eye to the primary action. On empty state, focal point shifts to the centered CTA button within the empty state card.
 
 **Filter bar:** (flex row, gap-sm, items-center)
 - Status filter: Select dropdown with options: All, Active, Pending, Cancelled, Failed, Expired
@@ -186,7 +191,7 @@ Source: D-14 specifies "color-coded mandate status badge (green=active, yellow=p
 
 **Mobile card layout (`md:hidden`):**
 - Card per mandate
-- Top row: tenant name (font-medium) + MandateStatusBadge (right-aligned)
+- Top row: tenant name (semibold) + MandateStatusBadge (right-aligned)
 - Middle row: property address (text-muted-foreground text-sm)
 - Bottom row: "Created: {date}" + actions dropdown button (right-aligned)
 
@@ -201,6 +206,8 @@ Source: D-14 specifies "color-coded mandate status badge (green=active, yellow=p
 **Trigger points:** Lease detail, tenant profile, mandates page "New Mandate" button, onboarding wizard step 4
 
 **Dialog size:** `max-w-lg` (32rem / 512px)
+
+**Focal point:** "Send Authorization Email" primary CTA button -- positioned at the bottom of the confirm step, drawing the user toward the final action after reviewing the summary.
 
 **Content layout:**
 
@@ -282,6 +289,7 @@ Step 2 -- Confirm & Send:
 | Primary CTA | "Send Authorization Email" (mandate setup modal submit) |
 | Secondary CTA | "Setup Mandate" (trigger button on lease/tenant/mandates pages) |
 | New Mandate CTA | "New Mandate" (mandates page top-right button) |
+| Save Default Method CTA | "Update Default Method" (GoCardless settings default payment method save button) |
 | Empty state heading | "No mandates yet" |
 | Empty state body | "Set up a SEPA direct debit mandate to collect rent automatically from your tenants. Click 'New Mandate' to get started." |
 | Error: GoCardless not configured | "GoCardless is not configured. Contact your administrator to set up the API credentials." |
