@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Users, Plus, Search, Mail, Phone, Pencil, Trash2 } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, Pencil, Trash2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import PhoneInput from "@/components/PhoneInput";
 import IbanInput from "@/components/IbanInput";
@@ -35,6 +35,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MandateStatusBadge } from "@/components/MandateStatusBadge";
+import { MandateSetupModal } from "@/components/MandateSetupModal";
 
 // Avatar options: diverse set of people + abstract icons
 const AVATARS = [
@@ -71,6 +79,8 @@ interface Tenant {
   nationalRegister?: string;
   bankAccount?: string;
   notes?: string;
+  gocardlessCustomerId?: string;
+  gocardlessMandateId?: string;
 }
 
 export default function TenantsPage() {
@@ -87,6 +97,9 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAvatar, setSelectedAvatar] = useState("abs1");
+  const [mandateStatuses, setMandateStatuses] = useState<Record<string, string>>({});
+  const [showMandateSetup, setShowMandateSetup] = useState(false);
+  const [selectedTenantForMandate, setSelectedTenantForMandate] = useState<Tenant | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -109,6 +122,33 @@ export default function TenantsPage() {
   useEffect(() => {
     fetchTenants();
   }, [fetchTenants]);
+
+  // Fetch mandate statuses for tenants with mandates
+  useEffect(() => {
+    const tenantsWithMandates = tenants.filter((t) => t.gocardlessMandateId);
+    if (!tenantsWithMandates.length) return;
+
+    Promise.all(
+      tenantsWithMandates.map(async (tenant) => {
+        try {
+          const res = await fetch(
+            `${apiUrl}/api/v1/gocardless/mandates/${tenant.gocardlessMandateId}`,
+            { credentials: "include" }
+          );
+          const data = await res.json();
+          return { id: tenant.id, status: data.data?.status || "unknown" };
+        } catch {
+          return { id: tenant.id, status: "unknown" };
+        }
+      })
+    ).then((results) => {
+      const statusMap: Record<string, string> = {};
+      results.forEach((r) => {
+        statusMap[r.id] = r.status;
+      });
+      setMandateStatuses(statusMap);
+    });
+  }, [tenants, apiUrl]);
 
   const openAdd = () => {
     setEditing(null);
@@ -312,6 +352,7 @@ export default function TenantsPage() {
                   <TableHead>{t("email")}</TableHead>
                   <TableHead>{t("phone")}</TableHead>
                   <TableHead>{t("language")}</TableHead>
+                  <TableHead>{t("sepaMandate")}</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -337,25 +378,48 @@ export default function TenantsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                          disabled={deleting === tenant.id}
-                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(tenant.id); }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      {tenant.gocardlessMandateId ? (
+                        <MandateStatusBadge status={mandateStatuses[tenant.id] || "unknown"} />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">{t("noMandate")}</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(tenant); }}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                            {t("editTenant")}
+                          </DropdownMenuItem>
+                          {!tenant.gocardlessMandateId && (
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTenantForMandate(tenant);
+                              setShowMandateSetup(true);
+                            }}>
+                              {t("setupMandate")}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            disabled={deleting === tenant.id}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(tenant.id); }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            {t("deleteTenant")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -417,6 +481,14 @@ export default function TenantsPage() {
                         <span>{tenant.phone}</span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-muted-foreground">{t("sepaMandate")}</span>
+                      {tenant.gocardlessMandateId ? (
+                        <MandateStatusBadge status={mandateStatuses[tenant.id] || "unknown"} />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{t("noMandate")}</span>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -443,6 +515,19 @@ export default function TenantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mandate Setup Modal */}
+      <MandateSetupModal
+        open={showMandateSetup}
+        onOpenChange={setShowMandateSetup}
+        tenantId={selectedTenantForMandate?.id}
+        tenantName={selectedTenantForMandate ? `${selectedTenantForMandate.firstName} ${selectedTenantForMandate.lastName}` : undefined}
+        tenantEmail={selectedTenantForMandate?.email}
+        onSuccess={() => {
+          fetchTenants();
+          setShowMandateSetup(false);
+        }}
+      />
 
       {/* Add/Edit tenant Dialog */}
       <Dialog open={showModal} onOpenChange={(open) => { if (!open) closeModal(); }}>

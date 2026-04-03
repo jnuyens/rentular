@@ -174,7 +174,12 @@
     "editTenantTitle": "Edit tenant",
     "updateTenant": "Update Tenant",
     "saveError": "Failed to save. Please check your connection.",
-    "noResults": "No tenants found."
+    "noResults": "No tenants found.",
+    "sepaMandate": "SEPA Mandate",
+    "noMandate": "No mandate",
+    "setupMandate": "Setup Mandate",
+    "editTenant": "Edit",
+    "deleteTenant": "Delete"
   },
   "leases": {
     "title": "Leases",

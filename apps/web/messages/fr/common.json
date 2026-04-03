@@ -174,7 +174,12 @@
     "editTenantTitle": "Modifier le locataire",
     "updateTenant": "Mettre a jour le locataire",
     "saveError": "Échec de l'enregistrement. Vérifiez votre connexion.",
-    "noResults": "Aucun locataire trouvé."
+    "noResults": "Aucun locataire trouvé.",
+    "sepaMandate": "Mandat SEPA",
+    "noMandate": "Aucun mandat",
+    "setupMandate": "Configurer le mandat",
+    "editTenant": "Modifier",
+    "deleteTenant": "Supprimer"
   },
   "leases": {
     "title": "Baux",

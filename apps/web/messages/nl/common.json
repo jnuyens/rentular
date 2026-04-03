@@ -174,7 +174,12 @@
     "editTenantTitle": "Huurder bewerken",
     "updateTenant": "Huurder bijwerken",
     "saveError": "Opslaan mislukt. Controleer je verbinding.",
-    "noResults": "Geen huurders gevonden."
+    "noResults": "Geen huurders gevonden.",
+    "sepaMandate": "SEPA-mandaat",
+    "noMandate": "Geen mandaat",
+    "setupMandate": "Mandaat instellen",
+    "editTenant": "Bewerken",
+    "deleteTenant": "Verwijderen"
   },
   "leases": {
     "title": "Huurcontracten",

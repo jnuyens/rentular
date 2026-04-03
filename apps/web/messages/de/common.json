@@ -174,7 +174,12 @@
     "editTenantTitle": "Mieter bearbeiten",
     "updateTenant": "Mieter aktualisieren",
     "saveError": "Speichern fehlgeschlagen. Überprüfen Sie Ihre Verbindung.",
-    "noResults": "Keine Mieter gefunden."
+    "noResults": "Keine Mieter gefunden.",
+    "sepaMandate": "SEPA-Mandat",
+    "noMandate": "Kein Mandat",
+    "setupMandate": "Mandat einrichten",
+    "editTenant": "Bearbeiten",
+    "deleteTenant": "Loschen"
   },
   "leases": {
     "title": "Mietvertraege",
