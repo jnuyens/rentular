@@ -33,7 +33,8 @@
     "communications": "Communications",
     "settings": "Parametres",
     "managers": "Gestionnaires",
-    "import": "Importer"
+    "import": "Importer",
+    "mandates": "Mandats"
   },
   "properties": {
     "title": "Biens",

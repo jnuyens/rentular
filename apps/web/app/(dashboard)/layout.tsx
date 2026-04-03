@@ -12,6 +12,7 @@ const navigationItems = [
   { key: "tenants" as const, href: "/tenants", iconName: "Users" as const },
   { key: "leases" as const, href: "/leases", iconName: "FileText" as const },
   { key: "payments" as const, href: "/payments", iconName: "CreditCard" as const },
+  { key: "mandates" as const, href: "/mandates", iconName: "FileSignature" as const },
   { key: "indexation" as const, href: "/indexation", iconName: "TrendingUp" as const },
   { key: "communications" as const, href: "/communications", iconName: "MessageSquare" as const },
   { key: "maintenance" as const, href: "/maintenance", iconName: "Wrench" as const },

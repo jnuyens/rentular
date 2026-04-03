@@ -33,7 +33,8 @@
     "communications": "Communications",
     "settings": "Settings",
     "managers": "Managers",
-    "import": "Import"
+    "import": "Import",
+    "mandates": "Mandates"
   },
   "properties": {
     "title": "Properties",

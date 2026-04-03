@@ -33,7 +33,8 @@
     "communications": "Communicatie",
     "settings": "Instellingen",
     "managers": "Beheerders",
-    "import": "Importeren"
+    "import": "Importeren",
+    "mandates": "Mandaten"
   },
   "properties": {
     "title": "Eigendommen",
