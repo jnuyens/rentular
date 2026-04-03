@@ -811,7 +811,7 @@
     "step3Title": "Erstellen Sie einen Mietvertrag",
     "step3Desc": "Verknuepfen Sie den Mieter mit der Immobilie durch einen Mietvertrag.",
     "step4Title": "Mietzahlung einrichten",
-    "step4Desc": "Konfigurieren Sie, wie Sie die Miete fuer diesen Vertrag einziehen moechten.",
+    "step4Desc": "Richten Sie die automatische Mieteinzug per SEPA-Lastschrift ein. Ihr Mieter erhalt eine Autorisierungs-E-Mail von GoCardless.",
     "skip": "Ueberspringen",
     "back": "Zurueck",
     "next": "Weiter",
@@ -820,7 +820,11 @@
     "importedSummary": "{count} {entity} importiert",
     "importedMore": "+{count} weitere",
     "completeTitle": "Alles bereit!",
-    "completeDesc": "Ihr Konto ist bereit. Beginnen Sie mit der Verwaltung Ihrer Immobilien im Dashboard."
+    "completeDesc": "Ihr Konto ist bereit. Beginnen Sie mit der Verwaltung Ihrer Immobilien im Dashboard.",
+    "setupMandate": "SEPA-Mandat einrichten",
+    "mandateSent": "Autorisierungs-E-Mail gesendet!",
+    "mandateWaiting": "Das Mandat wird aktiv, sobald Ihr Mieter die Autorisierung abgeschlossen hat.",
+    "mandateSkipNote": "Sie konnen dies auch spater in den Einstellungen oder auf der Seite Mandate einrichten."
   },
   "mandates": {
     "title": "Mandate",

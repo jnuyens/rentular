@@ -811,7 +811,7 @@
     "step3Title": "Create a lease",
     "step3Desc": "Link the tenant to the property with a lease agreement.",
     "step4Title": "Set up payment collection",
-    "step4Desc": "Configure how you want to collect rent for this lease.",
+    "step4Desc": "Set up automatic rent collection via SEPA direct debit. Your tenant will receive an authorization email from GoCardless.",
     "skip": "Skip setup",
     "back": "Back",
     "next": "Next",
@@ -820,7 +820,11 @@
     "importedSummary": "{count} {entity} imported",
     "importedMore": "+{count} more",
     "completeTitle": "You're all set!",
-    "completeDesc": "Your account is ready. Start managing your properties from the dashboard."
+    "completeDesc": "Your account is ready. Start managing your properties from the dashboard.",
+    "setupMandate": "Setup SEPA Mandate",
+    "mandateSent": "Authorization email sent!",
+    "mandateWaiting": "The mandate will become active once your tenant completes the authorization.",
+    "mandateSkipNote": "You can also set this up later in Settings or on the Mandates page."
   },
   "mandates": {
     "title": "Mandates",

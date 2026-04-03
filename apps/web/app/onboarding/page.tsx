@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Check, Building2, Users, FileText, CreditCard } from "lucide-react";
+import { MandateSetupModal } from "@/components/MandateSetupModal";
 import Image from "next/image";
 
 interface Property {
@@ -43,6 +44,8 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
+  const [showMandateSetup, setShowMandateSetup] = useState(false);
+  const [mandateSetupComplete, setMandateSetupComplete] = useState(false);
 
   // Existing data (for import detection)
   const [existingProperties, setExistingProperties] = useState<Property[]>([]);
@@ -682,20 +685,46 @@ export default function OnboardingPage() {
       <div className="space-y-6">
         <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] p-6 text-center">
           <CreditCard className="mx-auto mb-4 h-12 w-12 text-[hsl(var(--muted-foreground))]" />
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
             {t("onboarding.step4Desc")}
           </p>
-          <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]">
-            GoCardless SEPA direct debit can be configured in{" "}
-            <a
-              href="/settings"
-              className="text-[hsl(var(--primary))] underline"
-            >
-              Settings
-            </a>{" "}
-            after completing setup.
-          </p>
+
+          {mandateSetupComplete ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {t("onboarding.mandateSent")}
+                </span>
+              </div>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {t("onboarding.mandateWaiting")}
+              </p>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowMandateSetup(true)}
+                className="inline-flex items-center justify-center rounded-md bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90 mb-3"
+              >
+                {t("onboarding.setupMandate")}
+              </button>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                {t("onboarding.mandateSkipNote")}
+              </p>
+            </>
+          )}
         </div>
+
+        <MandateSetupModal
+          open={showMandateSetup}
+          onOpenChange={setShowMandateSetup}
+          onSuccess={() => {
+            setMandateSetupComplete(true);
+            setShowMandateSetup(false);
+          }}
+        />
       </div>
     );
   }

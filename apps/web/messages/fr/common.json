@@ -811,7 +811,7 @@
     "step3Title": "Creez un bail",
     "step3Desc": "Liez le locataire au bien avec un contrat de bail.",
     "step4Title": "Configurez la perception du loyer",
-    "step4Desc": "Configurez comment vous souhaitez percevoir le loyer pour ce bail.",
+    "step4Desc": "Configurez la collecte automatique du loyer via prelevement SEPA. Votre locataire recevra un e-mail d'autorisation de GoCardless.",
     "skip": "Passer",
     "back": "Retour",
     "next": "Suivant",
@@ -820,7 +820,11 @@
     "importedSummary": "{count} {entity} importes",
     "importedMore": "+{count} de plus",
     "completeTitle": "Tout est pret !",
-    "completeDesc": "Votre compte est pret. Commencez a gerer vos biens depuis le tableau de bord."
+    "completeDesc": "Votre compte est pret. Commencez a gerer vos biens depuis le tableau de bord.",
+    "setupMandate": "Configurer le mandat SEPA",
+    "mandateSent": "E-mail d'autorisation envoye !",
+    "mandateWaiting": "Le mandat sera actif une fois que votre locataire aura termine l'autorisation.",
+    "mandateSkipNote": "Vous pouvez egalement le configurer plus tard dans les Parametres ou sur la page Mandats."
   },
   "mandates": {
     "title": "Mandats",

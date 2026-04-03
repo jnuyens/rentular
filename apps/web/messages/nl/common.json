@@ -811,7 +811,7 @@
     "step3Title": "Maak een huurcontract aan",
     "step3Desc": "Koppel de huurder aan het eigendom met een huurovereenkomst.",
     "step4Title": "Stel huurinning in",
-    "step4Desc": "Configureer hoe u de huur voor dit contract wilt innen.",
+    "step4Desc": "Stel automatische huurinning in via SEPA-domiciliering. Uw huurder ontvangt een autorisatie-e-mail van GoCardless.",
     "skip": "Overslaan",
     "back": "Terug",
     "next": "Volgende",
@@ -820,7 +820,11 @@
     "importedSummary": "{count} {entity} geimporteerd",
     "importedMore": "+{count} meer",
     "completeTitle": "Alles is klaar!",
-    "completeDesc": "Uw account is klaar. Begin met het beheren van uw eigendommen vanuit het dashboard."
+    "completeDesc": "Uw account is klaar. Begin met het beheren van uw eigendommen vanuit het dashboard.",
+    "setupMandate": "SEPA-mandaat instellen",
+    "mandateSent": "Autorisatie-e-mail verzonden!",
+    "mandateWaiting": "Het mandaat wordt actief zodra uw huurder de autorisatie voltooit.",
+    "mandateSkipNote": "U kunt dit ook later instellen in Instellingen of op de pagina Mandaten."
   },
   "mandates": {
     "title": "Mandaten",
