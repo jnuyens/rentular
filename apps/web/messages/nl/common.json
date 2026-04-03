@@ -221,7 +221,16 @@
     "noTenantsYet": "Voeg eerst een huurder toe.",
     "coTenantsNote": "Meerdere huurders geselecteerd - ze worden als medehuurders op het contract gezet.",
     "indexation": "Huurindexatie",
-    "indexationDescription": "Pas de huur automatisch aan op basis van de Belgische gezondheidsindex."
+    "indexationDescription": "Pas de huur automatisch aan op basis van de Belgische gezondheidsindex.",
+    "paymentMethod": "Betaalmethode",
+    "paymentMethodGoCardless": "GoCardless (SEPA Domiciliering)",
+    "paymentMethodBankTransfer": "Overschrijving",
+    "paymentMethodManual": "Handmatig",
+    "mandateStatus": "Mandaatstatus",
+    "lastPayment": "Laatste betaling",
+    "setupMandate": "Mandaat instellen",
+    "cancelMandate": "Mandaat annuleren",
+    "payment": "Betaling"
   },
   "indexation": {
     "title": "Huurindexatie",

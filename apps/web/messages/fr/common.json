@@ -221,7 +221,16 @@
     "noTenantsYet": "Ajoutez d'abord un locataire.",
     "coTenantsNote": "Plusieurs locataires sélectionnés - ils seront ajoutés comme co-locataires sur le bail.",
     "indexation": "Indexation du loyer",
-    "indexationDescription": "Ajustez automatiquement le loyer sur base de l'indice sante belge."
+    "indexationDescription": "Ajustez automatiquement le loyer sur base de l'indice sante belge.",
+    "paymentMethod": "Methode de paiement",
+    "paymentMethodGoCardless": "GoCardless (Prelevement SEPA)",
+    "paymentMethodBankTransfer": "Virement bancaire",
+    "paymentMethodManual": "Manuel",
+    "mandateStatus": "Statut du mandat",
+    "lastPayment": "Dernier paiement",
+    "setupMandate": "Configurer le mandat",
+    "cancelMandate": "Annuler le mandat",
+    "payment": "Paiement"
   },
   "indexation": {
     "title": "Indexation des loyers",

@@ -221,7 +221,16 @@
     "noTenantsYet": "Fügen Sie zuerst einen Mieter hinzu.",
     "coTenantsNote": "Mehrere Mieter ausgewählt - sie werden als Mitmieter im Vertrag eingetragen.",
     "indexation": "Mietindexierung",
-    "indexationDescription": "Miete automatisch auf Basis des belgischen Gesundheitsindex anpassen."
+    "indexationDescription": "Miete automatisch auf Basis des belgischen Gesundheitsindex anpassen.",
+    "paymentMethod": "Zahlungsmethode",
+    "paymentMethodGoCardless": "GoCardless (SEPA-Lastschrift)",
+    "paymentMethodBankTransfer": "Uberweisung",
+    "paymentMethodManual": "Manuell",
+    "mandateStatus": "Mandatstatus",
+    "lastPayment": "Letzte Zahlung",
+    "setupMandate": "Mandat einrichten",
+    "cancelMandate": "Mandat stornieren",
+    "payment": "Zahlung"
   },
   "indexation": {
     "title": "Mietindexierung",

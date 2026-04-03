@@ -221,7 +221,16 @@
     "noTenantsYet": "Add a tenant first.",
     "coTenantsNote": "Multiple tenants selected - they will be added as co-tenants on the lease.",
     "indexation": "Rent indexation",
-    "indexationDescription": "Automatically adjust rent based on the Belgian health index each year."
+    "indexationDescription": "Automatically adjust rent based on the Belgian health index each year.",
+    "paymentMethod": "Payment Method",
+    "paymentMethodGoCardless": "GoCardless (SEPA Direct Debit)",
+    "paymentMethodBankTransfer": "Bank Transfer",
+    "paymentMethodManual": "Manual",
+    "mandateStatus": "Mandate Status",
+    "lastPayment": "Last Payment",
+    "setupMandate": "Setup Mandate",
+    "cancelMandate": "Cancel Mandate",
+    "payment": "Payment"
   },
   "indexation": {
     "title": "Rent Indexation",
