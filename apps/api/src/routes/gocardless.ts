@@ -1,29 +1,168 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and } from "drizzle-orm";
-import { getDb, tenants, leases } from "@rentular/db";
+import { eq, and, isNotNull, sql } from "drizzle-orm";
+import { getDb, tenants, leases, properties } from "@rentular/db";
 import {
   isGoCardlessConfigured,
   createMandateSetupFlow,
   getMandate,
   cancelMandate,
   createCustomer,
+  getCreditorInfo,
 } from "../lib/gocardless";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   getUserPropertyRole,
   hasMinimumRole,
+  getAccessiblePropertyIds,
 } from "../lib/propertyAccess";
 
 export const gocardlessRouter = new Hono();
 
-// Check if GoCardless is configured
+// Check if GoCardless is configured (enhanced with masked token)
 gocardlessRouter.get("/status", async (c) => {
+  const configured = isGoCardlessConfigured();
+  const accessToken = process.env.GOCARDLESS_ACCESS_TOKEN || "";
+  const maskedToken = configured
+    ? accessToken.substring(0, 8) + "****" + accessToken.slice(-4)
+    : "";
   return c.json({
-    configured: isGoCardlessConfigured(),
+    configured,
     environment: process.env.GOCARDLESS_ENVIRONMENT || "sandbox",
+    maskedToken,
   });
+});
+
+// Get creditor information
+gocardlessRouter.get("/creditor", async (c) => {
+  if (!isGoCardlessConfigured()) {
+    return c.json({ error: "GoCardless is not configured." }, 503);
+  }
+  try {
+    const info = await getCreditorInfo();
+    if (!info) {
+      return c.json({ error: "No creditor found." }, 404);
+    }
+    return c.json({ data: info });
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : "Failed to fetch creditor";
+    return c.json({ error: message }, 500);
+  }
+});
+
+// List all mandates for the current user's accessible properties
+gocardlessRouter.get("/mandates", async (c) => {
+  const userId = getRequiredUserId(c);
+  const db = getDb();
+  const status = c.req.query("status");
+  const search = c.req.query("search");
+
+  // Get all accessible property IDs for this user
+  const propertyIds = await getAccessiblePropertyIds(userId);
+  if (!propertyIds.length) {
+    return c.json({ data: [] });
+  }
+
+  // Query leases with mandates
+  const leaseRows = await db
+    .select({
+      leaseId: leases.id,
+      mandateId: leases.gocardlessMandateId,
+      propertyId: leases.propertyId,
+      startDate: leases.startDate,
+      endDate: leases.endDate,
+    })
+    .from(leases)
+    .where(
+      and(
+        isNotNull(leases.gocardlessMandateId),
+        sql`${leases.propertyId} IN (${sql.join(
+          propertyIds.map((id) => sql`${id}`),
+          sql`, `
+        )})`
+      )
+    );
+
+  // Enrich with tenant and property data, and GoCardless mandate status
+  const mandates = [];
+  for (const row of leaseRows) {
+    // Get tenant for this lease
+    const tenantResult = await db
+      .select({
+        id: tenants.id,
+        firstName: tenants.firstName,
+        lastName: tenants.lastName,
+        email: tenants.email,
+      })
+      .from(tenants)
+      .where(eq(tenants.gocardlessMandateId, row.mandateId!));
+
+    // Get property
+    const propResult = await db
+      .select({
+        id: properties.id,
+        street: properties.street,
+        streetNumber: properties.streetNumber,
+        city: properties.city,
+      })
+      .from(properties)
+      .where(eq(properties.id, row.propertyId));
+
+    // Get mandate status from GoCardless (with fallback)
+    let mandateStatus = "unknown";
+    let createdAt = "";
+    let nextChargeDate = "";
+    if (isGoCardlessConfigured() && row.mandateId) {
+      try {
+        const m = await getMandate(row.mandateId);
+        mandateStatus = m.status || "unknown";
+        createdAt = m.created_at || "";
+        nextChargeDate = m.next_possible_charge_date || "";
+      } catch {
+        mandateStatus = "unknown";
+      }
+    }
+
+    // Apply status filter
+    if (status && status !== "all" && mandateStatus !== status) continue;
+
+    const tenant = tenantResult[0];
+    const prop = propResult[0];
+    const tenantName = tenant
+      ? `${tenant.firstName} ${tenant.lastName}`
+      : "Unknown";
+    const propertyAddress = prop
+      ? `${prop.street} ${prop.streetNumber}, ${prop.city}`
+      : "Unknown";
+
+    // Apply search filter
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !tenantName.toLowerCase().includes(q) &&
+        !propertyAddress.toLowerCase().includes(q)
+      )
+        continue;
+    }
+
+    mandates.push({
+      mandateId: row.mandateId,
+      leaseId: row.leaseId,
+      tenantId: tenant?.id || null,
+      tenantName,
+      tenantEmail: tenant?.email || "",
+      propertyId: row.propertyId,
+      propertyAddress,
+      leaseRef: `${row.startDate} - ${row.endDate || "ongoing"}`,
+      status: mandateStatus,
+      createdAt,
+      nextChargeDate,
+    });
+  }
+
+  return c.json({ data: mandates });
 });
 
 // Start mandate setup flow for a tenant

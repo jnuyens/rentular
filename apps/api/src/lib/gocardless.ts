@@ -31,6 +31,14 @@ type GoCardlessClient = {
     cancel: (id: string) => Promise<Record<string, any>>;
     list: (params: Record<string, unknown>) => Promise<Record<string, any>>;
   };
+  creditors: {
+    list: (params: Record<string, unknown>) => Promise<{
+      creditors: Array<{
+        id?: string;
+        scheme_identifiers?: Array<{ scheme: string }>;
+      }>;
+    }>;
+  };
 };
 
 // GoCardless client singleton
@@ -101,6 +109,25 @@ export interface GoCardlessEvent {
 
 export interface GoCardlessWebhookPayload {
   events: GoCardlessEvent[];
+}
+
+// Get creditor information from GoCardless
+export async function getCreditorInfo(): Promise<{
+  creditorId: string;
+  scheme: string;
+} | null> {
+  try {
+    const gc = getGoCardlessClient();
+    const result = await gc.creditors.list({});
+    const creditor = result.creditors?.[0];
+    if (!creditor) return null;
+    return {
+      creditorId: creditor.id || "",
+      scheme: creditor.scheme_identifiers?.[0]?.scheme || "sepa_core",
+    };
+  } catch {
+    return null;
+  }
 }
 
 // Create a customer in GoCardless from tenant data
