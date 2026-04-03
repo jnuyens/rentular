@@ -15,6 +15,8 @@ import {
   Globe,
   Landmark,
   Trash2,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
@@ -33,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -273,6 +276,154 @@ const ALL_DAYS = Array.from({ length: 28 }, (_, i) => i + 1);
 
 function deepCloneTemplates(t: TemplatesByLang): TemplatesByLang {
   return JSON.parse(JSON.stringify(t));
+}
+
+function GoCardlessSettingsTab({ apiUrl }: { apiUrl: string }) {
+  const t = useTranslations("settings");
+  const [gcStatus, setGcStatus] = useState<{
+    configured: boolean;
+    environment: string;
+    maskedToken: string;
+  } | null>(null);
+  const [creditor, setCreditor] = useState<{
+    creditorId: string;
+    scheme: string;
+  } | null>(null);
+  const [creditorLoading, setCreditorLoading] = useState(true);
+  const [creditorError, setCreditorError] = useState(false);
+  const [defaultMethod, setDefaultMethod] = useState<string>(
+    typeof window !== "undefined"
+      ? localStorage.getItem("rentular_default_payment_method") || "bank_transfer"
+      : "bank_transfer"
+  );
+
+  useEffect(() => {
+    // Fetch GoCardless status
+    fetch(`${apiUrl}/api/v1/gocardless/status`, { credentials: "include" })
+      .then((res) => res.json())
+      .then((data) => setGcStatus(data))
+      .catch(() => setGcStatus(null));
+
+    // Fetch creditor info
+    setCreditorLoading(true);
+    fetch(`${apiUrl}/api/v1/gocardless/creditor`, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed");
+        return res.json();
+      })
+      .then((data) => {
+        setCreditor(data.data);
+        setCreditorError(false);
+      })
+      .catch(() => {
+        setCreditor(null);
+        setCreditorError(true);
+      })
+      .finally(() => setCreditorLoading(false));
+  }, [apiUrl]);
+
+  const handleUpdateDefaultMethod = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rentular_default_payment_method", defaultMethod);
+    }
+    toast.success(t("defaultPaymentMethodUpdated"));
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Connection Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("goCardlessConnectionStatus")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("goCardlessConnectionStatus")}</span>
+            <span className="flex items-center gap-2 text-sm font-medium">
+              {gcStatus?.configured ? (
+                <>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
+                  {t("goCardlessConnected")}
+                </>
+              ) : (
+                <>
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
+                  {t("goCardlessNotConfigured")}
+                </>
+              )}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("goCardlessEnvironment")}</span>
+            <Badge variant="secondary">{gcStatus?.environment || "sandbox"}</Badge>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">{t("goCardlessApiToken")}</span>
+            <span className="text-sm font-mono">{gcStatus?.maskedToken || "---"}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4">{t("goCardlessEnvNote")}</p>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      {/* Creditor Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("goCardlessCreditorInfo")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {creditorLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          ) : creditorError ? (
+            <p className="text-sm text-muted-foreground">{t("goCardlessCreditorError")}</p>
+          ) : creditor ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t("goCardlessCreditorId")}</span>
+                <span className="text-sm font-mono">{creditor.creditorId}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{t("goCardlessScheme")}</span>
+                <span className="text-sm">SEPA Core</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{t("goCardlessCreditorError")}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      {/* Default Payment Method */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("defaultPaymentMethod")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={defaultMethod} onValueChange={setDefaultMethod}>
+            <SelectTrigger className="w-full max-w-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gocardless">{t("defaultPaymentMethodGoCardless")}</SelectItem>
+              <SelectItem value="bank_transfer">{t("defaultPaymentMethodBankTransfer")}</SelectItem>
+              <SelectItem value="manual">{t("defaultPaymentMethodManual")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex justify-end">
+            <Button onClick={handleUpdateDefaultMethod}>
+              {t("updateDefaultMethod")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 export default function SettingsPage() {
@@ -526,11 +677,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="follow-up" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
           <TabsTrigger value="follow-up">{t("paymentFollowUp")}</TabsTrigger>
           <TabsTrigger value="landlord-reports">{t("landlordReports")}</TabsTrigger>
           <TabsTrigger value="bank-accounts">{t("bankAccounts")}</TabsTrigger>
-          <TabsTrigger value="general">{t("general")}</TabsTrigger>
+          <TabsTrigger value="gocardless">{t("goCardless")}</TabsTrigger>
         </TabsList>
 
         {/* Payment Follow-up Tab */}
@@ -1064,16 +1215,9 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
 
-        {/* General Tab */}
-        <TabsContent value="general">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 text-muted-foreground">
-                <Settings className="h-8 w-8" />
-                <p className="text-sm">{t("generalComingSoon")}</p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* GoCardless Tab */}
+        <TabsContent value="gocardless">
+          <GoCardlessSettingsTab apiUrl={apiUrl} />
         </TabsContent>
       </Tabs>
     </div>
