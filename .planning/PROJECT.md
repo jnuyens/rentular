@@ -47,39 +47,22 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 - ✓ Belgian health index integration (Statbel beSTAT API with daily BullMQ refresh) — Phase 3
 - ✓ Rent indexation calculation with regional formulas (Brussels/Flanders/Wallonia EPC restrictions) — Phase 3
 - ✓ Indexation preview, apply, and tenant notification in 4 languages with legal references — Phase 3
+- ✓ Email delivery with domain-specific SMTP configuration — Phase 4
+- ✓ SMS delivery via configured provider (Twilio/MessageBird/OVH) — Phase 4
+- ✓ Automated payment reminders (configurable per language, per reminder level) — Phase 4
+- ✓ Full property manager role: invite, accept, manage assigned properties with RBAC — Phase 5
+- ✓ Smovin import: authenticated scraping, data mapping, guided import flow (beta) — Phase 6
+- ✓ Responsive dashboard with mobile hamburger drawer, shadcn/ui components across all pages — Phase 7
+- ✓ Guided onboarding wizard: add property, tenant, lease, payment collection setup — Phase 7
+- ✓ Full i18n coverage across all 4 locales (EN, NL, FR, DE) — Phase 7
+- ✓ GoCardless settings tab with connection status, creditor info, default payment method — Phase 8
+- ✓ Dedicated mandates management page with filtering, search, and actions — Phase 8
+- ✓ Payment method selection on lease forms (GoCardless/Bank Transfer/Manual) — Phase 8
+- ✓ Mandate status display on lease detail and tenant profile — Phase 8
+- ✓ Mandate setup modal accessible from leases, tenants, mandates page, and onboarding — Phase 8
+- ✓ Complete GoCardless/mandate i18n keys in all 4 locales — Phase 8
 
 ### Active
-
-**Payment Follow-Up (remaining from Payments)**
-- [ ] Payment follow-up logic: late fees, grace periods, automated escalation — *worker logic exists, notification delivery in Phase 4*
-
-**Property Managers**
-- [ ] Full property manager role: invite via email, accept invitation, manage assigned properties
-- [ ] Role-based access control (owner vs manager permissions)
-- [ ] Property manager dashboard view (see assigned properties only)
-
-**Rent Indexation** — *Validated in Phase 3*
-
-**Notifications**
-- [ ] Email delivery with domain-specific SMTP configuration
-- [ ] SMS delivery via configured provider (Twilio/MessageBird/OVH)
-- [ ] Automated payment reminders (configurable per language, per reminder level)
-- [ ] Email queue rate limiting enforcement
-
-**Reports**
-- [ ] Monthly/yearly payment overview for landlords
-- [ ] Payment status summary (collected, overdue, fees)
-
-**Smovin Import** — *Validated in Phase 6 (beta, human verification pending)*
-
-**Onboarding**
-- [ ] Guided setup wizard: add property -> add tenant -> create lease -> set up payment collection
-
-**Layout & Visual Polish**
-- [ ] Bigger logo top-left across dashboard and marketing pages
-- [ ] Better aligned watermark/branding on landing page
-- [ ] Full responsive design (mobile-friendly dashboard)
-- [ ] Visual consistency and polish across all pages
 
 **Maintenance**
 - [ ] Basic auto-generated maintenance reminders based on property/lease type — *route logic exists (Phase 1), needs end-to-end testing*
@@ -98,7 +81,7 @@ Landlords can automatically collect rent via SEPA direct debit and track all the
 ## Context
 
 - **Existing codebase:** Monorepo (Turborepo) with Next.js 15 frontend, Hono API, Drizzle ORM, MySQL
-- **Current state:** Phases 1-6 complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring, Belgian rent indexation, notifications & payment follow-up, property manager roles, and Smovin import (beta). UI polish, onboarding & launch readiness is next (Phase 7).
+- **Current state:** All 8 phases of v1.0 milestone complete — backend hardened, full payment processing with SEPA Direct Debit + bank monitoring, Belgian rent indexation, notifications & payment follow-up, property manager roles, Smovin import (beta), responsive UI with shadcn/ui, guided onboarding wizard, and complete GoCardless settings UI with SEPA mandate management. Platform is launch-ready.
 - **Competitive landscape:** Smovin, Rentila are established Belgian alternatives. Rentular differentiates on price.
 - **Target market:** Belgian landlords (1-10 properties) and professional property managers
 - **Infrastructure:** Proxmox on Hetzner, Docker deployment. SMTP available on server but needs domain configuration.
@@ -143,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after Phase 6 completion*
+*Last updated: 2026-04-04 after Phase 8 completion (v1.0 milestone complete)*
