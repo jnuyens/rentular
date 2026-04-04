@@ -161,10 +161,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Shared components (MandateStatusBadge, MandateSetupModal, CancelMandateDialog, PaymentMethodRadioGroup), API extensions, GoCardless settings tab
-- [ ] 08-02-PLAN.md -- Mandates management page with table/card views, status filter, search, sidebar navigation
-- [ ] 08-03-PLAN.md -- Lease form payment method radio group, lease detail mandate status, tenant profile mandate display
-- [ ] 08-04-PLAN.md -- Onboarding wizard step 4 mandate integration and comprehensive i18n verification
+- [x] 08-01-PLAN.md -- Shared components (MandateStatusBadge, MandateSetupModal, CancelMandateDialog, PaymentMethodRadioGroup), API extensions, GoCardless settings tab
+- [x] 08-02-PLAN.md -- Mandates management page with table/card views, status filter, search, sidebar navigation
+- [x] 08-03-PLAN.md -- Lease form payment method radio group, lease detail mandate status, tenant profile mandate display
+- [x] 08-04-PLAN.md -- Onboarding wizard step 4 mandate integration and comprehensive i18n verification
 
 ## Progress
 
