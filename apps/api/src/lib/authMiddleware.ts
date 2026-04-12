@@ -4,6 +4,7 @@ import { JWTPayload, jwtDecrypt } from "jose";
 import { hkdf } from "@panva/hkdf";
 import { eq } from "drizzle-orm";
 import { getDb, users } from "@rentular/db";
+import { notifyNewUserSignup } from "./adminNotify";
 
 const AUTH_SECRET = process.env.AUTH_SECRET || "";
 const COOKIE_NAME = "__Secure-authjs.session-token";
@@ -85,6 +86,7 @@ async function ensureUser(payload: JWTPayload): Promise<string> {
       image,
     });
     console.log(`[Auth] Created user ${jwtUserId} (${email})`);
+    notifyNewUserSignup(email || `${jwtUserId}@unknown`, name || undefined, "oauth");
     return jwtUserId;
   } catch (err) {
     console.error("[Auth] User upsert failed:", err);

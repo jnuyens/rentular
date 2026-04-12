@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { getDb, passwordResetTokens, users } from "@rentular/db";
 import { sendEmail } from "../lib/email";
+import { notifyNewUserSignup } from "../lib/adminNotify";
 import { getRequiredUserId, requireAuth } from "../lib/routeAuth";
 
 export const authRouter = new Hono();
@@ -65,6 +66,8 @@ authRouter.post(
     } catch (err) {
       console.error("[Auth] Failed to send welcome email:", err);
     }
+
+    notifyNewUserSignup(normalizedEmail, name || undefined, "email");
 
     return c.json({ message: "Account created" }, 201);
   }
