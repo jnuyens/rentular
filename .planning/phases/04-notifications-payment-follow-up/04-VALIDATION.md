@@ -1,11 +1,12 @@
 ---
 phase: 4
 slug: notifications-payment-follow-up
-status: audited
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-23
 audited: 2026-04-04
+validated: 2026-04-04
 ---
 
 # Phase 4 — Validation Strategy
@@ -18,11 +19,11 @@ audited: 2026-04-04
 
 | Property | Value |
 |----------|-------|
-| **Framework** | None installed |
-| **Config file** | None |
-| **Quick run command** | `pnpm build --filter=api` (TypeScript compilation only) |
-| **Full suite command** | `pnpm build` (full monorepo build) |
-| **Estimated runtime** | ~15 seconds |
+| **Framework** | vitest 4.1.2 |
+| **Config file** | `apps/api/vitest.config.ts` |
+| **Quick run command** | `pnpm --filter=@rentular/api test` |
+| **Full suite command** | `pnpm --filter=@rentular/api test && pnpm build` |
+| **Estimated runtime** | ~2 seconds (tests) + ~12 seconds (build) |
 
 ---
 
@@ -54,14 +55,10 @@ audited: 2026-04-04
 
 ## Wave 0 Requirements
 
-No test framework is installed in this project. Wave 0 would require:
-
-- [ ] Install vitest as test framework (`pnpm add -D vitest` in `apps/api`)
-- [ ] Create `apps/api/vitest.config.ts` configuration
-- [ ] Create test utilities/fixtures for mocking DB, BullMQ, and nodemailer
-- [ ] Add `"test": "vitest run"` script to `apps/api/package.json`
-
-*Note: No test framework exists in any package. All verification during execution was TypeScript compilation only.*
+- [x] Install vitest as test framework (`pnpm add -D vitest` in `apps/api`) — vitest 4.1.2
+- [x] Create `apps/api/vitest.config.ts` configuration
+- [x] Add `"test": "vitest run"` script to `apps/api/package.json`
+- [x] BullMQ, DB, and nodemailer mocked via `vi.mock()` with `vi.hoisted()` pattern
 
 ---
 
@@ -69,16 +66,16 @@ No test framework is installed in this project. Wave 0 would require:
 
 | Requirement | Description | Plans | Verified By | Coverage |
 |-------------|-------------|-------|-------------|----------|
-| NTF-01 | Friendly payment reminder email | 01 | Build + manual | PARTIAL |
-| NTF-02 | Formal payment reminder email | 01 | Build + manual | PARTIAL |
-| NTF-03 | Final payment reminder email | 01 | Build + manual | PARTIAL |
-| NTF-04 | SMS payment reminders | 01 | Build + manual | PARTIAL |
-| NTF-05 | Customizable templates per language | 02, 03 | Build + manual | PARTIAL |
-| NTF-06 | Communications logging with status | 01, 02, 03 | Build + manual | PARTIAL |
-| NTF-07 | Domain-specific SMTP configuration | 02 | Build + manual | PARTIAL |
-| I18N-02 | Notification templates in 4 languages | 03 | Build + manual | PARTIAL |
+| NTF-01 | Friendly payment reminder email | 01 | `paymentFollowUp.test.ts` — determineReminderLevel | COVERED |
+| NTF-02 | Formal payment reminder email | 01 | `paymentFollowUp.test.ts` — determineReminderLevel | COVERED |
+| NTF-03 | Final payment reminder email | 01 | `paymentFollowUp.test.ts` — determineReminderLevel | COVERED |
+| NTF-04 | SMS payment reminders | 01 | `smsQueueWorker.test.ts` + `paymentFollowUp.test.ts` | COVERED |
+| NTF-05 | Customizable templates per language | 02, 03 | `settings.test.ts` — DEFAULT_SETTINGS fields | COVERED |
+| NTF-06 | Communications logging with status | 01, 02, 03 | `emailQueueWorker.test.ts` + `smsQueueWorker.test.ts` | COVERED |
+| NTF-07 | Domain-specific SMTP configuration | 02 | `encryption.test.ts` + `email.test.ts` | COVERED |
+| I18N-02 | Notification templates in 4 languages | 03 | `i18n-completeness.test.ts` | COVERED |
 
-All requirements are PARTIAL: TypeScript compilation confirms type safety and interface contracts, but no runtime behavioral tests exist.
+All 8 requirements now have automated behavioral tests via vitest.
 
 ---
 
@@ -134,12 +131,12 @@ All implementation files confirmed present (2026-04-04):
 
 - [x] All tasks have `<automated>` verify (TypeScript compilation)
 - [x] Sampling continuity: build runs after every task
-- [ ] Wave 0 covers all MISSING references (no test framework installed)
+- [x] Wave 0 complete: vitest installed, 7 test files, 41 tests passing
 - [x] No watch-mode flags
-- [x] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] Feedback latency < 2s (vitest) + ~12s (build)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** partial 2026-04-04
+**Approval:** full 2026-04-04
 
 ---
 
@@ -149,23 +146,22 @@ All implementation files confirmed present (2026-04-04):
 |--------|-------|
 | Requirements audited | 8 |
 | Gaps found | 8 (all MISSING automated behavioral tests) |
-| Resolved | 0 |
-| Escalated to manual-only | 15 (all behaviors) |
-| Compile-verified | 8/8 requirements |
-| Files confirmed present | 17/17 |
+| Resolved | 8/8 |
+| Test files created | 7 |
+| Total tests | 41 |
+| All passing | Yes |
 
-### Root Cause
+### Resolution
 
-No test framework (vitest, jest, etc.) is installed in any package of the monorepo. All Phase 4 verification was TypeScript compilation only (`pnpm build`). Behavioral verification requires:
-1. Installing a test framework
-2. Mocking infrastructure (BullMQ, MySQL/Drizzle, nodemailer, Redis)
-3. Writing unit tests for encryption, queue workers, SMTP transport
-4. Writing integration tests for API routes
+Installed vitest 4.1.2 in `apps/api` and created 7 test files covering all 8 requirements:
 
-### Recommendation
-
-Install vitest in `apps/api` and create focused unit tests for the highest-risk behaviors:
-1. **encryption.ts** -- encrypt/decrypt round-trip (pure function, no mocks needed)
-2. **emailQueueWorker.ts** -- CommunicationMeta logging (requires DB mock)
-3. **email.ts** -- getTransportForOwner fallback logic (requires DB + nodemailer mock)
-4. **i18n completeness** -- automated key comparison across 4 language files
+| # | Test File | Tests | Requirements |
+|---|-----------|-------|-------------|
+| 1 | `src/lib/__tests__/encryption.test.ts` | 6 | NTF-07 |
+| 2 | `src/lib/__tests__/email.test.ts` | 6 | NTF-07 |
+| 3 | `src/jobs/__tests__/emailQueueWorker.test.ts` | 4 | NTF-06 |
+| 4 | `src/jobs/__tests__/smsQueueWorker.test.ts` | 4 | NTF-06 |
+| 5 | `src/services/__tests__/paymentFollowUp.test.ts` | 10 | NTF-01/02/03/04 |
+| 6 | `src/routes/__tests__/settings.test.ts` | 4 | NTF-05 |
+| 7 | `src/__tests__/i18n-completeness.test.ts` | 3 | I18N-02 |
+| | **Total** | **41** | **8/8** |

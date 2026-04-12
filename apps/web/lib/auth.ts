@@ -81,6 +81,10 @@ providers.push(
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db),
   providers,
+  // trustHost is required for production deployments behind reverse proxies.
+  // Without it, NextAuth v5 rejects CSRF tokens in browsers with strict cookie
+  // handling (e.g., Chrome) because the host header doesn't match AUTH_URL.
+  trustHost: true,
   pages: {
     signIn: "/login",
     error: "/login",

@@ -18,6 +18,7 @@ export interface SmovinTenant {
   lastName: string;
   email?: string;
   phone?: string;
+  language?: string; // Smovin UI locale (nl, fr, en) — used as tenant language hint
 }
 
 export interface SmovinLease {
@@ -338,6 +339,22 @@ export function mapSmovinProperty(
   };
 }
 
+/**
+ * Map a Smovin UI locale string to a Rentular language enum value.
+ * Falls back to "nl" for Belgian imports when no language hint is available.
+ */
+function mapTenantLanguage(
+  langHint?: string,
+): "nl" | "fr" | "de" | "en" {
+  if (!langHint) return "nl";
+  const normalized = langHint.toLowerCase().trim();
+  if (normalized === "fr") return "fr";
+  if (normalized === "de") return "de";
+  if (normalized === "en") return "en";
+  if (normalized === "nl") return "nl";
+  return "nl"; // Default for Belgian imports
+}
+
 export function mapSmovinTenant(
   smovinTenant: SmovinTenant,
   ownerId: string,
@@ -361,7 +378,7 @@ export function mapSmovinTenant(
     lastName: smovinTenant.lastName,
     email: smovinTenant.email || null,
     phone: smovinTenant.phone || null,
-    language: "nl", // Default for Belgian imports
+    language: mapTenantLanguage(smovinTenant.language),
     notes: "Imported from Smovin",
     isArchived: false,
     createdAt: new Date(),

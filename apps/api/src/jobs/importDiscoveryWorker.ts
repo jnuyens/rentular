@@ -28,7 +28,7 @@ interface SmovinDiscoveredProperty {
   name: string;
   address: string;
   type: string;
-  tenants: Array<{ firstName: string; lastName: string; email?: string; phone?: string }>;
+  tenants: Array<{ firstName: string; lastName: string; email?: string; phone?: string; language?: string }>;
   leases: Array<{ startDate: string; endDate?: string; monthlyRent: string; charges?: string; type?: string }>;
   payments: Array<{ date: string; amount: string; status: string; description?: string }>;
 }
@@ -100,6 +100,8 @@ const worker = new Worker(
 
       // 4. Navigate to properties/patrimony page
       // Per Plan 01 insights: Smovin uses web.smovin.app, properties at /patrimony
+      // Detect Smovin UI locale from redirect (e.g., /nl/, /fr/, /en/)
+      let smovinLocale = "nl"; // Default
       await page.goto("https://web.smovin.app/patrimony", {
         waitUntil: "load",
         timeout: 60000,
@@ -108,6 +110,14 @@ const worker = new Worker(
         console.log("[ImportDiscovery] networkidle timeout on patrimony page, continuing...");
       });
       await randomDelay(2000, 4000);
+
+      // Detect locale from URL (Smovin redirects /patrimony to /{locale}/patrimony/...)
+      const currentUrl = page.url();
+      const localeMatch = currentUrl.match(/web\.smovin\.app\/(nl|fr|en|de)\//);
+      if (localeMatch) {
+        smovinLocale = localeMatch[1];
+        console.log(`[ImportDiscovery] Detected Smovin locale: ${smovinLocale}`);
+      }
 
       await updateProgress("properties", "Discovering properties...");
 
@@ -246,6 +256,7 @@ const worker = new Worker(
                     lastName: nameParts.slice(1).join(" ") || "",
                     email,
                     phone: phoneMatch ? phoneMatch[1].trim() : undefined,
+                    language: smovinLocale,
                   });
                 }
               }
@@ -257,6 +268,7 @@ const worker = new Worker(
                   property.tenants.push({
                     firstName: nameParts[0] || "",
                     lastName: nameParts.slice(1).join(" ") || "",
+                    language: smovinLocale,
                   });
                 }
               }
@@ -274,7 +286,9 @@ const worker = new Worker(
 
               // Rent: try multiple patterns (label + amount, or any euro-prefixed/suffixed amount)
               // Allow generous whitespace between label and value (Smovin often has newlines between them)
-              const currentRentMatch = bodyText.match(/(?:Huidige huur|Huurprijs|Loyer actuel|Current rent|Huur|Loyer|Maandelijkse huur|Huidige index)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i)
+              // IMPORTANT: Do NOT match "Huidige index" — that's the health index number, not the rent!
+              const currentRentMatch = bodyText.match(/(?:Huidige huur|Huurprijs|Loyer actuel|Current rent|Maandelijkse huur)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i)
+                || bodyText.match(/(?:Loyer|Huur)\s*(?:mensuel|maandelijks)?\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i)
                 || bodyText.match(/€\s*([\d\s.,]+(?:,\d{2}))/);
               const initialRentMatch = bodyText.match(/(?:Initiële huur|Loyer initial|Initial rent|Basishuur|Basishuurprijs)\s*:?\s*[\n\r\s]*([\d\s.,]+)\s*€/i);
 

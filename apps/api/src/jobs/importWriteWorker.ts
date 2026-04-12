@@ -80,6 +80,23 @@ async function findExistingTenant(
   return results[0] || null;
 }
 
+/**
+ * Find an existing lease by property + start date (duplicate detection).
+ * Prevents importing the same lease twice when re-importing.
+ */
+async function findExistingLease(
+  db: ReturnType<typeof getDb>,
+  propertyId: string,
+  startDate: string,
+) {
+  const results = await db
+    .select({ id: leases.id })
+    .from(leases)
+    .where(and(eq(leases.propertyId, propertyId), eq(leases.startDate, startDate)))
+    .limit(1);
+  return results[0] || null;
+}
+
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
@@ -217,15 +234,10 @@ const worker = new Worker(
             }
           }
 
-          // 4d. Import leases for this property (skip if property already has leases)
-          const existingLeases = await db.select({ id: leases.id }).from(leases).where(eq(leases.propertyId, propertyId)).limit(1);
-          const leaseIds: string[] = existingLeases.map(l => l.id);
+          // 4d. Import leases for this property (per-lease deduplication by startDate)
+          const leaseIds: string[] = [];
 
-          if (existingLeases.length > 0) {
-            console.log(`[ImportWrite] Property ${propertyId} already has ${existingLeases.length} lease(s), skipping lease import`);
-          }
-
-          for (let lIdx = 0; lIdx < (existingLeases.length === 0 ? (smovinProp.leases || []).length : 0); lIdx++) {
+          for (let lIdx = 0; lIdx < (smovinProp.leases || []).length; lIdx++) {
             const smovinLease = smovinProp.leases[lIdx];
             const leaseLabel = `lease ${lIdx + 1} (start: "${smovinLease.startDate}", rent: "${smovinLease.monthlyRent}")`;
             try {
@@ -236,6 +248,15 @@ const worker = new Worker(
                 addr.postalCode,
                 addr.city,
               );
+
+              // Check for existing lease with same property + startDate to avoid duplicates
+              const existingLease = await findExistingLease(db, propertyId, mappedLease.startDate);
+              if (existingLease) {
+                console.log(`[ImportWrite] Lease already exists for property ${propertyId} with startDate ${mappedLease.startDate}, reusing id=${existingLease.id}`);
+                leaseIds.push(existingLease.id);
+                continue;
+              }
+
               await db.insert(leases).values(mappedLease);
               leaseCount++;
               leaseIds.push(mappedLease.id);
