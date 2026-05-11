@@ -18,6 +18,7 @@ import { authRouter } from "./routes/auth";
 import { costsRouter } from "./routes/costs";
 import { rentAdjustmentsRouter } from "./routes/rentAdjustments";
 import { bankAccountsRouter } from "./routes/bankAccounts";
+import { bankConnectionsRouter } from "./routes/bankConnections";
 import { propertyManagersRouter } from "./routes/propertyManagers";
 import { communicationsRouter } from "./routes/communications";
 import { gocardlessRouter } from "./routes/gocardless";
@@ -54,6 +55,7 @@ const protectedPrefixes = [
   "/costs",
   "/rent-adjustments",
   "/bank-accounts",
+  "/bank-connections",
   "/property-managers",
   "/communications",
   "/gocardless",
@@ -83,7 +85,14 @@ app.use("*", async (c, next) => {
 app.use("*", authMiddleware);
 for (const prefix of protectedPrefixes) {
   app.use(prefix, requireAuth);
-  app.use(`${prefix}/*`, requireAuth);
+  app.use(`${prefix}/*`, async (c, next) => {
+    // /bank-connections/callback uses the OAuth state JWT instead of the
+    // session cookie — the user is returning from Ponto's redirect and has
+    // no session-Cookie context. The state JWT signature gate (T-09-03-01)
+    // replaces requireAuth on this single path.
+    if (c.req.path.endsWith("/bank-connections/callback")) return next();
+    return requireAuth(c, next);
+  });
 }
 app.use("/support/chat", requireAuth);
 app.use("/support/chat/*", requireAuth);
@@ -136,6 +145,7 @@ app.route("/auth", authRouter);
 app.route("/costs", costsRouter);
 app.route("/rent-adjustments", rentAdjustmentsRouter);
 app.route("/bank-accounts", bankAccountsRouter);
+app.route("/bank-connections", bankConnectionsRouter);
 app.route("/property-managers", propertyManagersRouter);
 app.route("/communications", communicationsRouter);
 app.route("/gocardless", gocardlessRouter);
