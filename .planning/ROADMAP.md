@@ -185,7 +185,7 @@ Plans:
 
 Plans:
 - [x] 09-01-PLAN.md -- Schema additions (bank_connections encrypted-token columns + bank_statements table), Ponto test fixtures, MSW dev-dep, drizzle-kit push
-- [ ] 09-02-PLAN.md -- PontoConnectProvider class + pontoConnect.ts REST client + bankOAuthState.ts JWT helper + factory dispatch + .env.example
+- [x] 09-02-PLAN.md -- PontoConnectProvider class + pontoConnect.ts REST client + bankOAuthState.ts JWT helper + factory dispatch + .env.example
 - [ ] 09-03-PLAN.md -- /api/v1/bank-connections Hono router (8 endpoints), bankStatementImporter, bankConnectionSync service, paymentCheckWorker Phase B refactor
 - [ ] 09-04-PLAN.md -- Bank Connections dashboard UI (list, connect, detail, callback pages), sidebar nav, status badge, institution picker, Settings tab cross-link
 - [ ] 09-05-PLAN.md -- i18n in 4 locales, locale-aware renewal emails, TOS + Privacy clauses, BANK_STATEMENTS_RETENTION_DAYS cron, full integration gates (lint + build + db:push + test + i18n audit)
