@@ -12,4 +12,5 @@ export * from "./smtpSettings";
 export * from "./maintenance";
 export * from "./webhookEvents";
 export * from "./bankConnections";
+export * from "./bankStatements";
 export * from "./imports";

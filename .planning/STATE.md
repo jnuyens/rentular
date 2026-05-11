@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 9 planned
-stopped_at: Phase 9 PLAN.md files written (5 plans, 18 tasks); plan-checker PASS-WITH-NOTES
-last_updated: "2026-05-12T00:35:00.000Z"
+status: unknown
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-05-11T22:41:34.261Z"
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 38
   completed_plans: 33
+  percent: 87
 ---
 
 # Project State
@@ -19,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 09 — psd2-bank-connection-flow (Ponto Connect, Customer-Paying model)
+**Current focus:** Phase 09 — psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con
 
 ## Current Position
 
-Phase: 09
-Plan: Not started (5 plans ready for /gsd:execute-phase 9)
+Phase: 09 (psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con) — EXECUTING
+Plan: 1 of 5
 
 ## Performance Metrics
 
