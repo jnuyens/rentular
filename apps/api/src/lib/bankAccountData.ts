@@ -191,9 +191,151 @@ export class GoCardlessBadProvider implements BankAccountDataProvider {
   }
 }
 
-/** Factory function to get the configured bank account data provider */
-export function getBankAccountDataProvider(): BankAccountDataProvider {
-  // Currently only GoCardless BAD is implemented.
-  // Future: check env var or config to select between providers.
-  return new GoCardlessBadProvider();
+/**
+ * Ponto Connect (Ibanity, Customer-Paying) implementation. Belgian-domiciled
+ * provider chosen for Phase 9 (CONTEXT D-Provider). Each landlord registers
+ * their OWN Ibanity organisation; Rentular only stores the OAuth tokens.
+ *
+ * Tokens (accessToken + refreshToken) are NOT held in this class' state —
+ * they are passed via setTokens() by the route layer (Plan 03) or the
+ * polling worker (Plan 03 Task 3) which decrypts them from
+ * bank_connections.encrypted_access_token / encrypted_refresh_token.
+ *
+ * The 180-day default expiresAt below is a fall-back: the callback route
+ * (Plan 03 Task 2) OVERWRITES expiresAt with the value from the post-token-
+ * exchange consent metadata. The 180-day default mirrors the EBA upper bound
+ * and ensures Phase C consent-expiry warnings still trigger if metadata is
+ * missing.
+ */
+export class PontoConnectProvider implements BankAccountDataProvider {
+  readonly name = "ponto";
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+
+  constructor(tokens?: { accessToken: string; refreshToken?: string }) {
+    if (tokens) {
+      this.accessToken = tokens.accessToken;
+      this.refreshToken = tokens.refreshToken || null;
+    }
+  }
+
+  /** Inject (or rotate) the per-connection OAuth tokens after construction. */
+  setTokens(tokens: { accessToken: string; refreshToken?: string }): void {
+    this.accessToken = tokens.accessToken;
+    if (tokens.refreshToken !== undefined) {
+      this.refreshToken = tokens.refreshToken;
+    }
+  }
+
+  private requireAccessToken(): string {
+    if (!this.accessToken) {
+      throw new Error(
+        "[BankAccountData] PontoConnectProvider has no accessToken; call setTokens() first"
+      );
+    }
+    return this.accessToken;
+  }
+
+  async createConsent(params: {
+    institutionId: string;
+    redirectUrl: string;
+    reference?: string;
+  }): Promise<ConsentResult> {
+    const { createPontoAuthorizationUrl } = await import("./pontoConnect");
+    const state = params.reference || crypto.randomUUID();
+    const consentLink = createPontoAuthorizationUrl({
+      state,
+      redirectUri: params.redirectUrl,
+    });
+
+    // Default to EBA upper bound (180 days). The callback route MUST overwrite
+    // this with the real consent metadata once tokens are exchanged.
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 180);
+
+    return {
+      requisitionId: params.institutionId,
+      consentLink,
+      expiresAt,
+    };
+  }
+
+  async listAccounts(_requisitionId: string): Promise<BankAccountInfo[]> {
+    const { listAccounts: pontoListAccounts } = await import("./pontoConnect");
+    const accessToken = this.requireAccessToken();
+    const accounts = await pontoListAccounts({ accessToken });
+    return accounts.map((a) => ({
+      accountId: a.id,
+      iban: a.iban,
+      // institutionId is resolved by the route layer using bank_connections.providerMetadata
+      institutionId: "",
+      institutionName: a.holderName || "",
+      status: "active",
+    }));
+  }
+
+  async getTransactions(params: {
+    accountId: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<IncomingTransaction[]> {
+    const { listTransactions } = await import("./pontoConnect");
+    const accessToken = this.requireAccessToken();
+    const txs = await listTransactions({
+      accessToken,
+      accountId: params.accountId,
+      dateFrom: params.dateFrom,
+    });
+    return txs.map((t) => ({
+      transactionId: t.id,
+      amount: t.amount,
+      currency: t.currency,
+      bookingDate: t.executionDate || t.valueDate || "",
+      remittanceStructured:
+        t.remittanceInformationType === "structured"
+          ? t.remittanceInformation
+          : undefined,
+      remittanceUnstructured:
+        t.remittanceInformationType === "unstructured"
+          ? t.remittanceInformation
+          : undefined,
+      debtorName: t.counterpartName,
+      debtorIban: t.counterpartReference,
+    }));
+  }
+
+  async renewConsent(_requisitionId: string): Promise<Date | null> {
+    // Ponto Connect does not support silent renewal — the landlord must
+    // re-authorize via a fresh OAuth round trip. Phase C consent-expiry
+    // worker sends warning emails at 7-day / 1-day thresholds (existing
+    // pattern, same as GoCardless BAD).
+    console.log(
+      "[BankAccountData] Silent renewal not supported for Ponto; landlord must re-authorize"
+    );
+    return null;
+  }
+
+  async revokeConsent(_requisitionId: string): Promise<void> {
+    const { revokeAccess } = await import("./pontoConnect");
+    const accessToken = this.requireAccessToken();
+    await revokeAccess(accessToken);
+  }
+}
+
+/**
+ * Factory function. Selects the bank-data provider based on
+ * BANK_DATA_PROVIDER:
+ *   - "ponto" (default)  → PontoConnectProvider
+ *   - "gocardless_bad"   → GoCardlessBadProvider (dormant reference)
+ *
+ * The optional `tokens` parameter lets the polling worker construct a
+ * Ponto provider pre-loaded with a specific landlord's decrypted OAuth
+ * tokens (Plan 03 Task 3 will wire this).
+ */
+export function getBankAccountDataProvider(
+  tokens?: { accessToken: string; refreshToken?: string }
+): BankAccountDataProvider {
+  const provider = (process.env.BANK_DATA_PROVIDER || "ponto").toLowerCase();
+  if (provider === "gocardless_bad") return new GoCardlessBadProvider();
+  return new PontoConnectProvider(tokens);
 }
