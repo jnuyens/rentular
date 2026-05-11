@@ -95,6 +95,24 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **I18N-01**: All new UI screens and features are translated in EN, NL, FR, DE
 - [ ] **I18N-02**: Notification templates support all four languages
 
+### PSD2 Bank Connection (Phase 9)
+
+- [ ] **BANK-INFRA**: Vitest fixtures (Ponto sandbox JSON) + MSW dev-dep installed; per-task verification map populated
+- [ ] **BANK-SCHEMA**: Drizzle migration adds encrypted-token + provider-metadata + country columns to bank_connections and creates bank_statements audit table with UNIQUE(connectionId, externalTransactionId), match_status enum, and PII-encryption triplets
+- [ ] **BANK-PROVIDER**: PontoConnectProvider class implements BankAccountDataProvider; factory dispatches via BANK_DATA_PROVIDER env; GoCardless BAD remains as dormant reference
+- [ ] **BANK-OAUTH**: signOAuthState / verifyOAuthState helpers using jose HS256 + AUTH_SECRET + 10-min TTL; HTTPS-only redirect URI registered with Ponto in production
+- [ ] **BANK-ROUTES**: 8 Hono endpoints under /api/v1/bank-connections (POST /, GET /, GET /:id, GET /callback, GET /institutions, POST /:id/renew, DELETE /:id, POST /:id/sync) with auth + CSRF + zod validation + ownership scoping + token-column sanitization on responses
+- [ ] **BANK-UI-LIST**: /dashboard/bank-connections list page with shadcn Card+Table responsive layout, empty state including €4/account/month Ibanity disclosure + ToS link + Connect CTA
+- [ ] **BANK-UI-DETAIL**: /dashboard/bank-connections/[id] detail page with status badge, last synced, consent expiry countdown, Sync now / Renew consent / Revoke (AlertDialog confirmation) actions
+- [ ] **BANK-UI-CALLBACK**: /dashboard/bank-connections/callback handles all error codes (access_denied, expired_state, missing_params, no_accounts, unknown) and ?connected=1 success
+- [ ] **BANK-UI-NAV**: Sidebar entry between Payments and Mandates with Banknote icon; owner-only visibility via NAV_VISIBILITY
+- [ ] **BANK-WORKER**: paymentCheckWorker Phase B delegates to syncBankConnection service; first-sync backfill window 90 days; Phase C consent-expiry warnings unchanged
+- [ ] **BANK-MATCHER**: bankStatementImporter inserts encrypted rows BEFORE matcher; matcher results update bank_statements.matchedPaymentId + matchStatus + matchedAt
+- [ ] **BANK-EMAIL**: Renewal warning emails (7-day and 1-day thresholds) use locale-aware templates from bankConnections.email.renewalWarning namespace in EN/NL/FR/DE
+- [ ] **BANK-I18N**: Full bankConnections.* namespace coverage in all 4 locales with zero missing keys (enforced by extended i18n-completeness vitest)
+- [ ] **BANK-TOS**: Terms of Service includes Bank Account Connections clause disclosing separate Ibanity agreement; Privacy Policy lists Ibanity SA/NV as third-party processor with purpose, lawful basis, retention, data categories
+- [ ] **BANK-RETENTION**: BullMQ weekly cron (Sunday 03:00) hard-deletes bank_statements older than BANK_STATEMENTS_RETENTION_DAYS (default 2555 = 7 years per Belgian tax law)
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -139,6 +157,10 @@ Explicitly excluded. Documented to prevent scope creep.
 | Card payments for rent (Stripe) | GoCardless SEPA only for rent collection; Stripe for subscriptions |
 | Tailwind CSS v4 migration | Major breaking changes, no launch benefit |
 | Native mobile app | Responsive web first; native later |
+| Manual statement upload (CAMT.053 / CODA / CSV / MT940) | Deferred from Phase 9 in favor of full Ponto integration; revisit only if Ponto onboarding friction is high |
+| Multi-account picker on Ponto callback | v1 takes accounts[0]; multi-account picker is a v1.5 enhancement |
+| Rentular-as-AISP (own PSD2 license) | NBB + eIDAS QWAC multi-month regulatory project; far out of v1 scope |
+| Ponto Partner-Paying model | Customer-Paying chosen to keep Rentular's variable cost at €0 |
 
 ## Traceability
 
@@ -201,12 +223,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ONB-02 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | ONB-03 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
 | I18N-01 | Phase 7: UI Polish, Onboarding & Launch Readiness | Complete |
+| BANK-INFRA | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-SCHEMA | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-PROVIDER | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-OAUTH | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-ROUTES | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-UI-LIST | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-UI-DETAIL | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-UI-CALLBACK | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-UI-NAV | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-WORKER | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-MATCHER | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-EMAIL | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-I18N | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-TOS | Phase 9: PSD2 Bank Connection Flow | Pending |
+| BANK-RETENTION | Phase 9: PSD2 Bank Connection Flow | Pending |
 
 **Coverage:**
-- v1 requirements: 55 total
-- Mapped to phases: 55
+- v1 requirements: 70 total (55 v1 launch features + 15 Phase 9 BANK-* additions)
+- Mapped to phases: 70
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-22*
-*Last updated: 2026-03-22 after roadmap creation*
+*Last updated: 2026-05-12 after Phase 9 planning (added BANK-* requirement family)*

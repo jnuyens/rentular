@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Milestone complete
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-04-04T12:44:11.027Z"
+status: Phase 9 planned
+stopped_at: Phase 9 PLAN.md files written (5 plans, 18 tasks); plan-checker PASS-WITH-NOTES
+last_updated: "2026-05-12T00:35:00.000Z"
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 8
-  total_plans: 33
+  total_plans: 38
   completed_plans: 33
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 08 — gocardless-settings-ui-sepa-mandate-management
+**Current focus:** Phase 09 — psd2-bank-connection-flow (Ponto Connect, Customer-Paying model)
 
 ## Current Position
 
-Phase: 08
-Plan: Not started
+Phase: 09
+Plan: Not started (5 plans ready for /gsd:execute-phase 9)
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Plan: Not started
 ### Roadmap Evolution
 
 - Phase 8 added: GoCardless Settings UI & SEPA Mandate Management
+- Phase 9 added: PSD2 bank connection flow — API routes + UI for landlords to connect their bank account so the existing polling worker can auto-import statements and match incoming rent transfers
 
 ### Decisions
 

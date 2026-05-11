@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Smovin Import (Beta)** - Authenticated scraping of Smovin accounts, data mapping, and guided import flow
 - [ ] **Phase 7: UI Polish, Onboarding & Launch Readiness** - Responsive dashboard, visual consistency, guided setup wizard, and full i18n coverage
 - [ ] **Phase 8: GoCardless Settings UI & SEPA Mandate Management** - GoCardless configuration tab, mandate management page, payment method on leases, onboarding integration
+- [ ] **Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)** - Ponto Connect provider, OAuth flow, bank_statements audit table, Bank Connections dashboard, locale-aware renewal emails, TOS + Privacy disclosures, retention cron
 
 ## Phase Details
 
@@ -166,10 +167,33 @@ Plans:
 - [x] 08-03-PLAN.md -- Lease form payment method radio group, lease detail mandate status, tenant profile mandate display
 - [x] 08-04-PLAN.md -- Onboarding wizard step 4 mandate integration and comprehensive i18n verification
 
+### Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)
+**Goal**: Landlords can link their Belgian bank account via Ponto Connect (Ibanity) under the Customer-Paying model so the existing polling worker auto-imports statements and matches incoming rent transfers, with PSD2-compliant 180-day consent renewal, encrypted token storage, locale-aware renewal emails, GDPR disclosures, and a 7-year retention policy aligned to Belgian tax law
+**Depends on**: Phase 8
+**Requirements**: BANK-INFRA, BANK-SCHEMA, BANK-PROVIDER, BANK-OAUTH, BANK-ROUTES, BANK-UI-LIST, BANK-UI-DETAIL, BANK-UI-CALLBACK, BANK-UI-NAV, BANK-WORKER, BANK-MATCHER, BANK-EMAIL, BANK-I18N, BANK-TOS, BANK-RETENTION
+**Success Criteria** (what must be TRUE):
+  1. Landlord can click "Connect bank account" from /dashboard/bank-connections, view the €4/account/month Ibanity cost disclosure + ToS notice, select a Belgian bank from the picker, and be redirected through Ponto's OAuth flow
+  2. On successful OAuth callback the system stores AES-256-GCM-encrypted access + refresh tokens in `bank_connections`, sources `consentExpiresAt` from the provider response (not a hardcoded value), and shows the connection as Active in the dashboard
+  3. The Phase 2 polling worker picks up the new active connection on its next cycle and persists every transaction to a new `bank_statements` audit table with encrypted counterparty PII before invoking the existing matcher
+  4. Landlord can manually Sync now (rate-limited 1/min), Renew consent (signs a fresh state JWT and redirects to Ponto), and Revoke (calls Ponto revoke endpoint then soft-deletes — bank_statements retained for 7 years)
+  5. Renewal warning emails sent at 7-day and 1-day pre-expiry thresholds use locale-aware subject and body strings (EN/NL/FR/DE) rather than hardcoded English
+  6. Sidebar "Bank Connections" entry appears between Payments and Mandates for owner role only; hidden from co_owner/manager/accountant/viewer
+  7. All UI strings translated in EN, NL, FR, DE with zero missing keys (enforced by extended i18n-completeness test)
+  8. Terms of Service includes a Bank Account Connections clause and Privacy Policy lists Ibanity SA/NV as a third-party processor
+  9. BullMQ weekly cron (Sunday 03:00) hard-deletes bank_statements older than `BANK_STATEMENTS_RETENTION_DAYS` (default 2555 = 7 years)
+**Plans**: 5 plans
+
+Plans:
+- [ ] 09-01-PLAN.md -- Schema additions (bank_connections encrypted-token columns + bank_statements table), Ponto test fixtures, MSW dev-dep, drizzle-kit push
+- [ ] 09-02-PLAN.md -- PontoConnectProvider class + pontoConnect.ts REST client + bankOAuthState.ts JWT helper + factory dispatch + .env.example
+- [ ] 09-03-PLAN.md -- /api/v1/bank-connections Hono router (8 endpoints), bankStatementImporter, bankConnectionSync service, paymentCheckWorker Phase B refactor
+- [ ] 09-04-PLAN.md -- Bank Connections dashboard UI (list, connect, detail, callback pages), sidebar nav, status badge, institution picker, Settings tab cross-link
+- [ ] 09-05-PLAN.md -- i18n in 4 locales, locale-aware renewal emails, TOS + Privacy clauses, BANK_STATEMENTS_RETENTION_DAYS cron, full integration gates (lint + build + db:push + test + i18n audit)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoretically be reordered, but the listed order prioritizes core value delivery (payments -> indexation -> notifications) before expansion features.
 
 | Phase | Plans Complete | Status | Completed |
@@ -182,3 +206,4 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
 | 8. GoCardless Settings UI & SEPA Mandate Management | 0/4 | Planning complete | - |
+| 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 0/5 | Planning complete | - |
