@@ -19,7 +19,7 @@ import {
   DEFAULT_SETTINGS,
 } from "../services/paymentFollowUp";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
-import { processIncomingTransactions } from "../services/transactionMatcher";
+import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
 import type { SupportedLanguage } from "@rentular/shared";
 
@@ -257,44 +257,21 @@ const worker = new Worker(
       .where(eq(bankConnections.status, "active"));
 
     if (activeConnections.length > 0) {
-      const provider = getBankAccountDataProvider();
       let totalMatched = 0;
       let totalMismatched = 0;
 
       for (const conn of activeConnections) {
         try {
-          // Fetch transactions since last sync (or last 3 days if first sync)
-          const dateFrom = conn.lastSyncAt
-            ? conn.lastSyncAt.toISOString().split("T")[0]
-            : new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-                .toISOString()
-                .split("T")[0];
-
-          const transactions = await provider.getTransactions({
-            accountId: conn.externalAccountId!,
-            dateFrom,
-          });
-
-          if (transactions.length > 0) {
-            const result = await processIncomingTransactions(
-              conn.ownerId,
-              transactions
-            );
-            totalMatched += result.matched;
-            totalMismatched += result.mismatched;
-            console.log(
-              `[PaymentCheck] Bank ${conn.iban}: ${result.matched} matched, ${result.mismatched} mismatched, ${result.unmatched} unmatched`
-            );
-          }
-
-          // Update lastSyncAt
-          await db
-            .update(bankConnections)
-            .set({
-              lastSyncAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(bankConnections.id, conn.id));
+          // Phase 09-03: Delegate to the shared syncBankConnection service
+          // (single source of truth — also called by POST /:id/sync). The
+          // 90-day first-sync backfill is computed inside the service per
+          // RESEARCH Pitfall 8; the previous inline 3-day window is removed.
+          const result = await syncBankConnection(conn.id);
+          totalMatched += result.matched;
+          totalMismatched += result.mismatched;
+          console.log(
+            `[PaymentCheck] Bank ${conn.iban || conn.id}: fetched=${result.fetched} matched=${result.matched} mismatched=${result.mismatched} unmatched=${result.unmatched} skippedDuplicates=${result.skippedDuplicates}`
+          );
         } catch (err) {
           console.error(
             `[PaymentCheck] Failed to poll bank connection ${conn.id}:`,
