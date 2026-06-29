@@ -397,7 +397,12 @@
     "defaultPaymentMethodBankTransfer": "Virement bancaire",
     "defaultPaymentMethodManual": "Manuel",
     "updateDefaultMethod": "Mettre a jour la methode par defaut",
-    "defaultPaymentMethodUpdated": "Methode de paiement par defaut mise a jour."
+    "defaultPaymentMethodUpdated": "Methode de paiement par defaut mise a jour.",
+    "bankConnectionsCrossLink": {
+      "title": "Bank account connection (PSD2)",
+      "description": "Connect your bank account so Rentular can automatically match incoming rent transfers.",
+      "manageButton": "Manage bank connections"
+    }
   },
   "landing": {
     "navFeatures": "Fonctionnalites",

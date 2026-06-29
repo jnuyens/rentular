@@ -19,6 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -331,6 +332,25 @@ function GoCardlessSettingsTab({ apiUrl }: { apiUrl: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Bank account connection (PSD2) cross-link */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("bankConnectionsCrossLink.title")}</CardTitle>
+          <CardDescription>
+            {t("bankConnectionsCrossLink.description")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href="/dashboard/bank-connections">
+              {t("bankConnectionsCrossLink.manageButton")}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
       {/* Connection Status */}
       <Card>
         <CardHeader>
