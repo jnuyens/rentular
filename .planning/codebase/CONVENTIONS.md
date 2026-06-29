@@ -1,274 +1,176 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-03-22
+**Analysis Date:** 2026-06-28
 
 ## Naming Patterns
 
 **Files:**
-- PascalCase for React components: `LoginPage.tsx`, `IbanInput.tsx`, `LanguageSwitcher.tsx`
-- camelCase for utility and service files: `emailQueueWorker.ts`, `paymentFollowUp.ts`, `authMiddleware.ts`
-- kebab-case for route files: `bank-accounts`, `property-managers`, `rent-adjustments` (as directory names)
-- Types and schema files: `hono.d.ts`, `communications.ts`, `tenants.ts`
+- PascalCase for React component files: `IbanInput.tsx`, `MandateSetupModal.tsx`, `LanguageSwitcher.tsx`, `CancelMandateDialog.tsx`
+- camelCase for API service, lib, and job files: `emailQueueWorker.ts`, `bankStatementImporter.ts`, `pontoConnect.ts`, `bankOAuthState.ts`
+- camelCase for route files: `bankConnections.ts`, `payments.ts`, `rentAdjustments.ts`
+- kebab-case for Next.js route directories: `bank-connections/`, `rent-adjustments/`, `property-managers/`
+- Schema files named after their domain concept in camelCase: `bankConnections.ts`, `bankStatements.ts`, `smtpSettings.ts`
 
 **Functions:**
-- camelCase for all function definitions: `getRequiredUserId()`, `sendEmail()`, `renderTemplate()`, `queueEmail()`
-- Exported constants use camelCase: `emailQueue`, `propertiesRouter`, `tenantsRouter`
-- Middleware and router objects use camelCase: `requireAuth`, `authMiddleware`, `propertiesRouter`
+- camelCase for all exported functions: `getRequiredUserId()`, `signOAuthState()`, `verifyOAuthState()`, `importBankStatements()`, `sanitizeConnection()`, `isPontoConfigured()`
+- Async functions always explicitly `async`: no implicit promise wrappers
+- Private/module-local helpers are camelCase and unexported: `notConfigured()`, `webUrl()`, `getEncryptionKey()`, `getDefaultSettings()`
 
 **Variables:**
-- camelCase for local variables: `ownerId`, `email`, `password`, `error`, `resetToken`
-- Uppercase for environment-derived constants: `MAX_EMAILS_PER_MINUTE`, `AUTH_SECRET`, `QUEUE_NAME`, `COOKIE_NAME`, `DELAY_BETWEEN_MS`
-- Descriptive names: `dbSchema`, `usersTable`, `byEmail`, `byId` (indicates database query result)
+- camelCase for all local variables and parameters: `ownerId`, `consentLink`, `institutionId`, `insertCalls`
+- Uppercase for module-level constants derived from env or business rules: `MAX_EMAILS_PER_MINUTE`, `DELAY_BETWEEN_MS`, `QUEUE_NAME`, `COOKIE_NAME`, `SYNC_RATE_LIMIT_MS`
+- Prefix database result variables descriptively: `rows`, `result`, `row` (singular for indexed access)
 
-**Types:**
-- PascalCase for interfaces and type aliases: `PaymentStatus`, `EmailOptions`, `PaymentFollowUpSettings`, `IndexationResult`, `PropertyManagerRole`
-- Literal union types for enums: `type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "refunded"`
-- Generic type prefixes: `TemplatePlaceholder`, `EpcScore`
+**Types and Interfaces:**
+- PascalCase for interfaces and type aliases: `OAuthStatePayload`, `CommunicationMeta`, `FollowUpSettings`, `OverduePayment`
+- Literal union types instead of enums: `type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "refunded"` (`packages/shared/src/types/index.ts`)
+- `...Settings` suffix for configuration object types: `PaymentFollowUpSettings`, `FollowUpSettings`
+- `...Options` suffix for function parameter bags: `EmailOptions`
+- `...Payload` suffix for JWT/message payloads: `OAuthStatePayload`
+- `...Meta` suffix for supplementary logging/audit objects: `CommunicationMeta`
 
-**Data Structures:**
-- `...Settings` suffix for configuration objects: `PaymentFollowUpSettings`
-- `...Result` suffix for computed/processed data: `IndexationResult`
-- `...Options` suffix for function parameters: `EmailOptions`
-- `...Schema` suffix for Zod schemas or database schemas
+**Constants (shared package):**
+- SCREAMING_SNAKE_CASE for all exported constants: `REMINDER_DEFAULTS`, `DEFAULT_EMAIL_TEMPLATES`, `DEFAULT_SMS_TEMPLATES`, `DEFAULT_INTEREST_RATE`, `REGIONS`, `PROPERTY_TYPES`
+
+**Exported module objects:**
+- camelCase for named router exports: `bankConnectionsRouter`, `paymentsRouter`, `settingsRouter`
+- camelCase for queue exports: `emailQueue`, `smsQueue`, `importDiscoveryQueue`
 
 ## Code Style
 
 **Formatting:**
-- Tool: Prettier 3.2.0 (configured at workspace root)
-- Command: `pnpm format` runs `prettier --write "**/*.{ts,tsx,md,json}"`
-- Applied to all TypeScript, TSX, Markdown, and JSON files
+- Tool: Prettier 3.2.0, run via `pnpm format` at repo root
+- Command: `prettier --write "**/*.{ts,tsx,md,json}"` (configured in root `package.json`)
+- No dedicated `.prettierrc` file detected; Prettier runs with defaults (single quotes not enforced, trailing commas on by default in Prettier 3)
+- No ESLint config detected in the repo; lint script runs `tsc --noEmit` only
 
-**Linting:**
-- No ESLint config detected in project root or app directories
-- TypeScript strict mode enabled: All strict checks active
-- Implicit `any` forbidden
+**TypeScript:**
+- `strict: true` in all `tsconfig.json` files; applies to root, `apps/web/`, and `apps/api/`
+- Target: `ES2022` for both web and API
+- `noEmit: true` for type-checking builds; tsup builds the API for production
+- `isolatedModules: true` everywhere
+- Implicit `any` forbidden; use `// eslint-disable-next-line @typescript-eslint/no-explicit-any` with explanation when casting is unavoidable (appears in `bankConnections.ts:125`, `bankAccountData.ts:67`)
 
-**Import Organization:**
+## Import Organization
 
-Order by category:
-1. Built-in/Node modules: `import { serve } from "@hono/node-server"`
-2. External dependencies: `import { Hono } from "hono"`, `import { z } from "zod"`
-3. Internal workspace packages: `import { getDb, properties } from "@rentular/db"`
-4. Relative imports (lib): `import * as mem from "../lib/memoryStore"`
-5. Route imports: `import { propertiesRouter } from "./routes/properties"`
+**Order (API):**
+1. Node built-ins and third-party packages: `import { Hono } from "hono"`, `import { zValidator } from "@hono/zod-validator"`, `import { eq, and, desc } from "drizzle-orm"`
+2. Internal workspace packages: `import { getDb, bankConnections } from "@rentular/db"`, `import { ... } from "@rentular/shared"`
+3. Local relative imports: `import { getRequiredUserId } from "../lib/routeAuth"`, `import { encrypt } from "../lib/encryption"`
+
+**Order (Web):**
+1. React and third-party: `import { useState, useEffect } from "react"`, `import { useTranslations } from "next-intl"`
+2. UI library components via `@/` alias: `import { Button } from "@/components/ui/button"`, `import { Badge } from "@/components/ui/badge"`
+3. Domain-specific components via `@/`: `import { MandateStatusBadge } from "@/components/MandateStatusBadge"`
 
 **Path Aliases:**
-- Used in Next.js frontend: `@/components/LanguageSwitcher`, `@/lib/auth`
-- No aliases in API (uses relative imports)
-
-**File Structure Pattern:**
-```typescript
-// 1. Imports (organized as above)
-import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
-import * as mem from "../lib/memoryStore";
-import { getRequiredUserId } from "../lib/routeAuth";
-
-// 2. Initialize lazy-loaded dependencies (with try-catch fallback)
-let db: any = null;
-let dbSchema: any = null;
-let eq: any = null;
-
-try {
-  const dbMod = require("@rentular/db");
-  db = dbMod.getDb();
-  dbSchema = dbMod.properties;
-  eq = require("drizzle-orm").eq;
-} catch {
-  console.log("[Properties] Database unavailable, using in-memory store");
-}
-
-// 3. Define schemas/validators
-const createPropertySchema = z.object({...});
-
-// 4. Export router/main export
-export const propertiesRouter = new Hono();
-
-// 5. Define route handlers
-propertiesRouter.get("/", async (c) => {...});
-```
+- `@/*` resolves to `apps/web/*` (configured in `apps/web/tsconfig.json`)
+- No `@/` alias in `apps/api/`; API uses only relative imports and `@rentular/*` workspace packages
+- Workspace packages: `@rentular/db`, `@rentular/shared`
 
 ## Error Handling
 
-**Patterns:**
-- Graceful fallback to in-memory store when database is unavailable
-- Routes contain try-catch blocks that fall back to `memoryStore` if database fails
-- Logging to console with context prefix: `console.error("DB read failed, falling back to memory:", err)`
-- Errors from operations result in HTTP status codes: `c.json({ error: "Property not found" }, 404)`
-- Middleware throws errors for validation: `throw new Error("Authenticated user is required")`
+**Route handlers (Hono):**
+- Wrap entire handler body in `try { ... } catch (err)` — extract `.message` with `err instanceof Error ? err.message : "Unknown error"` pattern
+- Return typed HTTP status: `c.json({ error: message }, 500)` for server errors, `c.json({ error: "..." }, 404)` for not-found, `c.json({ error: "..." }, 503)` for unconfigured integrations
+- Log before returning error: `console.error("[BankConnections] /institutions error:", err)`
+- Throw from `getRequiredUserId()` to signal missing auth — outer try-catch converts to 500
 
-**Auth Error Handling:**
-```typescript
-// In authMiddleware.ts
-try {
-  // decode token, upsert user
-} catch (err) {
-  console.error("[Auth] Failed to decode token:", err);
-  return null;
-}
-```
+**Services and lib:**
+- Functions throw on failure; callers catch and decide HTTP response
+- BullMQ workers re-throw after logging to trigger BullMQ retry: `throw err; // Re-throw for BullMQ retry` (`apps/api/src/jobs/emailQueueWorker.ts:75`)
+- Database errors swallowed only when explicitly safe (e.g., `ER_DUP_ENTRY` in `bankStatementImporter.ts`)
 
-**API Error Responses:**
-```typescript
-// Standard error format
-c.json({ error: "Property not found" }, 404);
-c.json({ error: "Authentication required" }, 401);
-```
-
-**Job/Queue Error Handling:**
-```typescript
-// BullMQ job queue with exponential backoff
-const emailQueue = new Queue(QUEUE_NAME, {
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: "exponential", delay: 5000 },
-    removeOnComplete: { count: 500 },
-    removeOnFail: { count: 200 },
-  },
-});
-
-worker.on("failed", (job, err) => {
-  console.error(`[EmailQueue] Job ${job?.id} failed after ${job?.attemptsMade} attempts:`, err.message);
-});
-```
+**Auth middleware:**
+- `requireAuth` middleware (`apps/api/src/lib/routeAuth.ts`) returns `c.json({ error: "Authentication required" }, 401)` and short-circuits
+- Inside protected handlers, call `getRequiredUserId(c)` which throws `Error("Authenticated user is required")` if userId is absent
 
 ## Logging
 
-**Framework:** console (direct console logging throughout)
+**Format:** Context prefix in square brackets followed by description
+- `[EmailQueue] Sending email to ${to}: "${subject}"`
+- `[BankConnections] /institutions error:`
+- `[Encryption] WARNING: AUTH_SECRET is empty, encryption key derived from empty string`
+- `[BankOAuthState] WARNING: AUTH_SECRET is empty; OAuth state tokens are not secure`
 
-**Patterns:**
-- Context prefix in square brackets: `[Properties]`, `[Auth]`, `[EmailQueue]`, `[SmsQueue]`
-- Info-level logs: `console.log("[Properties] Database unavailable, using in-memory store")`
-- Error-level logs: `console.error("DB insert failed, using memory store:", err)`
-- Describes operation and status: `console.log(\`[EmailQueue] Sending email to ${to}: "${subject}"\`)`
-
-**Job Logging:**
-```typescript
-console.log(`[EmailQueue] Sending email to ${to}: "${subject}"`);
-console.log(`[EmailQueue] Job ${job.id} completed`);
-console.error(`[EmailQueue] Job ${job?.id} failed after ${job?.attemptsMade} attempts:`, err.message);
-```
+**Levels:**
+- `console.log(...)` for normal operational events (sending, starting, scheduled)
+- `console.error(...)` for failures and exceptions
 
 ## Comments
 
-**When to Comment:**
-- Explaining algorithm or complex business logic (e.g., Belgian rent indexation)
-- Clarifying non-obvious decisions (e.g., why database fallback is needed)
-- Linking to external references: `// See: @auth/core/jwt.js getDerivedEncryptionKey()`
-- TODO comments indicating incomplete implementation
-
-**JSDoc/TSDoc:**
-- Used for exported functions and queue operations
-- Documents parameters and return types
-
-Example from `emailQueueWorker.ts`:
-```typescript
-/**
- * Queue an email for delivery. Emails are sent one at a time with rate limiting
- * to avoid overwhelming the mail server.
- */
-export async function queueEmail(options: EmailOptions, opts?: {
-  priority?: number;
-  delay?: number;
-}): Promise<string> {...}
-```
-
-## Function Design
-
-**Size:** Functions typically 15-50 lines for route handlers, 5-20 lines for utility functions
-
-**Parameters:**
-- Use object parameters for multiple related values
-- Keep async functions with explicit parameter passing (avoid relying on closure state when possible)
-- Route handlers use Hono context object: `async (c: Context) => {...}`
-
-**Return Values:**
-- Route handlers return Hono response: `c.json(data)`, `c.json({ error: "..." }, 404)`
-- Service functions return typed data: `Promise<string>` for job IDs, `Promise<void>` for side effects
-- Validation functions return boolean: `validateStructuredCommunication(): boolean`
-
-**Async/Await:**
-- Universally used for async operations
-- Error handling via try-catch for database operations
-- Queue operations: `await emailQueue.add("send-email", options, {...})`
-
-## Module Design
-
-**Exports:**
-- Named exports for routers: `export const propertiesRouter = new Hono()`
-- Named exports for types: `export type PropertyType = "apartment" | "house" | ...`
-- Named exports for functions: `export async function queueEmail(...)`
-- Single default export for page components in Next.js: `export default function LoginPage() {...}`
-
-**Barrel Files:**
-- Used in shared package: `packages/shared/src/index.ts` re-exports types and utilities
-- Allows cleaner imports: `import { PropertyType, Language } from "@rentular/shared"`
-
-## TypeScript Usage
-
-**Strict Mode:**
-- `strict: true` enforced globally in `tsconfig.json`
-- All implicit `any` forbidden
-- Unused variables flagged
-- Null/undefined checks required
-
-**Type Annotations:**
-- Function parameters explicitly typed
-- Return types specified for exported functions
-- Route handlers: `async (c: Context)`, response: `c.json<T>(data)`
-
-**Optional/Nullable:**
-- Optional fields use `z.string().optional().default("")`
-- Nullable in database: `.or(null)` in Zod or explicit `null` in database inserts
-- Environment variables checked before use: `process.env.AUTH_SECRET || ""`
+**When to use:**
+- File-level JSDoc blocks explain trust boundaries, endpoint inventory, and security rationale (e.g., `apps/api/src/routes/bankConnections.ts` header block)
+- JSDoc on exported async functions that implement security-critical logic: `signOAuthState()`, `verifyOAuthState()` in `apps/api/src/lib/bankOAuthState.ts`
+- Inline comments explain non-obvious decisions: `// Re-throw for BullMQ retry`, `// Static path MUST come before /:id so Hono matches it first`
+- Schema files use inline comments for encrypted column groups and PII annotations
+- `// eslint-disable-next-line @typescript-eslint/no-explicit-any` always includes explanation on the preceding line
+- Phase/task references in comments link code to planning artifacts: `// Phase 9: AES-256-GCM encrypted OAuth tokens (Ponto)`, `// T-09-03-03`
+- TODO comments are specific: `// TODO: Replace with proper PDF generation (pdfkit, puppeteer, etc.)` (`apps/api/src/services/paymentFollowUp.ts:307`)
 
 ## Validation
 
-**Framework:** Zod for runtime validation
+**API input validation:**
+- All route handlers that accept query params or JSON body use `zValidator` from `@hono/zod-validator` as middleware before the handler function
+- Pattern: `zValidator("json", z.object({ field: z.string().min(1) }))` for body; `zValidator("query", z.object({ country: z.string().length(2).default("BE") }))` for query
+- Accessed via `c.req.valid("json")` or `c.req.valid("query")` inside the handler — never `c.req.json()` directly
+- Zod returns 400 automatically on validation failure; no additional try-catch needed for validation errors
 
-**Pattern:**
-```typescript
-const createPropertySchema = z.object({
-  name: z.string().min(1),
-  type: z.enum(["apartment", "house", "studio", "commercial", "garage", "other"]),
-  email: z.string().email(),
-  iban: belgianIbanSchema,
-});
+**Shared validation:**
+- Zod schemas exported from `packages/shared/src/validation/index.ts` for cross-app use
 
-propertiesRouter.post(
-  "/",
-  zValidator("json", createPropertySchema),
-  async (c) => {
-    const data = c.req.valid("json");
-    // data is now type-safe
-  }
-);
-```
+## Function Design
 
-**Belgian-Specific Validators (in `@rentular/shared`):**
-```typescript
-export const belgianIbanSchema = z.string().regex(/^BE\d{14}$/, "Invalid Belgian IBAN format");
-export const nationalRegisterSchema = z.string().regex(/^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/, "...");
-export const structuredCommunicationSchema = z.string().regex(/^\+{3}\d{3}\/\d{4}\/\d{5}\+{3}$/, "...");
-```
+**Route handlers:**
+- Signature: `async (c) => { ... }` — context object is always named `c`
+- Return: `c.json(data)`, `c.json(data, statusCode)`, or `c.redirect(url)`
+- Destructure validated input at top of handler: `const { institutionId } = c.req.valid("json")`
+- Call `getRequiredUserId(c)` at the top of protected handlers
 
-## Internationalization
+**Service functions:**
+- Named exports, explicit parameter types and return types
+- Use object parameters for multiple related values: `importBankStatements("conn-1", [tx])`
+- Return structured result objects for batch operations: `{ inserted, skippedDuplicates }`
 
-**Framework:** next-intl for i18n
+**Queue functions:**
+- `queueEmail(options, delay?, meta?)` — optional parameters for backward compatibility
+- Return job ID string: `Promise<string>`
 
-**Pattern:**
-```typescript
-const t = useTranslations("auth");
-const t = useTranslations("landing");
+## Module Design
 
-return <p>{t("invalidCredentials")}</p>;
-```
+**API routes:**
+- Named export of Hono router: `export const bankConnectionsRouter = new Hono()`
+- One router per domain file; mounted in `apps/api/src/index.ts`
 
-**Supported Languages:** nl, fr, de, en
+**Shared package:**
+- Named exports only from `packages/shared/src/index.ts`; re-exports from `types/`, `constants/`, `validation/` subdirectories
+- Allows `import { PaymentStatus, REMINDER_DEFAULTS } from "@rentular/shared"`
 
-**Message Files:** `apps/web/messages/{locale}/common.json`
+**DB package:**
+- Named table exports from individual schema files: `export const bankConnections = mysqlTable(...)`
+- All re-exported via `packages/db/src/schema/index.ts` then `packages/db/src/index.ts`
+- `getDb()` is singleton lazy-initialized and exported from `packages/db/src/index.ts`
+
+**Web components:**
+- Default export for the primary component: `export default function IbanInput(...) {...}`
+- Named exports for secondary components in same file: `export function BankNameSelect(...) {...}`, `export function BicSelect(...) {...}`
+- `"use client"` directive required at top of all interactive components
+
+## React / Next.js Patterns
+
+**Server vs. client components:**
+- 18 client components (marked `"use client"`) in `apps/web/app/`; only 1 server component in app routes
+- Interactive pages are client components using `useState` + `useEffect` + `useCallback`
+
+**i18n:**
+- `const t = useTranslations("namespace")` at the top of every client component that renders text
+- Namespace matches the message file key: `"auth"`, `"marketing"`, `"communications"`, `"managers"`
+- Messages live in `apps/web/messages/{locale}/common.json` for all four locales (en, nl, fr, de)
+
+**Data fetching (web):**
+- Client-side via `fetch()` with `async/await` inside `useEffect` or event handlers
+- No server actions or `getServerSideProps` pattern observed in dashboard pages
 
 ---
 
-*Convention analysis: 2026-03-22*
+*Convention analysis: 2026-06-28*

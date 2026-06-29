@@ -1,398 +1,384 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-03-22
+**Analysis Date:** 2026-06-28
 
-## Test Framework Status
+## Test Framework
 
-**Current State:** No test files detected in codebase
+**Runner:**
+- Vitest 4.1.2
+- Config: `apps/api/vitest.config.ts`
 
-- No `.test.ts`, `.test.tsx`, `.spec.ts`, or `.spec.tsx` files found
-- No test configuration files (jest.config.js, vitest.config.ts, etc.)
-- No testing dependencies in package.json files
-- TypeScript compilation includes `--noEmit` flag only
+**Assertion Library:**
+- Vitest built-in (`expect` from `vitest`) — no separate assertion library
 
-**Recommended Setup:**
-For test framework selection, the project should use:
-- **Vitest** for API backend (`apps/api`) - lightweight, ESM-native, compatible with Node/Hono
-- **Jest** or **Vitest** for frontend (`apps/web`) - Next.js integrates with Jest natively
+**Mock Library:**
+- Vitest built-in (`vi.mock`, `vi.fn`, `vi.hoisted`, `vi.spyOn`)
+- MSW 2.6.0 (`msw/node`) for HTTP boundary mocking in integration tests
 
-## Validation Testing (Production Code)
-
-**Current Test Coverage:** Validation only through Zod runtime schemas
-
-All endpoint input validation uses `zValidator` middleware:
-
-```typescript
-// apps/api/src/routes/properties.ts
-const createPropertySchema = z.object({
-  name: z.string().min(1),
-  type: z.enum(["apartment", "house", "studio", "commercial", "garage", "other"]),
-  street: z.string().min(1),
-  streetNumber: z.string().min(1),
-  postalCode: z.string().min(1),
-  city: z.string().min(1),
-  country: z.string().max(2).default("BE"),
-  heatingType: z.enum(["gas", "oil", "electric", "heat_pump", "wood", "pellet", "none", ""]).optional().default(""),
-});
-
-propertiesRouter.post(
-  "/",
-  zValidator("json", createPropertySchema),
-  async (c) => {
-    const data = c.req.valid("json");  // Type-safe and validated
-    // data is guaranteed to match schema
-  }
-);
+**Run Commands:**
+```bash
+pnpm --filter=@rentular/api test          # Run all tests once
+pnpm --filter=@rentular/api test:watch    # Watch mode (vitest)
 ```
 
-**Belgian-Specific Validation (packages/shared/src/validation/index.ts):**
-
-These functions validate Belgian business rules but are not currently covered by unit tests:
-
-```typescript
-// IBAN validation
-export const belgianIbanSchema = z
-  .string()
-  .regex(/^BE\d{14}$/, "Invalid Belgian IBAN format");
-
-// National register validation
-export const nationalRegisterSchema = z
-  .string()
-  .regex(
-    /^\d{2}\.\d{2}\.\d{2}-\d{3}\.\d{2}$/,
-    "Invalid national register number format (YY.MM.DD-XXX.XX)"
-  );
-
-// Structured communication (Belgian payment reference format)
-export const structuredCommunicationSchema = z
-  .string()
-  .regex(
-    /^\+{3}\d{3}\/\d{4}\/\d{5}\+{3}$/,
-    "Invalid structured communication format"
-  );
-
-// Structured communication checksum validation
-export function validateStructuredCommunication(sc: string): boolean {
-  const digits = sc.replace(/[^0-9]/g, "");
-  if (digits.length !== 12) return false;
-  const reference = Number(digits.slice(0, 10));
-  const check = Number(digits.slice(10, 12));
-  const expected = reference % 97;
-  return check === (expected === 0 ? 97 : expected);
-}
-
-// Rent indexation calculation
-export function calculateIndexedRent(
-  baseRent: number,
-  baseIndex: number,
-  currentIndex: number
-): number {
-  if (baseIndex <= 0) throw new Error("Base index must be positive");
-  const indexed = (baseRent * currentIndex) / baseIndex;
-  return Math.round(indexed * 100) / 100;
-}
-```
-
-## Error Handling Patterns (Not Currently Tested)
-
-**Graceful Degradation:**
-Routes implement fallback-to-memory-store pattern when database is unavailable:
-
-```typescript
-// apps/api/src/routes/properties.ts
-propertiesRouter.get("/", async (c) => {
-  const ownerId = getRequiredUserId(c);
-  try {
-    if (db && dbSchema && eq) {
-      const result = await db
-        .select()
-        .from(dbSchema)
-        .where(eq(dbSchema.ownerId, ownerId));
-      return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
-    }
-  } catch (err) {
-    console.error("DB read failed, falling back to memory:", err);
-  }
-
-  // Fallback to in-memory store
-  const result = mem
-    .getAll("properties")
-    .filter((p: any) => !p.isArchived && p.ownerId === ownerId);
-  return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
-});
-```
-
-**Error Response Patterns:**
-```typescript
-// 404 when resource not found
-if (!existing[0]) {
-  return c.json({ error: "Property not found" }, 404);
-}
-
-// 401 for authentication failure
-export const requireAuth = createMiddleware(async (c, next) => {
-  if (!c.get("userId")) {
-    return c.json({ error: "Authentication required" }, 401);
-  }
-  await next();
-});
-
-// Token decode failures log but return null for graceful fallback
-try {
-  const { payload } = await jwtDecrypt(token, encryptionSecret, {...});
-  return payload;
-} catch (err) {
-  console.error("[Auth] Failed to decode token:", err);
-  return null;
-}
-```
-
-**Job Queue Error Handling:**
-```typescript
-// apps/api/src/jobs/emailQueueWorker.ts
-const worker = new Worker(QUEUE_NAME, asyncJobHandler, {
-  connection,
-  concurrency: 1,
-  limiter: {
-    max: MAX_EMAILS_PER_MINUTE,
-    duration: 60000,
-  },
-});
-
-worker.on("failed", (job, err) => {
-  console.error(`[EmailQueue] Job ${job?.id} failed after ${job?.attemptsMade} attempts:`, err.message);
-});
-
-const emailQueue = new Queue(QUEUE_NAME, {
-  defaultJobOptions: {
-    attempts: 3,  // Retry up to 3 times
-    backoff: { type: "exponential", delay: 5000 },
-    removeOnComplete: { count: 500 },
-    removeOnFail: { count: 200 },
+**Vitest Config** (`apps/api/vitest.config.ts`):
+```ts
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["src/**/__tests__/**/*.test.ts"],
+    testTimeout: 10000,
   },
 });
 ```
 
-## Frontend Testing (Not Currently Implemented)
+Note: `globals: true` means `describe`, `it`, `expect`, and `vi` are available globally — however all existing test files import them explicitly anyway.
 
-**React Component Structure:**
-Components do not have test files, but are structured for testability:
+## Test File Organization
 
-```typescript
-// apps/web/app/(auth)/login/page.tsx - testable structure
-export default function LoginPage() {
-  const t = useTranslations("auth");
-  const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
+**Location:** Co-located `__tests__/` directories inside each source subtree
 
-  const handleCredentials = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (mode === "forgot") {
-      const res = await fetch(`${apiUrl}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error || t("registrationFailed"));
-        return;
-      }
-      setResetSent(true);
-      return;
-    }
-
-    // Additional form submission logic...
-  };
-
-  return (
-    <form onSubmit={handleCredentials}>
-      {/* Form inputs and error display */}
-    </form>
-  );
-}
+**Structure:**
+```
+apps/api/
+  src/
+    __tests__/                   # Cross-cutting / schema validation tests
+      bankStatementsSchema.test.ts
+      i18n-completeness.test.ts
+    jobs/
+      __tests__/
+        emailQueueWorker.test.ts
+        smsQueueWorker.test.ts
+    lib/
+      __tests__/
+        bankOAuthState.test.ts
+        email.test.ts
+        encryption.test.ts
+        pontoConnect.test.ts
+    routes/
+      __tests__/
+        bankConnections.test.ts
+        settings.test.ts
+    services/
+      __tests__/
+        bankStatementImporter.test.ts
+        paymentFollowUp.test.ts
+  test/
+    fixtures/
+      ponto/                    # JSON fixtures for Ponto OAuth / API responses
+        accounts-list.json
+        institutions-be.json
+        oauth-token-success.json
+        transactions-list.json
 ```
 
-## Test Data & Fixtures (Not Implemented)
+**Naming:**
+- Test files: `{module-under-test}.test.ts`
+- Fixtures: plain JSON named after the API response they represent
 
-**In-Memory Store (Used for Testing/Fallback):**
+## Test Structure
+
+**Suite Organization:**
 ```typescript
-// apps/api/src/lib/memoryStore.ts - serves as test data store
-export function getAll(key: string): any[] {...}
-export function getById(key: string, id: string): any {...}
-export function insert(key: string, record: any): void {...}
-export function updateById(key: string, id: string, updates: any): void {...}
-export function deleteById(key: string, id: string): void {...}
-```
+// Explicit imports — even with globals:true, all tests import explicitly
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
 
-This in-memory store is used:
-- When database is unavailable (graceful degradation)
-- During development/testing without a database connection
-- As a fallback when optional database modules fail to load
+describe("Feature / ticket reference (NTF-01/02/03)", () => {
+  // Factory functions defined at suite level
+  function makePayment(overrides: Record<string, unknown> = {}) { ... }
 
-## Integration Points (Manual Testing Required)
-
-**Email Queue Integration:**
-```typescript
-// apps/api/src/jobs/emailQueueWorker.ts
-export async function queueEmail(options: EmailOptions, opts?: {
-  priority?: number;
-  delay?: number;
-}): Promise<string> {
-  const job = await emailQueue.add("send-email", options, {
-    priority: opts?.priority,
-    delay: opts?.delay,
+  it("should describe expected behavior in plain English", () => {
+    const result = functionUnderTest(input);
+    expect(result).toBe(expectedValue);
   });
-  return job.id!;
-}
 
-export async function queueBatchEmails(
-  emails: EmailOptions[],
-  opts?: { priority?: number }
-): Promise<string[]> {
-  const jobIds: string[] = [];
-  for (let i = 0; i < emails.length; i++) {
-    const job = await emailQueue.add("send-email", emails[i], {
-      priority: opts?.priority,
-      delay: i * DELAY_BETWEEN_MS,
-    });
-    jobIds.push(job.id!);
+  it("should handle edge case", () => {
+    expect(functionUnderTest(edgeInput)).toBeNull();
+  });
+});
+```
+
+**Describe block naming convention:**
+- Pure unit tests: `"Feature name (TICKET-ID)"` — e.g., `"determineReminderLevel (NTF-01/02/03)"`, `"encrypt / decrypt round-trip (NTF-07)"`
+- Integration / route tests: `"Phase XX-YY / module name"` — e.g., `"Phase 09-03 / bankConnections router"`
+- i18n tests: `"i18n completeness — scope (TICKET-ID)"` — e.g., `"i18n completeness — communications keys (I18N-02)"`
+
+**Test case naming convention:**
+- All `it()` strings start with `"should ..."` for unit tests
+- Route integration tests use uppercase ticket prefix: `"BANK-ROUTES: GET /institutions returns 503 when Ponto not configured"`
+
+**Setup/teardown patterns:**
+- `beforeAll`: one-time env var injection, MSW server `.listen()`, DB mock seeding
+- `beforeEach`: reset mocks (`vi.clearAllMocks()`, `vi.resetModules()`), reset capture arrays (`insertCalls.length = 0`), set per-test env vars
+- `afterAll`: MSW server `.close()`
+- `afterEach`: `vi.restoreAllMocks()` (used in `email.test.ts`)
+
+## Mocking
+
+**Framework:** Vitest `vi.mock()` (module-level) + MSW for HTTP
+
+**Module boundary mocking pattern (used in all route and job tests):**
+```typescript
+// Mock the DB module — vi.mock hoisted to top by Vitest
+vi.mock("@rentular/db", () => ({
+  getDb: vi.fn(() => ({
+    insert: mockInsert.mockReturnValue({ values: mockValues }),
+    update: mockUpdate.mockReturnValue({ set: mockSet.mockReturnValue({ where: mockWhere }) }),
+  })),
+  communications: { id: "id" },
+  eq: vi.fn(),
+}));
+
+// Mock BullMQ — prevents Redis connection attempt on import
+vi.mock("bullmq", () => {
+  class MockQueue {
+    add = vi.fn().mockResolvedValue({ id: "j" });
+    constructor() {}
   }
-  return jobIds;
-}
+  class MockWorker {
+    on = vi.fn();
+    constructor(..._args: unknown[]) {}
+  }
+  return { Queue: MockQueue, Worker: MockWorker };
+});
 ```
 
-**SMS Queue Integration (Similar Pattern):**
-- `apps/api/src/jobs/smsQueueWorker.ts` - Worker with rate limiting (10/min by default)
-- Provider: configured via `SMS_PROVIDER` env var, console output in development
-
-**Job Schedules (Cron-based):**
+**`vi.hoisted()` for cross-mock-sharing:**
 ```typescript
-// apps/api/src/jobs/paymentCheckWorker.ts
-export async function setupPaymentCheckSchedule(): Promise<void> {
-  // TODO: Query database for overdue payments
-  // Run on schedule (details in job file)
-}
-
-// apps/api/src/jobs/landlordReportWorker.ts
-export async function setupLandlordReportSchedule(): Promise<void> {
-  // TODO: Generate and send landlord reports
-  // Run on schedule (details in job file)
-}
+// Use vi.hoisted() when mock fn refs must be accessible both inside vi.mock factories
+// AND in test assertions (vi.mock factories run before module scope).
+const { mockAdd, mockInsert, mockValues } = vi.hoisted(() => ({
+  mockAdd: vi.fn().mockResolvedValue({ id: "job-123" }),
+  mockInsert: vi.fn(),
+  mockValues: vi.fn().mockResolvedValue([]),
+}));
+// Used in: apps/api/src/jobs/__tests__/emailQueueWorker.test.ts
+//          apps/api/src/jobs/__tests__/smsQueueWorker.test.ts
 ```
 
-## Authentication Testing (Not Automated)
-
-**NextAuth.js Integration:**
+**MSW for HTTP boundary (Ponto OAuth):**
 ```typescript
-// apps/web/lib/auth.ts - Credentials provider
-providers.push(
-  Credentials({
-    name: "Email",
-    credentials: {
-      email: { label: "Email", type: "email" },
-      password: { label: "Password", type: "password" },
-    },
-    async authorize(credentials) {
-      if (!credentials?.email || !credentials?.password) return null;
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
 
-      const email = String(credentials.email).trim().toLowerCase();
-      const password = String(credentials.password);
-      if (password.length < 12) return null;
+const handlers = [
+  http.post(/oauth2\/token$/, () => HttpResponse.json(tokenFixture)),
+  http.get(/\/accounts(\?|$)/, () => HttpResponse.json(accountsFixture)),
+];
+const server = setupServer(...handlers);
 
-      const result = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterAll(() => server.close());
+beforeEach(() => server.resetHandlers(...handlers)); // restore defaults between tests
+// Used in: apps/api/src/lib/__tests__/pontoConnect.test.ts
+```
 
-      const user = result[0];
-      if (!user?.passwordHash) return null;
+**Hono app harness for route integration tests:**
+```typescript
+// Build a wrapper Hono app that injects userId to bypass authMiddleware
+async function buildApp(userId: string | null) {
+  const { bankConnectionsRouter } = await import("../bankConnections");
+  const app = new Hono();
+  app.use("*", async (c, next) => {
+    if (userId) c.set("userId", userId);
+    await next();
+  });
+  app.route("/bank-connections", bankConnectionsRouter);
+  return app;
+}
+// Used in: apps/api/src/routes/__tests__/bankConnections.test.ts
+```
 
-      const valid = await bcrypt.compare(password, user.passwordHash);
-      if (!valid) return null;
+**Call capture arrays for DB assertions:**
+```typescript
+// Capture insert calls without a real DB
+const insertCalls: Array<{ table: unknown; row: Record<string, unknown> }> = [];
 
-      return {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image,
-      };
-    },
-  })
+vi.mock("@rentular/db", () => ({
+  getDb: vi.fn(() => ({
+    insert: (table: unknown) => ({
+      values: async (row: Record<string, unknown>) => {
+        insertCalls.push({ table, row });
+        return [{ insertId: 1 }];
+      },
+    }),
+  })),
+}));
+// Used in: apps/api/src/routes/__tests__/bankConnections.test.ts
+//          apps/api/src/services/__tests__/bankStatementImporter.test.ts
+```
+
+**What to Mock:**
+- `@rentular/db` — always mock; prevents real MySQL connections during tests
+- `bullmq` — always mock; prevents Redis connection attempts when importing workers
+- External HTTP APIs — use MSW handlers; never let real network calls through
+- `../lib/encryption`, `../lib/pontoConnect`, `../lib/bankOAuthState`, `../lib/email`, `../lib/sms` — mock at module boundaries in route/job tests
+- `drizzle-orm` query helpers (`eq`, `and`, `desc`) — mock as `vi.fn(() => "EQ")` when the value is only passed through
+
+**What NOT to Mock:**
+- The module under test itself
+- Core Node.js crypto (`crypto` module) — `encryption.test.ts` uses real AES-256-GCM to verify round-trips
+- `jose` JWT library — `bankOAuthState.test.ts` uses the real implementation for sign/verify
+- JSON fixture files — always loaded with `readFileSync` at test setup
+
+## Fixtures and Factories
+
+**JSON fixtures** (for MSW handlers):
+```typescript
+// Load once at module level using readFileSync
+const FIXTURES_DIR = join(__dirname, "..", "..", "..", "test", "fixtures", "ponto");
+const tokenFixture = JSON.parse(readFileSync(join(FIXTURES_DIR, "oauth-token-success.json"), "utf8"));
+// Fixtures: accounts-list.json, institutions-be.json, oauth-token-success.json, transactions-list.json
+// Location: apps/api/test/fixtures/ponto/
+```
+
+**Factory functions** (for domain object construction):
+```typescript
+// Minimal factory with override spread — reduces boilerplate across test cases
+function makePayment(overrides: Record<string, unknown> = {}) {
+  return {
+    paymentId: "pay-1",
+    leaseId: "lease-1",
+    amount: 850,
+    dueDate: "2026-03-01",
+    daysPastDue: 5,
+    tenantName: "Jan Janssens",
+    tenantEmail: "jan@example.com",
+    // ... all required fields with Belgian-realistic defaults
+    ...overrides,
+  };
+}
+// Used in: apps/api/src/services/__tests__/paymentFollowUp.test.ts
+```
+
+```typescript
+// Typed factory for IncomingTransaction
+function buildTransaction(overrides: Partial<IncomingTransaction> = {}): IncomingTransaction {
+  return {
+    transactionId: "tx-001",
+    amount: 850.0,
+    currency: "EUR",
+    bookingDate: "2026-05-01",
+    remittanceStructured: "+++001/2345/67890+++",
+    debtorName: "Jan Janssens",
+    debtorIban: "BE71096123456769",
+    ...overrides,
+  };
+}
+// Used in: apps/api/src/services/__tests__/bankStatementImporter.test.ts
+```
+
+**Location of fixtures:**
+- JSON API response fixtures: `apps/api/test/fixtures/ponto/`
+- Test data factories: inline in the test file that uses them
+
+## Coverage
+
+**Requirements:** None enforced (no coverage threshold in `vitest.config.ts`)
+
+**View Coverage:**
+```bash
+pnpm --filter=@rentular/api test -- --coverage
+```
+
+## Test Types
+
+**Unit Tests:**
+- Scope: single exported function or small set of related functions
+- Files: `apps/api/src/lib/__tests__/encryption.test.ts`, `apps/api/src/lib/__tests__/bankOAuthState.test.ts`, `apps/api/src/services/__tests__/paymentFollowUp.test.ts`
+- Approach: call function directly with controlled inputs; assert return value or thrown error
+
+**Integration Tests (route-level):**
+- Scope: full Hono router with all dependencies mocked at module boundary
+- Files: `apps/api/src/routes/__tests__/bankConnections.test.ts`, `apps/api/src/routes/__tests__/settings.test.ts`
+- Approach: `buildApp()` harness injects userId; uses `app.request()` to make HTTP calls; asserts status codes and JSON shape
+
+**Integration Tests (HTTP client):**
+- Scope: lib functions that make real HTTP calls (Ponto OAuth)
+- Files: `apps/api/src/lib/__tests__/pontoConnect.test.ts`
+- Approach: MSW intercepts HTTP calls; fixture JSON substitutes real API responses
+
+**Schema Validation Tests:**
+- Scope: Drizzle schema object shape (confirms DB columns are exported)
+- Files: `apps/api/src/__tests__/bankStatementsSchema.test.ts`
+- Approach: `Object.keys(bankStatements)` enumeration against required column list
+
+**i18n Completeness Tests:**
+- Scope: All four locale message files have matching keys
+- Files: `apps/api/src/__tests__/i18n-completeness.test.ts`
+- Approach: `flattenKeys()` on each locale JSON, diff against English reference
+
+**E2E Tests:** Not detected (no Playwright test config or test files, though Playwright is a dependency used for the Smovin scraper)
+
+## Common Patterns
+
+**Async Testing:**
+```typescript
+it("should parse the OAuth token response", async () => {
+  const result = await exchangeAuthorizationCode("dummy-code");
+  expect(result.accessToken).toBe("fixture-access-token-AAAA1111");
+});
+```
+
+**Error / rejection testing:**
+```typescript
+it("rejects a token signed with a different secret", async () => {
+  await expect(verifyOAuthState(badToken)).rejects.toThrow();
+});
+
+it("should throw when tag is tampered with", () => {
+  expect(() => decrypt(encrypted, iv, tamperedTag)).toThrow();
+});
+```
+
+**Module reset for isolated dynamic imports:**
+```typescript
+// When the module under test initializes state on import (e.g. queue singletons),
+// use vi.resetModules() in beforeEach and dynamic import inside each test.
+beforeEach(() => {
+  vi.resetModules();
+});
+
+it("should insert a communications record when meta is provided", async () => {
+  const { queueEmail } = await import("../emailQueueWorker");
+  // ...
+});
+```
+
+**Partial assertion with expect.objectContaining:**
+```typescript
+expect(mockValues).toHaveBeenCalledWith(
+  expect.objectContaining({
+    ownerId: "owner-1",
+    channel: "email",
+    status: "queued",
+  }),
 );
 ```
 
-**API Auth Middleware:**
+**Environment variable injection:**
 ```typescript
-// apps/api/src/lib/authMiddleware.ts - Decodes NextAuth JWT
-async function decodeToken(token: string, cookieName: string): Promise<JWTPayload | null> {
-  if (!AUTH_SECRET) return null;
+// Inject env vars in beforeAll (stable across suite) or beforeEach (needs reset)
+beforeAll(() => {
+  process.env.AUTH_SECRET = "test-secret-for-encryption-suite";
+});
 
-  try {
-    const encryptionSecret = await getDerivedEncryptionKey(AUTH_SECRET, cookieName);
-    const { payload } = await jwtDecrypt(token, encryptionSecret, {
-      clockTolerance: 15,
-      keyManagementAlgorithms: ["dir"],
-      contentEncryptionAlgorithms: ["A256CBC-HS512", "A256GCM"],
-    });
-    return payload;
-  } catch (err) {
-    console.error("[Auth] Failed to decode token:", err);
-    return null;
-  }
-}
+beforeEach(() => {
+  process.env.SMTP_HOST = "mail.test.com";
+  process.env.WEB_URL = "http://localhost:3000";
+});
 ```
 
-## Test Gaps & Coverage Priorities
-
-**Critical Gaps (High Priority):**
-1. **Belgian IBAN Validation** - `packages/shared/src/validation/index.ts` - Used in forms and API, no unit tests
-2. **Rent Indexation Calculation** - `calculateIndexedRent()` - Complex business logic, only runtime validation
-3. **Structured Communication Validation** - Payment reference format, checksum validation untested
-4. **Database Fallback Behavior** - Graceful degradation pattern tested only manually
-5. **Job Queue Retry Logic** - BullMQ exponential backoff not validated
-
-**Medium Priority:**
-6. **Email Rate Limiting** - Limiter configuration untested (30 emails/min default)
-7. **Authentication Token Decoding** - JWT decryption logic (HKDF key derivation)
-8. **API Error Responses** - Status codes and error format consistency
-9. **Query Authorization** - User ownership checks in route handlers
-
-**Low Priority:**
-10. Component rendering in Next.js frontend
-11. Integration tests for external APIs (Stripe, GoCardless, SMS providers)
-12. End-to-end payment flow testing
-
-## Recommended Testing Strategy
-
-**Phase 1 - Unit Tests:**
-- Validation functions (IBAN, national register, structured communication)
-- Rent indexation formula
-- Template rendering (placeholder substitution)
-
-**Phase 2 - Route Tests:**
-- CRUD operations (create, read, update, delete)
-- Authorization checks (user isolation)
-- Error handling (404, 401, validation errors)
-- Database fallback scenarios
-
-**Phase 3 - Integration Tests:**
-- Email queue (with mock SMTP)
-- Job scheduling
-- JWT token decode/encode
-- Password hashing (bcrypt)
-
-**Phase 4 - End-to-End:**
-- Auth flow (registration, login, password reset)
-- Payment workflows (manual entry, bank transfer)
-- Rent indexation workflow
+**Error code simulation (MySQL ER_DUP_ENTRY):**
+```typescript
+// Simulate typed database errors by attaching .code to Error instances
+const err = new Error("ER_DUP_ENTRY: ...") as Error & { code?: string };
+err.code = "ER_DUP_ENTRY";
+throw err;
+// Used in: apps/api/src/services/__tests__/bankStatementImporter.test.ts
+```
 
 ---
 
-*Testing analysis: 2026-03-22*
+*Testing analysis: 2026-06-28*

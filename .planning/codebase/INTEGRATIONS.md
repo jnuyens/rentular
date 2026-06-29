@@ -1,232 +1,257 @@
 # External Integrations
 
-**Analysis Date:** 2026-03-22
+**Analysis Date:** 2026-06-28
 
 ## APIs & External Services
 
-**Payment Processing:**
-- **Stripe** - Subscription billing and payment processing
-  - SDK/Client: `stripe` (v20.4.1) in `apps/api/package.json`
-  - Auth: `STRIPE_SECRET_KEY` environment variable
-  - Plans: Configured via `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_STANDARD`, `STRIPE_PRICE_PROFESSIONAL`
-  - Implementation: `apps/api/src/routes/stripe.ts` handles checkout sessions and webhook events
-  - Webhook Secret: `STRIPE_WEBHOOK_SECRET` for validating webhook signatures
-  - Supported payment methods: card, Bancontact, iDEAL (for European users)
+### Payment Collection (SEPA Direct Debit)
 
-- **GoCardless** - SEPA direct debit payments for tenant rent collection
-  - SDK/Client: `gocardless-nodejs` (v4.2.0) in `apps/api/package.json`
-  - Auth: `GOCARDLESS_ACCESS_TOKEN` environment variable
-  - Environment: `GOCARDLESS_ENVIRONMENT` (sandbox or live)
-  - Webhook Secret: `GOCARDLESS_WEBHOOK_SECRET` for verifying webhook signatures
-  - Implementation: `apps/api/src/lib/gocardless.ts` (client singleton and utility functions)
-  - Features: Customer creation, billing request flows (mandate setup), payment creation/retry/cancel, mandate management
-  - Webhook Handler: `apps/api/src/routes/webhooks.ts` processes payment, mandate, and payout events
+**GoCardless (Collect):**
+- Purpose: SEPA direct debit mandate setup and rent collection for tenants
+- SDK: `gocardless-nodejs` 4.2.0 (`apps/api/src/lib/gocardless.ts`)
+- Client: Singleton `getGoCardlessClient()` initialized on first use; supports `Sandbox` and `Live` environments
+- Operations: create customers, billing requests, billing request flows, payments (in EUR cents), retries, cancellations, mandate management
+- Webhooks: receives `payments.*` and `mandates.*` events at `POST /api/v1/webhooks/gocardless` (`apps/api/src/routes/webhooks.ts`)
+- Webhook verification: HMAC-SHA256, constant-time comparison (`verifyWebhookSignature()`)
+- Env vars: `GOCARDLESS_ACCESS_TOKEN`, `GOCARDLESS_ENVIRONMENT` (`sandbox` or `live`), `GOCARDLESS_WEBHOOK_SECRET`
 
-**SMS Communications:**
-- **Twilio** - SMS delivery (optional, provider-based)
-  - Auth: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` environment variables
-  - API endpoint: `https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json`
-  - Implementation: `apps/api/src/lib/sms.ts` (provider abstraction layer)
+### Subscription Billing
 
-- **MessageBird** - SMS delivery (optional, provider-based)
-  - Auth: `MESSAGEBIRD_API_KEY` environment variable
-  - Originator: `MESSAGEBIRD_ORIGINATOR` (sender ID, defaults to "Rentular")
-  - API endpoint: `https://rest.messagebird.com/messages`
-  - Implementation: `apps/api/src/lib/sms.ts`
+**Stripe:**
+- Purpose: Rentular's own SaaS subscription billing (Starter/Standard/Professional plans); NOT used for rent collection
+- SDK: `stripe` 20.4.1 (`apps/api/src/routes/stripe.ts`)
+- Client: Initialized at module load with `STRIPE_SECRET_KEY`
+- Operations: retrieve prices (with product expand), create Checkout sessions (subscription mode), verify webhook events
+- Payment methods at checkout: `card`, `bancontact`, `ideal`
+- Plans: Starter (€4/mo), Standard (€10/mo), Professional (€19/mo) — amounts fetched live from Stripe; static fallback if unconfigured
+- Webhook: `POST /api/v1/stripe/webhook` — handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+- Subscription persistence is stubbed (Phase 2 placeholder)
+- Env vars: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_STANDARD`, `STRIPE_PRICE_PROFESSIONAL`
 
-- **OVH** - SMS delivery (optional, provider-based)
-  - Auth: `OVH_APP_KEY`, `OVH_APP_SECRET`, `OVH_CONSUMER_KEY` environment variables
-  - Service: `OVH_SMS_SERVICE` (service name)
-  - Sender: `OVH_SMS_SENDER` (defaults to "Rentular")
-  - API endpoint: `https://eu.api.ovh.com/1.0/sms/{serviceName}/jobs`
-  - Implementation: `apps/api/src/lib/sms.ts`
+### PSD2 / Open Banking (Bank Account Data)
 
-- **Console** - SMS provider for development/testing
-  - Logs SMS messages to console instead of sending
-  - Implementation: `apps/api/src/lib/sms.ts`
+**Ponto Connect (Ibanity) — primary provider:**
+- Purpose: Landlord connects their Belgian bank account so the system polls for incoming rent transfers
+- SDK: None — hand-written REST/OAuth2 client at `apps/api/src/lib/pontoConnect.ts`
+- API base: `https://api.ibanity.com/ponto-connect` (production) / `https://api.ibanity.com/sandbox/ponto-connect` (sandbox)
+- Auth base: `https://authorization.myponto.com` (production) / `https://authorization.myponto.com/sandbox` (sandbox)
+- OAuth2 scopes: `ai`, `pi`, `name`, `offline_access`
+- OAuth flow: authorization code (PKCE not required); state token is a HS256 JWT (`apps/api/src/lib/bankOAuthState.ts`, 10-min TTL)
+- Callback route: `GET /api/v1/bank-connections/callback` — bypasses `requireAuth`; identity from state JWT
+- Operations: `listAccounts`, `listTransactions` (with `filter[executionDate][gte]` pagination), `listFinancialInstitutions` (per country), `revokeAccess`
+- Token storage: OAuth access + refresh tokens AES-256-GCM encrypted at rest in `bank_connections` table (triplet columns per token); decrypted only in `bankConnectionSync.ts`
+- Env vars: `PONTO_CLIENT_ID`, `PONTO_CLIENT_SECRET`, `PONTO_ENVIRONMENT` (`sandbox` or `production`), `PONTO_REDIRECT_URI` (optional override), `BANK_CONNECTION_REDIRECT_URL`
 
-**OAuth & Social Login:**
-- **Google OAuth 2.0** - User authentication
-  - Credentials: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` environment variables
-  - Implementation: `apps/web/lib/auth.ts` via NextAuth.js Google provider
+**GoCardless Bank Account Data (legacy/dormant):**
+- Purpose: Alternative PSD2 provider; new registrations closed mid-2025; included as fallback reference
+- SDK: `nordigen-node` 1.4.1 (dynamically imported to avoid startup failure)
+- Implementation: `GoCardlessBadProvider` class in `apps/api/src/lib/bankAccountData.ts`
+- Silent renewal: not supported (landlord must re-authorize)
+- Env vars: `GOCARDLESS_BAD_SECRET_ID`, `GOCARDLESS_BAD_SECRET_KEY`
 
-- **Facebook OAuth** - User authentication
-  - Credentials: `AUTH_FACEBOOK_ID`, `AUTH_FACEBOOK_SECRET` environment variables
-  - Implementation: `apps/web/lib/auth.ts` via NextAuth.js Facebook provider
-  - Email linking: Enabled (`allowDangerousEmailAccountLinking: true`)
+**Provider selection:**
+- Controlled via `BANK_DATA_PROVIDER` env var (`ponto` is default; `gocardless_bad` also recognized)
+- Factory: `getBankAccountDataProvider()` in `apps/api/src/lib/bankAccountData.ts`
+- Abstract interface: `BankAccountDataProvider` with `createConsent`, `listAccounts`, `getTransactions`, `renewConsent`, `revokeConsent`
 
-- **Twitter/X OAuth** - User authentication
-  - Credentials: `AUTH_TWITTER_ID`, `AUTH_TWITTER_SECRET` environment variables
-  - Implementation: `apps/web/lib/auth.ts` via NextAuth.js Twitter provider
-  - Email linking: Enabled (`allowDangerousEmailAccountLinking: true`)
+### Belgian Health Index (Rent Indexation)
+
+**Statbel beSTAT API:**
+- Purpose: Fetch Belgian health index values for automatic rent indexation calculations
+- Endpoint: `https://bestat.statbel.fgov.be/bestat/api/views/208b69bd-05c5-4947-b7f9-2d2300f517b8/result/JSON`
+- Client: native `fetch()` in `apps/api/src/services/healthIndex.ts`
+- Schedule: daily at 06:00 UTC via BullMQ cron (`health-index-refresh` queue, `apps/api/src/jobs/healthIndexWorker.ts`)
+- Upserts cached values to `health_index_values` DB table; tolerates API failure silently (retries next day)
+- No auth required; no env vars
+
+### Competitor Data Import (Smovin)
+
+**Smovin (scraping):**
+- Purpose: Allow landlords to migrate from Smovin by importing their properties, tenants, leases, and payments
+- Approach: Playwright-based stealth headless Chromium scraper (`apps/api/src/services/smovinScraper.ts`)
+- Stealth: `playwright-extra` + `puppeteer-extra-plugin-stealth`; headless Chromium with `--disable-blink-features=AutomationControlled`, Belgian locale (`fr-BE`, `Europe/Brussels`)
+- Target URL: `https://app.smovin.be/login`
+- Execution: BullMQ workers — `import-discovery` queue (30-min timeout, 2 attempts) and `import-write` queue
+- Credentials: AES-256-GCM encrypted at rest in `import_sessions` table; never returned to client
+- Data mapping: `apps/api/src/services/smovinMapper.ts`
+
+### Support Chat
+
+**Signal Bot (optional):**
+- Purpose: Forward in-app support chat messages to a Signal number for the support team
+- Client: native `fetch()` to `signal-cli` REST API at `SIGNAL_BOT_URL` (e.g., `http://localhost:8080/v2/send`)
+- Implementation: `apps/api/src/routes/support.ts`
+- Fallback: replies with static FAQ text if bot URL is unconfigured
+- Env vars: `SIGNAL_BOT_URL`, `SIGNAL_BOT_NUMBER`, `SIGNAL_SUPPORT_NUMBER`, `SUPPORT_EMAIL`
+
+---
 
 ## Data Storage
 
-**Databases:**
-- **MySQL 5.7+** - Primary relational database
-  - Connection: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` environment variables
-  - Default values: localhost:3306, database: "rentular", user: "rentular"
-  - Client: mysql2 (v3.11.0) in `packages/db/package.json`
-  - ORM: Drizzle ORM (v0.36.0)
-  - Schema location: `packages/db/src/schema/` (properties, tenants, leases, payments, users, etc.)
-  - Migrations: Handled via drizzle-kit CLI commands
+### Databases
 
-**File Storage:**
-- Local filesystem only - No external cloud storage integration detected
-- Email attachments support exists but not configured for cloud storage
+**Primary: MariaDB 11 / MySQL 5.7+**
+- Connection: `DB_HOST`, `DB_PORT` (default 3306), `DB_NAME`, `DB_USER`, `DB_PASSWORD`
+- Client: Drizzle ORM 0.36.0 with `mysql2/promise` connection pool
+- Singleton: `getDb()` in `packages/db/src/connection.ts` — lazy-initialized, connection pool reused for process lifetime
+- Schema: `packages/db/src/schema/` — 18 schema files covering: `users`, `bankAccounts`, `bankConnections`, `bankStatements`, `communications`, `costs`, `imports`, `indexation`, `leases`, `maintenance`, `payments`, `properties`, `propertyManagers`, `smtpSettings`, `tenants`, `webhookEvents`
+- Migrations: `drizzle-kit generate` / `drizzle-kit migrate`; output to `packages/db/drizzle/`
 
-**Caching:**
-- **Redis** - Distributed cache and job queue backend
-  - Connection: `REDIS_URL` environment variable (or `REDIS_HOST`, `REDIS_PORT`)
-  - Default: localhost:6379
-  - Client: ioredis (v5.4.0) in `apps/api/package.json`
-  - Usage: BullMQ job queue persistence for email and SMS processing
+### File Storage
+
+- Local filesystem only — no S3, GCS, or other object storage detected
+
+### Caching
+
+**Redis 7:**
+- Connection: `REDIS_URL` (or `REDIS_HOST`/`REDIS_PORT`, defaulting to `localhost:6379`)
+- Client: `ioredis` 5.4.0 for BullMQ connections; direct `ioredis` for health check
+- Used exclusively by BullMQ job queues — not used as a general application cache
+
+---
 
 ## Authentication & Identity
 
-**Auth Provider:**
-- **NextAuth.js 5.0.0-beta.25** - Session and authentication management
-  - Adapter: DrizzleAdapter for database persistence in MySQL
-  - Session Strategy: JWT (JSON Web Tokens)
-  - Auth Secret: `AUTH_SECRET` environment variable (generate with `openssl rand -base64 32`)
-  - Callback URL: `AUTH_URL` environment variable (e.g., http://localhost:3000)
-  - Pages: Custom sign-in page at `/login`, error redirect to `/login`
-  - Enabled providers:
-    - Google OAuth (conditional on `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`)
-    - Facebook OAuth (conditional on `AUTH_FACEBOOK_ID`/`AUTH_FACEBOOK_SECRET`)
-    - Twitter OAuth (conditional on `AUTH_TWITTER_ID`/`AUTH_TWITTER_SECRET`)
-    - Email/Credentials (custom password-based authentication)
-  - Implementation: `apps/web/lib/auth.ts` (NextAuth configuration), `apps/web/middleware.ts` (route protection)
-  - User mapping: Email is canonical identifier; different OAuth providers with same email map to same user
+### NextAuth.js (Web)
 
-**Password Security:**
-- Bcrypt 5.1.0 - Password hashing and verification
-- Used for credentials provider in NextAuth and custom password authentication
+**Provider: next-auth 5.0.0-beta.25**
+- Implementation: `apps/web/lib/auth.ts`
+- Strategy: JWT sessions (A256CBC-HS512 encrypted JWE cookie)
+- Adapter: `@auth/drizzle-adapter` — persists sessions/accounts to MySQL `users` table
+- Providers enabled (conditional on env vars):
+  - Google OAuth (`AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`)
+  - Facebook OAuth (`AUTH_FACEBOOK_ID`, `AUTH_FACEBOOK_SECRET`)
+  - Twitter/X OAuth (`AUTH_TWITTER_ID`, `AUTH_TWITTER_SECRET`)
+  - Credentials (email + bcrypt password; minimum 12-char password enforced)
+- Cookie names: `__Secure-authjs.session-token` (production) / `authjs.session-token` (dev)
+- Custom pages: `/login` for `signIn` and `error`
+- JWT callback: stores `id`, `email`, `provider`, `onboardingComplete` in the token
+
+### API Auth Middleware
+
+**Implementation: `apps/api/src/lib/authMiddleware.ts`**
+- Decrypts the NextAuth JWT cookie using `jose.jwtDecrypt` + `@panva/hkdf` key derivation (matches Auth.js internal algorithm)
+- Attaches `userId`, `userEmail`, `userName` to Hono context
+- `getRequiredUserId()` (`apps/api/src/lib/routeAuth.ts`) throws if `userId` is null on protected routes
+- New users auto-provisioned to DB on first API hit; admin notification sent via `adminNotify.ts`
+
+### AES-256-GCM At-Rest Encryption
+
+**Implementation: `apps/api/src/lib/encryption.ts`**
+- Key derived from `AUTH_SECRET` via SHA-256 (32-byte key)
+- Cipher: AES-256-GCM; 96-bit random IV; 16-byte auth tag
+- Used for: Ponto OAuth tokens in `bank_connections`, per-landlord SMTP passwords in `smtp_settings`, Smovin credentials in `import_sessions`
+- Storage pattern: three columns per secret (`{encrypted}`, `{iv}`, `{tag}`) as base64 strings
+
+### OAuth State (PSD2 Flow)
+
+**Implementation: `apps/api/src/lib/bankOAuthState.ts`**
+- Signs HS256 JWTs with `AUTH_SECRET` for CSRF/replay protection on Ponto callback
+- 10-minute TTL; unique nonce per consent request
+- Verified by `GET /api/v1/bank-connections/callback` (bypasses session auth)
+
+---
+
+## Email
+
+**SMTP (nodemailer):**
+- Platform default SMTP: `SMTP_HOST`, `SMTP_PORT` (default 1025 for Mailpit in dev)
+- Per-landlord custom SMTP: optional override stored encrypted in `smtp_settings` DB table
+- Transport cache: 30-minute TTL per `ownerId` (`apps/api/src/lib/email.ts`)
+- Queue: `email-queue` BullMQ worker; rate limited to `EMAIL_RATE_LIMIT` msgs/min (default 30); retry 3× exponential backoff
+- Worker: `apps/api/src/jobs/emailQueueWorker.ts`
+- Template rendering: `{{variable}}` double-brace substitution via `renderTemplate()`
+- Communication logging: all sent emails tracked in `communications` table
+- Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `EMAIL_RATE_LIMIT`, `EMAIL_FROM`, `ADMIN_EMAIL`
+
+---
+
+## SMS
+
+**Provider abstraction (`apps/api/src/lib/sms.ts`):**
+- Selected via `SMS_PROVIDER` env var
+- Queue: `sms-queue` BullMQ worker; rate limited to `SMS_RATE_LIMIT` msgs/min (default 10)
+
+**Twilio:**
+- REST API: `https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json`
+- Auth: Basic (AccountSid:AuthToken)
+- Env vars: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+
+**MessageBird (Bird):**
+- REST API: `https://rest.messagebird.com/messages`
+- Auth: `AccessKey` header
+- Env vars: `MESSAGEBIRD_API_KEY`, `MESSAGEBIRD_ORIGINATOR`
+
+**OVH SMS:**
+- REST API: `https://eu.api.ovh.com/1.0/sms/{serviceName}/jobs`
+- Auth: OVH HMAC-SHA1 signature (timestamp-based)
+- Env vars: `OVH_APP_KEY`, `OVH_APP_SECRET`, `OVH_CONSUMER_KEY`, `OVH_SMS_SERVICE`, `OVH_SMS_SENDER`
+
+**Console (dev/testing):**
+- Default provider if `SMS_PROVIDER` is unset; logs to stdout only
+
+---
 
 ## Monitoring & Observability
 
-**Error Tracking:**
-- Not detected - No Sentry, Rollbar, or similar service configured
+**Error Tracking:** Not detected — no Sentry, Datadog, or similar SDK
 
 **Logs:**
-- Console logging - All major operations log to stdout/stderr
-- Timestamps and context tags: `[Webhook]`, `[EmailQueue]`, `[SmsQueue]`, `[Stripe]` prefixes
-- No persistent log aggregation service detected
+- `console.log` / `console.error` with bracketed context prefix (`[Auth]`, `[EmailQueue]`, etc.)
+- Hono `logger()` middleware logs all HTTP requests
+- Health check endpoint: `GET /api/v1/health` — verifies DB (`SELECT 1`) and Redis (`PING`); returns `{ status, checks, version }`
+
+---
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not specified in codebase - Likely self-hosted or requires documentation
+- Proxmox/Hetzner VPS with Docker (`docker-compose.yml` at project root)
+- Services: `mariadb` (MariaDB 11), `redis` (Redis 7 Alpine), `mailpit` (dev email)
 
-**CI Pipeline:**
-- Not detected - No GitHub Actions, GitLab CI, or similar configuration
-
-## Environment Configuration
-
-**Required env vars for full functionality:**
-
-### Core Infrastructure
-- `DB_HOST` - MySQL host
-- `DB_PORT` - MySQL port (default: 3306)
-- `DB_NAME` - MySQL database name
-- `DB_USER` - MySQL username
-- `DB_PASSWORD` - MySQL password
-- `REDIS_URL` or `REDIS_HOST`/`REDIS_PORT` - Redis connection
-- `AUTH_SECRET` - NextAuth session secret (generate with `openssl rand -base64 32`)
-- `AUTH_URL` - Application URL for NextAuth callbacks
-
-### Application URLs
-- `API_PORT` - API server port (default: 4000)
-- `API_URL` - API base URL (e.g., http://localhost:4000)
-- `WEB_URL` - Web app URL (e.g., http://localhost:3000)
-- `NEXT_PUBLIC_API_URL` - API endpoint for frontend (e.g., http://localhost:4000/api/v1)
-
-### Authentication Providers (Optional)
-- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` - Google OAuth
-- `AUTH_FACEBOOK_ID` / `AUTH_FACEBOOK_SECRET` - Facebook OAuth
-- `AUTH_TWITTER_ID` / `AUTH_TWITTER_SECRET` - Twitter OAuth
-
-### Payment Processing
-- `STRIPE_SECRET_KEY` - Stripe API secret key
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
-- `STRIPE_PRICE_STARTER` - Stripe price ID for starter plan
-- `STRIPE_PRICE_STANDARD` - Stripe price ID for standard plan
-- `STRIPE_PRICE_PROFESSIONAL` - Stripe price ID for professional plan
-- `GOCARDLESS_ACCESS_TOKEN` - GoCardless API token
-- `GOCARDLESS_ENVIRONMENT` - "sandbox" or "live"
-- `GOCARDLESS_WEBHOOK_SECRET` - GoCardless webhook signing secret
-
-### Email Configuration
-- `SMTP_HOST` - SMTP server host (default: localhost)
-- `SMTP_PORT` - SMTP server port (default: 1025)
-- `SMTP_USER` - SMTP username (optional)
-- `SMTP_PASSWORD` - SMTP password (optional)
-- `SMTP_FROM` / `EMAIL_FROM` - Sender email address (default: noreply@rentular.com)
-- `EMAIL_RATE_LIMIT` - Max emails per minute (default: 30)
-
-### SMS Configuration (Optional)
-- `SMS_PROVIDER` - Provider selection: "twilio", "messagebird", "ovh", or "console" (default: console)
-- `SMS_RATE_LIMIT` - Max SMS per minute (default: 10)
-
-**Provider-specific SMS credentials:**
-- **Twilio:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
-- **MessageBird:** `MESSAGEBIRD_API_KEY`, `MESSAGEBIRD_ORIGINATOR`
-- **OVH:** `OVH_APP_KEY`, `OVH_APP_SECRET`, `OVH_CONSUMER_KEY`, `OVH_SMS_SERVICE`, `OVH_SMS_SENDER`
-
-**Secrets location:**
-- `.env` file in project root (use `.env.example` as template)
-- Not committed to version control (should be in .gitignore)
-- Environment-specific overrides: `.env.local`, `.env.production`, etc.
-
-## Webhooks & Callbacks
-
-**Incoming Webhooks:**
-- **GoCardless Webhooks** - Payment and mandate status updates
-  - Endpoint: `POST /api/v1/webhooks/gocardless`
-  - Handler: `apps/api/src/routes/webhooks.ts`
-  - Signature verification: HMAC-SHA256 using `GOCARDLESS_WEBHOOK_SECRET`
-  - Resource types handled: payments, mandates, payouts
-  - Events processed: payment.confirmed, payment.failed, payment.late_failure_settled, payment.charged_back, payment.paid_out, mandate.active, mandate.cancelled/failed/expired, payout.paid
-
-- **Stripe Webhooks** - Subscription and payment events
-  - Endpoint: `POST /api/v1/stripe/webhook`
-  - Handler: `apps/api/src/routes/stripe.ts`
-  - Signature verification: Stripe signature header validation
-  - Event types handled: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.payment_failed
-  - Webhook Secret: `STRIPE_WEBHOOK_SECRET` environment variable
-
-**Outgoing Webhooks:**
-- None detected - Application sends HTTP requests but no outbound webhook pattern observed
-
-## Background Jobs & Async Processing
-
-**Job Queue System:** BullMQ + Redis
-
-**Email Queue:**
-- Queue name: "email-queue"
-- Rate limiting: `EMAIL_RATE_LIMIT` (default: 30 emails/minute)
-- Concurrency: 1 (processes emails sequentially)
-- Retry policy: 3 attempts with exponential backoff (5 second initial delay)
-- Implementation: `apps/api/src/jobs/emailQueueWorker.ts`
-- Enqueue functions: `queueEmail()`, `queueBatchEmails()`
-
-**SMS Queue:**
-- Queue name: "sms-queue"
-- Rate limiting: `SMS_RATE_LIMIT` (default: 10 SMS/minute)
-- Concurrency: 1 (processes SMS sequentially)
-- Retry policy: 3 attempts with exponential backoff (10 second initial delay)
-- Implementation: `apps/api/src/jobs/smsQueueWorker.ts`
-- Enqueue function: `queueSms()`
-
-**Scheduled Jobs:**
-- **Payment Check Schedule** - Periodic payment status checking
-  - Setup: `setupPaymentCheckSchedule()` in `apps/api/src/jobs/paymentCheckWorker.ts`
-  - Started at API initialization
-
-- **Landlord Report Schedule** - Periodic report generation
-  - Setup: `setupLandlordReportSchedule()` in `apps/api/src/jobs/landlordReportWorker.ts`
-  - Started at API initialization
+**CI Pipeline:** Not detected — no `.github/workflows`, `.gitlab-ci.yml`, or similar
 
 ---
 
-*Integration audit: 2026-03-22*
+## Webhooks & Callbacks
+
+**Incoming webhooks:**
+- `POST /api/v1/webhooks/gocardless` — GoCardless payment/mandate/payout events; HMAC-SHA256 signature verification; idempotency via `webhook_events` table dedup
+- `POST /api/v1/stripe/webhook` — Stripe subscription lifecycle events; signature via `stripe.webhooks.constructEvent()`
+
+**OAuth callbacks:**
+- `GET /api/v1/bank-connections/callback` — Ponto Connect OAuth2 authorization code exchange; state JWT replaces session auth on this single route
+
+**Outgoing webhooks:** None detected
+
+---
+
+## Environment Configuration Summary
+
+| Variable | Purpose |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | MariaDB connection |
+| `REDIS_URL` (or `REDIS_HOST`/`REDIS_PORT`) | Redis / BullMQ |
+| `AUTH_SECRET` | NextAuth JWT encryption + AES-256-GCM data encryption key |
+| `AUTH_URL` | NextAuth base URL |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | Google OAuth (optional) |
+| `AUTH_FACEBOOK_ID`, `AUTH_FACEBOOK_SECRET` | Facebook OAuth (optional) |
+| `AUTH_TWITTER_ID`, `AUTH_TWITTER_SECRET` | Twitter/X OAuth (optional) |
+| `GOCARDLESS_ACCESS_TOKEN`, `GOCARDLESS_ENVIRONMENT`, `GOCARDLESS_WEBHOOK_SECRET` | GoCardless SEPA direct debit |
+| `GOCARDLESS_BAD_SECRET_ID`, `GOCARDLESS_BAD_SECRET_KEY` | GoCardless Bank Account Data (dormant) |
+| `BANK_DATA_PROVIDER`, `BANK_CONNECTION_REDIRECT_URL` | PSD2 provider selection |
+| `PONTO_CLIENT_ID`, `PONTO_CLIENT_SECRET`, `PONTO_ENVIRONMENT`, `PONTO_REDIRECT_URI` | Ponto Connect OAuth |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_STARTER`, `STRIPE_PRICE_STANDARD`, `STRIPE_PRICE_PROFESSIONAL` | Stripe subscription billing |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `EMAIL_RATE_LIMIT`, `EMAIL_FROM` | Platform SMTP |
+| `ADMIN_EMAIL` | Admin signup notification recipient |
+| `SMS_PROVIDER`, `SMS_RATE_LIMIT` | SMS provider selection + rate limit |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Twilio SMS (if selected) |
+| `MESSAGEBIRD_API_KEY`, `MESSAGEBIRD_ORIGINATOR` | MessageBird SMS (if selected) |
+| `OVH_APP_KEY`, `OVH_APP_SECRET`, `OVH_CONSUMER_KEY`, `OVH_SMS_SERVICE`, `OVH_SMS_SENDER` | OVH SMS (if selected) |
+| `API_PORT`, `API_URL`, `WEB_URL`, `NEXT_PUBLIC_API_URL`, `ALLOWED_ORIGINS` | Server URLs and CORS |
+| `SIGNAL_BOT_URL`, `SIGNAL_BOT_NUMBER`, `SIGNAL_SUPPORT_NUMBER`, `SUPPORT_EMAIL` | Support chat forwarding (optional) |
+| `BANK_STATEMENTS_RETENTION_DAYS` | Belgian tax-law data retention (default 2555 = 7 years) |
+
+---
+
+*Integration audit: 2026-06-28*
