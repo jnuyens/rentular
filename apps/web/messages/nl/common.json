@@ -34,7 +34,8 @@
     "settings": "Instellingen",
     "managers": "Beheerders",
     "import": "Importeren",
-    "mandates": "Mandaten"
+    "mandates": "Mandaten",
+    "bankConnections": "Bank Connections"
   },
   "properties": {
     "title": "Eigendommen",
@@ -870,6 +871,83 @@
       "failed": "Mislukt",
       "expired": "Verlopen",
       "unknown": "Onbekend"
+    }
+  },
+  "bankConnections": {
+    "title": "Bank Connections",
+    "subtitle": "Connect your bank account so Rentular can automatically import and match incoming rent transfers.",
+    "connectBank": "Connect bank account",
+    "emptyTitle": "No bank connections yet",
+    "pricingDisclosure": "Connecting a bank account costs up to €4 per account per month, billed directly to you by Ibanity. Rentular receives no portion of this fee.",
+    "tosNotice": "By connecting a bank, you agree to a separate service agreement with Ibanity SA/NV. Rentular is not party to that agreement.",
+    "viewTerms": "View Terms of Service",
+    "loadError": "Unable to load bank connections. Please check your connection and try again.",
+    "retry": "Retry",
+    "searchBanks": "Search banks...",
+    "selectInstitution": "Select your bank",
+    "institution": "Bank",
+    "account": "Account",
+    "statusLabel": "Status",
+    "lastSync": "Last synced",
+    "expiry": "Consent expiry",
+    "expiresIn": "Expires in {days} days",
+    "expiresToday": "Expires today",
+    "neverSynced": "Never synced",
+    "aboutToConnect": "Connect your bank account",
+    "continue": "Continue",
+    "back": "Back",
+    "cancel": "Cancel",
+    "connect": "Connect",
+    "redirecting": "Redirecting you to your bank to authorize access...",
+    "connectError": "We couldn't start the bank connection. Please try again.",
+    "callbackSuccess": "Bank connection successful",
+    "callbackSuccessBody": "Your bank account is now connected. Transactions will be synced automatically.",
+    "viewConnection": "View connection",
+    "backToConnections": "Back to bank connections",
+    "errorAccessDenied": "Bank authorization was cancelled.",
+    "errorExpiredState": "This authorization link has expired. Please start again.",
+    "errorMissingParams": "Authorization response was malformed. Please try again.",
+    "errorNoAccounts": "No bank accounts were available to link. Please contact support.",
+    "errorUnknown": "Something went wrong. Please try again.",
+    "notFound": "Connection not found",
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "error": "Error"
+    },
+    "actions": {
+      "syncNow": "Sync now",
+      "renewConsent": "Renew consent",
+      "revoke": "Revoke"
+    },
+    "detail": {
+      "connectionDetails": "Connection details",
+      "syncStatus": "Sync status",
+      "consent": "Consent",
+      "iban": "IBAN",
+      "institutionId": "Institution ID",
+      "country": "Country",
+      "createdAt": "Connected on",
+      "errorLabel": "Error",
+      "expiresInDays": "Expires in {days} days",
+      "expiredDaysAgo": "Expired {days} days ago",
+      "lastSyncedAt": "Last synced {time}",
+      "neverSynced": "Never synced"
+    },
+    "toasts": {
+      "syncStarted": "Sync started",
+      "syncRateLimited": "Sync rate-limited, please wait a minute",
+      "syncError": "Unable to start sync. Please try again.",
+      "renewError": "Unable to renew consent. Please try again.",
+      "revokeSuccess": "Bank connection revoked"
+    },
+    "dialogs": {
+      "revokeTitle": "Revoke bank connection?",
+      "revokeBody": "Your historical bank statements will be retained for tax purposes (7 years).",
+      "confirm": "Revoke",
+      "cancel": "Cancel"
     }
   }
 }
