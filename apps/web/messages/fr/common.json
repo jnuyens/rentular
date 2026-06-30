@@ -615,7 +615,22 @@
     "changesTitle": "10. Modifications de cette politique",
     "changesText": "Nous pouvons mettre à jour cette Politique de Confidentialité de temps en temps. Nous vous informerons des modifications significatives par e-mail ou via l'application. La date \"Dernière mise à jour\" en haut de page reflète la révision la plus récente.",
     "contactTitle": "11. Contact",
-    "contactText": "Pour toute question concernant cette Politique de Confidentialité ou vos données personnelles, contactez-nous à"
+    "contactText": "Pour toute question concernant cette Politique de Confidentialité ou vos données personnelles, contactez-nous à",
+    "thirdPartyIbanity": "(Ibanity SA/NV) traite les données de votre compte bancaire pour récupérer les transactions à des fins de réconciliation automatique des loyers lorsque vous connectez un compte bancaire.",
+    "ibanityTitle": "Connexions de comptes bancaires (Ibanity / DSP2)",
+    "ibanityIntro": "Lorsque vous connectez un compte bancaire, le sous-traitant tiers suivant intervient :",
+    "ibanityName": "Ibanity SA/NV (Isabel Group)",
+    "ibanityPurposeLabel": "Finalité :",
+    "ibanityPurpose": "Service d'information sur les comptes DSP2 — récupération des transactions bancaires pour la réconciliation automatique des loyers.",
+    "ibanityLawfulBasisLabel": "Base légale :",
+    "ibanityLawfulBasis": "Exécution d'un contrat (votre contrat de service distinct avec Ibanity).",
+    "ibanityDataLabel": "Catégories de données :",
+    "ibanityData": "Numéro de compte bancaire, solde du compte, transactions et nom du titulaire du compte.",
+    "ibanityRetentionLabel": "Conservation :",
+    "ibanityRetention": "Relevés : 7 ans (législation fiscale belge). Identifiants de connexion : jusqu'à la révocation de l'accès.",
+    "ibanityLocationLabel": "Localisation :",
+    "ibanityLocation": "Union européenne (Belgique).",
+    "ibanityLinkLabel": "Politique de confidentialité d'Ibanity"
   },
   "import": {
     "title": "Import Smovin",
@@ -714,7 +729,9 @@
     "lawTitle": "10. Droit applicable",
     "lawText": "Ces Conditions sont régies par le droit belge. Tout litige sera soumis aux tribunaux compétents de Belgique. Cela n'affecte pas vos droits statutaires en tant que consommateur en vertu du droit de l'UE.",
     "contactTitle": "11. Contact",
-    "contactText": "Pour toute question concernant ces Conditions, contactez-nous à"
+    "contactText": "Pour toute question concernant ces Conditions, contactez-nous à",
+    "bankConnectionsTitle": "Connexions de comptes bancaires (DSP2)",
+    "bankConnectionsClause": "Si vous choisissez de connecter un compte bancaire à Rentular, vous le faites en concluant un contrat de service distinct avec Ibanity SA/NV, le prestataire de services d'information sur les comptes agréé au titre de la DSP2. Rentular facilite cette connexion mais n'est pas partie à ce contrat. Ibanity vous facture directement la connexion du compte bancaire (jusqu'à 4 € par compte lié et par mois). Vous pouvez révoquer la connexion à tout moment depuis le tableau de bord Rentular. Nous conservons les relevés bancaires pendant 7 ans afin de respecter la législation fiscale belge."
   },
   "managers": {
     "title": "Gestionnaires",

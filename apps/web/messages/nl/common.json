@@ -615,7 +615,22 @@
     "changesTitle": "10. Wijzigingen aan dit beleid",
     "changesText": "Wij kunnen dit Privacybeleid van tijd tot tijd bijwerken. Wij stellen u op de hoogte van belangrijke wijzigingen via e-mail of via de applicatie. De datum \"Laatst bijgewerkt\" bovenaan geeft de meest recente herziening weer.",
     "contactTitle": "11. Contact",
-    "contactText": "Voor vragen over dit Privacybeleid of uw persoonsgegevens, neem contact met ons op via"
+    "contactText": "Voor vragen over dit Privacybeleid of uw persoonsgegevens, neem contact met ons op via",
+    "thirdPartyIbanity": "(Ibanity SA/NV) verwerkt uw bankrekeninggegevens om transacties op te halen voor automatische huurreconciliatie wanneer u een bankrekening koppelt.",
+    "ibanityTitle": "Bankrekeningkoppelingen (Ibanity / PSD2)",
+    "ibanityIntro": "Wanneer u een bankrekening koppelt, is de volgende externe verwerker betrokken:",
+    "ibanityName": "Ibanity SA/NV (Isabel Group)",
+    "ibanityPurposeLabel": "Doel:",
+    "ibanityPurpose": "PSD2-rekeninginformatiedienst — bankafschriften ophalen voor automatische huurreconciliatie.",
+    "ibanityLawfulBasisLabel": "Rechtsgrond:",
+    "ibanityLawfulBasis": "Uitvoering van een overeenkomst (uw afzonderlijke serviceovereenkomst met Ibanity).",
+    "ibanityDataLabel": "Gegevenscategorieën:",
+    "ibanityData": "Bankrekeningnummer, rekeningsaldo, transacties en naam van de rekeninghouder.",
+    "ibanityRetentionLabel": "Bewaring:",
+    "ibanityRetention": "Afschriftgegevens: 7 jaar (Belgische belastingwetgeving). Koppelingsgegevens: tot u de toegang intrekt.",
+    "ibanityLocationLabel": "Locatie:",
+    "ibanityLocation": "Europese Unie (België).",
+    "ibanityLinkLabel": "Privacybeleid van Ibanity"
   },
   "import": {
     "title": "Smovin Import",
@@ -714,7 +729,9 @@
     "lawTitle": "10. Toepasselijk recht",
     "lawText": "Deze Voorwaarden worden beheerst door Belgisch recht. Geschillen worden voorgelegd aan de bevoegde rechtbanken van België. Dit doet geen afbreuk aan uw wettelijke consumentenrechten onder EU-recht.",
     "contactTitle": "11. Contact",
-    "contactText": "Voor vragen over deze Voorwaarden, neem contact met ons op via"
+    "contactText": "Voor vragen over deze Voorwaarden, neem contact met ons op via",
+    "bankConnectionsTitle": "Bankrekeningkoppelingen (PSD2)",
+    "bankConnectionsClause": "Als u ervoor kiest een bankrekening aan Rentular te koppelen, doet u dit door een afzonderlijke serviceovereenkomst aan te gaan met Ibanity SA/NV, de onder PSD2 vergunde aanbieder van rekeninginformatiediensten. Rentular faciliteert deze koppeling maar is geen partij bij die overeenkomst. Ibanity factureert u rechtstreeks voor de bankrekeningkoppeling (tot €4 per gekoppelde rekening per maand). U kunt de koppeling op elk moment intrekken via het Rentular-dashboard. Wij bewaren bankafschriftgegevens gedurende 7 jaar om te voldoen aan de Belgische belastingwetgeving."
   },
   "managers": {
     "title": "Vastgoedbeheerders",

@@ -615,7 +615,22 @@
     "changesTitle": "10. Änderungen dieser Richtlinie",
     "changesText": "Wir können diese Datenschutzerklärung von Zeit zu Zeit aktualisieren. Wir werden Sie über wesentliche Änderungen per E-Mail oder über die Anwendung informieren. Das Datum \"Zuletzt aktualisiert\" oben zeigt die jüngste Überarbeitung an.",
     "contactTitle": "11. Kontakt",
-    "contactText": "Für Fragen zu dieser Datenschutzerklärung oder Ihren personenbezogenen Daten kontaktieren Sie uns unter"
+    "contactText": "Für Fragen zu dieser Datenschutzerklärung oder Ihren personenbezogenen Daten kontaktieren Sie uns unter",
+    "thirdPartyIbanity": "(Ibanity SA/NV) verarbeitet Ihre Bankkontodaten, um Transaktionen für den automatischen Mietabgleich abzurufen, wenn Sie ein Bankkonto verbinden.",
+    "ibanityTitle": "Bankkontoverbindungen (Ibanity / PSD2)",
+    "ibanityIntro": "Wenn Sie ein Bankkonto verbinden, ist der folgende Drittverarbeiter beteiligt:",
+    "ibanityName": "Ibanity SA/NV (Isabel Group)",
+    "ibanityPurposeLabel": "Zweck:",
+    "ibanityPurpose": "PSD2-Kontoinformationsdienst — Abruf von Banktransaktionen für den automatischen Mietabgleich.",
+    "ibanityLawfulBasisLabel": "Rechtsgrundlage:",
+    "ibanityLawfulBasis": "Erfüllung eines Vertrags (Ihr separater Dienstleistungsvertrag mit Ibanity).",
+    "ibanityDataLabel": "Datenkategorien:",
+    "ibanityData": "Bankkontonummer, Kontostand, Transaktionen und Name des Kontoinhabers.",
+    "ibanityRetentionLabel": "Aufbewahrung:",
+    "ibanityRetention": "Auszugsdaten: 7 Jahre (belgisches Steuerrecht). Verbindungsdaten: bis zum Widerruf des Zugriffs.",
+    "ibanityLocationLabel": "Standort:",
+    "ibanityLocation": "Europäische Union (Belgien).",
+    "ibanityLinkLabel": "Datenschutzrichtlinie von Ibanity"
   },
   "import": {
     "title": "Smovin Import",
@@ -714,7 +729,9 @@
     "lawTitle": "10. Anwendbares Recht",
     "lawText": "Diese Bedingungen unterliegen belgischem Recht. Streitigkeiten werden den zuständigen Gerichten Belgiens vorgelegt. Dies berührt nicht Ihre gesetzlichen Verbraucherrechte nach EU-Recht.",
     "contactTitle": "11. Kontakt",
-    "contactText": "Für Fragen zu diesen Bedingungen kontaktieren Sie uns unter"
+    "contactText": "Für Fragen zu diesen Bedingungen kontaktieren Sie uns unter",
+    "bankConnectionsTitle": "Bankkontoverbindungen (PSD2)",
+    "bankConnectionsClause": "Wenn Sie ein Bankkonto mit Rentular verbinden möchten, schließen Sie dazu einen separaten Dienstleistungsvertrag mit Ibanity SA/NV ab, dem unter PSD2 zugelassenen Kontoinformationsdienstleister. Rentular ermöglicht diese Verbindung, ist jedoch nicht Vertragspartei. Ibanity stellt Ihnen die Bankkontoverbindung direkt in Rechnung (bis zu 4 € pro verbundenem Konto pro Monat). Sie können die Verbindung jederzeit über das Rentular-Dashboard widerrufen. Wir bewahren Bankauszugsdaten 7 Jahre lang auf, um die belgischen Steuervorschriften einzuhalten."
   },
   "managers": {
     "title": "Immobilienverwalter",

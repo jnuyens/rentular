@@ -615,7 +615,22 @@
     "changesTitle": "10. Changes to This Policy",
     "changesText": "We may update this Privacy Policy from time to time. We will notify you of significant changes via email or through the application. The \"Last updated\" date at the top reflects the most recent revision.",
     "contactTitle": "11. Contact",
-    "contactText": "For any questions about this Privacy Policy or your personal data, contact us at"
+    "contactText": "For any questions about this Privacy Policy or your personal data, contact us at",
+    "thirdPartyIbanity": "(Ibanity SA/NV) processes your bank account data to retrieve transactions for automatic rent reconciliation when you connect a bank account.",
+    "ibanityTitle": "Bank Account Connections (Ibanity / PSD2)",
+    "ibanityIntro": "When you connect a bank account, the following third-party processor is involved:",
+    "ibanityName": "Ibanity SA/NV (Isabel Group)",
+    "ibanityPurposeLabel": "Purpose:",
+    "ibanityPurpose": "PSD2 Account Information Service — retrieving bank transactions for automatic rent reconciliation.",
+    "ibanityLawfulBasisLabel": "Lawful basis:",
+    "ibanityLawfulBasis": "Performance of a contract (your separate service agreement with Ibanity).",
+    "ibanityDataLabel": "Data categories:",
+    "ibanityData": "Bank account number, account balance, transactions, and account holder name.",
+    "ibanityRetentionLabel": "Retention:",
+    "ibanityRetention": "Statement records: 7 years (Belgian tax law). Connection credentials: until you revoke access.",
+    "ibanityLocationLabel": "Location:",
+    "ibanityLocation": "European Union (Belgium).",
+    "ibanityLinkLabel": "Ibanity privacy policy"
   },
   "import": {
     "title": "Smovin Import",
@@ -714,7 +729,9 @@
     "lawTitle": "10. Governing Law",
     "lawText": "These Terms are governed by Belgian law. Any disputes will be submitted to the competent courts of Belgium. This does not affect your statutory consumer rights under EU law.",
     "contactTitle": "11. Contact",
-    "contactText": "For questions about these Terms, contact us at"
+    "contactText": "For questions about these Terms, contact us at",
+    "bankConnectionsTitle": "Bank Account Connections (PSD2)",
+    "bankConnectionsClause": "If you choose to connect a bank account to Rentular, you do so by entering a separate service agreement with Ibanity SA/NV, the licensed Account Information Service Provider under PSD2. Rentular facilitates this connection but is not party to that agreement. Ibanity bills you directly for the bank account connection (up to €4 per linked account per month). You may revoke the connection at any time from the Rentular dashboard. We retain bank statement records for 7 years to comply with Belgian tax law."
   },
   "managers": {
     "title": "Property Managers",

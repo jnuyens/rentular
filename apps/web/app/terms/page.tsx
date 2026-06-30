@@ -89,6 +89,12 @@ export default function TermsPage() {
             </p>
           </section>
 
+          {/* Bank Account Connections (PSD2) */}
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-gray-900">{t("bankConnectionsTitle")}</h2>
+            <p>{t("bankConnectionsClause")}</p>
+          </section>
+
           {/* Limitation of Liability */}
           <section>
             <h2 className="mb-3 text-lg font-semibold text-gray-900">{t("liabilityTitle")}</h2>

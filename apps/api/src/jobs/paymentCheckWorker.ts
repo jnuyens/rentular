@@ -1,4 +1,6 @@
 import { Worker, Queue } from "bullmq";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { eq, and, lt, lte, gte, inArray } from "drizzle-orm";
 import {
   getDb,
@@ -32,6 +34,74 @@ const connection = {
 };
 
 const paymentCheckQueue = new Queue(QUEUE_NAME, { connection });
+
+const SUPPORTED_EMAIL_LOCALES = ["en", "nl", "fr", "de"] as const;
+
+interface RenewalEmailTemplate {
+  subject7Day: string;
+  subject1Day: string;
+  greeting: string;
+  body7Day: string;
+  body1Day: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  consequence: string;
+  signature: string;
+  defaultName: string;
+  defaultInstitution: string;
+}
+
+// Loads the locale-aware bank-connection renewal-warning email template from the
+// web app's i18n messages (bankConnections.email.renewalWarning). Falls back to
+// English when the recipient locale is unsupported or missing.
+function loadRenewalEmailTemplate(locale: string): RenewalEmailTemplate {
+  const lc = (SUPPORTED_EMAIL_LOCALES as readonly string[]).includes(locale)
+    ? locale
+    : "en";
+  // process.cwd() is apps/api at runtime (dev via tsx, prod via bundled ESM);
+  // the web messages live one level up under apps/web/messages.
+  const path = join(process.cwd(), "..", "web", "messages", lc, "common.json");
+  const messages = JSON.parse(readFileSync(path, "utf8"));
+  const t = messages?.bankConnections?.email?.renewalWarning;
+  if (!t) {
+    throw new Error(
+      `[PaymentCheck] Missing bankConnections.email.renewalWarning in ${lc} locale`
+    );
+  }
+  return t as RenewalEmailTemplate;
+}
+
+// Composes the localized renewal-warning email. days controls 7-day vs 1-day copy.
+// No tokens or secrets are interpolated — only the recipient name, institution
+// label, days, connection id (deep link), and web origin (T-09-05-02).
+function buildRenewalEmail(
+  locale: string,
+  params: {
+    days: number;
+    name: string | null;
+    institution: string | null;
+    connectionId: string;
+    webUrl: string;
+  }
+): { subject: string; body: string } {
+  const t = loadRenewalEmailTemplate(locale);
+  const name = params.name || t.defaultName;
+  const institution = params.institution || t.defaultInstitution;
+  const isSevenDay = params.days >= 7;
+
+  const subject = isSevenDay ? t.subject7Day : t.subject1Day;
+  const bodyLine = (isSevenDay ? t.body7Day : t.body1Day).replace(
+    "{institution}",
+    institution
+  );
+  const greeting = t.greeting.replace("{name}", name);
+  const ctaUrl = t.ctaUrl
+    .replace("{webUrl}", params.webUrl)
+    .replace("{connectionId}", params.connectionId);
+
+  const body = `${greeting}\n\n${bodyLine}\n\n${t.ctaLabel}: ${ctaUrl}\n\n${t.consequence}\n\n${t.signature}`;
+  return { subject, body };
+}
 
 // Process payment checks
 const worker = new Worker(
@@ -346,16 +416,28 @@ const worker = new Worker(
         } else {
           // Renewal failed -- send warning email to landlord per D-09
           const owner = await db
-            .select({ email: users.email, name: users.name })
+            .select({
+              email: users.email,
+              name: users.name,
+              locale: users.locale,
+            })
             .from(users)
             .where(eq(users.id, conn.ownerId))
             .limit(1);
 
           if (owner[0]?.email) {
+            const recipientLocale = owner[0].locale || "en";
+            const { subject, body } = buildRenewalEmail(recipientLocale, {
+              days: daysUntilExpiry,
+              name: owner[0].name,
+              institution: conn.institutionName || conn.iban,
+              connectionId: conn.id,
+              webUrl: process.env.WEB_URL || "http://localhost:3000",
+            });
             await queueEmail({
               to: owner[0].email,
-              subject: `Bank connection expiring in ${daysUntilExpiry} day(s) - action required`,
-              body: `Dear ${owner[0].name || "Landlord"},\n\nYour bank connection for ${conn.institutionName || conn.iban || "your account"} will expire in ${daysUntilExpiry} day(s).\n\nAutomatic renewal was not possible. Please reconnect your bank account in the Rentular dashboard to continue receiving automatic payment matching.\n\nIf you do not reconnect before expiry, incoming bank transfers will no longer be automatically matched to expected payments.\n\nBest regards,\nRentular`,
+              subject,
+              body,
             }, undefined, {
               ownerId: conn.ownerId,
               type: "other",

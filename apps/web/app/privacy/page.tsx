@@ -125,10 +125,47 @@ export default function PrivacyPage() {
                 <strong>GoCardless</strong> {t("thirdPartyGoCardless")}
               </li>
               <li>
+                <strong>Ibanity</strong> {t("thirdPartyIbanity")}
+              </li>
+              <li>
                 <strong>{t("thirdPartyEmailLabel")}</strong> {t("thirdPartyEmail")}
               </li>
             </ul>
             <p className="mt-3">{t("thirdPartyGdpr")}</p>
+          </section>
+
+          {/* Bank Account Connections (Ibanity / PSD2) */}
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-gray-900">{t("ibanityTitle")}</h2>
+            <p className="mb-3">{t("ibanityIntro")}</p>
+            <p className="mb-2 font-semibold text-gray-900">{t("ibanityName")}</p>
+            <ul className="list-disc space-y-1.5 pl-5">
+              <li>
+                <strong>{t("ibanityPurposeLabel")}</strong> {t("ibanityPurpose")}
+              </li>
+              <li>
+                <strong>{t("ibanityLawfulBasisLabel")}</strong> {t("ibanityLawfulBasis")}
+              </li>
+              <li>
+                <strong>{t("ibanityDataLabel")}</strong> {t("ibanityData")}
+              </li>
+              <li>
+                <strong>{t("ibanityRetentionLabel")}</strong> {t("ibanityRetention")}
+              </li>
+              <li>
+                <strong>{t("ibanityLocationLabel")}</strong> {t("ibanityLocation")}
+              </li>
+            </ul>
+            <p className="mt-3">
+              <a
+                href="https://www.ibanity.com/legal/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[hsl(var(--primary))] hover:underline"
+              >
+                {t("ibanityLinkLabel")}
+              </a>
+            </p>
           </section>
 
           {/* Data Security */}
