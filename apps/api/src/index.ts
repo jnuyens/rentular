@@ -29,6 +29,7 @@ import { importRouter } from "./routes/import";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
+import { setupBankStatementRetentionSchedule } from "./jobs/bankStatementRetentionWorker";
 import { setupHealthIndexSchedule } from "./jobs/healthIndexWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
@@ -163,6 +164,9 @@ setupLandlordReportSchedule().catch((err) =>
 );
 setupWebhookCleanupSchedule().catch((err) =>
   console.error("Failed to setup webhook cleanup schedule:", err)
+);
+setupBankStatementRetentionSchedule().catch((err) =>
+  console.error("Failed to setup bank statement retention schedule:", err)
 );
 setupHealthIndexSchedule().catch((err) =>
   console.error("Failed to setup health index schedule:", err)
