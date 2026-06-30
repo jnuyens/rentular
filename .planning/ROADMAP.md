@@ -207,3 +207,23 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
 | 8. GoCardless Settings UI & SEPA Mandate Management | 0/4 | Planning complete | - |
 | 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 4/5 | In Progress|  |
+
+### Phase 10: Deploy to Hetzner (m1) — production deployment
+
+**Goal:** A complete, translated Rentular (Phase 09 incl. 09-05 done) deployed and reachable at https://rentular.com on the m1 host, enabling live end-to-end UI verification and Ponto sandbox→production bank-connection testing.
+**Requirements**: TBD
+**Depends on:** Phase 9 (must include 09-05)
+**Plans:** 0 plans
+
+**Scope / context:**
+- **Host:** `m1` (`m1.linuxbe.com`), Hetzner Ubuntu 24.04, passwordless sudo. Already runs nginx + Let's Encrypt TLS automation and hosts linuxbe.com / opensource-enterprise.com / modulejail.com. Point `rentular.com` A record here.
+- **Containerize:** Dockerfile for `apps/web` (Next `start`, :3000) and `apps/api` (`node dist`, :4000); extend `docker-compose.yml` with `web` + `api` services alongside the existing mariadb/redis/mailpit.
+- **Reverse proxy:** nginx `rentular.com` → web :3000, `/api/v1` → api :4000, TLS via existing LE automation.
+- **Env/secrets:** inject on the box via compose/systemd — the Hono API does NOT load `.env` itself, so prod env cannot rely on a `.env` file being read by the app.
+- **First-run:** DB schema push + initial owner-user bootstrap (no seed script exists).
+- **Deploy model:** atomic `releases/<ts>` + `current` symlink + git-push→webhook, adapted from modulejail.com (which is static rsync; Rentular needs the dynamic multi-process variant).
+- **Prerequisite bug fixes folded in:** (1) guard the Stripe client so the API does not crash at boot when `STRIPE_SECRET_KEY` is unset (mirror `isGoCardlessConfigured`); (2) make env loading reliable for the API.
+- **Out of scope (tracked separately):** production Ponto Connect mTLS + request-signing in `pontoConnect.ts` — sandbox works with Basic auth; production hardening is its own work.
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 10 to break down)

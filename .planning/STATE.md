@@ -78,6 +78,7 @@ Plan: 5 of 5 (09-04 complete; 09-05 i18n translation fill remaining)
 
 - Phase 8 added: GoCardless Settings UI & SEPA Mandate Management
 - Phase 9 added: PSD2 bank connection flow — API routes + UI for landlords to connect their bank account so the existing polling worker can auto-import statements and match incoming rent transfers
+- Phase 10 added: Deploy to Hetzner (m1) — production deployment (Docker web+api, nginx reverse proxy + LE TLS, env/secrets, atomic-release deploy; folds in Stripe-boot and API-env bug fixes). Depends on Phase 9 incl. 09-05.
 
 ### Decisions
 
