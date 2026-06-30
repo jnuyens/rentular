@@ -60,3 +60,50 @@ describe("i18n completeness — communications keys (I18N-02)", () => {
     }
   });
 });
+
+describe("i18n completeness — bankConnections keys (BANK-I18N)", () => {
+  const messagesByLocale = Object.fromEntries(
+    LOCALES.map((l) => [l, loadMessages(l)]),
+  );
+  const keysByLocale = Object.fromEntries(
+    Object.entries(messagesByLocale).map(([l, m]) => [l, flattenKeys(m)]),
+  );
+
+  it("has bankConnections.* keys in all 4 locales", () => {
+    for (const locale of LOCALES) {
+      const keys = keysByLocale[locale].filter((k) => k.startsWith("bankConnections"));
+      expect(keys.length, `${locale} should have bankConnections keys`).toBeGreaterThan(0);
+    }
+  });
+
+  it("has the same bankConnections.* keys across all locales", () => {
+    const enKeys = keysByLocale.en.filter((k) => k.startsWith("bankConnections"));
+    for (const locale of ["nl", "fr", "de"] as const) {
+      const localeKeys = keysByLocale[locale].filter((k) => k.startsWith("bankConnections"));
+      const missing = enKeys.filter((k) => !localeKeys.includes(k));
+      const extra = localeKeys.filter((k) => !enKeys.includes(k));
+      expect(missing, `${locale} missing bankConnections keys vs en`).toEqual([]);
+      expect(extra, `${locale} extra bankConnections keys vs en`).toEqual([]);
+    }
+  });
+
+  it("has the renewal email template keys in all 4 locales", () => {
+    const required = [
+      "bankConnections.email.renewalWarning.subject7Day",
+      "bankConnections.email.renewalWarning.subject1Day",
+      "bankConnections.email.renewalWarning.body7Day",
+      "bankConnections.email.renewalWarning.body1Day",
+    ];
+    for (const locale of LOCALES) {
+      for (const key of required) {
+        expect(keysByLocale[locale], `${locale} missing ${key}`).toContain(key);
+      }
+    }
+  });
+
+  it("has nav.bankConnections in all 4 locales", () => {
+    for (const locale of LOCALES) {
+      expect(keysByLocale[locale]).toContain("nav.bankConnections");
+    }
+  });
+});

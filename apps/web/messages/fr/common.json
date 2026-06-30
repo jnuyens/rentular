@@ -953,6 +953,21 @@
       "revokeBody": "Your historical bank statements will be retained for tax purposes (7 years).",
       "confirm": "Revoke",
       "cancel": "Cancel"
+    },
+    "email": {
+      "renewalWarning": {
+        "subject7Day": "Votre connexion bancaire expire dans 7 jours",
+        "subject1Day": "Action requise : la connexion bancaire expire demain",
+        "greeting": "Bonjour {name},",
+        "body7Day": "Votre connexion bancaire pour {institution} expirera dans 7 jours. Veuillez reconnecter votre compte bancaire dans Rentular pour poursuivre la réconciliation automatique des loyers.",
+        "body1Day": "Votre connexion bancaire pour {institution} expirera demain. Veuillez reconnecter votre compte bancaire dans Rentular aujourd'hui pour poursuivre la réconciliation automatique des loyers.",
+        "ctaLabel": "Reconnecter le compte bancaire",
+        "ctaUrl": "{webUrl}/dashboard/bank-connections/{connectionId}",
+        "consequence": "Si vous ne reconnectez pas avant l'expiration, les virements bancaires entrants ne seront plus automatiquement rapprochés des paiements attendus.",
+        "signature": "Cordialement,\nRentular",
+        "defaultName": "Propriétaire",
+        "defaultInstitution": "votre compte"
+      }
     }
   }
 }

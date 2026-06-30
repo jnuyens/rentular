@@ -953,6 +953,21 @@
       "revokeBody": "Your historical bank statements will be retained for tax purposes (7 years).",
       "confirm": "Revoke",
       "cancel": "Cancel"
+    },
+    "email": {
+      "renewalWarning": {
+        "subject7Day": "Uw bankkoppeling vervalt over 7 dagen",
+        "subject1Day": "Actie vereist: bankkoppeling vervalt morgen",
+        "greeting": "Beste {name},",
+        "body7Day": "Uw bankkoppeling voor {institution} vervalt over 7 dagen. Koppel uw bankrekening opnieuw in Rentular om de automatische huurreconciliatie voort te zetten.",
+        "body1Day": "Uw bankkoppeling voor {institution} vervalt morgen. Koppel uw bankrekening vandaag opnieuw in Rentular om de automatische huurreconciliatie voort te zetten.",
+        "ctaLabel": "Bankrekening opnieuw koppelen",
+        "ctaUrl": "{webUrl}/dashboard/bank-connections/{connectionId}",
+        "consequence": "Als u niet opnieuw koppelt vóór de vervaldatum, worden inkomende bankoverschrijvingen niet langer automatisch gematcht met verwachte betalingen.",
+        "signature": "Met vriendelijke groet,\nRentular",
+        "defaultName": "Verhuurder",
+        "defaultInstitution": "uw rekening"
+      }
     }
   }
 }

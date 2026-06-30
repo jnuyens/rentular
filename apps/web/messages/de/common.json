@@ -953,6 +953,21 @@
       "revokeBody": "Your historical bank statements will be retained for tax purposes (7 years).",
       "confirm": "Revoke",
       "cancel": "Cancel"
+    },
+    "email": {
+      "renewalWarning": {
+        "subject7Day": "Ihre Bankverbindung läuft in 7 Tagen ab",
+        "subject1Day": "Aktion erforderlich: Bankverbindung läuft morgen ab",
+        "greeting": "Guten Tag {name},",
+        "body7Day": "Ihre Bankverbindung für {institution} läuft in 7 Tagen ab. Bitte verbinden Sie Ihr Bankkonto erneut in Rentular, um den automatischen Mietabgleich fortzusetzen.",
+        "body1Day": "Ihre Bankverbindung für {institution} läuft morgen ab. Bitte verbinden Sie Ihr Bankkonto heute erneut in Rentular, um den automatischen Mietabgleich fortzusetzen.",
+        "ctaLabel": "Bankkonto erneut verbinden",
+        "ctaUrl": "{webUrl}/dashboard/bank-connections/{connectionId}",
+        "consequence": "Wenn Sie sich nicht vor Ablauf erneut verbinden, werden eingehende Banküberweisungen nicht mehr automatisch mit erwarteten Zahlungen abgeglichen.",
+        "signature": "Mit freundlichen Grüßen,\nRentular",
+        "defaultName": "Vermieter",
+        "defaultInstitution": "Ihr Konto"
+      }
     }
   }
 }

@@ -953,6 +953,21 @@
       "revokeBody": "Your historical bank statements will be retained for tax purposes (7 years).",
       "confirm": "Revoke",
       "cancel": "Cancel"
+    },
+    "email": {
+      "renewalWarning": {
+        "subject7Day": "Your bank connection expires in 7 days",
+        "subject1Day": "Action required: bank connection expires tomorrow",
+        "greeting": "Dear {name},",
+        "body7Day": "Your bank connection for {institution} will expire in 7 days. Please reconnect your bank account in Rentular to continue automatic rent reconciliation.",
+        "body1Day": "Your bank connection for {institution} will expire tomorrow. Please reconnect your bank account in Rentular today to continue automatic rent reconciliation.",
+        "ctaLabel": "Reconnect bank account",
+        "ctaUrl": "{webUrl}/dashboard/bank-connections/{connectionId}",
+        "consequence": "If you do not reconnect before expiry, incoming bank transfers will no longer be matched to expected payments automatically.",
+        "signature": "Best regards,\nRentular",
+        "defaultName": "Landlord",
+        "defaultInstitution": "your account"
+      }
     }
   }
 }
