@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-06-30T00:27:55.157Z"
+status: ready_to_plan
+stopped_at: Phase 09 complete (5/5) — ready to discuss Phase 10
+last_updated: 2026-06-30T13:48:08.846Z
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 38
-  completed_plans: 37
+  completed_plans: 38
   percent: 80
 ---
 
@@ -20,18 +20,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 09 — psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con
+**Current focus:** Phase 10 — deploy to hetzner m1 production deployment
 
 ## Current Position
 
-Phase: 09 (psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con) — EXECUTING
-Plan: 5 of 5 — Tasks 1-4 complete and committed; AWAITING human-verify checkpoint (Ponto sandbox end-to-end)
+Phase: 10
+Plan: Not started
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 5
 - Average duration: -
 - Total execution time: 0 hours
 
@@ -39,7 +39,7 @@ Plan: 5 of 5 — Tasks 1-4 complete and committed; AWAITING human-verify checkpo
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 09 | 5 | - | - |
 
 **Recent Trend:**
 

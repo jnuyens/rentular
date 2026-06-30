@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 6: Smovin Import (Beta)** - Authenticated scraping of Smovin accounts, data mapping, and guided import flow
 - [ ] **Phase 7: UI Polish, Onboarding & Launch Readiness** - Responsive dashboard, visual consistency, guided setup wizard, and full i18n coverage
 - [ ] **Phase 8: GoCardless Settings UI & SEPA Mandate Management** - GoCardless configuration tab, mandate management page, payment method on leases, onboarding integration
-- [ ] **Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)** - Ponto Connect provider, OAuth flow, bank_statements audit table, Bank Connections dashboard, locale-aware renewal emails, TOS + Privacy disclosures, retention cron (09-05 Tasks 1-4 done; awaiting human-verify checkpoint)
+- [x] **Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)** - Ponto Connect provider, OAuth flow, bank_statements audit table, Bank Connections dashboard, locale-aware renewal emails, TOS + Privacy disclosures, retention cron (09-05 Tasks 1-4 done; awaiting human-verify checkpoint) (completed 2026-06-30)
 
 ## Phase Details
 
@@ -188,7 +188,7 @@ Plans:
 - [x] 09-02-PLAN.md -- PontoConnectProvider class + pontoConnect.ts REST client + bankOAuthState.ts JWT helper + factory dispatch + .env.example
 - [x] 09-03-PLAN.md -- /api/v1/bank-connections Hono router (8 endpoints), bankStatementImporter, bankConnectionSync service, paymentCheckWorker Phase B refactor
 - [x] 09-04-PLAN.md -- Bank Connections dashboard UI (list, connect, detail, callback pages), sidebar nav, status badge, institution picker, Settings tab cross-link
-- [ ] 09-05-PLAN.md -- i18n in 4 locales, locale-aware renewal emails, TOS + Privacy clauses, BANK_STATEMENTS_RETENTION_DAYS cron, full integration gates (lint + build + db:push + test + i18n audit) — Tasks 1-4 done; awaiting human-verify checkpoint
+- [x] 09-05-PLAN.md -- i18n in 4 locales, locale-aware renewal emails, TOS + Privacy clauses, BANK_STATEMENTS_RETENTION_DAYS cron, full integration gates (lint + build + db:push + test + i18n audit) — Tasks 1-4 done; awaiting human-verify checkpoint
 
 ## Progress
 
@@ -206,7 +206,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
 | 8. GoCardless Settings UI & SEPA Mandate Management | 0/4 | Planning complete | - |
-| 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 5/5 | In Progress|  |
+| 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 5/5 | Complete   | 2026-06-30 |
 
 ### Phase 10: Deploy to Hetzner (m1) — production deployment
 
