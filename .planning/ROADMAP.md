@@ -187,7 +187,7 @@ Plans:
 - [x] 09-01-PLAN.md -- Schema additions (bank_connections encrypted-token columns + bank_statements table), Ponto test fixtures, MSW dev-dep, drizzle-kit push
 - [x] 09-02-PLAN.md -- PontoConnectProvider class + pontoConnect.ts REST client + bankOAuthState.ts JWT helper + factory dispatch + .env.example
 - [x] 09-03-PLAN.md -- /api/v1/bank-connections Hono router (8 endpoints), bankStatementImporter, bankConnectionSync service, paymentCheckWorker Phase B refactor
-- [ ] 09-04-PLAN.md -- Bank Connections dashboard UI (list, connect, detail, callback pages), sidebar nav, status badge, institution picker, Settings tab cross-link
+- [x] 09-04-PLAN.md -- Bank Connections dashboard UI (list, connect, detail, callback pages), sidebar nav, status badge, institution picker, Settings tab cross-link
 - [ ] 09-05-PLAN.md -- i18n in 4 locales, locale-aware renewal emails, TOS + Privacy clauses, BANK_STATEMENTS_RETENTION_DAYS cron, full integration gates (lint + build + db:push + test + i18n audit)
 
 ## Progress
@@ -206,4 +206,4 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 | 6. Smovin Import (Beta) | 0/4 | Planning complete | - |
 | 7. UI Polish, Onboarding & Launch Readiness | 0/6 | Planning complete | - |
 | 8. GoCardless Settings UI & SEPA Mandate Management | 0/4 | Planning complete | - |
-| 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 0/5 | Planning complete | - |
+| 9. PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying) | 4/5 | In Progress|  |
