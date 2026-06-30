@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: unknown
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-06-30T01:14:18.000Z"
+last_updated: "2026-06-30T00:27:55.157Z"
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 8
   total_plans: 38
-  completed_plans: 36
-  percent: 89
+  completed_plans: 37
+  percent: 80
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 09 (psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con) — EXECUTING
-Plan: 5 of 5 (09-04 complete; 09-05 i18n translation fill remaining)
+Plan: 5 of 5 — Tasks 1-4 complete and committed; AWAITING human-verify checkpoint (Ponto sandbox end-to-end)
 
 ## Performance Metrics
 
@@ -145,6 +145,10 @@ Recent decisions affecting current work:
 - [Phase 07]: Onboarding status cached in JWT token at sign-in to avoid per-request database queries
 - [Phase 07]: Settings page uses shadcn Tabs with grid-cols-2/md:grid-cols-4 for mobile-responsive tab wrapping
 - [Phase 07]: All 9 dashboard pages now use shadcn/ui exclusively; i18n audit confirms 751 keys per locale with 0 missing
+- [Phase 09]: Plan 04 already seeded the bankConnections.* UI keys with full NL/FR/DE values; Plan 05 added only the email.renewalWarning block (11 keys → 76 total per locale) to avoid churn that could break the live UI
+- [Phase 09]: Renewal-warning email is locale-aware (loaded from web messages by users.locale at runtime, fallback en); no tokens interpolated (T-09-05-02)
+- [Phase 09]: bank_statements GDPR retention is a hard-delete weekly cron (Sunday 03:00) driven by BANK_STATEMENTS_RETENTION_DAYS (default 2555 / 7-year Belgian tax law), mirroring the webhookCleanup pattern
+- [Phase 09]: Rule 1 fix in 09-05 — transactionMatcher auto-mark-paid wrote a string to payments.paidDate (Date column) in the bank-reconciliation path; wrapped with new Date()
 
 ### Pending Todos
 
@@ -155,9 +159,11 @@ None yet.
 - [Research]: GoCardless webhook handlers return 200 OK without persisting state -- critical bug, addressed in Phase 2
 - [Research]: Statbel beSTAT API has no SLA or versioning -- needs caching with manual fallback in Phase 3
 - [Research]: Smovin scraping approach has LOW confidence -- Cloudflare anti-bot may block Playwright
+- [Phase 09]: `pnpm lint` is RED — ~57 pre-existing @rentular/api `tsc --noEmit` errors (Date/string Drizzle mismatches, getDb().query typed as {}, missing nordigen-node/playwright-core decls) predating Phase 9. Build + 67 tests pass. Needs a dedicated typecheck-cleanup before/within Phase 10. See 09 deferred-items.md.
+- [Phase 09]: `db:push` idempotency unverified in sandbox (no MySQL; ECONNREFUSED). Plan 05 changed zero schema files — human must confirm "no changes to apply" against the real DB at the checkpoint.
 
 ## Session Continuity
 
-Last session: 2026-04-01T21:17:14.813Z
-Stopped at: Phase 8 UI-SPEC approved
-Resume file: .planning/phases/08-gocardless-settings-ui-sepa-mandate-management/08-UI-SPEC.md
+Last session: 2026-06-30
+Stopped at: Phase 09 Plan 05 Tasks 1-4 complete — awaiting human-verify checkpoint (Ponto sandbox end-to-end)
+Resume file: .planning/phases/09-psd2-bank-connection-flow-api-routes-ui-for-landlords-to-con/09-05-PLAN.md
