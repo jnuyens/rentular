@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-07-01T00:43:34.271Z"
+last_updated: "2026-07-01T00:47:55.103Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 39
-  percent: 89
+  completed_plans: 40
+  percent: 90
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 10 (deploy-to-hetzner-m1-production-deployment) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Plan: 2 of 6
 | Phase 07 P05 | 6min | 2 tasks | 10 files |
 | Phase 07 P06 | 10min | 2 tasks | 6 files |
 | Phase 10 P01 | 4min | 2 tasks | 4 files |
+| Phase 10 P02 | 2min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,8 @@ Recent decisions affecting current work:
 - [Phase 10]: Stripe client lazily constructed via getStripeClient() inside handlers (mirrors gocardless guard) so API boots crash-safe with STRIPE_SECRET_KEY unset (D-09)
 - [Phase 10]: D-10 confirmed — no dotenv in apps/api/src; container-injected process.env is sufficient
 - [Phase 10]: next.config.ts uses output standalone + outputFileTracingRoot at monorepo root; build emits apps/web/server.js for Docker runner
+- [Phase ?]: [Phase 10]: First-run bootstrap seeds owner as plain user (name=Owner, onboardingComplete=true) — no role column in users schema (D-08)
+- [Phase ?]: [Phase 10]: Bootstrap CLI guarded by import.meta.url entrypoint check so the unit test imports createOwnerIfMissing without triggering drizzle-kit push or a DB connection
 
 ### Pending Todos
 
@@ -168,6 +171,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T00:43:29.379Z
+Last session: 2026-07-01T00:47:32.563Z
 Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
