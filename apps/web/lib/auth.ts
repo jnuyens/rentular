@@ -7,7 +7,7 @@ import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
-import { getDb, users } from "@rentular/db";
+import { getDb, users, accounts, sessions, verificationTokens } from "@rentular/db";
 
 const db = getDb();
 const providers: Provider[] = [];
@@ -79,7 +79,18 @@ providers.push(
 );
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  // Map to the app's actual (plural) table names; without this the adapter
+  // defaults to singular names (`account`, `session`…) and OAuth sign-in fails
+  // with "Table 'rentular.account' doesn't exist". The cast is required because
+  // @auth/drizzle-adapter's DefaultMySqlAccountsTable type is stricter than our
+  // (runtime-compatible) table definitions; columns match the live DB schema.
+  adapter: DrizzleAdapter(db, {
+    usersTable: users,
+    accountsTable: accounts,
+    sessionsTable: sessions,
+    verificationTokensTable: verificationTokens,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any),
   providers,
   // trustHost is required for production deployments behind reverse proxies.
   // Without it, NextAuth v5 rejects CSRF tokens in browsers with strict cookie
