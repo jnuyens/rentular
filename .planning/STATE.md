@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-07-01T00:47:55.103Z"
+last_updated: "2026-07-01T01:00:05.432Z"
 progress:
   total_phases: 10
   completed_phases: 9
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 10 (deploy-to-hetzner-m1-production-deployment) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Plan: 3 of 6
 | Phase 07 P06 | 10min | 2 tasks | 6 files |
 | Phase 10 P01 | 4min | 2 tasks | 4 files |
 | Phase 10 P02 | 2min | 2 tasks | 3 files |
+| Phase 10 P03 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Recent decisions affecting current work:
 - [Phase 10]: next.config.ts uses output standalone + outputFileTracingRoot at monorepo root; build emits apps/web/server.js for Docker runner
 - [Phase ?]: [Phase 10]: First-run bootstrap seeds owner as plain user (name=Owner, onboardingComplete=true) — no role column in users schema (D-08)
 - [Phase ?]: [Phase 10]: Bootstrap CLI guarded by import.meta.url entrypoint check so the unit test imports createOwnerIfMissing without triggering drizzle-kit push or a DB connection
+- [Phase ?]: [Phase 10]: tsup bundles first-party @rentular/* (main points at raw .ts) + createRequire banner for CJS deps so the API ESM entry dist/index.mjs is actually runnable — verified by booting it locally
+- [Phase ?]: [Phase 10]: NEXT_PUBLIC_API_URL baked as a Docker build ARG (ENV before next build) in apps/web/Dockerfile; runtime injection is ignored by the compiled browser bundle
 
 ### Pending Todos
 
@@ -171,6 +174,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T00:47:32.563Z
+Last session: 2026-07-01T00:59:49.279Z
 Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
