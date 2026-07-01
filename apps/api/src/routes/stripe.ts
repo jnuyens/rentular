@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+import { getStripeClient } from "../lib/stripe";
 
 export const stripeRouter = new Hono();
 
@@ -40,6 +39,7 @@ stripeRouter.get("/plans", async (c) => {
       process.env.STRIPE_PRICE_PROFESSIONAL,
     ].filter(Boolean) as string[];
 
+    const stripe = getStripeClient();
     const prices = await Promise.all(
       priceIds.map((id) => stripe.prices.retrieve(id, { expand: ["product"] }))
     );
@@ -88,6 +88,7 @@ stripeRouter.post("/checkout", async (c) => {
 
   const webUrl = process.env.WEB_URL || "http://localhost:3000";
 
+  const stripe = getStripeClient();
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     payment_method_types: ["card", "bancontact", "ideal"],
@@ -118,6 +119,7 @@ stripeRouter.post("/webhook", async (c) => {
 
   let event: Stripe.Event;
   try {
+    const stripe = getStripeClient();
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     console.error("[Stripe] Webhook signature verification failed:", err);
