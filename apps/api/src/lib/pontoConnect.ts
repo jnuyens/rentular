@@ -17,9 +17,13 @@
 import https from "node:https";
 import { readFileSync } from "node:fs";
 
-const SANDBOX_API_BASE = "https://api.ibanity.com/sandbox/ponto-connect";
+// Ponto Connect uses ONE set of URLs for both sandbox and production — the
+// environment is determined by the client certificate + credentials, NOT by a
+// URL path segment (verified against Ibanity's official Postman collection:
+// api.ibanity.com/ponto-connect and authorization.myponto.com, no `/sandbox`).
+const SANDBOX_API_BASE = "https://api.ibanity.com/ponto-connect";
 const PRODUCTION_API_BASE = "https://api.ibanity.com/ponto-connect";
-const SANDBOX_AUTH_BASE = "https://authorization.myponto.com/sandbox";
+const SANDBOX_AUTH_BASE = "https://authorization.myponto.com";
 const PRODUCTION_AUTH_BASE = "https://authorization.myponto.com";
 
 const DEFAULT_SCOPES = ["ai", "pi", "name", "offline_access"];
