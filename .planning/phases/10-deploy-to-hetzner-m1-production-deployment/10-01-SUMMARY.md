@@ -104,6 +104,10 @@ None - no external service configuration required.
 - Ready for 10-02+ (Dockerfiles, compose wiring, nginx, deploy.sh, bootstrap).
 - Note (carried debt, not a blocker): `pnpm lint` remains RED with ~57 pre-existing `tsc --noEmit` errors — deploy gate is `pnpm build` per D-06.
 
+## Self-Check: PASSED
+
+All created/modified files exist on disk; all task commits present in git history.
+
 ---
 *Phase: 10-deploy-to-hetzner-m1-production-deployment*
 *Completed: 2026-07-01*

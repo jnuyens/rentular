@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-stopped_at: Phase 10 planned (6 plans, plan-checker passed)
-last_updated: "2026-07-01T00:35:21.616Z"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-07-01T00:43:34.271Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 38
-  percent: 86
+  completed_plans: 39
+  percent: 89
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 10 — deploy to hetzner m1 production deployment
+**Current focus:** Phase 10 — deploy-to-hetzner-m1-production-deployment
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
+Phase: 10 (deploy-to-hetzner-m1-production-deployment) — EXECUTING
+Plan: 2 of 6
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ Plan: Not started
 | Phase 07 P02 | 9min | 2 tasks | 10 files |
 | Phase 07 P05 | 6min | 2 tasks | 10 files |
 | Phase 07 P06 | 10min | 2 tasks | 6 files |
+| Phase 10 P01 | 4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Recent decisions affecting current work:
 - [Phase 09]: Renewal-warning email is locale-aware (loaded from web messages by users.locale at runtime, fallback en); no tokens interpolated (T-09-05-02)
 - [Phase 09]: bank_statements GDPR retention is a hard-delete weekly cron (Sunday 03:00) driven by BANK_STATEMENTS_RETENTION_DAYS (default 2555 / 7-year Belgian tax law), mirroring the webhookCleanup pattern
 - [Phase 09]: Rule 1 fix in 09-05 — transactionMatcher auto-mark-paid wrote a string to payments.paidDate (Date column) in the bank-reconciliation path; wrapped with new Date()
+- [Phase 10]: Stripe client lazily constructed via getStripeClient() inside handlers (mirrors gocardless guard) so API boots crash-safe with STRIPE_SECRET_KEY unset (D-09)
+- [Phase 10]: D-10 confirmed — no dotenv in apps/api/src; container-injected process.env is sufficient
+- [Phase 10]: next.config.ts uses output standalone + outputFileTracingRoot at monorepo root; build emits apps/web/server.js for Docker runner
 
 ### Pending Todos
 
@@ -164,6 +168,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T00:35:21.607Z
-Stopped at: Phase 10 planned (6 plans, plan-checker passed)
+Last session: 2026-07-01T00:43:29.379Z
+Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
