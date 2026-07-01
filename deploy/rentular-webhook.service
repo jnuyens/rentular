@@ -1,0 +1,40 @@
+# ===========================================================================
+# Rentular deploy webhook receiver — systemd unit (REFERENCE)
+# ===========================================================================
+# This unit is installed on the m1 host by the operator in Plan 06:
+#   sudo cp deploy/rentular-webhook.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now rentular-webhook
+#
+# It runs the loopback webhook receiver (127.0.0.1:9000). Host nginx proxies
+# `location /deploy-webhook` to it; the receiver is NEVER bound to a public
+# interface. The GitHub webhook secret is provided via DEPLOY_WEBHOOK_SECRET,
+# loaded from the root-owned, chmod-600 /opt/rentular/.env (never inlined here).
+# ===========================================================================
+[Unit]
+Description=Rentular GitHub deploy webhook receiver (loopback 127.0.0.1:9000)
+After=network.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Non-root deploy user (create on the box: `useradd -r -s /usr/sbin/nologin deploy`,
+# grant it docker + write access to /opt/rentular). Do NOT run this as root.
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/rentular/current
+# Provides DEPLOY_WEBHOOK_SECRET (and any DEPLOY_* overrides). Same root-owned
+# 600 secrets file the compose stack uses — never printed, never committed.
+EnvironmentFile=/opt/rentular/.env
+# Run the in-repo receiver from the current release. `node` must be on PATH for
+# the deploy user (via nvm/volta/corepack shim or an absolute path).
+ExecStart=/usr/bin/env node /opt/rentular/current/deploy/webhook-receiver.mjs
+Restart=always
+RestartSec=3
+# Hardening: least privilege for an internet-triggered code path.
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
