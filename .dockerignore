@@ -1,0 +1,39 @@
+# Dependencies (platform-specific; reinstalled inside the image)
+**/node_modules
+.pnpm-store
+
+# Build output (rebuilt in the builder stage)
+**/dist
+**/.next
+**/.turbo
+out
+
+# Secrets & local env — MUST never enter the build context / image layers
+.env
+.env.*
+
+# Version control & project docs/tooling
+.git
+.gitignore
+.gitattributes
+.github
+.planning
+.claude
+
+# Tests & coverage
+**/coverage
+
+# Logs & OS / editor cruft
+*.log
+**/*.log
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+*.swo
+
+# Docker artifacts themselves
+Dockerfile
+**/Dockerfile
+.dockerignore

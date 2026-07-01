@@ -56,6 +56,9 @@ importers:
       jose:
         specifier: ^6.2.1
         version: 6.2.1
+      mysql2:
+        specifier: ^3.11.0
+        version: 3.19.1(@types/node@22.19.15)
       nodemailer:
         specifier: ^6.9.0
         version: 6.10.1
