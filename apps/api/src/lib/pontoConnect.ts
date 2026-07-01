@@ -14,6 +14,9 @@
  * 4 chars + ellipsis.
  */
 
+import https from "node:https";
+import { readFileSync } from "node:fs";
+
 const SANDBOX_API_BASE = "https://api.ibanity.com/sandbox/ponto-connect";
 const PRODUCTION_API_BASE = "https://api.ibanity.com/ponto-connect";
 const SANDBOX_AUTH_BASE = "https://authorization.myponto.com/sandbox";
@@ -55,6 +58,119 @@ function requireClientCredentials(): { id: string; secret: string } {
     );
   }
   return { id, secret };
+}
+
+// ---------- mTLS client certificate (Ibanity requires mutual TLS) ----------
+//
+// Every call to api.ibanity.com/(sandbox/)ponto-connect requires a client
+// certificate at the TLS layer — without it the handshake fails with
+// "tlsv13 alert certificate required". Ibanity issues the certificate
+// (sandbox: generated for you behind a passphrase; production: after go-live).
+// Read-only AIS usage (accounts + transactions) needs ONLY this transport
+// certificate — the separate signature certificate is required solely for
+// creating payments, which Rentular does not do.
+//
+// Config (filesystem paths, or inline PEM starting with "-----BEGIN"):
+//   PONTO_TLS_CERT        client certificate (PEM)
+//   PONTO_TLS_KEY         client private key (PEM, may be passphrase-encrypted)
+//   PONTO_TLS_PASSPHRASE  passphrase for the key / pfx
+//   PONTO_TLS_PFX         alternative: PKCS#12 bundle path (instead of cert+key)
+
+let cachedAgent: https.Agent | null | undefined;
+
+function loadPem(value: string): string | Buffer {
+  // inline PEM (contains a BEGIN header) vs. a filesystem path
+  return value.includes("BEGIN") ? value : readFileSync(value);
+}
+
+function getIbanityAgent(): https.Agent | undefined {
+  if (cachedAgent !== undefined) return cachedAgent ?? undefined;
+  const cert = process.env.PONTO_TLS_CERT;
+  const key = process.env.PONTO_TLS_KEY;
+  const pfx = process.env.PONTO_TLS_PFX;
+  const passphrase = process.env.PONTO_TLS_PASSPHRASE;
+  try {
+    if (pfx) {
+      cachedAgent = new https.Agent({
+        pfx: readFileSync(pfx),
+        passphrase,
+        keepAlive: true,
+      });
+    } else if (cert && key) {
+      cachedAgent = new https.Agent({
+        cert: loadPem(cert),
+        key: loadPem(key),
+        passphrase,
+        keepAlive: true,
+      });
+    } else {
+      cachedAgent = null;
+    }
+  } catch (err) {
+    console.error(
+      "[Ponto] Failed to load mTLS client certificate:",
+      (err as Error).message
+    );
+    cachedAgent = null;
+  }
+  return cachedAgent ?? undefined;
+}
+
+export function isPontoMtlsConfigured(): boolean {
+  return (
+    !!process.env.PONTO_TLS_PFX ||
+    (!!process.env.PONTO_TLS_CERT && !!process.env.PONTO_TLS_KEY)
+  );
+}
+
+interface IbanityResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+}
+
+/**
+ * Node's global fetch() cannot present a client certificate, so every
+ * api.ibanity.com call goes through this node:https helper with the mTLS agent
+ * attached. Mirrors the subset of the fetch Response API the callers use.
+ */
+function ibanityFetch(
+  url: string,
+  opts: { method?: string; headers?: Record<string, string>; body?: string }
+): Promise<IbanityResponse> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request(
+      {
+        hostname: u.hostname,
+        port: u.port || 443,
+        path: `${u.pathname}${u.search}`,
+        method: opts.method || "GET",
+        headers: opts.headers,
+        agent: getIbanityAgent(),
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c as Buffer));
+        res.on("end", () => {
+          const buf = Buffer.concat(chunks);
+          const status = res.statusCode || 0;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            statusText: res.statusMessage || "",
+            json: async () => JSON.parse(buf.toString("utf8")),
+            text: async () => buf.toString("utf8"),
+          });
+        });
+      }
+    );
+    req.on("error", reject);
+    if (opts.body) req.write(opts.body);
+    req.end();
+  });
 }
 
 // ---------- Public types ----------
@@ -129,7 +245,7 @@ async function postTokenEndpoint(body: URLSearchParams): Promise<PontoTokenRespo
 
   const basic = Buffer.from(`${id}:${secret}`).toString("base64");
 
-  const res = await fetch(url, {
+  const res = await ibanityFetch(url, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basic}`,
@@ -192,7 +308,7 @@ export async function revokeAccess(token: string): Promise<void> {
 
   const body = new URLSearchParams({ token });
 
-  const res = await fetch(url, {
+  const res = await ibanityFetch(url, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basic}`,
@@ -214,7 +330,7 @@ export async function revokeAccess(token: string): Promise<void> {
 async function getJson<T>(path: string, accessToken: string): Promise<T> {
   const { apiBase } = getPontoBaseUrls();
   const url = `${apiBase}${path}`;
-  const res = await fetch(url, {
+  const res = await ibanityFetch(url, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -328,7 +444,7 @@ export async function listFinancialInstitutions(
   const { apiBase } = getPontoBaseUrls();
   const qs = new URLSearchParams({ "filter[country]": country });
   const url = `${apiBase}/financial-institutions?${qs.toString()}`;
-  const res = await fetch(url, {
+  const res = await ibanityFetch(url, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
