@@ -467,3 +467,31 @@ export async function listFinancialInstitutions(
     logoUrl: item.attributes?.logoUrl,
   }));
 }
+
+export async function getFinancialInstitution(
+  id: string,
+): Promise<PontoInstitution | null> {
+  if (!id) return null;
+  const { apiBase } = getPontoBaseUrls();
+  const url = `${apiBase}/financial-institutions/${encodeURIComponent(id)}`;
+  const res = await ibanityFetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(
+      `[Ponto] GET /financial-institutions/${id} failed: ${res.status} ${res.statusText}`,
+    );
+  }
+  const json = (await res.json()) as { data?: JsonApiItem<InstitutionAttrs> };
+  const item = json.data;
+  if (!item) return null;
+  return {
+    id: item.id,
+    name: item.attributes?.name || "",
+    bic: item.attributes?.bic || "",
+    country: item.attributes?.country || "",
+    logoUrl: item.attributes?.logoUrl,
+  };
+}

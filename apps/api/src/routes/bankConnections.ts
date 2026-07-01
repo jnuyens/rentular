@@ -38,6 +38,7 @@ import {
   revokeAccess,
   listAccounts,
   listFinancialInstitutions,
+  getFinancialInstitution,
 } from "../lib/pontoConnect";
 import { encrypt, decrypt } from "../lib/encryption";
 import { syncBankConnection } from "../services/bankConnectionSync";
@@ -206,10 +207,25 @@ bankConnectionsRouter.get(
         ? new Date(account.authorizationExpirationExpectedAt)
         : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
 
+      // Resolve the institution display name (e.g. "MyTestBank") so the detail
+      // page shows a name, not the raw UUID. Non-fatal: never block the
+      // connection if the lookup fails.
+      let institutionName: string | null = null;
+      try {
+        const inst = await getFinancialInstitution(payload.institutionId || "");
+        institutionName = inst?.name ?? null;
+      } catch (nameErr) {
+        console.warn(
+          "[BankConnections] could not resolve institution name:",
+          nameErr,
+        );
+      }
+
       const db = getDb();
 
       // Build the update payload shared between renewal and new-connection paths.
       const writePayload = {
+        institutionName,
         encryptedAccessToken: encAccess.encrypted,
         tokenIv: encAccess.iv,
         tokenAuthTag: encAccess.tag,
