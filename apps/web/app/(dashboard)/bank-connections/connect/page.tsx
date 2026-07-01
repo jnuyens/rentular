@@ -77,7 +77,7 @@ export default function ConnectBankPage() {
             <Button onClick={() => setStep("select")}>{t("continue")}</Button>
             <Button
               variant="outline"
-              onClick={() => router.push("/dashboard/bank-connections")}
+              onClick={() => router.push("/bank-connections")}
             >
               {t("cancel")}
             </Button>

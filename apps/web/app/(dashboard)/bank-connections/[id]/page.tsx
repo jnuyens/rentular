@@ -154,7 +154,7 @@ export default function BankConnectionDetailPage() {
       });
       if (res.ok) {
         toast.success(t("toasts.revokeSuccess"));
-        router.push("/dashboard/bank-connections");
+        router.push("/bank-connections");
         return;
       }
       toast.error(t("toasts.syncError"));
@@ -183,7 +183,7 @@ export default function BankConnectionDetailPage() {
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t("notFound")}</p>
         <Button asChild variant="outline">
-          <Link href="/dashboard/bank-connections">
+          <Link href="/bank-connections">
             <ChevronLeft className="mr-2 h-4 w-4" />
             {t("back")}
           </Link>
@@ -202,7 +202,7 @@ export default function BankConnectionDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Button asChild variant="ghost" size="icon">
-          <Link href="/dashboard/bank-connections">
+          <Link href="/bank-connections">
             <ChevronLeft className="h-5 w-5" />
           </Link>
         </Button>

@@ -162,12 +162,12 @@ bankConnectionsRouter.get(
     // Provider-side error (user cancelled, bank refused, …)
     if (error) {
       return c.redirect(
-        `${webUrl()}/dashboard/bank-connections/callback?error=${encodeURIComponent(error)}`,
+        `${webUrl()}/bank-connections/callback?error=${encodeURIComponent(error)}`,
       );
     }
     if (!code || !state) {
       return c.redirect(
-        `${webUrl()}/dashboard/bank-connections/callback?error=missing_params`,
+        `${webUrl()}/bank-connections/callback?error=missing_params`,
       );
     }
 
@@ -178,7 +178,7 @@ bankConnectionsRouter.get(
     } catch (verifyErr) {
       console.error("[BankConnections] /callback state verify failed:", verifyErr);
       return c.redirect(
-        `${webUrl()}/dashboard/bank-connections/callback?error=expired_state`,
+        `${webUrl()}/bank-connections/callback?error=expired_state`,
       );
     }
 
@@ -190,7 +190,7 @@ bankConnectionsRouter.get(
       const accounts = await listAccounts({ accessToken: tokens.accessToken });
       if (accounts.length === 0) {
         return c.redirect(
-          `${webUrl()}/dashboard/bank-connections/callback?error=no_accounts`,
+          `${webUrl()}/bank-connections/callback?error=no_accounts`,
         );
       }
       const account = accounts[0]!;
@@ -260,7 +260,7 @@ bankConnectionsRouter.get(
 
         if (!pending[0]) {
           return c.redirect(
-            `${webUrl()}/dashboard/bank-connections/callback?error=no_pending_row`,
+            `${webUrl()}/bank-connections/callback?error=no_pending_row`,
           );
         }
         connectionId = pending[0].id;
@@ -272,12 +272,12 @@ bankConnectionsRouter.get(
       }
 
       return c.redirect(
-        `${webUrl()}/dashboard/bank-connections/${connectionId}?connected=1`,
+        `${webUrl()}/bank-connections/${connectionId}?connected=1`,
       );
     } catch (err) {
       console.error("[BankConnections] /callback exchange error:", err);
       return c.redirect(
-        `${webUrl()}/dashboard/bank-connections/callback?error=exchange_failed`,
+        `${webUrl()}/bank-connections/callback?error=exchange_failed`,
       );
     }
   },

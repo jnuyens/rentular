@@ -26,7 +26,7 @@ function CallbackContent() {
 
   useEffect(() => {
     if (connected !== "1" && !errorCode) {
-      router.replace("/dashboard/bank-connections");
+      router.replace("/bank-connections");
     }
   }, [connected, errorCode, router]);
 
@@ -43,8 +43,8 @@ function CallbackContent() {
             <Link
               href={
                 connectionId
-                  ? `/dashboard/bank-connections/${connectionId}`
-                  : "/dashboard/bank-connections"
+                  ? `/bank-connections/${connectionId}`
+                  : "/bank-connections"
               }
             >
               {t("viewConnection")}
@@ -65,7 +65,7 @@ function CallbackContent() {
             {t(messageKey)}
           </p>
           <Button asChild variant="outline">
-            <Link href="/dashboard/bank-connections">
+            <Link href="/bank-connections">
               {t("backToConnections")}
             </Link>
           </Button>

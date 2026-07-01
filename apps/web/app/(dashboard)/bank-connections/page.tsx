@@ -100,7 +100,7 @@ export default function BankConnectionsPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button asChild>
-          <Link href="/dashboard/bank-connections/connect">
+          <Link href="/bank-connections/connect">
             <Plus className="mr-2 h-4 w-4" />
             {t("connectBank")}
           </Link>
@@ -153,7 +153,7 @@ export default function BankConnectionsPage() {
               {t("viewTerms")}
             </Link>
             <Button asChild>
-              <Link href="/dashboard/bank-connections/connect">
+              <Link href="/bank-connections/connect">
                 <Plus className="mr-2 h-4 w-4" />
                 {t("connectBank")}
               </Link>
@@ -183,7 +183,7 @@ export default function BankConnectionsPage() {
                     key={c.id}
                     className="cursor-pointer"
                     onClick={() =>
-                      router.push(`/dashboard/bank-connections/${c.id}`)
+                      router.push(`/bank-connections/${c.id}`)
                     }
                   >
                     <TableCell>
@@ -219,7 +219,7 @@ export default function BankConnectionsPage() {
                 key={c.id}
                 className="mb-3 cursor-pointer"
                 onClick={() =>
-                  router.push(`/dashboard/bank-connections/${c.id}`)
+                  router.push(`/bank-connections/${c.id}`)
                 }
               >
                 <CardContent className="pt-4 pb-3">

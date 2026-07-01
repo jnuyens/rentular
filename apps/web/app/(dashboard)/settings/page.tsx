@@ -342,7 +342,7 @@ function GoCardlessSettingsTab({ apiUrl }: { apiUrl: string }) {
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link href="/dashboard/bank-connections">
+            <Link href="/bank-connections">
               {t("bankConnectionsCrossLink.manageButton")}
             </Link>
           </Button>
