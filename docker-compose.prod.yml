@@ -1,0 +1,154 @@
+# ===========================================================================
+# Rentular — PRODUCTION compose (m1 / Hetzner, behind host nginx + LE TLS)
+# ===========================================================================
+# This is a SEPARATE, hardened stack from docker-compose.yml (which stays the
+# dev infra). deploy.sh (Plan 05) runs:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Hardening vs. the dev compose:
+#   - EVERY published port binds 127.0.0.1 (loopback) ONLY. Host nginx is the
+#     sole public ingress (rentular.com -> web:3000, /api/v1 -> api:4000).
+#     Nothing binds the public interface. mariadb/redis are loopback-published
+#     (not dropped)
+#     so the host-shell bootstrap in deploy.sh can reach MariaDB at
+#     127.0.0.1:3306 while the DB stays off the public interface.
+#   - NO default DB passwords. DB_ROOT_PASSWORD/DB_PASSWORD/DB_NAME/DB_USER are
+#     REQUIRED from /opt/rentular/.env via the ${VAR:?err} form (compose aborts
+#     if unset) — no ${VAR:-default} fallbacks.
+#   - Secrets injected into api + web via `env_file: /opt/rentular/.env`
+#     (root-owned, chmod 600, git-ignored — see .env.production.example).
+#
+# The obsolete top-level `version:` key is intentionally omitted.
+#
+# SCALE CONSTRAINT: run a SINGLE `api` replica only. The BullMQ workers
+# (email/sms/paymentCheck/landlordReport/bankStatementRetention) auto-start
+# in-process on import of apps/api/src/index.ts. Scaling `api` would run every
+# cron worker N times (duplicate reminder emails, duplicate report runs). Do
+# NOT `docker compose up -d --scale api=N`.
+# ===========================================================================
+
+services:
+  # --- MariaDB (primary database) -----------------------------------------
+  # Loopback-published so the host-shell bootstrap (deploy.sh, Plan 05) reaches
+  # it via DB_HOST=127.0.0.1. Containers reach it by service DNS `mariadb`.
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD is required (set it in /opt/rentular/.env)}
+      MARIADB_DATABASE: ${DB_NAME:?DB_NAME is required}
+      MARIADB_USER: ${DB_USER:?DB_USER is required}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required (set it in /opt/rentular/.env)}
+    ports:
+      - "127.0.0.1:3306:3306" # loopback ONLY — host-shell bootstrap connects here
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Redis (BullMQ queue backend) ---------------------------------------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379" # loopback ONLY
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Mailpit (email capture; D-01 — pre-release keeps mail on-box) ------
+  # SMTP :1025 stays internal (compose network only). Only the UI is published,
+  # on loopback, for inspection via an SSH tunnel to 127.0.0.1:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025" # Web UI — loopback ONLY (reach via SSH tunnel)
+    expose:
+      - "1025" # SMTP — internal compose network only, not published
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  # --- API (Hono + in-process BullMQ workers) -----------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - /opt/rentular/.env
+    environment:
+      # Container-network overrides: reach infra by compose service DNS, not the
+      # DB_HOST=127.0.0.1 value the host-shell bootstrap uses.
+      DB_HOST: mariadb
+      DB_PORT: "3306"
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:4000:4000" # loopback ONLY — host nginx proxies /api/v1 here
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # API is new Hono().basePath("/api/v1") — health is served at /api/v1/health.
+      # node:20-slim has no curl/wget; use node global fetch.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # --- Web (Next.js 15 standalone SSR) ------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_API_URL is inlined into the browser bundle at build time;
+        # a runtime env var is ignored by the compiled bundle. Bake the prod
+        # value here (https://rentular.com/api/v1).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required at build (e.g. https://rentular.com/api/v1)}
+    restart: unless-stopped
+    env_file:
+      - /opt/rentular/.env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:3000:3000" # loopback ONLY — host nginx proxies rentular.com here
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  mariadb_data:
+  redis_data:
