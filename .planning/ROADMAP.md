@@ -213,7 +213,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 **Goal:** A complete, translated Rentular (Phase 09 incl. 09-05 done) deployed and reachable at https://rentular.com on the m1 host, enabling live end-to-end UI verification and Ponto sandbox→production bank-connection testing.
 **Requirements**: TBD
 **Depends on:** Phase 9 (must include 09-05)
-**Plans:** 2/6 plans executed
+**Plans:** 4/6 plans executed
 
 **Scope / context:**
 - **Host:** `m1` (`m1.linuxbe.com`), Hetzner Ubuntu 24.04, passwordless sudo. Already runs nginx + Let's Encrypt TLS automation and hosts linuxbe.com / opensource-enterprise.com / modulejail.com. Point `rentular.com` A record here.
@@ -228,7 +228,7 @@ Note: Phases 3 and 5 depend only on Phase 1 (not Phase 2), so they could theoret
 Plans:
 - [x] 10-01-PLAN.md — Prerequisite code fixes: Stripe boot-guard (D-09), Next standalone config, env-loading confirm (D-10)
 - [x] 10-02-PLAN.md — Idempotent first-run bootstrap: drizzle-kit push + owner creation (D-08)
-- [ ] 10-03-PLAN.md — Multi-stage Dockerfiles (api tsup ESM, web Next standalone w/ NEXT_PUBLIC_API_URL build ARG) + .dockerignore
-- [ ] 10-04-PLAN.md — Hardened docker-compose.prod.yml (loopback binds, no default DB passwords, env_file) + prod env template
+- [x] 10-03-PLAN.md — Multi-stage Dockerfiles (api tsup ESM, web Next standalone w/ NEXT_PUBLIC_API_URL build ARG) + .dockerignore
+- [x] 10-04-PLAN.md — Hardened docker-compose.prod.yml (loopback binds, no default DB passwords, env_file) + prod env template
 - [ ] 10-05-PLAN.md — Deploy pipeline: atomic deploy.sh (build gate not lint), HMAC webhook receiver, smoke.sh, nginx conf
 - [ ] 10-06-PLAN.md — Live deployment on m1: DNS/secrets/TLS, deploy+bootstrap+smoke, owner login, unblock 09-HUMAN-UAT (checkpoints)

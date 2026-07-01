@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
 stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-07-01T01:00:05.432Z"
+last_updated: "2026-07-01T01:05:43.366Z"
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 42
   percent: 90
 ---
 
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 ## Current Position
 
 Phase: 10 (deploy-to-hetzner-m1-production-deployment) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Plan: 4 of 6
 | Phase 10 P01 | 4min | 2 tasks | 4 files |
 | Phase 10 P02 | 2min | 2 tasks | 3 files |
 | Phase 10 P03 | 6min | 2 tasks | 6 files |
+| Phase 10 P04 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 10]: Bootstrap CLI guarded by import.meta.url entrypoint check so the unit test imports createOwnerIfMissing without triggering drizzle-kit push or a DB connection
 - [Phase ?]: [Phase 10]: tsup bundles first-party @rentular/* (main points at raw .ts) + createRequire banner for CJS deps so the API ESM entry dist/index.mjs is actually runnable — verified by booting it locally
 - [Phase ?]: [Phase 10]: NEXT_PUBLIC_API_URL baked as a Docker build ARG (ENV before next build) in apps/web/Dockerfile; runtime injection is ignored by the compiled browser bundle
+- [Phase ?]: [Phase 10]: docker-compose.prod.yml publishes every port on 127.0.0.1 loopback only (host nginx sole ingress); mariadb/redis loopback-published so deploy.sh host-shell bootstrap reaches DB at 127.0.0.1:3306 while off the public interface
+- [Phase ?]: [Phase 10]: prod DB passwords required via VAR-colon-question form (no default fallbacks/literals); api+web secrets via env_file /opt/rentular/.env (root:600); web NEXT_PUBLIC_API_URL baked via compose build.args
 
 ### Pending Todos
 
@@ -174,6 +177,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T00:59:49.279Z
+Last session: 2026-07-01T01:05:36.529Z
 Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
