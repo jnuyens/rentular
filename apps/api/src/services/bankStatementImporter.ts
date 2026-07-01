@@ -90,7 +90,9 @@ export async function importBankStatements(
       externalTransactionId: tx.transactionId,
       amount: String(tx.amount) as unknown as string, // drizzle decimal expects string
       currency: tx.currency || "EUR",
-      bookingDate: tx.bookingDate,
+      // booking_date is a DATE column (YYYY-MM-DD); provider sends a full ISO
+      // datetime (e.g. 2026-06-25T20:26:28.000Z) which MySQL rejects for DATE.
+      bookingDate: tx.bookingDate.slice(0, 10),
       valueDate: null,
       counterpartyNameEncrypted: counterpartyName.encrypted,
       counterpartyNameIv: counterpartyName.iv,
