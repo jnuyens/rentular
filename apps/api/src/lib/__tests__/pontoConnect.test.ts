@@ -73,7 +73,9 @@ describe("pontoConnect REST/OAuth client (Phase 9 / 09-02)", () => {
 
   it("createPontoAuthorizationUrl builds a sandbox URL with required params", () => {
     const url = createPontoAuthorizationUrl({ state: "abc.def.ghi" });
-    expect(url.startsWith("https://authorization.myponto.com")).toBe(true);
+    // Sandbox authorizes at sandbox-authorization.myponto.com (production uses
+    // authorization.myponto.com); the API/token host is cert-selected.
+    expect(url.startsWith("https://sandbox-authorization.myponto.com/oauth2/auth")).toBe(true);
     expect(url).toContain("client_id=test-client");
     expect(url).toContain("state=abc.def.ghi");
     expect(url).toContain("response_type=code");
