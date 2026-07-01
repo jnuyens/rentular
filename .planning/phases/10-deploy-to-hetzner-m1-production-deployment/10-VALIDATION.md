@@ -65,7 +65,7 @@ created: 2026-07-01
 | Behavior | Why Manual | Test Instructions |
 |----------|------------|-------------------|
 | `https://rentular.com` reachable, valid TLS | Needs DNS + LE cert on m1 | `curl -sSI https://rentular.com` → 200; `echo | openssl s_client -connect rentular.com:443` → cert dates valid |
-| API health through nginx | Needs running stack | `curl -s https://rentular.com/api/v1/... ` health path (API exposes `app.get("/health")` at api root → confirm nginx path mapping) returns `{"status":"healthy"...}` |
+| API health through nginx | Needs running stack | `curl -s https://rentular.com/api/v1/health` — path is `/api/v1/health` (Hono `basePath('/api/v1')` + `app.get('/health')`); nginx preserves the `/api/v1` prefix (no strip) — returns `{"status":"healthy"...}` |
 | No `localhost:4000` in served HTML | Build-ARG correctness for `NEXT_PUBLIC_API_URL` | `curl -s https://rentular.com | grep -c "localhost:4000"` → 0 |
 | Container healthchecks green | Compose orchestration | `docker compose ps` → all `healthy` |
 | Ponto sandbox bank-connection E2E | Live provider round-trip | run `09-HUMAN-UAT.md` items against prod |

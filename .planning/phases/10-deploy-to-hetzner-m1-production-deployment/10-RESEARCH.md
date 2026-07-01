@@ -344,21 +344,20 @@ docker compose -f current/docker-compose.yml up -d
 
 **These `[ASSUMED]` items should be confirmed before or during planning.**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Webhook receiver technology on m1**
+   - RESOLVED: Use a small self-contained Node listener (`deploy/webhook-receiver.mjs`) rather than PHP-FPM, so the receiver is independent of host PHP state and ships in-repo. Nginx proxies a dedicated location to it; HMAC-verified. (Plan 10-05 Task 2.)
    - What we know: modulejail uses a PHP receiver behind nginx with a shared secret.
-   - What's unclear: Whether m1 runs PHP-FPM for rentular's domain, or whether a small Node listener is preferable.
-   - Recommendation: Read `~/src/modulejail-website/scripts/deploy.sh` context + the actual webhook file on the host during planning; reuse the same mechanism.
 
 2. **Which git branch triggers deploy**
-   - Recommendation: Confirm with user (assume `main` unless told otherwise). Deploy on push to that branch only.
+   - RESOLVED: `main` (Plan 10-05 Task 1 + Plan 10-06 Task 1; operator confirms A7 on the box). Deploy on push to `main` only.
 
 3. **`releases/` retention count**
-   - Recommendation: Keep last 5; prune older in `deploy.sh`.
+   - RESOLVED: Keep the newest 5; `deploy.sh` prunes older releases (Plan 10-05 Task 1).
 
 4. **DB backup approach (Claude's discretion in CONTEXT)**
-   - Recommendation: A nightly `mariadb-dump` cron of the named volume to a host path is sufficient for pre-release; formal restore automation deferred.
+   - RESOLVED: Nightly `mariadb-dump` cron to a host path for pre-release; formal restore automation deferred (CONTEXT § Claude's Discretion).
 
 ## Environment Availability
 
