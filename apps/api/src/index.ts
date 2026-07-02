@@ -19,6 +19,7 @@ import { costsRouter } from "./routes/costs";
 import { rentAdjustmentsRouter } from "./routes/rentAdjustments";
 import { bankAccountsRouter } from "./routes/bankAccounts";
 import { bankConnectionsRouter } from "./routes/bankConnections";
+import { bankTransactionsRouter } from "./routes/bankTransactions";
 import { propertyManagersRouter } from "./routes/propertyManagers";
 import { communicationsRouter } from "./routes/communications";
 import { gocardlessRouter } from "./routes/gocardless";
@@ -57,6 +58,7 @@ const protectedPrefixes = [
   "/rent-adjustments",
   "/bank-accounts",
   "/bank-connections",
+  "/bank-transactions",
   "/property-managers",
   "/communications",
   "/gocardless",
@@ -147,6 +149,7 @@ app.route("/costs", costsRouter);
 app.route("/rent-adjustments", rentAdjustmentsRouter);
 app.route("/bank-accounts", bankAccountsRouter);
 app.route("/bank-connections", bankConnectionsRouter);
+app.route("/bank-transactions", bankTransactionsRouter);
 app.route("/property-managers", propertyManagersRouter);
 app.route("/communications", communicationsRouter);
 app.route("/gocardless", gocardlessRouter);

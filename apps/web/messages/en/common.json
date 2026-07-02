@@ -35,7 +35,8 @@
     "managers": "Managers",
     "import": "Import",
     "mandates": "Mandates",
-    "bankConnections": "Bank Connections"
+    "bankConnections": "Bank Connections",
+    "reconciliation": "Reconciliation"
   },
   "properties": {
     "title": "Properties",
@@ -985,6 +986,59 @@
         "defaultName": "Landlord",
         "defaultInstitution": "your account"
       }
+    }
+  },
+  "reconciliation": {
+    "title": "Reconciliation",
+    "subtitle": "Review incoming bank transfers and match them to expected payments.",
+    "filters": {
+      "all": "All",
+      "unmatched": "Unmatched",
+      "matched": "Matched",
+      "ignored": "Ignored"
+    },
+    "columns": {
+      "date": "Date",
+      "connection": "Bank",
+      "counterparty": "Counterparty",
+      "communication": "Communication",
+      "amount": "Amount",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "unmatched": "Unmatched",
+      "matched": "Matched",
+      "mismatched_amount": "Amount mismatch",
+      "ignored": "Ignored"
+    },
+    "actions": {
+      "assign": "Assign",
+      "approve": "Approve",
+      "ignore": "Ignore",
+      "undo": "Undo"
+    },
+    "matchedTo": "Matched to {label}",
+    "noCounterparty": "Unknown",
+    "empty": "No transactions to show.",
+    "loadError": "Unable to load transactions. Please try again.",
+    "assignDialog": {
+      "title": "Assign to a lease",
+      "description": "The oldest pending payment for the selected lease will be marked as paid.",
+      "leaseLabel": "Lease",
+      "placeholder": "Select a lease",
+      "confirm": "Assign",
+      "cancel": "Cancel",
+      "noLeases": "No leases available."
+    },
+    "toasts": {
+      "assigned": "Payment matched",
+      "approved": "Payment matched",
+      "ignored": "Transaction ignored",
+      "undone": "Reconciliation reverted",
+      "error": "Something went wrong. Please try again.",
+      "noPendingPayment": "No pending payment for this lease.",
+      "noMatch": "No matching payment found. Use Assign to link a lease manually."
     }
   }
 }

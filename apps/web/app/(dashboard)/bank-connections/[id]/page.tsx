@@ -26,6 +26,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
+import {
+  BankTransactionsTable,
+  type BankTransaction,
+} from "@/components/BankTransactionsTable";
 
 interface BankConnection {
   id: string;
@@ -60,6 +64,7 @@ function daysUntil(dateStr: string | null): number | null {
 
 export default function BankConnectionDetailPage() {
   const t = useTranslations("bankConnections");
+  const tr = useTranslations("reconciliation");
   const router = useRouter();
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -69,6 +74,23 @@ export default function BankConnectionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [transactions, setTransactions] = useState<BankTransaction[]>([]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/v1/bank-connections/${id}/transactions`,
+        { credentials: "include" },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.data || []);
+      }
+    } catch {
+      // Non-fatal: the transactions section simply stays empty.
+    }
+  }, [apiUrl, id]);
 
   const fetchConnection = useCallback(async () => {
     if (!id) return;
@@ -95,7 +117,8 @@ export default function BankConnectionDetailPage() {
 
   useEffect(() => {
     fetchConnection();
-  }, [fetchConnection]);
+    fetchTransactions();
+  }, [fetchConnection, fetchTransactions]);
 
   const handleSync = async () => {
     if (!id) return;
@@ -323,6 +346,20 @@ export default function BankConnectionDetailPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      {/* Transactions */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">{tr("title")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BankTransactionsTable
+            transactions={transactions}
+            mode="connection"
+            onRefetch={fetchTransactions}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

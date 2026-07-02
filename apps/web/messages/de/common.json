@@ -35,7 +35,8 @@
     "managers": "Verwalter",
     "import": "Importieren",
     "mandates": "Mandate",
-    "bankConnections": "Bank Connections"
+    "bankConnections": "Bank Connections",
+    "reconciliation": "Abgleich"
   },
   "properties": {
     "title": "Immobilien",
@@ -985,6 +986,59 @@
         "defaultName": "Vermieter",
         "defaultInstitution": "Ihr Konto"
       }
+    }
+  },
+  "reconciliation": {
+    "title": "Abgleich",
+    "subtitle": "Prüfen Sie eingehende Überweisungen und ordnen Sie sie erwarteten Zahlungen zu.",
+    "filters": {
+      "all": "Alle",
+      "unmatched": "Nicht zugeordnet",
+      "matched": "Zugeordnet",
+      "ignored": "Ignoriert"
+    },
+    "columns": {
+      "date": "Datum",
+      "connection": "Bank",
+      "counterparty": "Gegenpartei",
+      "communication": "Verwendungszweck",
+      "amount": "Betrag",
+      "status": "Status",
+      "actions": "Aktionen"
+    },
+    "status": {
+      "unmatched": "Nicht zugeordnet",
+      "matched": "Zugeordnet",
+      "mismatched_amount": "Betrag weicht ab",
+      "ignored": "Ignoriert"
+    },
+    "actions": {
+      "assign": "Zuordnen",
+      "approve": "Bestätigen",
+      "ignore": "Ignorieren",
+      "undo": "Rückgängig"
+    },
+    "matchedTo": "Zugeordnet zu {label}",
+    "noCounterparty": "Unbekannt",
+    "empty": "Keine Transaktionen vorhanden.",
+    "loadError": "Transaktionen konnten nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "assignDialog": {
+      "title": "Einem Mietvertrag zuordnen",
+      "description": "Die älteste offene Zahlung des ausgewählten Mietvertrags wird als bezahlt markiert.",
+      "leaseLabel": "Mietvertrag",
+      "placeholder": "Mietvertrag auswählen",
+      "confirm": "Zuordnen",
+      "cancel": "Abbrechen",
+      "noLeases": "Keine Mietverträge verfügbar."
+    },
+    "toasts": {
+      "assigned": "Zahlung zugeordnet",
+      "approved": "Zahlung zugeordnet",
+      "ignored": "Transaktion ignoriert",
+      "undone": "Abgleich rückgängig gemacht",
+      "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+      "noPendingPayment": "Keine offene Zahlung für diesen Mietvertrag.",
+      "noMatch": "Keine passende Zahlung gefunden. Verwenden Sie Zuordnen, um manuell einen Mietvertrag zu verknüpfen."
     }
   }
 }

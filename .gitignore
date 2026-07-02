@@ -33,3 +33,6 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# Ibanity Ponto sandbox certificate bundles (never commit)
+application_228c5f9c-*/

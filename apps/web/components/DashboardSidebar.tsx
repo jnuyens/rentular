@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Building2, Users, FileText, CreditCard, TrendingUp,
   MessageSquare, Wrench, Settings, Download, LogOut,
-  FileSignature, Banknote,
+  FileSignature, Banknote, ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -14,6 +14,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2, Users, FileText, CreditCard, TrendingUp,
   MessageSquare, Wrench, Settings, Download, FileSignature, Banknote,
+  ArrowLeftRight,
 };
 
 interface NavItem {

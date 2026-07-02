@@ -35,7 +35,8 @@
     "managers": "Beheerders",
     "import": "Importeren",
     "mandates": "Mandaten",
-    "bankConnections": "Bank Connections"
+    "bankConnections": "Bank Connections",
+    "reconciliation": "Reconciliatie"
   },
   "properties": {
     "title": "Eigendommen",
@@ -985,6 +986,59 @@
         "defaultName": "Verhuurder",
         "defaultInstitution": "uw rekening"
       }
+    }
+  },
+  "reconciliation": {
+    "title": "Reconciliatie",
+    "subtitle": "Bekijk inkomende overschrijvingen en koppel ze aan verwachte betalingen.",
+    "filters": {
+      "all": "Alle",
+      "unmatched": "Niet gekoppeld",
+      "matched": "Gekoppeld",
+      "ignored": "Genegeerd"
+    },
+    "columns": {
+      "date": "Datum",
+      "connection": "Bank",
+      "counterparty": "Tegenpartij",
+      "communication": "Mededeling",
+      "amount": "Bedrag",
+      "status": "Status",
+      "actions": "Acties"
+    },
+    "status": {
+      "unmatched": "Niet gekoppeld",
+      "matched": "Gekoppeld",
+      "mismatched_amount": "Bedrag wijkt af",
+      "ignored": "Genegeerd"
+    },
+    "actions": {
+      "assign": "Toewijzen",
+      "approve": "Goedkeuren",
+      "ignore": "Negeren",
+      "undo": "Ongedaan maken"
+    },
+    "matchedTo": "Gekoppeld aan {label}",
+    "noCounterparty": "Onbekend",
+    "empty": "Geen transacties om weer te geven.",
+    "loadError": "Kan transacties niet laden. Probeer het opnieuw.",
+    "assignDialog": {
+      "title": "Toewijzen aan een huurcontract",
+      "description": "De oudste openstaande betaling voor het geselecteerde huurcontract wordt als betaald gemarkeerd.",
+      "leaseLabel": "Huurcontract",
+      "placeholder": "Selecteer een huurcontract",
+      "confirm": "Toewijzen",
+      "cancel": "Annuleren",
+      "noLeases": "Geen huurcontracten beschikbaar."
+    },
+    "toasts": {
+      "assigned": "Betaling gekoppeld",
+      "approved": "Betaling gekoppeld",
+      "ignored": "Transactie genegeerd",
+      "undone": "Reconciliatie ongedaan gemaakt",
+      "error": "Er is iets misgegaan. Probeer het opnieuw.",
+      "noPendingPayment": "Geen openstaande betaling voor dit huurcontract.",
+      "noMatch": "Geen overeenkomende betaling gevonden. Gebruik Toewijzen om handmatig een huurcontract te koppelen."
     }
   }
 }

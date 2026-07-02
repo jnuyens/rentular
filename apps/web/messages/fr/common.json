@@ -35,7 +35,8 @@
     "managers": "Gestionnaires",
     "import": "Importer",
     "mandates": "Mandats",
-    "bankConnections": "Bank Connections"
+    "bankConnections": "Bank Connections",
+    "reconciliation": "Rapprochement"
   },
   "properties": {
     "title": "Biens",
@@ -985,6 +986,59 @@
         "defaultName": "Propriétaire",
         "defaultInstitution": "votre compte"
       }
+    }
+  },
+  "reconciliation": {
+    "title": "Rapprochement",
+    "subtitle": "Consultez les virements entrants et associez-les aux paiements attendus.",
+    "filters": {
+      "all": "Tous",
+      "unmatched": "Non associés",
+      "matched": "Associés",
+      "ignored": "Ignorés"
+    },
+    "columns": {
+      "date": "Date",
+      "connection": "Banque",
+      "counterparty": "Contrepartie",
+      "communication": "Communication",
+      "amount": "Montant",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "status": {
+      "unmatched": "Non associé",
+      "matched": "Associé",
+      "mismatched_amount": "Montant divergent",
+      "ignored": "Ignoré"
+    },
+    "actions": {
+      "assign": "Attribuer",
+      "approve": "Approuver",
+      "ignore": "Ignorer",
+      "undo": "Annuler"
+    },
+    "matchedTo": "Associé à {label}",
+    "noCounterparty": "Inconnu",
+    "empty": "Aucune transaction à afficher.",
+    "loadError": "Impossible de charger les transactions. Veuillez réessayer.",
+    "assignDialog": {
+      "title": "Attribuer à un bail",
+      "description": "Le plus ancien paiement en attente du bail sélectionné sera marqué comme payé.",
+      "leaseLabel": "Bail",
+      "placeholder": "Sélectionnez un bail",
+      "confirm": "Attribuer",
+      "cancel": "Annuler",
+      "noLeases": "Aucun bail disponible."
+    },
+    "toasts": {
+      "assigned": "Paiement associé",
+      "approved": "Paiement associé",
+      "ignored": "Transaction ignorée",
+      "undone": "Rapprochement annulé",
+      "error": "Une erreur est survenue. Veuillez réessayer.",
+      "noPendingPayment": "Aucun paiement en attente pour ce bail.",
+      "noMatch": "Aucun paiement correspondant trouvé. Utilisez Attribuer pour associer un bail manuellement."
     }
   }
 }

@@ -28,8 +28,12 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { getDb, bankConnections } from "@rentular/db";
+import { getDb, bankConnections, bankStatements } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import {
+  buildTransactionRows,
+  type StatementRow,
+} from "../lib/bankTransactionView";
 import { signOAuthState, verifyOAuthState } from "../lib/bankOAuthState";
 import {
   isPontoConfigured,
@@ -340,6 +344,62 @@ bankConnectionsRouter.get("/:id", async (c) => {
     return c.json({ error: message }, 500);
   }
 });
+
+// ===========================================================================
+// GET /:id/transactions — list bank_statements for one owned connection.
+// Query ?status=all|unmatched|matched|ignored|mismatched_amount (default all).
+// Counterparty PII is decrypted server-side; matched rows carry linkedPayment.
+// ===========================================================================
+const transactionStatusSchema = z.object({
+  status: z
+    .enum(["all", "unmatched", "matched", "ignored", "mismatched_amount"])
+    .optional()
+    .default("all"),
+});
+
+bankConnectionsRouter.get(
+  "/:id/transactions",
+  zValidator("query", transactionStatusSchema),
+  async (c) => {
+    try {
+      const userId = getRequiredUserId(c);
+      const id = c.req.param("id");
+      const { status } = c.req.valid("query");
+      const db = getDb();
+
+      // Ownership: connection must belong to the caller.
+      const conn = await db
+        .select()
+        .from(bankConnections)
+        .where(
+          and(eq(bankConnections.id, id), eq(bankConnections.ownerId, userId)),
+        )
+        .limit(1);
+      if (!conn[0]) return c.json({ error: "Connection not found" }, 404);
+
+      const whereClause =
+        status === "all"
+          ? eq(bankStatements.connectionId, id)
+          : and(
+              eq(bankStatements.connectionId, id),
+              eq(bankStatements.matchStatus, status),
+            );
+
+      const rows = (await db
+        .select()
+        .from(bankStatements)
+        .where(whereClause)
+        .orderBy(desc(bankStatements.bookingDate))) as StatementRow[];
+
+      const data = await buildTransactionRows(db, rows);
+      return c.json({ data });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[BankTransactions] GET /:id/transactions error:", err);
+      return c.json({ error: message }, 500);
+    }
+  },
+);
 
 // ===========================================================================
 // POST /:id/renew — return a fresh authorization URL for re-consent
