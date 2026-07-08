@@ -8,7 +8,7 @@ function randomDelay(minMs = 1000, maxMs = 3000): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
-export async function createStealthBrowser(): Promise<{ browser: { close(): Promise<void> }; context: import("playwright-core").BrowserContext }> {
+export async function createStealthBrowser(): Promise<{ browser: { close(): Promise<void> }; context: import("playwright").BrowserContext }> {
   const browser = await chromium.launch({
     headless: true,
     args: [

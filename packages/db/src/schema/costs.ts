@@ -36,7 +36,7 @@ export const costs = mysqlTable("costs", {
   ]).notNull(),
   description: varchar("description", { length: 500 }).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  date: date("date").notNull(),
+  date: date("date", { mode: "string" }).notNull(),
   // Whether this cost is recharged to the tenant
   rechargedToTenant: boolean("recharged_to_tenant").default(false).notNull(),
   // Supporting document reference (invoice number, receipt, etc.)
@@ -55,8 +55,8 @@ export const rentFreePeriods = mysqlTable("rent_free_periods", {
   leaseId: varchar("lease_id", { length: 36 })
     .notNull()
     .references(() => leases.id),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }).notNull(),
   reason: varchar("reason", { length: 500 }).notNull(),
   // Whether charges (provisions/fixed) are also waived during this period
   waiveCharges: boolean("waive_charges").default(false).notNull(),
@@ -76,8 +76,8 @@ export const rentDeductions = mysqlTable("rent_deductions", {
   ]).notNull(),
   // Fixed amount deducted from monthly rent
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date"),  // Required for temporary, null for permanent
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }),  // Required for temporary, null for permanent
   reason: varchar("reason", { length: 500 }).notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -26,7 +26,9 @@ export const importWriteQueue = new Queue(QUEUE_NAME, {
     backoff: { type: "exponential", delay: 10000 },
     removeOnComplete: { count: 50 },
     removeOnFail: { count: 50 },
-    timeout: 600000, // 10 minutes (writing is faster than scraping)
+    // Note: per-job `timeout` was removed in BullMQ v5 (it was never a valid
+    // JobsOptions field here). Stalled-job handling is governed by the worker's
+    // lockDuration/stalledInterval instead.
   },
 });
 

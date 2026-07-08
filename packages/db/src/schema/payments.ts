@@ -29,8 +29,8 @@ export const payments = mysqlTable("payments", {
     .default("pending")
     .notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  dueDate: date("due_date").notNull(),
-  paidDate: date("paid_date"),
+  dueDate: date("due_date", { mode: "string" }).notNull(),
+  paidDate: date("paid_date", { mode: "string" }),
   method: mysqlEnum("method", [
     "gocardless",
     "bank_transfer",
@@ -47,7 +47,7 @@ export const payments = mysqlTable("payments", {
   // Late payment administrative fee & interest charged on this payment
   latePaymentFee: decimal("late_payment_fee", { precision: 10, scale: 2 }).default("0.00"),
   interestCharged: decimal("interest_charged", { precision: 10, scale: 2 }).default("0.00"),
-  feeWaivedAt: date("fee_waived_at"), // If soft enforcement and tenant paid within grace period
+  feeWaivedAt: date("fee_waived_at", { mode: "string" }), // If soft enforcement and tenant paid within grace period
   // Non-rent payment: mark incoming payments as not rent-related (e.g. deposit refund, utility reimbursement)
   isIgnored: boolean("is_ignored").default(false).notNull(),
   ignoreReason: text("ignore_reason"),

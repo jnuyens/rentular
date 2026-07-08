@@ -44,7 +44,7 @@ describe("createOwnerIfMissing (D-08 bootstrap)", () => {
     expect(insert).toHaveBeenCalledTimes(1);
     expect(values).toHaveBeenCalledTimes(1);
 
-    const inserted = values.mock.calls[0][0] as {
+    const inserted = (values.mock.calls[0] as unknown[])[0] as {
       id: string;
       email: string;
       passwordHash: string;

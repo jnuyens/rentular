@@ -31,9 +31,9 @@ export const bankStatements = mysqlTable(
     amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
     currency: varchar("currency", { length: 3 }).default("EUR").notNull(),
     // YYYY-MM-DD; matches IncomingTransaction.bookingDate (apps/api/src/lib/bankAccountData.ts).
-    bookingDate: date("booking_date").notNull(),
+    bookingDate: date("booking_date", { mode: "string" }).notNull(),
     // Some providers expose only one date; valueDate is nullable.
-    valueDate: date("value_date"),
+    valueDate: date("value_date", { mode: "string" }),
     // Counterparty name (PII) — encrypted via lib/encryption.ts triplet.
     counterpartyNameEncrypted: text("counterparty_name_encrypted"),
     counterpartyNameIv: varchar("counterparty_name_iv", { length: 64 }),

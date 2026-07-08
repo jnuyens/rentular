@@ -267,7 +267,7 @@ paymentsRouter.get("/summary/overdue", async (c) => {
       and(
         inArray(leases.propertyId, accessibleIds),
         sql`${payments.status} IN ('pending', 'failed')`,
-        lt(payments.dueDate, new Date(today))
+        lt(payments.dueDate, today)
       )
     );
 

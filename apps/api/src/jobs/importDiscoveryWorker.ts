@@ -19,7 +19,9 @@ export const importDiscoveryQueue = new Queue(QUEUE_NAME, {
     backoff: { type: "exponential", delay: 10000 },
     removeOnComplete: { count: 50 },
     removeOnFail: { count: 50 },
-    timeout: 1800000, // 30 minutes
+    // Note: per-job `timeout` was removed in BullMQ v5 (it was never a valid
+    // JobsOptions field here). Stalled-job handling is governed by the worker's
+    // lockDuration/stalledInterval instead.
   },
 });
 

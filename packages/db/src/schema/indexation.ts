@@ -24,7 +24,7 @@ export const indexationRecords = mysqlTable("indexation_records", {
   leaseId: varchar("lease_id", { length: 36 })
     .notNull()
     .references(() => leases.id),
-  effectiveDate: date("effective_date").notNull(),
+  effectiveDate: date("effective_date", { mode: "string" }).notNull(),
   previousRent: decimal("previous_rent", { precision: 10, scale: 2 }).notNull(),
   newRent: decimal("new_rent", { precision: 10, scale: 2 }).notNull(),
   baseIndex: decimal("base_index", { precision: 8, scale: 2 }).notNull(),

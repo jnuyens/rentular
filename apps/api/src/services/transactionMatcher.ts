@@ -113,7 +113,7 @@ export async function processIncomingTransactions(
         .update(payments)
         .set({
           status: "paid",
-          paidDate: new Date(tx.bookingDate),
+          paidDate: tx.bookingDate,
           notes: `Auto-matched from bank transfer. Transaction: ${tx.transactionId}. Debtor: ${tx.debtorName || "unknown"}.`,
           updatedAt: new Date(),
         })

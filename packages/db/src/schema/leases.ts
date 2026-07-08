@@ -33,9 +33,9 @@ export const leases = mysqlTable("leases", {
   status: mysqlEnum("status", ["draft", "active", "terminated", "expired"])
     .default("draft")
     .notNull(),
-  signingDate: date("signing_date").notNull(), // Date the contract was signed
-  startDate: date("start_date").notNull(),    // Date the lease actually starts
-  endDate: date("end_date"),
+  signingDate: date("signing_date", { mode: "string" }).notNull(), // Date the contract was signed
+  startDate: date("start_date", { mode: "string" }).notNull(),    // Date the lease actually starts
+  endDate: date("end_date", { mode: "string" }),
   // Financial
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
   monthlyCharges: decimal("monthly_charges", { precision: 10, scale: 2 })
@@ -72,7 +72,7 @@ export const leases = mysqlTable("leases", {
     precision: 10,
     scale: 2,
   }),
-  lastIndexationDate: date("last_indexation_date"),
+  lastIndexationDate: date("last_indexation_date", { mode: "string" }),
   // Late payment administrative fee (per contract)
   latePaymentFeeEnabled: boolean("late_payment_fee_enabled").default(false).notNull(),
   latePaymentFeeAmount: decimal("late_payment_fee_amount", { precision: 10, scale: 2 }).default("15.00"),
