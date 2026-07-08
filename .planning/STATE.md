@@ -173,8 +173,14 @@ None yet.
 - [Research]: GoCardless webhook handlers return 200 OK without persisting state -- critical bug, addressed in Phase 2
 - [Research]: Statbel beSTAT API has no SLA or versioning -- needs caching with manual fallback in Phase 3
 - [Research]: Smovin scraping approach has LOW confidence -- Cloudflare anti-bot may block Playwright
-- [Phase 09]: `pnpm lint` is RED — ~57 pre-existing @rentular/api `tsc --noEmit` errors (Date/string Drizzle mismatches, getDb().query typed as {}, missing nordigen-node/playwright-core decls) predating Phase 9. Build + 67 tests pass. Needs a dedicated typecheck-cleanup before/within Phase 10. See 09 deferred-items.md.
+- [RESOLVED 2026-07-09, quick 260708-x0r]: ~~`pnpm lint` is RED — ~57 pre-existing @rentular/api `tsc --noEmit` errors~~ Fixed: 59 errors → 0. Root cause was Drizzle `date()` columns typed as `Date` while mysql2/code use strings — flipped 17 columns to `mode:"string"` (type-only), fixed `getDb()` generic, added module shims. `pnpm lint` now clean (api+web); 77 tests pass.
 - [Phase 09]: `db:push` idempotency unverified in sandbox (no MySQL; ECONNREFUSED). Plan 05 changed zero schema files — human must confirm "no changes to apply" against the real DB at the checkpoint.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260708-x0r | Fix @rentular/api tsc typecheck errors so pnpm lint passes (59 → 0) | 2026-07-09 | c56743a | [260708-x0r-fix-rentular-api-tsc-typecheck-errors-so](./quick/260708-x0r-fix-rentular-api-tsc-typecheck-errors-so/) |
 
 ## Session Continuity
 
