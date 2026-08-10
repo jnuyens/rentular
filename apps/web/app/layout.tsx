@@ -4,14 +4,17 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/QueryProvider";
+import { getBaseUrl } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getBaseUrl()),
   title: "Rentular - Real Estate Management",
   description:
     "OpenSource real estate management platform for payment follow-up, rent indexation, and tenant management.",
+  alternates: { canonical: "/" },
 };
 
 export default async function RootLayout({
