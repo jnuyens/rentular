@@ -181,6 +181,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260708-x0r | Fix @rentular/api tsc typecheck errors so pnpm lint passes (59 → 0) | 2026-07-09 | c56743a | [260708-x0r-fix-rentular-api-tsc-typecheck-errors-so](./quick/260708-x0r-fix-rentular-api-tsc-typecheck-errors-so/) |
+| 260810-e8q | Add SEO sitemap.xml + robots.txt (AI crawlers allowed, private paths blocked) | 2026-08-10 | 2e24e8d | [260810-e8q-ensure-sitemap-and-robots-txt-allowing-a](./quick/260810-e8q-ensure-sitemap-and-robots-txt-allowing-a/) |
 
 ## Session Continuity
 
