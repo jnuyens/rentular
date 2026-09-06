@@ -16,6 +16,7 @@
 
 import https from "node:https";
 import { readFileSync } from "node:fs";
+import { buildSignatureHeaders } from "./pontoSignature";
 
 // Ponto Connect API/token host is the same for both environments — the client
 // certificate selects sandbox vs production (verified via Ibanity's Postman
@@ -103,15 +104,16 @@ export function getRedirectUri(): string {
   );
 }
 
-function requireClientCredentials(): { id: string; secret: string } {
-  const id = process.env.PONTO_CLIENT_ID;
-  const secret = process.env.PONTO_CLIENT_SECRET;
-  if (!id || !secret) {
+function requireClientCredentials(
+  model: PontoModel = "ppm"
+): { id: string; secret: string } {
+  const cfg = getPontoAppConfig(model);
+  if (!cfg.clientId || !cfg.clientSecret) {
     throw new Error(
-      "[Ponto] PONTO_CLIENT_ID and PONTO_CLIENT_SECRET must be set"
+      "[Ponto] client id and secret must be set (PONTO_[PPM_|CPM_]CLIENT_ID / _CLIENT_SECRET)"
     );
   }
-  return { id, secret };
+  return { id: cfg.clientId, secret: cfg.clientSecret };
 }
 
 // ---------- mTLS client certificate (Ibanity requires mutual TLS) ----------
@@ -120,54 +122,52 @@ function requireClientCredentials(): { id: string; secret: string } {
 // certificate at the TLS layer — without it the handshake fails with
 // "tlsv13 alert certificate required". Ibanity issues the certificate
 // (sandbox: generated for you behind a passphrase; production: after go-live).
-// Read-only AIS usage (accounts + transactions) needs ONLY this transport
-// certificate — the separate signature certificate is required solely for
-// creating payments, which Rentular does not do.
+// The transport certificate is needed for every call. Request SIGNING (the
+// separate signature certificate) is required for POST requests in production
+// (Ibanity support, 2026-07-31); GET reads may stay unsigned. See ibanityFetch.
 //
-// Config (filesystem paths, or inline PEM starting with "-----BEGIN"):
-//   PONTO_TLS_CERT        client certificate (PEM)
-//   PONTO_TLS_KEY         client private key (PEM, may be passphrase-encrypted)
-//   PONTO_TLS_PASSPHRASE  passphrase for the key / pfx
-//   PONTO_TLS_PFX         alternative: PKCS#12 bundle path (instead of cert+key)
+// Config is per model (PONTO_PPM_* / PONTO_CPM_*), falling back to legacy
+// PONTO_* for sandbox (see getPontoAppConfig):
+//   *_TLS_CERT        client certificate (PEM path or inline)
+//   *_TLS_KEY         client private key (PEM, may be passphrase-encrypted)
+//   *_TLS_PASSPHRASE  passphrase for the key / pfx
+//   *_TLS_PFX         alternative: PKCS#12 bundle path (instead of cert+key)
 
-let cachedAgent: https.Agent | null | undefined;
+const agentCache = new Map<PontoModel, https.Agent | null>();
 
 function loadPem(value: string): string | Buffer {
   // inline PEM (contains a BEGIN header) vs. a filesystem path
   return value.includes("BEGIN") ? value : readFileSync(value);
 }
 
-function getIbanityAgent(): https.Agent | undefined {
-  if (cachedAgent !== undefined) return cachedAgent ?? undefined;
-  const cert = process.env.PONTO_TLS_CERT;
-  const key = process.env.PONTO_TLS_KEY;
-  const pfx = process.env.PONTO_TLS_PFX;
-  const passphrase = process.env.PONTO_TLS_PASSPHRASE;
+function getIbanityAgent(model: PontoModel): https.Agent | undefined {
+  if (agentCache.has(model)) return agentCache.get(model) ?? undefined;
+  const t = getPontoAppConfig(model).transport;
+  let agent: https.Agent | null = null;
   try {
-    if (pfx) {
-      cachedAgent = new https.Agent({
-        pfx: readFileSync(pfx),
-        passphrase,
+    if (t.pfx) {
+      agent = new https.Agent({
+        pfx: readFileSync(t.pfx),
+        passphrase: t.passphrase,
         keepAlive: true,
       });
-    } else if (cert && key) {
-      cachedAgent = new https.Agent({
-        cert: loadPem(cert),
-        key: loadPem(key),
-        passphrase,
+    } else if (t.cert && t.key) {
+      agent = new https.Agent({
+        cert: loadPem(t.cert),
+        key: loadPem(t.key),
+        passphrase: t.passphrase,
         keepAlive: true,
       });
-    } else {
-      cachedAgent = null;
     }
   } catch (err) {
     console.error(
       "[Ponto] Failed to load mTLS client certificate:",
       (err as Error).message
     );
-    cachedAgent = null;
+    agent = null;
   }
-  return cachedAgent ?? undefined;
+  agentCache.set(model, agent);
+  return agent ?? undefined;
 }
 
 export function isPontoMtlsConfigured(): boolean {
@@ -192,8 +192,29 @@ interface IbanityResponse {
  */
 function ibanityFetch(
   url: string,
-  opts: { method?: string; headers?: Record<string, string>; body?: string }
+  opts: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    model: PontoModel;
+  }
 ): Promise<IbanityResponse> {
+  const method = opts.method || "GET";
+  let headers = opts.headers ?? {};
+  // Ponto Connect requires POST requests to be signed in production. When the
+  // model has a signature certificate configured, attach the hs2019 headers.
+  const sig = getPontoAppConfig(opts.model).signature;
+  if (method.toUpperCase() === "POST" && sig) {
+    const signed = buildSignatureHeaders({
+      method,
+      url,
+      body: opts.body ?? "",
+      keyId: sig.keyId,
+      privateKeyPem: sig.privateKeyPem,
+      passphrase: sig.passphrase,
+    });
+    headers = { ...headers, Digest: signed.Digest, Signature: signed.Signature };
+  }
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const req = https.request(
@@ -201,9 +222,9 @@ function ibanityFetch(
         hostname: u.hostname,
         port: u.port || 443,
         path: `${u.pathname}${u.search}`,
-        method: opts.method || "GET",
-        headers: opts.headers,
-        agent: getIbanityAgent(),
+        method,
+        headers,
+        agent: getIbanityAgent(opts.model),
       },
       (res) => {
         const chunks: Buffer[] = [];
@@ -273,8 +294,9 @@ export function createPontoAuthorizationUrl(params: {
   state: string;
   redirectUri?: string;
   scopes?: string[];
+  model?: PontoModel;
 }): string {
-  const { id } = requireClientCredentials();
+  const { id } = requireClientCredentials(params.model ?? "ppm");
   const { authBase } = getPontoBaseUrls();
   const redirectUri = params.redirectUri || getRedirectUri();
   const scopes = params.scopes || DEFAULT_SCOPES;
@@ -292,8 +314,11 @@ export function createPontoAuthorizationUrl(params: {
 
 // ---------- OAuth token endpoint ----------
 
-async function postTokenEndpoint(body: URLSearchParams): Promise<PontoTokenResponse> {
-  const { id, secret } = requireClientCredentials();
+async function postTokenEndpoint(
+  body: URLSearchParams,
+  model: PontoModel
+): Promise<PontoTokenResponse> {
+  const { id, secret } = requireClientCredentials(model);
   const { apiBase } = getPontoBaseUrls();
   const url = `${apiBase}/oauth2/token`;
 
@@ -307,6 +332,7 @@ async function postTokenEndpoint(body: URLSearchParams): Promise<PontoTokenRespo
       Accept: "application/json",
     },
     body: body.toString(),
+    model,
   });
 
   if (!res.ok) {
@@ -334,6 +360,7 @@ async function postTokenEndpoint(body: URLSearchParams): Promise<PontoTokenRespo
 
 export async function exchangeAuthorizationCode(
   code: string,
+  model: PontoModel = "ppm",
   redirectUri?: string
 ): Promise<PontoTokenResponse> {
   const body = new URLSearchParams({
@@ -341,21 +368,25 @@ export async function exchangeAuthorizationCode(
     code,
     redirect_uri: redirectUri || getRedirectUri(),
   });
-  return postTokenEndpoint(body);
+  return postTokenEndpoint(body, model);
 }
 
 export async function refreshAccessToken(
-  refreshToken: string
+  refreshToken: string,
+  model: PontoModel = "ppm"
 ): Promise<PontoTokenResponse> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
   });
-  return postTokenEndpoint(body);
+  return postTokenEndpoint(body, model);
 }
 
-export async function revokeAccess(token: string): Promise<void> {
-  const { id, secret } = requireClientCredentials();
+export async function revokeAccess(
+  token: string,
+  model: PontoModel = "ppm"
+): Promise<void> {
+  const { id, secret } = requireClientCredentials(model);
   const { apiBase } = getPontoBaseUrls();
   const url = `${apiBase}/oauth2/revoke`;
   const basic = Buffer.from(`${id}:${secret}`).toString("base64");
@@ -370,6 +401,7 @@ export async function revokeAccess(token: string): Promise<void> {
       Accept: "application/json",
     },
     body: body.toString(),
+    model,
   });
 
   if (!res.ok) {
@@ -379,9 +411,47 @@ export async function revokeAccess(token: string): Promise<void> {
   }
 }
 
+// ---------- client_credentials service token (financial-institutions) ----------
+//
+// The financial-institutions endpoints need a real bearer in production. We mint
+// a client_credentials access token per model and cache it until shortly before
+// expiry. In sandbox with no client credentials configured, callers skip auth
+// (institutionsAuthHeaders returns {}), preserving the public-endpoint behavior.
+
+const clientTokenCache = new Map<
+  PontoModel,
+  { token: string; expiresAt: number }
+>();
+
+export async function getClientAccessToken(model: PontoModel): Promise<string> {
+  const cached = clientTokenCache.get(model);
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (cached && cached.expiresAt - 60 > nowSec) return cached.token;
+  const body = new URLSearchParams({ grant_type: "client_credentials" });
+  const res = await postTokenEndpoint(body, model);
+  clientTokenCache.set(model, {
+    token: res.accessToken,
+    expiresAt: nowSec + res.expiresIn,
+  });
+  return res.accessToken;
+}
+
+async function institutionsAuthHeaders(
+  model: PontoModel
+): Promise<Record<string, string>> {
+  const cfg = getPontoAppConfig(model);
+  // Sandbox / no credentials: the public endpoint is reachable without auth.
+  if (!cfg.clientId || !cfg.clientSecret) return {};
+  return { Authorization: `Bearer ${await getClientAccessToken(model)}` };
+}
+
 // ---------- Authenticated API helpers ----------
 
-async function getJson<T>(path: string, accessToken: string): Promise<T> {
+async function getJson<T>(
+  path: string,
+  accessToken: string,
+  model: PontoModel
+): Promise<T> {
   const { apiBase } = getPontoBaseUrls();
   const url = `${apiBase}${path}`;
   const res = await ibanityFetch(url, {
@@ -390,6 +460,7 @@ async function getJson<T>(path: string, accessToken: string): Promise<T> {
       Authorization: `Bearer ${accessToken}`,
       Accept: "application/json",
     },
+    model,
   });
   if (!res.ok) {
     throw new Error(
@@ -440,10 +511,12 @@ interface InstitutionAttrs {
 
 export async function listAccounts(params: {
   accessToken: string;
+  model?: PontoModel;
 }): Promise<PontoAccount[]> {
   const json = await getJson<JsonApiList<AccountAttrs>>(
     "/accounts",
-    params.accessToken
+    params.accessToken,
+    params.model ?? "ppm"
   );
   return (json.data || []).map((item) => ({
     id: item.id,
@@ -462,6 +535,7 @@ export async function listTransactions(params: {
   accessToken: string;
   accountId: string;
   dateFrom?: string;
+  model?: PontoModel;
 }): Promise<PontoTransaction[]> {
   const qs = new URLSearchParams();
   if (params.dateFrom) qs.set("filter[executionDate][gte]", params.dateFrom);
@@ -470,7 +544,8 @@ export async function listTransactions(params: {
     (qs.toString() ? `?${qs.toString()}` : "");
   const json = await getJson<JsonApiList<TransactionAttrs>>(
     path,
-    params.accessToken
+    params.accessToken,
+    params.model ?? "ppm"
   );
   return (json.data || []).map((item) => ({
     id: item.id,
@@ -488,19 +563,16 @@ export async function listTransactions(params: {
 }
 
 export async function listFinancialInstitutions(
-  country: string
+  country: string,
+  model: PontoModel = "ppm"
 ): Promise<PontoInstitution[]> {
-  // financial-institutions is a public endpoint, but Ponto still wants Authorization
-  // for traffic shaping. We use a one-off client_credentials-equivalent: when no
-  // accessToken is available we fall back to basic auth via the token endpoint
-  // pattern. For the public endpoint, a Bearer of the empty string is accepted
-  // by the sandbox; production typically uses a service token. We accept either.
   const { apiBase } = getPontoBaseUrls();
   const qs = new URLSearchParams({ "filter[country]": country });
   const url = `${apiBase}/financial-institutions?${qs.toString()}`;
   const res = await ibanityFetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { ...(await institutionsAuthHeaders(model)), Accept: "application/json" },
+    model,
   });
   if (!res.ok) {
     throw new Error(
@@ -519,13 +591,15 @@ export async function listFinancialInstitutions(
 
 export async function getFinancialInstitution(
   id: string,
+  model: PontoModel = "ppm",
 ): Promise<PontoInstitution | null> {
   if (!id) return null;
   const { apiBase } = getPontoBaseUrls();
   const url = `${apiBase}/financial-institutions/${encodeURIComponent(id)}`;
   const res = await ibanityFetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: { ...(await institutionsAuthHeaders(model)), Accept: "application/json" },
+    model,
   });
   if (res.status === 404) return null;
   if (!res.ok) {
