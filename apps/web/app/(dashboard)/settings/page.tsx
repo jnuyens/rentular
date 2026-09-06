@@ -446,6 +446,99 @@ function GoCardlessSettingsTab({ apiUrl }: { apiUrl: string }) {
   );
 }
 
+function ProfileTab({ apiUrl }: { apiUrl: string }) {
+  const t = useTranslations("settings");
+  const [landlordType, setLandlordType] = useState<"individual" | "company">(
+    "individual"
+  );
+  const [vatNumber, setVatNumber] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/v1/settings/profile`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.landlordType === "company" || d.landlordType === "individual") {
+          setLandlordType(d.landlordType);
+        }
+        setVatNumber(d.vatNumber || "");
+      })
+      .catch(() => {});
+  }, [apiUrl]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          landlordType,
+          vatNumber: landlordType === "company" ? vatNumber : "",
+        }),
+      });
+      if (res.ok) toast.success(t("settingsSaved"));
+      else toast.error(t("settingsSaveError"));
+    } catch {
+      toast.error(t("settingsSaveError"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("landlordType.title")}</CardTitle>
+          <CardDescription>{t("landlordType.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="mb-2 block">{t("landlordType.label")}</Label>
+            <Select
+              value={landlordType}
+              onValueChange={(v) =>
+                setLandlordType(v as "individual" | "company")
+              }
+            >
+              <SelectTrigger className="w-full max-w-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="individual">
+                  {t("landlordType.individual")}
+                </SelectItem>
+                <SelectItem value="company">
+                  {t("landlordType.company")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {landlordType === "company" && (
+            <div>
+              <Label className="mb-2 block">{t("landlordType.vat")}</Label>
+              <Input
+                value={vatNumber}
+                onChange={(e) => setVatNumber(e.target.value)}
+                placeholder="BE0123456789"
+                className="max-w-sm"
+              />
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="mr-2 h-4 w-4" />
+              {saving ? t("saving") : t("saveSettings")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const [templateLang, setTemplateLang] = useState<Lang>("nl");
@@ -702,6 +795,7 @@ export default function SettingsPage() {
           <TabsTrigger value="landlord-reports">{t("landlordReports")}</TabsTrigger>
           <TabsTrigger value="bank-accounts">{t("bankAccounts")}</TabsTrigger>
           <TabsTrigger value="gocardless">{t("goCardless")}</TabsTrigger>
+          <TabsTrigger value="profile">{t("profileTab")}</TabsTrigger>
         </TabsList>
 
         {/* Payment Follow-up Tab */}
@@ -1238,6 +1332,11 @@ export default function SettingsPage() {
         {/* GoCardless Tab */}
         <TabsContent value="gocardless">
           <GoCardlessSettingsTab apiUrl={apiUrl} />
+        </TabsContent>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile">
+          <ProfileTab apiUrl={apiUrl} />
         </TabsContent>
       </Tabs>
     </div>

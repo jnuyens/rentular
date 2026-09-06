@@ -301,6 +301,15 @@
     "loadError": "Echec du chargement des communications. Veuillez reessayer."
   },
   "settings": {
+    "profileTab": "Profil",
+    "landlordType": {
+      "title": "Profil du bailleur",
+      "description": "Que vous louiez en tant que particulier ou societe determine la configuration de votre connexion bancaire.",
+      "label": "Je loue en tant que",
+      "individual": "Particulier",
+      "company": "Societe",
+      "vat": "Numero de TVA"
+    },
     "title": "Parametres",
     "subtitle": "Configurez le suivi des paiements et vos preferences",
     "paymentFollowUp": "Suivi des paiements",

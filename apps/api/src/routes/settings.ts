@@ -53,6 +53,19 @@ settingsRouter.put(
   }
 );
 
+settingsRouter.get("/profile", async (c) => {
+  const ownerId = getRequiredUserId(c);
+  const rows = await db
+    .select({ landlordType: users.landlordType, vatNumber: users.vatNumber })
+    .from(users)
+    .where(eq(users.id, ownerId))
+    .limit(1);
+  return c.json({
+    landlordType: rows[0]?.landlordType ?? "individual",
+    vatNumber: rows[0]?.vatNumber ?? "",
+  });
+});
+
 // Get payment follow-up settings for the current owner
 settingsRouter.get("/payment-follow-up", async (c) => {
   const ownerId = getRequiredUserId(c);

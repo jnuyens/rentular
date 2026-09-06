@@ -301,6 +301,15 @@
     "loadError": "Failed to load communications. Please try again."
   },
   "settings": {
+    "profileTab": "Profile",
+    "landlordType": {
+      "title": "Landlord profile",
+      "description": "Whether you rent as an individual or a company determines your bank connection setup.",
+      "label": "I rent as",
+      "individual": "Individual",
+      "company": "Company",
+      "vat": "VAT number"
+    },
     "title": "Settings",
     "subtitle": "Configure your payment follow-up and preferences",
     "paymentFollowUp": "Payment Follow-up",

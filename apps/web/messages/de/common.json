@@ -301,6 +301,15 @@
     "loadError": "Kommunikation konnte nicht geladen werden. Bitte versuchen Sie es erneut."
   },
   "settings": {
+    "profileTab": "Profil",
+    "landlordType": {
+      "title": "Vermieterprofil",
+      "description": "Ob Sie als Privatperson oder Unternehmen vermieten, bestimmt Ihre Bankverbindung.",
+      "label": "Ich vermiete als",
+      "individual": "Privatperson",
+      "company": "Unternehmen",
+      "vat": "USt-IdNr."
+    },
     "title": "Einstellungen",
     "subtitle": "Konfigurieren Sie Ihre Zahlungsverfolgung und Praeferenzen",
     "paymentFollowUp": "Zahlungsverfolgung",

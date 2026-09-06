@@ -301,6 +301,15 @@
     "loadError": "Kan communicatie niet laden. Probeer het opnieuw."
   },
   "settings": {
+    "profileTab": "Profiel",
+    "landlordType": {
+      "title": "Verhuurdersprofiel",
+      "description": "Of u als particulier of als vennootschap verhuurt bepaalt uw bankkoppeling.",
+      "label": "Ik verhuur als",
+      "individual": "Particulier",
+      "company": "Vennootschap",
+      "vat": "Btw-nummer"
+    },
     "title": "Instellingen",
     "subtitle": "Configureer je betalingsopvolging en voorkeuren",
     "paymentFollowUp": "Betalingsopvolging",
