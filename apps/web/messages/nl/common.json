@@ -828,6 +828,12 @@
     "terms": "Algemene voorwaarden"
   },
   "onboarding": {
+    "landlordType": {
+      "label": "Verhuurt u als particulier of als vennootschap?",
+      "individual": "Particulier",
+      "company": "Vennootschap",
+      "vat": "Btw-nummer"
+    },
     "step1Title": "Voeg uw eerste eigendom toe",
     "step1Desc": "Voer het adres en de gegevens in van een eigendom dat u beheert.",
     "step2Title": "Voeg een huurder toe",

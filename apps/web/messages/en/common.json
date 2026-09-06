@@ -828,6 +828,12 @@
     "terms": "Terms of Service"
   },
   "onboarding": {
+    "landlordType": {
+      "label": "Are you renting as an individual or a company?",
+      "individual": "Individual",
+      "company": "Company",
+      "vat": "VAT number"
+    },
     "step1Title": "Add your first property",
     "step1Desc": "Enter the address and details of a property you manage.",
     "step2Title": "Add a tenant",

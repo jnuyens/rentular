@@ -828,6 +828,12 @@
     "terms": "Conditions generales"
   },
   "onboarding": {
+    "landlordType": {
+      "label": "Louez-vous en tant que particulier ou societe ?",
+      "individual": "Particulier",
+      "company": "Societe",
+      "vat": "Numero de TVA"
+    },
     "step1Title": "Ajoutez votre premier bien",
     "step1Desc": "Entrez l'adresse et les details d'un bien que vous gerez.",
     "step2Title": "Ajoutez un locataire",

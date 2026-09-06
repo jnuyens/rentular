@@ -31,6 +31,28 @@ settingsRouter.put(
   }
 );
 
+// Landlord profile: type (individual/company) selects the Ponto application,
+// VAT is optional (companies). Also settable during onboarding.
+settingsRouter.put(
+  "/profile",
+  zValidator(
+    "json",
+    z.object({
+      landlordType: z.enum(["individual", "company"]),
+      vatNumber: z.string().max(32).optional(),
+    })
+  ),
+  async (c) => {
+    const { landlordType, vatNumber } = c.req.valid("json");
+    const ownerId = getRequiredUserId(c);
+    await db
+      .update(users)
+      .set({ landlordType, vatNumber: vatNumber?.trim() || null })
+      .where(eq(users.id, ownerId));
+    return c.json({ landlordType, vatNumber: vatNumber ?? null });
+  }
+);
+
 // Get payment follow-up settings for the current owner
 settingsRouter.get("/payment-follow-up", async (c) => {
   const ownerId = getRequiredUserId(c);

@@ -53,6 +53,12 @@ export default function OnboardingPage() {
   const [existingLeases, setExistingLeases] = useState<Lease[]>([]);
 
   // Form state
+  // Landlord type selects the Ponto application (individual -> PPM, company -> CPM).
+  const [landlordType, setLandlordType] = useState<"individual" | "company">(
+    "individual"
+  );
+  const [vatNumber, setVatNumber] = useState("");
+
   const [propertyForm, setPropertyForm] = useState({
     name: "",
     type: "apartment" as string,
@@ -165,13 +171,16 @@ export default function OnboardingPage() {
   }
 
   // Step advancement
-  async function advanceStep(nextStep: number) {
+  async function advanceStep(
+    nextStep: number,
+    extra?: Record<string, unknown>
+  ) {
     try {
       await fetch(`${apiUrl}/api/v1/auth/onboarding`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ step: nextStep }),
+        body: JSON.stringify({ step: nextStep, ...extra }),
       });
       setCurrentStep(nextStep);
       setFormErrors({});
@@ -201,7 +210,10 @@ export default function OnboardingPage() {
           const created = await res.json();
           setExistingProperties((prev) => [...prev, created.data || created]);
         }
-        await advanceStep(2);
+        await advanceStep(2, {
+          landlordType,
+          vatNumber: landlordType === "company" ? vatNumber : "",
+        });
       } else if (currentStep === 2) {
         if (!validateStep2()) { setSubmitting(false); return; }
         if (existingTenants.length === 0) {
@@ -404,6 +416,35 @@ export default function OnboardingPage() {
     }
     return (
       <div className="space-y-4">
+        <FormField label={t("onboarding.landlordType.label")}>
+          <div className="flex gap-3">
+            {(["individual", "company"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setLandlordType(opt)}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                  landlordType === opt
+                    ? "border-primary bg-primary/10 font-medium"
+                    : "border-input"
+                }`}
+              >
+                {t(`onboarding.landlordType.${opt}`)}
+              </button>
+            ))}
+          </div>
+        </FormField>
+        {landlordType === "company" && (
+          <FormField label={t("onboarding.landlordType.vat")}>
+            <input
+              type="text"
+              value={vatNumber}
+              onChange={(e) => setVatNumber(e.target.value)}
+              placeholder="BE0123456789"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm"
+            />
+          </FormField>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <FormField label={t("properties.street")} error={formErrors.street}>
             <input

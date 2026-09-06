@@ -828,6 +828,12 @@
     "terms": "Nutzungsbedingungen"
   },
   "onboarding": {
+    "landlordType": {
+      "label": "Vermieten Sie als Privatperson oder als Unternehmen?",
+      "individual": "Privatperson",
+      "company": "Unternehmen",
+      "vat": "USt-IdNr."
+    },
     "step1Title": "Fuegen Sie Ihre erste Immobilie hinzu",
     "step1Desc": "Geben Sie die Adresse und Details einer Immobilie ein, die Sie verwalten.",
     "step2Title": "Fuegen Sie einen Mieter hinzu",

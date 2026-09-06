@@ -268,14 +268,20 @@ authRouter.patch("/onboarding", async (c) => {
   if (!db) return c.json({ error: "Database unavailable" }, 503);
 
   const body = await c.req.json();
-  const { step, complete } = body;
+  const { step, complete, landlordType, vatNumber } = body;
 
-  const updates: Record<string, number | boolean> = {};
+  const updates: Record<string, number | boolean | string | null> = {};
   if (typeof step === "number" && step >= 1 && step <= 4) {
     updates.onboardingStep = step;
   }
   if (typeof complete === "boolean") {
     updates.onboardingComplete = complete;
+  }
+  if (landlordType === "individual" || landlordType === "company") {
+    updates.landlordType = landlordType;
+  }
+  if (typeof vatNumber === "string") {
+    updates.vatNumber = vatNumber.trim() || null;
   }
 
   if (Object.keys(updates).length === 0) {
