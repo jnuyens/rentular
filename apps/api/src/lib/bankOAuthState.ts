@@ -31,6 +31,9 @@ export interface OAuthStatePayload {
   ownerId: string;
   institutionId?: string;
   connectionId?: string;
+  // Which Ponto application (PPM/CPM) this consent belongs to, so the callback
+  // exchanges the code against the right app.
+  model?: "ppm" | "cpm";
   nonce: string;
 }
 
@@ -71,6 +74,12 @@ export async function verifyOAuthState(
     connectionId: payload.connectionId
       ? String(payload.connectionId)
       : undefined,
+    model:
+      payload.model === "cpm"
+        ? "cpm"
+        : payload.model === "ppm"
+          ? "ppm"
+          : undefined,
     nonce: String(payload.nonce),
   };
 }
