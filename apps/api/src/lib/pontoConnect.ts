@@ -37,6 +37,55 @@ export function isPontoConfigured(): boolean {
   );
 }
 
+// ---------- Two-application (PPM/CPM) configuration ----------
+//
+// Isabel sets an application to either PPM (individuals billed via Rentular) or
+// CPM (companies pay Isabel directly), never both, so production needs two apps
+// with their own clientId/secret + certificates. Resolution per field: the
+// model-specific var (PONTO_PPM_* / PONTO_CPM_*), then the legacy PONTO_* var as
+// a sandbox fallback so single-app dev/sandbox keeps working unchanged.
+
+export type PontoModel = "ppm" | "cpm";
+
+export interface PontoAppConfig {
+  clientId: string;
+  clientSecret: string;
+  transport: { cert?: string; key?: string; pfx?: string; passphrase?: string };
+  signature?: { privateKeyPem: string; keyId: string; passphrase?: string };
+}
+
+function envForModel(model: PontoModel, suffix: string): string | undefined {
+  const prefix = model === "ppm" ? "PONTO_PPM_" : "PONTO_CPM_";
+  return process.env[`${prefix}${suffix}`] ?? process.env[`PONTO_${suffix}`];
+}
+
+export function getPontoAppConfig(model: PontoModel): PontoAppConfig {
+  const clientId = envForModel(model, "CLIENT_ID") ?? "";
+  const clientSecret = envForModel(model, "CLIENT_SECRET") ?? "";
+  const sigKey = envForModel(model, "SIG_KEY");
+  const sigKeyId = envForModel(model, "SIG_KEY_ID");
+  return {
+    clientId,
+    clientSecret,
+    transport: {
+      cert: envForModel(model, "TLS_CERT"),
+      key: envForModel(model, "TLS_KEY"),
+      pfx: envForModel(model, "TLS_PFX"),
+      passphrase: envForModel(model, "TLS_PASSPHRASE"),
+    },
+    signature:
+      sigKey && sigKeyId
+        ? {
+            privateKeyPem: sigKey.includes("BEGIN")
+              ? sigKey
+              : readFileSync(sigKey, "utf8"),
+            keyId: sigKeyId,
+            passphrase: envForModel(model, "SIG_PASSPHRASE"),
+          }
+        : undefined,
+  };
+}
+
 export function getPontoBaseUrls(): { apiBase: string; authBase: string } {
   const isProduction = process.env.PONTO_ENVIRONMENT === "production";
   return {
