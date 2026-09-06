@@ -28,7 +28,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { getDb, bankConnections, bankStatements } from "@rentular/db";
+import { getDb, bankConnections, bankStatements, users } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   buildTransactionRows,
@@ -86,6 +86,19 @@ function notConfigured() {
   return { error: "Bank data provider not configured" } as const;
 }
 
+// Select the Ponto application for a landlord: company -> CPM, otherwise PPM
+// (individuals, and the null/default case).
+type PontoModelT = "ppm" | "cpm";
+async function resolveModel(ownerId: string): Promise<PontoModelT> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, ownerId))
+    .limit(1);
+  return rows[0]?.landlordType === "company" ? "cpm" : "ppm";
+}
+
 // ===========================================================================
 // GET /institutions — list Ponto financial institutions for the picker
 // ===========================================================================
@@ -97,10 +110,13 @@ bankConnectionsRouter.get(
   ),
   async (c) => {
     try {
-      getRequiredUserId(c);
+      const userId = getRequiredUserId(c);
       if (!isPontoConfigured()) return c.json(notConfigured(), 503);
       const { country } = c.req.valid("query");
-      const institutions = await listFinancialInstitutions(country);
+      const institutions = await listFinancialInstitutions(
+        country,
+        await resolveModel(userId),
+      );
       return c.json({ data: institutions });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -122,8 +138,9 @@ bankConnectionsRouter.post(
       if (!isPontoConfigured()) return c.json(notConfigured(), 503);
       const { institutionId } = c.req.valid("json");
 
-      const state = await signOAuthState({ ownerId: userId, institutionId });
-      const consentLink = createPontoAuthorizationUrl({ state });
+      const model = await resolveModel(userId);
+      const state = await signOAuthState({ ownerId: userId, institutionId, model });
+      const consentLink = createPontoAuthorizationUrl({ state, model });
 
       const id = randomUUID();
       const db = getDb();
@@ -132,6 +149,7 @@ bankConnectionsRouter.post(
         id,
         ownerId: userId,
         provider: "ponto",
+        pontoModel: model,
         institutionId,
         status: "pending",
         country: "BE",
@@ -187,12 +205,18 @@ bankConnectionsRouter.get(
       );
     }
 
+    // Which Ponto application this consent belongs to (carried in the state JWT).
+    const model = payload.model ?? "ppm";
+
     try {
       // Exchange code → OAuth tokens
-      const tokens = await exchangeAuthorizationCode(code);
+      const tokens = await exchangeAuthorizationCode(code, model);
 
       // List accounts under this consent — v1 takes accounts[0]
-      const accounts = await listAccounts({ accessToken: tokens.accessToken });
+      const accounts = await listAccounts({
+        accessToken: tokens.accessToken,
+        model,
+      });
       if (accounts.length === 0) {
         return c.redirect(
           `${webUrl()}/bank-connections/callback?error=no_accounts`,
@@ -216,7 +240,7 @@ bankConnectionsRouter.get(
       // connection if the lookup fails.
       let institutionName: string | null = null;
       try {
-        const inst = await getFinancialInstitution(payload.institutionId || "");
+        const inst = await getFinancialInstitution(payload.institutionId || "", model);
         institutionName = inst?.name ?? null;
       } catch (nameErr) {
         console.warn(
@@ -419,12 +443,14 @@ bankConnectionsRouter.post("/:id/renew", async (c) => {
     if (!rows[0]) return c.json({ error: "Connection not found" }, 404);
     const conn = rows[0];
 
+    const model = conn.pontoModel ?? "ppm";
     const state = await signOAuthState({
       ownerId: userId,
       connectionId: id,
       institutionId: conn.institutionId,
+      model,
     });
-    const consentLink = createPontoAuthorizationUrl({ state });
+    const consentLink = createPontoAuthorizationUrl({ state, model });
     return c.json({ data: { consentLink } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -462,7 +488,7 @@ bankConnectionsRouter.delete("/:id", async (c) => {
           conn.tokenIv,
           conn.tokenAuthTag,
         );
-        await revokeAccess(accessToken);
+        await revokeAccess(accessToken, conn.pontoModel ?? "ppm");
       } catch (revokeErr) {
         console.warn(
           `[BankConnections] revokeAccess failed for ${id} — continuing with soft-delete`,

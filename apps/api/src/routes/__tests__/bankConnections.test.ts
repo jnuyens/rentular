@@ -32,6 +32,9 @@ vi.mock("@rentular/db", () => {
     __table: "bank_connections",
   };
 
+  const users = { id: "id", landlordType: "landlord_type", __table: "users" };
+  const bankStatements = { id: "id", __table: "bank_statements" };
+
   const fakeDb = {
     insert: (table: unknown) => ({
       values: async (row: Record<string, unknown>) => {
@@ -58,6 +61,8 @@ vi.mock("@rentular/db", () => {
 
   return {
     bankConnections,
+    users,
+    bankStatements,
     getDb: vi.fn(() => fakeDb),
   };
 });
