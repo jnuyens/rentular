@@ -133,8 +133,13 @@ export async function syncBankConnection(
     }
   }
 
-  // Construct a provider pre-loaded with this landlord's tokens
-  const provider = getBankAccountDataProvider({ accessToken, refreshToken });
+  // Construct a provider pre-loaded with this landlord's tokens, bound to the
+  // connection's Ponto application (PPM/CPM) so refresh/revoke use the right app.
+  const provider = getBankAccountDataProvider({
+    accessToken,
+    refreshToken,
+    model: conn.pontoModel ?? "ppm",
+  });
 
   // dateFrom: lastSyncAt → that ISO date; else first-sync backfill = now - 90 days
   const dateFrom = conn.lastSyncAt

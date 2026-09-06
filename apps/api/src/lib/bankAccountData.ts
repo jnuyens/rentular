@@ -4,6 +4,8 @@
  * Per D-03: Landlord connects their bank, system polls for incoming transfers.
  */
 
+import type { PontoModel } from "./pontoConnect";
+
 export interface IncomingTransaction {
   transactionId: string;
   amount: number; // positive = credit, negative = debit
@@ -211,11 +213,17 @@ export class PontoConnectProvider implements BankAccountDataProvider {
   readonly name = "ponto";
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private model: PontoModel = "ppm";
 
-  constructor(tokens?: { accessToken: string; refreshToken?: string }) {
+  constructor(tokens?: {
+    accessToken: string;
+    refreshToken?: string;
+    model?: PontoModel;
+  }) {
     if (tokens) {
       this.accessToken = tokens.accessToken;
       this.refreshToken = tokens.refreshToken || null;
+      if (tokens.model) this.model = tokens.model;
     }
   }
 
@@ -246,6 +254,7 @@ export class PontoConnectProvider implements BankAccountDataProvider {
     const consentLink = createPontoAuthorizationUrl({
       state,
       redirectUri: params.redirectUrl,
+      model: this.model,
     });
 
     // Default to EBA upper bound (180 days). The callback route MUST overwrite
@@ -263,7 +272,7 @@ export class PontoConnectProvider implements BankAccountDataProvider {
   async listAccounts(_requisitionId: string): Promise<BankAccountInfo[]> {
     const { listAccounts: pontoListAccounts } = await import("./pontoConnect");
     const accessToken = this.requireAccessToken();
-    const accounts = await pontoListAccounts({ accessToken });
+    const accounts = await pontoListAccounts({ accessToken, model: this.model });
     return accounts.map((a) => ({
       accountId: a.id,
       iban: a.iban,
@@ -285,6 +294,7 @@ export class PontoConnectProvider implements BankAccountDataProvider {
       accessToken,
       accountId: params.accountId,
       dateFrom: params.dateFrom,
+      model: this.model,
     });
     return txs.map((t) => ({
       transactionId: t.id,
@@ -318,7 +328,7 @@ export class PontoConnectProvider implements BankAccountDataProvider {
   async revokeConsent(_requisitionId: string): Promise<void> {
     const { revokeAccess } = await import("./pontoConnect");
     const accessToken = this.requireAccessToken();
-    await revokeAccess(accessToken);
+    await revokeAccess(accessToken, this.model);
   }
 }
 
@@ -333,7 +343,7 @@ export class PontoConnectProvider implements BankAccountDataProvider {
  * tokens (Plan 03 Task 3 will wire this).
  */
 export function getBankAccountDataProvider(
-  tokens?: { accessToken: string; refreshToken?: string }
+  tokens?: { accessToken: string; refreshToken?: string; model?: PontoModel }
 ): BankAccountDataProvider {
   const provider = (process.env.BANK_DATA_PROVIDER || "ponto").toLowerCase();
   if (provider === "gocardless_bad") return new GoCardlessBadProvider();
