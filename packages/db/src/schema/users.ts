@@ -7,6 +7,7 @@ import {
   timestamp,
   int,
   boolean,
+  mysqlEnum,
   primaryKey,
 } from "drizzle-orm/mysql-core";
 
@@ -20,6 +21,10 @@ export const users = mysqlTable("users", {
   // Password auth (bcrypt hash, null for OAuth-only users)
   passwordHash: varchar("password_hash", { length: 255 }),
   locale: varchar("locale", { length: 5 }).default("en"),
+  // Landlord classification: selects the Ponto application (individual -> PPM,
+  // company -> CPM). Null is treated as individual. VAT is optional (companies).
+  landlordType: mysqlEnum("landlord_type", ["individual", "company"]),
+  vatNumber: varchar("vat_number", { length: 32 }),
   onboardingStep: int("onboarding_step").default(1),
   onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),

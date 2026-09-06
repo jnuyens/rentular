@@ -16,6 +16,9 @@ export const bankConnections = mysqlTable("bank_connections", {
     .references(() => users.id),
   provider: mysqlEnum("provider", ["gocardless_bad", "ponto", "enable_banking"])
     .notNull(),
+  // Which Ponto application a connection belongs to (individual -> ppm,
+  // company -> cpm). Set at connect time; null for non-Ponto providers.
+  pontoModel: mysqlEnum("ponto_model", ["ppm", "cpm"]),
   externalRequisitionId: varchar("external_requisition_id", { length: 255 }),
   externalAccountId: varchar("external_account_id", { length: 255 }),
   institutionId: varchar("institution_id", { length: 255 }).notNull(),
