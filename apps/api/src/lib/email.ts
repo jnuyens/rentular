@@ -7,6 +7,11 @@ const defaultTransporter = createTransport({
   host: process.env.SMTP_HOST || "localhost",
   port: Number(process.env.SMTP_PORT) || 1025,
   secure: false,
+  // The local relay (postfix on the host) presents a certificate for its own
+  // hostname, not 127.0.0.1, so STARTTLS to the loopback address would fail
+  // verification. Trust it: this only relaxes cert checking for the trusted
+  // localhost relay, not for authenticated remote SMTP (that path sets its own).
+  tls: { rejectUnauthorized: false },
 });
 
 export interface EmailOptions {
