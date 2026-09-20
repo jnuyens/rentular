@@ -21,6 +21,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import {
   getDb,
   bankConnections,
@@ -46,6 +47,11 @@ type Db = ReturnType<typeof getDb>;
 // Normalize an IBAN for comparison (strip spaces, uppercase).
 function normIban(v: string | null | undefined): string {
   return (v || "").replace(/\s+/g, "").toUpperCase();
+}
+
+// Today as YYYY-MM-DD (date columns are string-mode).
+function isoToday(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 const statusQuerySchema = z.object({
@@ -225,8 +231,38 @@ bankTransactionsRouter.post(
         .orderBy(asc(payments.dueDate))
         .limit(1);
 
+      // No scheduled/pending payment for this lease: record a paid one from the
+      // transfer so the rent is captured and the statement is reconciled.
       if (!pending[0]) {
-        return c.json({ error: "No pending payment for lease" }, 409);
+        const paidDate = statement.bookingDate || isoToday();
+        const newPaymentId = randomUUID();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (db as any).insert(payments).values({
+          id: newPaymentId,
+          leaseId,
+          amount: String(statement.amount),
+          dueDate: paidDate,
+          paidDate,
+          status: "paid",
+          method: "bank_transfer",
+          notes: `Recorded from bank transfer ${statement.externalTransactionId}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (db as any)
+          .update(bankStatements)
+          .set({
+            matchStatus: "matched",
+            matchedPaymentId: newPaymentId,
+            matchedAt: new Date(),
+          })
+          .where(eq(bankStatements.id, statement.id));
+        console.log(
+          `[BankTransactions] Assigned statement ${statementId} -> NEW payment ${newPaymentId} (lease ${leaseId})`,
+        );
+        const created = await updatedRowResponse(db, statementId, userId);
+        return c.json({ data: created });
       }
 
       const note = `Manually assigned from bank transfer ${statement.externalTransactionId}`;
