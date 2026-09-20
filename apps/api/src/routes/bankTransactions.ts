@@ -27,11 +27,13 @@ import {
   bankStatements,
   payments,
   leases,
+  tenants,
 } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   buildTransactionRows,
   getOwnedStatement,
+  decryptOrNull,
   type StatementRow,
   type ConnectionSummary,
   type TransactionRow,
@@ -40,6 +42,11 @@ import {
 export const bankTransactionsRouter = new Hono();
 
 type Db = ReturnType<typeof getDb>;
+
+// Normalize an IBAN for comparison (strip spaces, uppercase).
+function normIban(v: string | null | undefined): string {
+  return (v || "").replace(/\s+/g, "").toUpperCase();
+}
 
 const statusQuerySchema = z.object({
   status: z
@@ -151,7 +158,23 @@ bankTransactionsRouter.get(
         .where(whereClause)
         .orderBy(desc(bankStatements.bookingDate))) as StatementRow[];
 
-      const data = await buildTransactionRows(db, rows, { connectionMap });
+      let data = await buildTransactionRows(db, rows, { connectionMap });
+
+      // By default hide outgoing transactions (debits): they are not rent.
+      // Keep an outgoing one only when its counterparty IBAN belongs to a
+      // tenant (e.g. a deposit refund). `?includeOutgoing=true` shows all.
+      if (c.req.query("includeOutgoing") !== "true") {
+        const tRows = await db
+          .select({ iban: tenants.iban })
+          .from(tenants)
+          .where(eq(tenants.ownerId, userId));
+        const tenantIbans = new Set(
+          tRows.map((tr) => normIban(tr.iban)).filter(Boolean),
+        );
+        data = data.filter(
+          (r) => r.amount > 0 || tenantIbans.has(normIban(r.counterpartyIban)),
+        );
+      }
       return c.json({ data });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -327,6 +350,85 @@ bankTransactionsRouter.post("/:statementId/ignore", async (c) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[BankTransactions] POST /:statementId/ignore error:", err);
+    return c.json({ error: message }, 500);
+  }
+});
+
+// ===========================================================================
+// POST /:statementId/ignore-similar — ignore every transaction from the same
+// counterparty account number (IBAN) as this one. Never touches matched rows.
+// ===========================================================================
+bankTransactionsRouter.post("/:statementId/ignore-similar", async (c) => {
+  try {
+    const userId = getRequiredUserId(c);
+    const statementId = c.req.param("statementId");
+    const db = getDb();
+
+    const owned = await getOwnedStatement(db, statementId, userId);
+    if (!owned) return c.json({ error: "Transaction not found" }, 404);
+
+    const targetIban = normIban(
+      decryptOrNull(
+        owned.statement.counterpartyIbanEncrypted,
+        owned.statement.counterpartyIbanIv,
+        owned.statement.counterpartyIbanAuthTag,
+      ),
+    );
+
+    // No counterparty IBAN to match on: just ignore this one.
+    if (!targetIban) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (db as any)
+        .update(bankStatements)
+        .set({ matchStatus: "ignored" })
+        .where(eq(bankStatements.id, statementId));
+      return c.json({ data: { ignored: 1 } });
+    }
+
+    const conns = await db
+      .select({ id: bankConnections.id })
+      .from(bankConnections)
+      .where(eq(bankConnections.ownerId, userId));
+    const connIds = conns.map((cn) => cn.id);
+    if (connIds.length === 0) return c.json({ data: { ignored: 0 } });
+
+    const all = (await db
+      .select()
+      .from(bankStatements)
+      .where(inArray(bankStatements.connectionId, connIds))) as StatementRow[];
+
+    const ids = all
+      .filter(
+        (s) =>
+          s.matchStatus !== "matched" &&
+          normIban(
+            decryptOrNull(
+              s.counterpartyIbanEncrypted,
+              s.counterpartyIbanIv,
+              s.counterpartyIbanAuthTag,
+            ),
+          ) === targetIban,
+      )
+      .map((s) => s.id);
+
+    if (ids.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (db as any)
+        .update(bankStatements)
+        .set({ matchStatus: "ignored" })
+        .where(inArray(bankStatements.id, ids));
+    }
+
+    console.log(
+      `[BankTransactions] Ignored ${ids.length} transactions similar to ${statementId}`,
+    );
+    return c.json({ data: { ignored: ids.length } });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error(
+      "[BankTransactions] POST /:statementId/ignore-similar error:",
+      err,
+    );
     return c.json({ error: message }, 500);
   }
 });

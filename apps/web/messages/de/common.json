@@ -1031,6 +1031,7 @@
       "assign": "Zuordnen",
       "approve": "Bestätigen",
       "ignore": "Ignorieren",
+      "ignoreSimilar": "Ähnliche ignorieren",
       "undo": "Rückgängig"
     },
     "matchedTo": "Zugeordnet zu {label}",
@@ -1050,6 +1051,7 @@
       "assigned": "Zahlung zugeordnet",
       "approved": "Zahlung zugeordnet",
       "ignored": "Transaktion ignoriert",
+      "ignoredSimilar": "{count} ähnliche Transaktionen ignoriert",
       "undone": "Abgleich rückgängig gemacht",
       "error": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
       "noPendingPayment": "Keine offene Zahlung für diesen Mietvertrag.",

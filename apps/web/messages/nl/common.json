@@ -1031,6 +1031,7 @@
       "assign": "Toewijzen",
       "approve": "Goedkeuren",
       "ignore": "Negeren",
+      "ignoreSimilar": "Vergelijkbare negeren",
       "undo": "Ongedaan maken"
     },
     "matchedTo": "Gekoppeld aan {label}",
@@ -1050,6 +1051,7 @@
       "assigned": "Betaling gekoppeld",
       "approved": "Betaling gekoppeld",
       "ignored": "Transactie genegeerd",
+      "ignoredSimilar": "{count} vergelijkbare transacties genegeerd",
       "undone": "Reconciliatie ongedaan gemaakt",
       "error": "Er is iets misgegaan. Probeer het opnieuw.",
       "noPendingPayment": "Geen openstaande betaling voor dit huurcontract.",

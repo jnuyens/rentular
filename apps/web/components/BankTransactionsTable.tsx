@@ -155,7 +155,7 @@ export function BankTransactionsTable({
 
   async function runAction(
     statementId: string,
-    action: "approve" | "ignore" | "undo",
+    action: "approve" | "ignore" | "undo" | "ignore-similar",
   ) {
     setBusyId(statementId);
     try {
@@ -164,13 +164,19 @@ export function BankTransactionsTable({
         { method: "POST", credentials: "include" },
       );
       if (res.ok) {
-        toast.success(
-          action === "approve"
-            ? t("toasts.approved")
-            : action === "ignore"
-              ? t("toasts.ignored")
-              : t("toasts.undone"),
-        );
+        if (action === "ignore-similar") {
+          const body = await res.json().catch(() => ({}));
+          const count = body?.data?.ignored ?? 0;
+          toast.success(t("toasts.ignoredSimilar", { count }));
+        } else {
+          toast.success(
+            action === "approve"
+              ? t("toasts.approved")
+              : action === "ignore"
+                ? t("toasts.ignored")
+                : t("toasts.undone"),
+          );
+        }
         onRefetch();
       } else if (res.status === 409 && action === "approve") {
         toast.error(t("toasts.noMatch"));
@@ -259,6 +265,16 @@ export function BankTransactionsTable({
           >
             {t("actions.ignore")}
           </Button>
+          {tx.counterpartyIban && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => runAction(tx.id, "ignore-similar")}
+              disabled={disabled}
+            >
+              {t("actions.ignoreSimilar")}
+            </Button>
+          )}
         </div>
       );
     }
@@ -289,6 +305,16 @@ export function BankTransactionsTable({
           >
             {t("actions.ignore")}
           </Button>
+          {tx.counterpartyIban && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => runAction(tx.id, "ignore-similar")}
+              disabled={disabled}
+            >
+              {t("actions.ignoreSimilar")}
+            </Button>
+          )}
         </div>
       );
     }

@@ -1031,6 +1031,7 @@
       "assign": "Attribuer",
       "approve": "Approuver",
       "ignore": "Ignorer",
+      "ignoreSimilar": "Ignorer les similaires",
       "undo": "Annuler"
     },
     "matchedTo": "Associé à {label}",
@@ -1050,6 +1051,7 @@
       "assigned": "Paiement associé",
       "approved": "Paiement associé",
       "ignored": "Transaction ignorée",
+      "ignoredSimilar": "{count} transactions similaires ignorées",
       "undone": "Rapprochement annulé",
       "error": "Une erreur est survenue. Veuillez réessayer.",
       "noPendingPayment": "Aucun paiement en attente pour ce bail.",

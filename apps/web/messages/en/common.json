@@ -1031,6 +1031,7 @@
       "assign": "Assign",
       "approve": "Approve",
       "ignore": "Ignore",
+      "ignoreSimilar": "Ignore similar",
       "undo": "Undo"
     },
     "matchedTo": "Matched to {label}",
@@ -1050,6 +1051,7 @@
       "assigned": "Payment matched",
       "approved": "Payment matched",
       "ignored": "Transaction ignored",
+      "ignoredSimilar": "Ignored {count} similar transactions",
       "undone": "Reconciliation reverted",
       "error": "Something went wrong. Please try again.",
       "noPendingPayment": "No pending payment for this lease.",

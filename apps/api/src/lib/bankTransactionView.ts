@@ -68,7 +68,7 @@ export type StatementRow = typeof bankStatements.$inferSelect;
  * the stored plaintext was empty (importer encrypts `debtorName ?? ""`), or
  * when decryption fails (wrong key / tampered) — never throws to the caller.
  */
-function decryptOrNull(
+export function decryptOrNull(
   encrypted: string | null,
   iv: string | null,
   tag: string | null,
