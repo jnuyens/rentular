@@ -27,6 +27,7 @@ interface State {
   statement: Record<string, unknown>;
   pendingPayments: Array<{ id: string; notes: string | null }>;
   paymentUpdates: Array<Record<string, unknown>>;
+  paymentInserts: Array<Record<string, unknown>>;
   statementUpdates: Array<Record<string, unknown>>;
 }
 
@@ -81,6 +82,12 @@ function makeBuilder(table: unknown) {
 
 const fakeDb = {
   select: () => makeBuilder(null),
+  insert: (table: unknown) => ({
+    values: async (vals: Record<string, unknown>) => {
+      if (table === payments) state.paymentInserts.push(vals);
+      return [{ insertId: 1 }];
+    },
+  }),
   update: (table: unknown) => ({
     set: (vals: Record<string, unknown>) => ({
       where: async () => {
@@ -155,6 +162,7 @@ beforeEach(() => {
     statement: freshStatement(),
     pendingPayments: [{ id: "pay-1", notes: null }],
     paymentUpdates: [],
+    paymentInserts: [],
     statementUpdates: [],
   };
 });
@@ -188,7 +196,7 @@ describe("bankTransactions router — reconciliation actions", () => {
     expect(state.statement.matchedAt).toBeInstanceOf(Date);
   });
 
-  it("assign: returns 409 when the lease has no pending payment", async () => {
+  it("assign: creates a paid payment when the lease has no pending payment", async () => {
     state.pendingPayments = [];
     const app = await buildApp("owner-1");
     const res = await app.request("/bank-transactions/stmt-1/assign", {
@@ -196,10 +204,17 @@ describe("bankTransactions router — reconciliation actions", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ leaseId: "lease-1" }),
     });
-    expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("No pending payment");
-    expect(state.paymentUpdates).toHaveLength(0);
+    expect(res.status).toBe(200);
+    // A new paid payment was created for the lease, and the statement matched.
+    expect(state.paymentInserts).toHaveLength(1);
+    expect(state.paymentInserts[0]).toMatchObject({
+      leaseId: "lease-1",
+      status: "paid",
+      method: "bank_transfer",
+    });
+    expect(
+      state.statementUpdates.some((u) => u.matchStatus === "matched"),
+    ).toBe(true);
   });
 
   it("undo: reverts a matched statement + payment back to pending/unmatched", async () => {
