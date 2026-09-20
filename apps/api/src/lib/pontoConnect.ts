@@ -411,39 +411,14 @@ export async function revokeAccess(
   }
 }
 
-// ---------- client_credentials service token (financial-institutions) ----------
+// ---------- financial-institutions ----------
 //
-// The financial-institutions endpoints need a real bearer in production. We mint
-// a client_credentials access token per model and cache it until shortly before
-// expiry. In sandbox with no client credentials configured, callers skip auth
-// (institutionsAuthHeaders returns {}), preserving the public-endpoint behavior.
-
-const clientTokenCache = new Map<
-  PontoModel,
-  { token: string; expiresAt: number }
->();
-
-export async function getClientAccessToken(model: PontoModel): Promise<string> {
-  const cached = clientTokenCache.get(model);
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (cached && cached.expiresAt - 60 > nowSec) return cached.token;
-  const body = new URLSearchParams({ grant_type: "client_credentials" });
-  const res = await postTokenEndpoint(body, model);
-  clientTokenCache.set(model, {
-    token: res.accessToken,
-    expiresAt: nowSec + res.expiresIn,
-  });
-  return res.accessToken;
-}
-
-async function institutionsAuthHeaders(
-  model: PontoModel
-): Promise<Record<string, string>> {
-  const cfg = getPontoAppConfig(model);
-  // Sandbox / no credentials: the public endpoint is reachable without auth.
-  if (!cfg.clientId || !cfg.clientSecret) return {};
-  return { Authorization: `Bearer ${await getClientAccessToken(model)}` };
-}
+// The financial-institutions endpoints are reachable with the mTLS transport
+// certificate alone and take NO Authorization header. Verified against Ponto
+// production 2026-09-20: a client_credentials access token is explicitly
+// rejected here ("Access tokens created with the 'client_credentials' grant
+// type are not allowed"), and sandbox took no auth either. So the callers send
+// only Accept and rely on the mTLS agent attached by ibanityFetch.
 
 // ---------- Authenticated API helpers ----------
 
@@ -571,7 +546,7 @@ export async function listFinancialInstitutions(
   const url = `${apiBase}/financial-institutions?${qs.toString()}`;
   const res = await ibanityFetch(url, {
     method: "GET",
-    headers: { ...(await institutionsAuthHeaders(model)), Accept: "application/json" },
+    headers: { Accept: "application/json" },
     model,
   });
   if (!res.ok) {
@@ -598,7 +573,7 @@ export async function getFinancialInstitution(
   const url = `${apiBase}/financial-institutions/${encodeURIComponent(id)}`;
   const res = await ibanityFetch(url, {
     method: "GET",
-    headers: { ...(await institutionsAuthHeaders(model)), Accept: "application/json" },
+    headers: { Accept: "application/json" },
     model,
   });
   if (res.status === 404) return null;
