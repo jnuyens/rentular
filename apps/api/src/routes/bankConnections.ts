@@ -550,7 +550,13 @@ bankConnectionsRouter.post("/:id/sync", async (c) => {
     }
     lastSyncCallByConnection.set(key, now);
 
-    const result = await syncBankConnection(id);
+    // Customer IP for the Ponto synchronization (PSD2). Behind Caddy the real
+    // client IP is in X-Forwarded-For; fall back to X-Real-IP.
+    const customerIp =
+      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+      c.req.header("x-real-ip") ||
+      undefined;
+    const result = await syncBankConnection(id, customerIp);
     return c.json({ data: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

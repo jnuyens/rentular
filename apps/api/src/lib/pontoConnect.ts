@@ -553,6 +553,86 @@ export async function listTransactions(params: {
   return out;
 }
 
+// ---------- account synchronization ----------
+//
+// Ponto only exposes transactions AFTER a synchronization has pulled them from
+// the bank. Creating one requires the customer's IP address (PSD2 traceability).
+// Create the sync, then poll until it reaches a terminal state, then list.
+
+export async function createTransactionsSync(params: {
+  accessToken: string;
+  accountId: string;
+  customerIpAddress: string;
+  model?: PontoModel;
+}): Promise<{ id: string; status: string }> {
+  const model = params.model ?? "ppm";
+  const { apiBase } = getPontoBaseUrls();
+  const body = JSON.stringify({
+    data: {
+      type: "synchronization",
+      attributes: {
+        resourceType: "account",
+        resourceId: params.accountId,
+        subtype: "accountTransactions",
+        customerIpAddress: params.customerIpAddress,
+      },
+    },
+  });
+  const res = await ibanityFetch(`${apiBase}/synchronizations`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body,
+    model,
+  });
+  if (!res.ok) {
+    throw new Error(
+      `[Ponto] POST /synchronizations failed: ${res.status} ${res.statusText}`
+    );
+  }
+  const json = (await res.json()) as {
+    data: { id: string; attributes: { status?: string } };
+  };
+  return { id: json.data.id, status: json.data.attributes?.status || "pending" };
+}
+
+export async function getSynchronizationStatus(
+  id: string,
+  accessToken: string,
+  model: PontoModel = "ppm"
+): Promise<string> {
+  const json = await getJson<{ data: { attributes: { status?: string } } }>(
+    `/synchronizations/${encodeURIComponent(id)}`,
+    accessToken,
+    model
+  );
+  return json.data?.attributes?.status || "unknown";
+}
+
+/**
+ * Create a transactions synchronization and wait (bounded poll) until it
+ * reaches a terminal state. Does not throw on "error" status; the caller reads
+ * whatever transactions are available afterwards.
+ */
+export async function syncAccountTransactions(params: {
+  accessToken: string;
+  accountId: string;
+  customerIpAddress: string;
+  model?: PontoModel;
+}): Promise<string> {
+  const model = params.model ?? "ppm";
+  const { id, status } = await createTransactionsSync(params);
+  let st = status;
+  for (let i = 0; i < 20 && st !== "success" && st !== "error"; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    st = await getSynchronizationStatus(id, params.accessToken, model);
+  }
+  return st;
+}
+
 export async function listFinancialInstitutions(
   country: string,
   model: PontoModel = "ppm"

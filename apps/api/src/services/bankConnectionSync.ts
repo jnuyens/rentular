@@ -30,7 +30,7 @@ import {
   bankStatements,
 } from "@rentular/db";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
-import { refreshAccessToken } from "../lib/pontoConnect";
+import { refreshAccessToken, syncAccountTransactions } from "../lib/pontoConnect";
 import { decrypt, encrypt } from "../lib/encryption";
 import { importBankStatements } from "./bankStatementImporter";
 import { processIncomingTransactions } from "./transactionMatcher";
@@ -71,15 +71,23 @@ function isoDate(d: Date): string {
 // promise instead of racing.
 const inFlight = new Map<string, Promise<SyncResult>>();
 
-export function syncBankConnection(connectionId: string): Promise<SyncResult> {
+export function syncBankConnection(
+  connectionId: string,
+  customerIpAddress?: string,
+): Promise<SyncResult> {
   const existing = inFlight.get(connectionId);
   if (existing) return existing;
-  const p = runSync(connectionId).finally(() => inFlight.delete(connectionId));
+  const p = runSync(connectionId, customerIpAddress).finally(() =>
+    inFlight.delete(connectionId),
+  );
   inFlight.set(connectionId, p);
   return p;
 }
 
-async function runSync(connectionId: string): Promise<SyncResult> {
+async function runSync(
+  connectionId: string,
+  customerIpAddress?: string,
+): Promise<SyncResult> {
   const db = getDb();
 
   // Load the connection row
@@ -174,6 +182,33 @@ async function runSync(connectionId: string): Promise<SyncResult> {
   // Provider with the freshly-refreshed access token, bound to the connection's
   // Ponto application (PPM/CPM).
   const provider = getBankAccountDataProvider({ accessToken, model });
+
+  // Ponto only exposes transactions AFTER a synchronization pulls them from the
+  // bank. Trigger one and wait. Requires the customer IP (PSD2): the landlord's
+  // request IP for a manual "Sync now", or PONTO_SYNC_IP for background cron.
+  const customerIp = customerIpAddress || process.env.PONTO_SYNC_IP;
+  if (customerIp) {
+    try {
+      const status = await syncAccountTransactions({
+        accessToken,
+        accountId: conn.externalAccountId,
+        customerIpAddress: customerIp,
+        model,
+      });
+      console.log(
+        `[BankSync] Connection ${connectionId} synchronization: ${status}`,
+      );
+    } catch (err) {
+      console.warn(
+        `[BankSync] Connection ${connectionId} synchronization failed; reading available data:`,
+        (err as Error).message,
+      );
+    }
+  } else {
+    console.warn(
+      `[BankSync] Connection ${connectionId}: no customer IP (set PONTO_SYNC_IP or pass one); reading cached transactions only`,
+    );
+  }
 
   // dateFrom: lastSyncAt → that ISO date; else first-sync backfill = now - 90 days
   const dateFrom = conn.lastSyncAt
