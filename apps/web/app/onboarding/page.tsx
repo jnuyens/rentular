@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Check, Building2, Users, FileText, CreditCard } from "lucide-react";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
+import PhoneInput from "@/components/PhoneInput";
 import Image from "next/image";
 
 interface Property {
@@ -594,14 +595,10 @@ export default function OnboardingPage() {
           />
         </FormField>
         <FormField label={t("tenants.phone")}>
-          <input
-            type="tel"
+          <PhoneInput
+            defaultCountry="BE"
             value={tenantForm.phone}
-            onChange={(e) =>
-              setTenantForm({ ...tenantForm, phone: e.target.value })
-            }
-            className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-            placeholder="+32 ..."
+            onChange={(phone) => setTenantForm({ ...tenantForm, phone })}
           />
         </FormField>
         <FormField label={t("tenants.language")}>
