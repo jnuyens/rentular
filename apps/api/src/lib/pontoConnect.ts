@@ -423,12 +423,15 @@ export async function revokeAccess(
 // ---------- Authenticated API helpers ----------
 
 async function getJson<T>(
-  path: string,
+  pathOrUrl: string,
   accessToken: string,
   model: PontoModel
 ): Promise<T> {
-  const { apiBase } = getPontoBaseUrls();
-  const url = `${apiBase}${path}`;
+  // Accepts a relative path (prefixed with apiBase) or a full URL, so paginated
+  // callers can follow the absolute `links.next` returned by Ibanity.
+  const url = pathOrUrl.startsWith("http")
+    ? pathOrUrl
+    : `${getPontoBaseUrls().apiBase}${pathOrUrl}`;
   const res = await ibanityFetch(url, {
     method: "GET",
     headers: {
@@ -439,7 +442,7 @@ async function getJson<T>(
   });
   if (!res.ok) {
     throw new Error(
-      `[Ponto] GET ${path} failed: ${res.status} ${res.statusText}`
+      `[Ponto] GET ${pathOrUrl} failed: ${res.status} ${res.statusText}`
     );
   }
   return (await res.json()) as T;
@@ -453,6 +456,7 @@ interface JsonApiItem<TAttrs> {
 
 interface JsonApiList<TAttrs> {
   data: Array<JsonApiItem<TAttrs>>;
+  links?: { next?: string; first?: string };
 }
 
 interface AccountAttrs {
@@ -512,29 +516,41 @@ export async function listTransactions(params: {
   dateFrom?: string;
   model?: PontoModel;
 }): Promise<PontoTransaction[]> {
+  const model = params.model ?? "ppm";
   const qs = new URLSearchParams();
   if (params.dateFrom) qs.set("filter[executionDate][gte]", params.dateFrom);
-  const path =
-    `/accounts/${encodeURIComponent(params.accountId)}/transactions` +
-    (qs.toString() ? `?${qs.toString()}` : "");
-  const json = await getJson<JsonApiList<TransactionAttrs>>(
-    path,
-    params.accessToken,
-    params.model ?? "ppm"
-  );
-  return (json.data || []).map((item) => ({
-    id: item.id,
-    valueDate: item.attributes?.valueDate,
-    executionDate: item.attributes?.executionDate,
-    amount: Number(item.attributes?.amount ?? 0),
-    currency: item.attributes?.currency || "EUR",
-    counterpartName: item.attributes?.counterpartName,
-    counterpartReference: item.attributes?.counterpartReference,
-    remittanceInformation: item.attributes?.remittanceInformation,
-    remittanceInformationType: item.attributes?.remittanceInformationType,
-    description: item.attributes?.description,
-    raw: item as unknown as Record<string, unknown>,
-  }));
+  qs.set("page[limit]", "100");
+  // Follow JSON:API pagination (links.next) so the full history is pulled, not
+  // just the first page. `next` is an absolute URL; getJson accepts either form.
+  let next: string | undefined =
+    `/accounts/${encodeURIComponent(params.accountId)}/transactions?${qs.toString()}`;
+  const out: PontoTransaction[] = [];
+  let guard = 0;
+  while (next && guard++ < 200) {
+    const url: string = next;
+    const json = await getJson<JsonApiList<TransactionAttrs>>(
+      url,
+      params.accessToken,
+      model
+    );
+    for (const item of json.data || []) {
+      out.push({
+        id: item.id,
+        valueDate: item.attributes?.valueDate,
+        executionDate: item.attributes?.executionDate,
+        amount: Number(item.attributes?.amount ?? 0),
+        currency: item.attributes?.currency || "EUR",
+        counterpartName: item.attributes?.counterpartName,
+        counterpartReference: item.attributes?.counterpartReference,
+        remittanceInformation: item.attributes?.remittanceInformation,
+        remittanceInformationType: item.attributes?.remittanceInformationType,
+        description: item.attributes?.description,
+        raw: item as unknown as Record<string, unknown>,
+      });
+    }
+    next = json.links?.next;
+  }
+  return out;
 }
 
 export async function listFinancialInstitutions(

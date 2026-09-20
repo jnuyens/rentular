@@ -30,7 +30,8 @@ import {
   bankStatements,
 } from "@rentular/db";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
-import { decrypt } from "../lib/encryption";
+import { refreshAccessToken } from "../lib/pontoConnect";
+import { decrypt, encrypt } from "../lib/encryption";
 import { importBankStatements } from "./bankStatementImporter";
 import { processIncomingTransactions } from "./transactionMatcher";
 import type { IncomingTransaction } from "../lib/bankAccountData";
@@ -64,9 +65,21 @@ function isoDate(d: Date): string {
   return d.toISOString().split("T")[0]!;
 }
 
-export async function syncBankConnection(
-  connectionId: string,
-): Promise<SyncResult> {
+// Per-connection in-flight lock. Refresh tokens are single-use (Ibanity), so two
+// concurrent syncs of the same connection (e.g. cron + manual "Sync now") must
+// not both try to exchange the same refresh token. Callers share the in-flight
+// promise instead of racing.
+const inFlight = new Map<string, Promise<SyncResult>>();
+
+export function syncBankConnection(connectionId: string): Promise<SyncResult> {
+  const existing = inFlight.get(connectionId);
+  if (existing) return existing;
+  const p = runSync(connectionId).finally(() => inFlight.delete(connectionId));
+  inFlight.set(connectionId, p);
+  return p;
+}
+
+async function runSync(connectionId: string): Promise<SyncResult> {
   const db = getDb();
 
   // Load the connection row
@@ -107,39 +120,60 @@ export async function syncBankConnection(
     };
   }
 
-  // Decrypt tokens (refresh is optional — provider may operate on access alone for short-lived sessions)
-  const accessToken = decryptTriplet(
-    conn.encryptedAccessToken,
-    conn.tokenIv,
-    conn.tokenAuthTag,
+  const model = conn.pontoModel ?? "ppm";
+
+  // Ponto access tokens are short-lived and refresh tokens are single-use and
+  // rotate on every exchange (Ibanity docs). So each sync exchanges the stored
+  // refresh token for a fresh access token, then persists BOTH rotated tokens
+  // encrypted before using them. The in-flight lock above prevents two syncs of
+  // the same connection racing on the single-use refresh token.
+  const refreshToken = decryptTriplet(
+    conn.encryptedRefreshToken,
+    conn.refreshTokenIv,
+    conn.refreshTokenAuthTag,
   );
-  let refreshToken: string | undefined;
-  if (
-    conn.encryptedRefreshToken &&
-    conn.refreshTokenIv &&
-    conn.refreshTokenAuthTag
-  ) {
-    try {
-      refreshToken = decrypt(
-        conn.encryptedRefreshToken,
-        conn.refreshTokenIv,
-        conn.refreshTokenAuthTag,
-      );
-    } catch (err) {
-      console.warn(
-        `[BankSync] Connection ${connectionId} refresh token decrypt failed; continuing with access only`,
-        err,
-      );
-    }
+
+  let accessToken: string;
+  try {
+    const fresh = await refreshAccessToken(refreshToken, model);
+    accessToken = fresh.accessToken;
+    const encA = encrypt(fresh.accessToken);
+    const encR = encrypt(fresh.refreshToken);
+    await db
+      .update(bankConnections)
+      .set({
+        encryptedAccessToken: encA.encrypted,
+        tokenIv: encA.iv,
+        tokenAuthTag: encA.tag,
+        encryptedRefreshToken: encR.encrypted,
+        refreshTokenIv: encR.iv,
+        refreshTokenAuthTag: encR.tag,
+        updatedAt: new Date(),
+      })
+      .where(eq(bankConnections.id, connectionId));
+  } catch (err) {
+    // Refresh failed: the consent is likely expired or revoked upstream. Flag
+    // the connection so the UI can prompt re-authorization. Never log the token.
+    console.error(
+      `[BankSync] Connection ${connectionId} token refresh failed:`,
+      (err as Error).message,
+    );
+    await db
+      .update(bankConnections)
+      .set({
+        status: "expired",
+        errorMessage: "Ponto token refresh failed; re-authorization required",
+        updatedAt: new Date(),
+      })
+      .where(eq(bankConnections.id, connectionId));
+    throw new Error(
+      `[BankSync] Connection ${connectionId} token refresh failed; marked expired`,
+    );
   }
 
-  // Construct a provider pre-loaded with this landlord's tokens, bound to the
-  // connection's Ponto application (PPM/CPM) so refresh/revoke use the right app.
-  const provider = getBankAccountDataProvider({
-    accessToken,
-    refreshToken,
-    model: conn.pontoModel ?? "ppm",
-  });
+  // Provider with the freshly-refreshed access token, bound to the connection's
+  // Ponto application (PPM/CPM).
+  const provider = getBankAccountDataProvider({ accessToken, model });
 
   // dateFrom: lastSyncAt → that ISO date; else first-sync backfill = now - 90 days
   const dateFrom = conn.lastSyncAt
