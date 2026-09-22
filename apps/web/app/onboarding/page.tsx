@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Check, Building2, Users, FileText, CreditCard } from "lucide-react";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import PhoneInput from "@/components/PhoneInput";
+import LocaleDateInput from "@/components/LocaleDateInput";
 import Image from "next/image";
 
 interface Property {
@@ -672,13 +673,11 @@ export default function OnboardingPage() {
           label={t("leases.startDate")}
           error={formErrors.startDate}
         >
-          <input
-            type="date"
+          <LocaleDateInput
             value={leaseForm.startDate}
-            onChange={(e) =>
-              setLeaseForm({ ...leaseForm, startDate: e.target.value })
+            onChange={(v) =>
+              setLeaseForm({ ...leaseForm, startDate: v })
             }
-            className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
           />
         </FormField>
         <FormField

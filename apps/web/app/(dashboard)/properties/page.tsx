@@ -36,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import LocaleDateInput from "@/components/LocaleDateInput";
 
 interface Property {
   id: string;
@@ -535,7 +536,7 @@ export default function PropertiesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("epcExpiryDate")}</label>
-                <input name="epcExpiryDate" type="date" defaultValue={editing?.epcExpiryDate || ""} className={ic} />
+                <LocaleDateInput name="epcExpiryDate" defaultValue={editing?.epcExpiryDate || ""} />
               </div>
             </div>
             <div>

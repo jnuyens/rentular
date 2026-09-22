@@ -44,6 +44,7 @@ import { PaymentMethodRadioGroup } from "@/components/PaymentMethodRadioGroup";
 import { MandateStatusBadge } from "@/components/MandateStatusBadge";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import { CancelMandateDialog } from "@/components/CancelMandateDialog";
+import LocaleDateInput from "@/components/LocaleDateInput";
 
 interface Property {
   id: string;
@@ -807,32 +808,26 @@ export default function LeasesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("signingDate")}</label>
-                <input
+                <LocaleDateInput
                   name="signingDate"
-                  type="date"
                   required
                   defaultValue={editingLease?.signingDate || ""}
-                  className={ic}
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">{t("startDate")}</label>
-                <input
+                <LocaleDateInput
                   name="startDate"
-                  type="date"
                   required
                   defaultValue={editingLease?.startDate || ""}
-                  className={ic}
                 />
               </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">{t("endDate")}</label>
-              <input
+              <LocaleDateInput
                 name="endDate"
-                type="date"
                 defaultValue={editingLease?.endDate || ""}
-                className={ic}
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

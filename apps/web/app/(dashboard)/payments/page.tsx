@@ -20,6 +20,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import LocaleDateInput from "@/components/LocaleDateInput";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -579,7 +580,7 @@ export default function PaymentsPage() {
               </div>
               <div>
                 <Label>{t("paymentDate")}</Label>
-                <Input type="date" required value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={paymentForm.date} onChange={(v) => setPaymentForm({ ...paymentForm, date: v })} className="mt-1" />
               </div>
             </div>
             <div>
@@ -648,7 +649,7 @@ export default function PaymentsPage() {
               </div>
               <div>
                 <Label>{t("costDate")}</Label>
-                <Input type="date" required value={costForm.date} onChange={(e) => setCostForm({ ...costForm, date: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={costForm.date} onChange={(v) => setCostForm({ ...costForm, date: v })} className="mt-1" />
               </div>
             </div>
             <div>
@@ -688,11 +689,11 @@ export default function PaymentsPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>{t("startDate")}</Label>
-                <Input type="date" required value={freePeriodForm.startDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, startDate: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={freePeriodForm.startDate} onChange={(v) => setFreePeriodForm({ ...freePeriodForm, startDate: v })} className="mt-1" />
               </div>
               <div>
                 <Label>{t("endDate")}</Label>
-                <Input type="date" required value={freePeriodForm.endDate} onChange={(e) => setFreePeriodForm({ ...freePeriodForm, endDate: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={freePeriodForm.endDate} onChange={(v) => setFreePeriodForm({ ...freePeriodForm, endDate: v })} className="mt-1" />
               </div>
             </div>
             <div>
@@ -748,13 +749,13 @@ export default function PaymentsPage() {
               </div>
               <div>
                 <Label>{t("startDate")}</Label>
-                <Input type="date" required value={deductionForm.startDate} onChange={(e) => setDeductionForm({ ...deductionForm, startDate: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={deductionForm.startDate} onChange={(v) => setDeductionForm({ ...deductionForm, startDate: v })} className="mt-1" />
               </div>
             </div>
             {deductionForm.type === "temporary" && (
               <div>
                 <Label>{t("endDate")}</Label>
-                <Input type="date" required value={deductionForm.endDate} onChange={(e) => setDeductionForm({ ...deductionForm, endDate: e.target.value })} className="mt-1" />
+                <LocaleDateInput required value={deductionForm.endDate} onChange={(v) => setDeductionForm({ ...deductionForm, endDate: v })} className="mt-1" />
               </div>
             )}
             <div>

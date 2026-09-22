@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import LocaleDateInput from "@/components/LocaleDateInput";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -659,11 +660,10 @@ export default function MaintenancePage() {
                             <Label className="text-xs font-medium text-red-700 whitespace-nowrap">
                               {t("lastCheckedDate")}:
                             </Label>
-                            <Input
-                              type="date"
-                              className="h-8 border-red-200 bg-white"
-                              onChange={(e) => {
-                                if (e.target.value) setLastChecked(task.id, e.target.value);
+                            <LocaleDateInput
+                              className="bg-white"
+                              onChange={(v) => {
+                                if (v) setLastChecked(task.id, v);
                               }}
                               disabled={updatingDate === task.id}
                             />
@@ -824,9 +824,8 @@ export default function MaintenancePage() {
               </div>
               <div>
                 <Label>{t("lastCompleted")}</Label>
-                <Input
+                <LocaleDateInput
                   name="lastCompleted"
-                  type="date"
                   className="mt-1"
                 />
               </div>
