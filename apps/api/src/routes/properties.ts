@@ -43,7 +43,12 @@ propertiesRouter.get("/", async (c) => {
   const result = await db
     .select()
     .from(properties)
-    .where(inArray(properties.id, accessibleIds));
+    .where(
+      and(
+        inArray(properties.id, accessibleIds),
+        eq(properties.isArchived, false)
+      )
+    );
 
   // D-07, D-08: Attach role info to each property for the dashboard
   const propertyRoles = await db
@@ -76,7 +81,13 @@ propertiesRouter.get("/:id", async (c) => {
   const result = await db
     .select()
     .from(properties)
-    .where(and(eq(properties.id, id), inArray(properties.id, accessibleIds)));
+    .where(
+      and(
+        eq(properties.id, id),
+        inArray(properties.id, accessibleIds),
+        eq(properties.isArchived, false)
+      )
+    );
 
   if (!result[0]) {
     return c.json({ error: "Property not found" }, 404);
