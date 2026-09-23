@@ -51,10 +51,17 @@ bankAccountsRouter.get("/", async (c) => {
   return c.json({ data: result });
 });
 
-// Get a single bank account
+// Get a single bank account (scoped to the authenticated owner)
 bankAccountsRouter.get("/:id", async (c) => {
+  const ownerId = c.get("userId");
+  if (!ownerId) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
   const id = c.req.param("id");
-  const result = await db.select().from(bankAccounts).where(eq(bankAccounts.id, id));
+  const result = await db
+    .select()
+    .from(bankAccounts)
+    .where(and(eq(bankAccounts.id, id), eq(bankAccounts.ownerId, ownerId)));
   return c.json({ data: result[0] || null });
 });
 
@@ -117,31 +124,48 @@ bankAccountsRouter.patch(
     const id = c.req.param("id");
     const data = c.req.valid("json");
     const ownerId = c.get("userId");
+    if (!ownerId) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
 
     // If setting as default, unset others first
-    if (data.isDefault && ownerId) {
+    if (data.isDefault) {
       await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
     }
 
-    await db.update(bankAccounts).set(data).where(eq(bankAccounts.id, id));
+    await db
+      .update(bankAccounts)
+      .set(data)
+      .where(and(eq(bankAccounts.id, id), eq(bankAccounts.ownerId, ownerId)));
     return c.json({ data: { id, ...data }, message: "Bank account updated" });
   }
 );
 
 // Archive a bank account (soft delete)
 bankAccountsRouter.delete("/:id", async (c) => {
+  const ownerId = c.get("userId");
+  if (!ownerId) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
   const id = c.req.param("id");
-  await db.update(bankAccounts).set({ isArchived: true }).where(eq(bankAccounts.id, id));
+  await db
+    .update(bankAccounts)
+    .set({ isArchived: true })
+    .where(and(eq(bankAccounts.id, id), eq(bankAccounts.ownerId, ownerId)));
   return c.json({ message: "Bank account archived" });
 });
 
 // Set a bank account as default
 bankAccountsRouter.post("/:id/set-default", async (c) => {
-  const id = c.req.param("id");
   const ownerId = c.get("userId");
-  if (ownerId) {
-    await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
-    await db.update(bankAccounts).set({ isDefault: true }).where(eq(bankAccounts.id, id));
+  if (!ownerId) {
+    return c.json({ error: "Authentication required" }, 401);
   }
+  const id = c.req.param("id");
+  await db.update(bankAccounts).set({ isDefault: false }).where(eq(bankAccounts.ownerId, ownerId));
+  await db
+    .update(bankAccounts)
+    .set({ isDefault: true })
+    .where(and(eq(bankAccounts.id, id), eq(bankAccounts.ownerId, ownerId)));
   return c.json({ message: "Default bank account updated" });
 });
