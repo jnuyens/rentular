@@ -1,6 +1,7 @@
 export * from "./users";
 export * from "./properties";
 export * from "./tenants";
+export * from "./tenantBankAccounts";
 export * from "./leases";
 export * from "./payments";
 export * from "./indexation";

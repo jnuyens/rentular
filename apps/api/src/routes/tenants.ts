@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
-import { getDb, tenants, leases, leaseTenants, propertyManagers } from "@rentular/db";
+import { getDb, tenants, tenantBankAccounts, leases, leaseTenants, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import { normalizeIban } from "../services/tenantBankAccounts";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -22,11 +23,67 @@ const createTenantSchema = z.object({
   language: z.enum(["nl", "fr", "de", "en"]).optional(),
   nationalRegister: z.string().optional().default(""),
   bankAccount: z.string().optional().default(""),
+  // Full list of the tenant's bank account IBANs (multiple accounts allowed).
+  bankAccounts: z.array(z.string()).optional(),
   avatar: z.string().optional().default(""),
   notes: z.string().optional().default(""),
 });
 
 export const tenantsRouter = new Hono();
+
+/** Replace a tenant's stored bank accounts with the given IBAN list. */
+async function syncTenantBankAccounts(
+  tenantId: string,
+  ibans: string[],
+): Promise<void> {
+  const wanted = [
+    ...new Set(ibans.map((i) => normalizeIban(i)).filter((v) => v.length > 0)),
+  ];
+  const existing = await db
+    .select({ id: tenantBankAccounts.id, iban: tenantBankAccounts.iban })
+    .from(tenantBankAccounts)
+    .where(eq(tenantBankAccounts.tenantId, tenantId));
+  const existingIbans = new Set(existing.map((e) => e.iban));
+
+  for (const e of existing) {
+    if (!wanted.includes(e.iban)) {
+      await db
+        .delete(tenantBankAccounts)
+        .where(eq(tenantBankAccounts.id, e.id));
+    }
+  }
+  for (const iban of wanted) {
+    if (!existingIbans.has(iban)) {
+      await db.insert(tenantBankAccounts).values({
+        id: crypto.randomUUID(),
+        tenantId,
+        iban,
+        label: null,
+      });
+    }
+  }
+}
+
+/** Map tenantId -> [IBAN, ...] for a set of tenants. */
+async function bankAccountsByTenant(
+  tenantIds: string[],
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
+  if (tenantIds.length === 0) return map;
+  const rows = await db
+    .select({
+      tenantId: tenantBankAccounts.tenantId,
+      iban: tenantBankAccounts.iban,
+    })
+    .from(tenantBankAccounts)
+    .where(inArray(tenantBankAccounts.tenantId, tenantIds));
+  for (const r of rows) {
+    const list = map.get(r.tenantId) ?? [];
+    list.push(r.iban);
+    map.set(r.tenantId, list);
+  }
+  return map;
+}
 
 // Helper: get tenant IDs accessible to the user
 // Includes: tenants linked via leases on accessible properties + tenants owned directly (ownerId)
@@ -70,7 +127,12 @@ tenantsRouter.get("/", async (c) => {
       .select()
       .from(tenants)
       .where(inArray(tenants.id, tenantIds));
-    return c.json({ data: result, meta: { total: result.length, page: 1, perPage: 100 } });
+    const accountsMap = await bankAccountsByTenant(result.map((t) => t.id));
+    const withAccounts = result.map((t) => ({
+      ...t,
+      bankAccounts: accountsMap.get(t.id) ?? (t.iban ? [t.iban] : []),
+    }));
+    return c.json({ data: withAccounts, meta: { total: withAccounts.length, page: 1, perPage: 100 } });
   } catch (err) {
     console.error("[Tenants] GET / error:", err);
     return c.json({ error: "Failed to fetch tenants" }, 500);
@@ -94,7 +156,10 @@ tenantsRouter.get("/:id", async (c) => {
     return c.json({ error: "Tenant not found" }, 404);
   }
 
-  return c.json({ data: result[0] });
+  const accountsMap = await bankAccountsByTenant([id]);
+  const bankAccounts =
+    accountsMap.get(id) ?? (result[0].iban ? [result[0].iban] : []);
+  return c.json({ data: { ...result[0], bankAccounts } });
 });
 
 tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
@@ -102,6 +167,12 @@ tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
   const tenantLanguage = data.language || "nl";
   const ownerId = getRequiredUserId(c);
   const id = crypto.randomUUID();
+
+  const ibans = (
+    data.bankAccounts ?? (data.bankAccount ? [data.bankAccount] : [])
+  )
+    .map((i) => normalizeIban(i))
+    .filter((v) => v.length > 0);
 
   // Tenant creation does not require property check (tenants are linked via leases)
   // Keep ownerId = userId for the creator
@@ -114,11 +185,12 @@ tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
     phone: data.phone || null,
     language: tenantLanguage,
     nationalRegister: data.nationalRegister || null,
-    iban: data.bankAccount || null,
+    iban: ibans[0] || null,
     notes: data.notes || null,
   });
+  await syncTenantBankAccounts(id, ibans);
 
-  const record = { id, ownerId, ...data, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
+  const record = { id, ownerId, ...data, bankAccounts: ibans, language: tenantLanguage, isArchived: false, createdAt: new Date().toISOString() };
   return c.json({ data: record, message: "Tenant created" }, 201);
 });
 
@@ -171,19 +243,30 @@ tenantsRouter.patch(
       return c.json({ error: "Insufficient permissions" }, 403);
     }
 
-    const { bankAccount, ...rest } = data;
-    await db
-      .update(tenants)
-      .set({
-        ...rest,
-        ...(bankAccount !== undefined ? { iban: bankAccount } : {}),
-      })
-      .where(eq(tenants.id, id));
+    const { bankAccount, bankAccounts, ...rest } = data;
+    const updates: Record<string, unknown> = { ...rest };
+    if (bankAccounts !== undefined) {
+      const ibans = bankAccounts
+        .map((i) => normalizeIban(i))
+        .filter((v) => v.length > 0);
+      updates.iban = ibans[0] || null;
+      await db
+        .update(tenants)
+        .set(updates)
+        .where(eq(tenants.id, id));
+      await syncTenantBankAccounts(id, ibans);
+    } else {
+      if (bankAccount !== undefined) updates.iban = bankAccount;
+      await db.update(tenants).set(updates).where(eq(tenants.id, id));
+    }
     const result = await db
       .select()
       .from(tenants)
       .where(eq(tenants.id, id));
-    return c.json({ data: result[0], message: "Tenant updated" });
+    const accountsMap = await bankAccountsByTenant([id]);
+    const accts =
+      accountsMap.get(id) ?? (result[0]?.iban ? [result[0].iban] : []);
+    return c.json({ data: { ...result[0], bankAccounts: accts }, message: "Tenant updated" });
   }
 );
 

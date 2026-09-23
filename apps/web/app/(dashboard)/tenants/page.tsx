@@ -78,6 +78,7 @@ interface Tenant {
   avatar?: string;
   nationalRegister?: string;
   bankAccount?: string;
+  bankAccounts?: string[];
   notes?: string;
   gocardlessCustomerId?: string;
   gocardlessMandateId?: string;
@@ -97,11 +98,24 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAvatar, setSelectedAvatar] = useState("abs1");
+  const [bankAccounts, setBankAccounts] = useState<string[]>([""]);
   const [mandateStatuses, setMandateStatuses] = useState<Record<string, string>>({});
   const [showMandateSetup, setShowMandateSetup] = useState(false);
   const [selectedTenantForMandate, setSelectedTenantForMandate] = useState<Tenant | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+  // Initialize the editable bank-account list whenever the modal opens.
+  useEffect(() => {
+    if (!showModal) return;
+    const accts =
+      editing?.bankAccounts && editing.bankAccounts.length > 0
+        ? editing.bankAccounts
+        : editing?.bankAccount
+          ? [editing.bankAccount]
+          : [];
+    setBankAccounts(accts.length > 0 ? accts : [""]);
+  }, [showModal, editing]);
 
   const fetchTenants = useCallback(async () => {
     try {
@@ -198,7 +212,11 @@ export default function TenantsPage() {
     const form = e.currentTarget;
     const formData = new FormData(form);
     formData.set("avatar", selectedAvatar);
-    const data = Object.fromEntries(formData);
+    const data: Record<string, unknown> = Object.fromEntries(formData);
+    delete data.bankAccount;
+    data.bankAccounts = bankAccounts
+      .map((a) => a.replace(/\s+/g, "").toUpperCase())
+      .filter((a) => a.length > 0);
     try {
       const url = editing
         ? `${apiUrl}/api/v1/tenants/${editing.id}`
@@ -610,7 +628,42 @@ export default function TenantsPage() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">{t("iban")}</label>
-              <IbanInput name="bankAccount" value={editing?.bankAccount || ""} />
+              <div className="space-y-2">
+                {bankAccounts.map((acc, idx) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <IbanInput
+                      className="flex-1"
+                      value={acc}
+                      onChange={(v) =>
+                        setBankAccounts((prev) =>
+                          prev.map((a, i) => (i === idx ? v : a)),
+                        )
+                      }
+                    />
+                    {bankAccounts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setBankAccounts((prev) =>
+                            prev.filter((_, i) => i !== idx),
+                          )
+                        }
+                        className="mt-2 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+                        aria-label="Remove account"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setBankAccounts((prev) => [...prev, ""])}
+                  className="flex items-center gap-1 text-sm text-[hsl(var(--primary))] hover:underline"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {t("addAccount")}
+                </button>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">{t("notes")}</label>

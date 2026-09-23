@@ -34,6 +34,7 @@ import { refreshAccessToken, syncAccountTransactions } from "../lib/pontoConnect
 import { decrypt, encrypt } from "../lib/encryption";
 import { importBankStatements } from "./bankStatementImporter";
 import { processIncomingTransactions } from "./transactionMatcher";
+import { autoAssignByIban } from "./ibanMatcher";
 import type { IncomingTransaction } from "../lib/bankAccountData";
 
 export interface SyncResult {
@@ -290,6 +291,19 @@ async function runSync(
     }
   }
 
+  // Second matching pass: auto-assign still-unmatched credits whose sender
+  // IBAN is a known tenant account (structured-communication matcher above
+  // only handles OGM transfers). Best-effort — never fail the sync.
+  let ibanAssigned = 0;
+  try {
+    ibanAssigned = await autoAssignByIban(db, conn.ownerId, connectionId);
+  } catch (err) {
+    console.warn(
+      `[BankSync] Connection ${connectionId}: IBAN auto-assign pass failed`,
+      err,
+    );
+  }
+
   // Update lastSyncAt + clear errorMessage
   await db
     .update(bankConnections)
@@ -302,9 +316,9 @@ async function runSync(
 
   return {
     fetched: transactions.length,
-    matched: matchResult.matched,
+    matched: matchResult.matched + ibanAssigned,
     mismatched: matchResult.mismatched,
-    unmatched: matchResult.unmatched,
+    unmatched: Math.max(0, matchResult.unmatched - ibanAssigned),
     skippedDuplicates,
   };
 }

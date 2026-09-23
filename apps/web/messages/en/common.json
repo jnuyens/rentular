@@ -172,6 +172,7 @@
     "nationalRegister": "National register number",
     "nationalRegisterPlaceholder": "XX.XX.XX-XXX.XX",
     "iban": "IBAN",
+    "addAccount": "Add account",
     "notes": "Notes",
     "cancel": "Cancel",
     "saveTenant": "Save Tenant",

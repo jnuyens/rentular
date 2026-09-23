@@ -172,6 +172,7 @@
     "nationalRegister": "Rijksregisternummer",
     "nationalRegisterPlaceholder": "XX.XX.XX-XXX.XX",
     "iban": "IBAN",
+    "addAccount": "Rekening toevoegen",
     "notes": "Notities",
     "cancel": "Annuleren",
     "saveTenant": "Huurder opslaan",
