@@ -12,7 +12,7 @@ import {
 
 const createPropertySchema = z.object({
   name: z.string().min(1),
-  type: z.enum(["apartment", "house", "studio", "commercial", "garage", "other"]),
+  type: z.enum(["apartment", "house", "studio", "student_room", "student_studio", "commercial", "garage", "other"]),
   street: z.string().min(1),
   streetNumber: z.string().min(1),
   box: z.string().optional().default(""),
@@ -112,6 +112,7 @@ propertiesRouter.post(
       epcScore: data.epcScore || null,
       epcCertificateNumber: data.epcCertificateNumber || null,
       epcExpiryDate: data.epcExpiryDate || null,
+      heatingType: data.heatingType || null,
       notes: data.notes || null,
     });
 
@@ -147,7 +148,24 @@ propertiesRouter.patch(
       return c.json({ error: "Insufficient permissions" }, 403);
     }
 
-    await db.update(properties).set(data as Record<string, unknown>).where(eq(properties.id, id));
+    // Empty strings from the form must become NULL for nullable columns —
+    // notably heating_type, a MySQL ENUM that rejects "" ("Data truncated").
+    const nullableFields = [
+      "box",
+      "cadastralReference",
+      "heatingType",
+      "epcScore",
+      "epcLabel",
+      "epcCertificateNumber",
+      "epcExpiryDate",
+      "notes",
+    ] as const;
+    const update: Record<string, unknown> = { ...data };
+    for (const key of nullableFields) {
+      if (update[key] === "") update[key] = null;
+    }
+
+    await db.update(properties).set(update).where(eq(properties.id, id));
     const result = await db.select().from(properties).where(eq(properties.id, id));
     return c.json({ data: result[0] || { id, ...data }, message: "Property updated" });
   }
