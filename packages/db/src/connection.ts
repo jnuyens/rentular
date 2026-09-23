@@ -6,11 +6,19 @@ import * as schema from "./schema/index";
 // the factory's return type. Annotating _db with the drizzle generic directly
 // triggers a duplicate-type-identity error (TS2719), so infer it instead.
 function createDb() {
+  // Fail closed rather than silently connecting with the guessable default
+  // "rentular" password if DB_PASSWORD is unset.
+  const password = process.env.DB_PASSWORD;
+  if (!password) {
+    throw new Error(
+      "DB_PASSWORD must be set; refusing to connect with a default password."
+    );
+  }
   const pool = mysql.createPool({
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || "rentular",
-    password: process.env.DB_PASSWORD || "rentular",
+    password,
     database: process.env.DB_NAME || "rentular",
   });
   return drizzleMysql(pool, { schema, mode: "default" });

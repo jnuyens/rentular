@@ -1,10 +1,10 @@
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
+import { requireAuthSecret } from "./authSecret";
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.AUTH_SECRET || "";
-  if (!secret) {
-    console.log("[Encryption] WARNING: AUTH_SECRET is empty, encryption key derived from empty string");
-  }
+  // Fails closed if AUTH_SECRET is missing/weak, so banking data is never
+  // encrypted under sha256("") (a publicly known constant).
+  const secret = requireAuthSecret();
   return createHash("sha256").update(secret).digest();
 }
 

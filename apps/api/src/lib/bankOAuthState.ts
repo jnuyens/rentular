@@ -13,18 +13,15 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "crypto";
+import { requireAuthSecret } from "./authSecret";
 
 const ALG = "HS256";
 const TTL = "10m";
 
 function getSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET || "";
-  if (!secret) {
-    console.log(
-      "[BankOAuthState] WARNING: AUTH_SECRET is empty; OAuth state tokens are not secure"
-    );
-  }
-  return new TextEncoder().encode(secret);
+  // Fails closed if AUTH_SECRET is missing/weak: an empty signing key would
+  // make the OAuth state token (the callback's CSRF/replay gate) forgeable.
+  return new TextEncoder().encode(requireAuthSecret());
 }
 
 export interface OAuthStatePayload {
