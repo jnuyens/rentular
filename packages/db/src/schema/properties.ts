@@ -20,6 +20,8 @@ export const properties = mysqlTable("properties", {
     "apartment",
     "house",
     "studio",
+    "student_room",
+    "student_studio",
     "commercial",
     "garage",
     "other",

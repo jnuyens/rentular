@@ -190,6 +190,8 @@ export default function PropertiesPage() {
     apartment: t("typeApartment"),
     house: t("typeHouse"),
     studio: t("typeStudio"),
+    student_room: t("typeStudentRoom"),
+    student_studio: t("typeStudentStudio"),
     commercial: t("typeCommercial"),
     garage: t("typeGarage"),
     other: t("typeOther"),
@@ -517,6 +519,8 @@ export default function PropertiesPage() {
                 <option value="apartment">{t("typeApartment")}</option>
                 <option value="house">{t("typeHouse")}</option>
                 <option value="studio">{t("typeStudio")}</option>
+                <option value="student_room">{t("typeStudentRoom")}</option>
+                <option value="student_studio">{t("typeStudentStudio")}</option>
                 <option value="commercial">{t("typeCommercial")}</option>
                 <option value="garage">{t("typeGarage")}</option>
                 <option value="other">{t("typeOther")}</option>

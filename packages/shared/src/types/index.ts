@@ -3,6 +3,8 @@ export type PropertyType =
   | "apartment"
   | "house"
   | "studio"
+  | "student_room"
+  | "student_studio"
   | "commercial"
   | "garage"
   | "other";

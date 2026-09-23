@@ -40,6 +40,8 @@ export const PROPERTY_TYPES = {
   apartment: { en: "Apartment", nl: "Appartement", fr: "Appartement", de: "Wohnung" },
   house: { en: "House", nl: "Huis", fr: "Maison", de: "Haus" },
   studio: { en: "Studio", nl: "Studio", fr: "Studio", de: "Studio" },
+  student_room: { en: "Student room", nl: "Studentenkamer", fr: "Chambre étudiante", de: "Studentenzimmer" },
+  student_studio: { en: "Student studio", nl: "Studentenstudio", fr: "Studio étudiant", de: "Studentenstudio" },
   commercial: { en: "Commercial", nl: "Commercieel", fr: "Commercial", de: "Gewerbe" },
   garage: { en: "Garage", nl: "Garage", fr: "Garage", de: "Garage" },
   other: { en: "Other", nl: "Andere", fr: "Autre", de: "Andere" },

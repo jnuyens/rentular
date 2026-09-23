@@ -50,6 +50,8 @@
     "typeApartment": "Appartement",
     "typeHouse": "Huis",
     "typeStudio": "Studio",
+    "typeStudentRoom": "Studentenkamer",
+    "typeStudentStudio": "Studentenstudio",
     "typeCommercial": "Commercieel",
     "typeGarage": "Garage",
     "typeOther": "Andere",

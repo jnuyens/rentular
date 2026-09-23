@@ -520,6 +520,8 @@ export default function OnboardingPage() {
               <option value="apartment">{t("properties.typeApartment")}</option>
               <option value="house">{t("properties.typeHouse")}</option>
               <option value="studio">{t("properties.typeStudio")}</option>
+              <option value="student_room">{t("properties.typeStudentRoom")}</option>
+              <option value="student_studio">{t("properties.typeStudentStudio")}</option>
               <option value="commercial">{t("properties.typeCommercial")}</option>
               <option value="garage">{t("properties.typeGarage")}</option>
               <option value="other">{t("properties.typeOther")}</option>
