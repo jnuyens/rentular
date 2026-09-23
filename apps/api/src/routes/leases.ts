@@ -121,7 +121,8 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     monthlyRent: String(data.monthlyRent),
     monthlyCharges: String(data.monthlyCharges),
     bankAccountId: data.bankAccountId || null,
-    indexationEnabled: data.indexationEnabled,
+    // Student leases are never indexed (see indexation route).
+    indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
     paymentDay: data.paymentDay,
   });
 
@@ -170,6 +171,10 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
+
+  // Student leases are never indexed, whatever the request asked for.
+  const effectiveType = leaseType || existing[0].type;
+  if (effectiveType === "student") updates.indexationEnabled = false;
 
   if (Object.keys(updates).length > 0) {
     await db.update(leases).set(updates)

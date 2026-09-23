@@ -114,6 +114,12 @@ async function calculateLeaseIndexation(
 
   const lease = leaseRows[0]!;
 
+  // Student leases are excluded from indexation (typically 12-month terms whose
+  // only anniversary falls at/after the contract end).
+  if (lease.type === "student") {
+    throw { status: 400, message: "Indexation does not apply to student leases" };
+  }
+
   if (!lease.indexationEnabled) {
     throw { status: 400, message: "Indexation is not enabled for this lease" };
   }
@@ -610,6 +616,9 @@ indexationRouter.get("/upcoming", async (c) => {
     }> = [];
 
     for (const lease of activeLeases) {
+      // Student leases are excluded from indexation.
+      if (lease.type === "student") continue;
+
       // Calculate next anniversary date
       const startDate = new Date(lease.startDate);
       let anniversaryYear = today.getFullYear();
