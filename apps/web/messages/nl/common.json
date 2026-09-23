@@ -1007,6 +1007,9 @@
     }
   },
   "reconciliation": {
+    "rematch": "Opnieuw matchen",
+    "rematchDone": "{count} transactie(s) automatisch toegewezen",
+    "rematchNone": "Geen nieuwe matches",
     "title": "Reconciliatie",
     "subtitle": "Bekijk inkomende overschrijvingen en koppel ze aan verwachte betalingen.",
     "filters": {

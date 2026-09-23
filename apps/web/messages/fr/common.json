@@ -1007,6 +1007,9 @@
     }
   },
   "reconciliation": {
+    "rematch": "Rapprocher",
+    "rematchDone": "{count} transaction(s) affectée(s) automatiquement",
+    "rematchNone": "Aucune nouvelle correspondance",
     "title": "Rapprochement",
     "subtitle": "Consultez les virements entrants et associez-les aux paiements attendus.",
     "filters": {

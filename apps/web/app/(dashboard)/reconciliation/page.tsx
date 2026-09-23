@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -21,6 +24,7 @@ export default function ReconciliationPage() {
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [rematching, setRematching] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
@@ -47,12 +51,47 @@ export default function ReconciliationPage() {
     fetchTransactions();
   }, [fetchTransactions]);
 
+  const handleRematch = useCallback(async () => {
+    setRematching(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/bank-transactions/rematch`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const count = json.data?.assigned ?? 0;
+        toast.success(count > 0 ? t("rematchDone", { count }) : t("rematchNone"));
+        if (count > 0) await fetchTransactions();
+      } else {
+        toast.error(t("loadError"));
+      }
+    } catch {
+      toast.error(t("loadError"));
+    } finally {
+      setRematching(false);
+    }
+  }, [apiUrl, t, fetchTransactions]);
+
   return (
     <div>
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRematch}
+          disabled={rematching}
+        >
+          <RefreshCw
+            className={`mr-1.5 h-4 w-4 ${rematching ? "animate-spin" : ""}`}
+          />
+          {t("rematch")}
+        </Button>
       </div>
 
       {/* Filter tabs */}

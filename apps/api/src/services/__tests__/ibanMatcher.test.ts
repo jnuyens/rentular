@@ -8,11 +8,12 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const findCandidateLeasesByIban = vi.fn();
-const assignStatementToLease = vi.fn(async () => ({
-  paymentId: "pay",
-  created: false,
-}));
+const findCandidateLeasesByIban = vi.fn<
+  (...a: unknown[]) => Promise<Array<{ leaseId: string; monthlyRent: string }>>
+>();
+const assignStatementToLease = vi.fn<
+  (...a: unknown[]) => Promise<{ paymentId: string; created: boolean }>
+>(async () => ({ paymentId: "pay", created: false }));
 
 vi.mock("../tenantBankAccounts", () => ({
   normalizeIban: (v: string) => (v || "").replace(/\s+/g, "").toUpperCase(),

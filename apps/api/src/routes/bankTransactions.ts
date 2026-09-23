@@ -42,6 +42,7 @@ import {
   learnTenantAccountFromStatement,
   getOwnerTenantIbans,
 } from "../services/tenantBankAccounts";
+import { autoAssignByIban } from "../services/ibanMatcher";
 
 export const bankTransactionsRouter = new Hono();
 
@@ -181,6 +182,32 @@ bankTransactionsRouter.get(
     }
   },
 );
+
+// ===========================================================================
+// POST /rematch — re-run the IBAN auto-matcher over already-imported,
+// still-unmatched credits (e.g. after adding tenant accounts). Returns how
+// many were assigned.
+// ===========================================================================
+bankTransactionsRouter.post("/rematch", async (c) => {
+  try {
+    const userId = getRequiredUserId(c);
+    const db = getDb();
+    const conns = await db
+      .select({ id: bankConnections.id })
+      .from(bankConnections)
+      .where(eq(bankConnections.ownerId, userId));
+
+    let assigned = 0;
+    for (const conn of conns) {
+      assigned += await autoAssignByIban(db, userId, conn.id);
+    }
+    return c.json({ data: { assigned } });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[BankTransactions] POST /rematch error:", err);
+    return c.json({ error: message }, 500);
+  }
+});
 
 // ===========================================================================
 // POST /:statementId/assign — mark a lease's oldest pending payment paid.

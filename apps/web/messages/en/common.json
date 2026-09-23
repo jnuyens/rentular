@@ -1007,6 +1007,9 @@
     }
   },
   "reconciliation": {
+    "rematch": "Re-match",
+    "rematchDone": "{count} transaction(s) auto-assigned",
+    "rematchNone": "No new matches",
     "title": "Reconciliation",
     "subtitle": "Review incoming bank transfers and match them to expected payments.",
     "filters": {

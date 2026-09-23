@@ -1007,6 +1007,9 @@
     }
   },
   "reconciliation": {
+    "rematch": "Neu abgleichen",
+    "rematchDone": "{count} Transaktion(en) automatisch zugewiesen",
+    "rematchNone": "Keine neuen Treffer",
     "title": "Abgleich",
     "subtitle": "Prüfen Sie eingehende Überweisungen und ordnen Sie sie erwarteten Zahlungen zu.",
     "filters": {
