@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -105,6 +106,32 @@ export function BankTransactionsTable({
   const [leaseOptions, setLeaseOptions] = useState<LeaseOption[]>([]);
   const [leasesLoaded, setLeasesLoaded] = useState(false);
   const [selectedLeaseId, setSelectedLeaseId] = useState<string>("");
+
+  type SortColumn = "date" | "counterparty";
+  type SortDirection = "asc" | "desc";
+  const [sortColumn, setSortColumn] = useState<SortColumn>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === "date" ? "desc" : "asc");
+    }
+  };
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    if (sortColumn === "date") {
+      return (a.bookingDate || "").localeCompare(b.bookingDate || "") * dir;
+    }
+    return (a.counterpartyName || "").localeCompare(
+      b.counterpartyName || "",
+      undefined,
+      { sensitivity: "base" }
+    ) * dir;
+  });
 
   const loadLeases = useCallback(async () => {
     if (leasesLoaded) return;
@@ -346,17 +373,40 @@ export function BankTransactionsTable({
 
   const colSpan = mode === "global" ? 7 : 6;
 
+  const SortHeader = ({ column, label }: { column: SortColumn; label: string }) => (
+    <button
+      type="button"
+      className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
+      onClick={() => toggleSort(column)}
+    >
+      {label}
+      {sortColumn === column ? (
+        sortDirection === "asc" ? (
+          <ChevronUp className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )
+      ) : (
+        <ChevronUp className="h-3.5 w-3.5 opacity-0 group-hover:opacity-30" />
+      )}
+    </button>
+  );
+
   return (
     <>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("columns.date")}</TableHead>
+              <TableHead>
+                <SortHeader column="date" label={t("columns.date")} />
+              </TableHead>
               {mode === "global" && (
                 <TableHead>{t("columns.connection")}</TableHead>
               )}
-              <TableHead>{t("columns.counterparty")}</TableHead>
+              <TableHead>
+                <SortHeader column="counterparty" label={t("columns.counterparty")} />
+              </TableHead>
               <TableHead>{t("columns.communication")}</TableHead>
               <TableHead className="text-right">{t("columns.amount")}</TableHead>
               <TableHead>{t("columns.status")}</TableHead>
@@ -374,7 +424,7 @@ export function BankTransactionsTable({
                 </TableCell>
               </TableRow>
             )}
-            {transactions.map((tx) => (
+            {sortedTransactions.map((tx) => (
               <TableRow key={tx.id}>
                 <TableCell className="text-sm whitespace-nowrap">
                   {fmtDate(tx.bookingDate)}
