@@ -129,20 +129,27 @@ export function BankTransactionsTable({
           `${tn.firstName} ${tn.lastName}`.trim(),
         ]),
       );
-      setLeaseOptions(
-        leasesData.map(
-          (l: { id: string; propertyId: string; tenantIds?: string[] }) => {
-            const propertyName = propMap.get(l.propertyId) || l.propertyId;
-            const tenantNames = (l.tenantIds || [])
-              .map((id) => tenantMap.get(id) || id)
-              .join(", ");
-            return {
-              id: l.id,
-              label: tenantNames ? `${propertyName} — ${tenantNames}` : propertyName,
-            };
-          },
-        ),
+      const options = leasesData.map(
+        (l: { id: string; propertyId: string; tenantIds?: string[] }) => {
+          const propertyName = propMap.get(l.propertyId) || l.propertyId;
+          const tenantNames = (l.tenantIds || [])
+            .map((id) => tenantMap.get(id) || id)
+            .join(", ");
+          return {
+            id: l.id,
+            label: tenantNames ? `${propertyName} — ${tenantNames}` : propertyName,
+          };
+        },
       );
+      // Sort by label so the dropdown groups by property/address; numeric so
+      // "studio 4" comes before "studio 5" rather than lexicographically.
+      options.sort((a: { label: string }, b: { label: string }) =>
+        a.label.localeCompare(b.label, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
+      setLeaseOptions(options);
       setLeasesLoaded(true);
     } catch {
       toast.error(t("loadError"));
