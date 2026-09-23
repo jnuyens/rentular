@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Building2, Plus, MapPin, Pencil, Trash2 } from "lucide-react";
+import { Building2, Plus, MapPin, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import BelgianCityInput from "@/components/BelgianCityInput";
 import CountrySelect from "@/components/CountrySelect";
@@ -71,6 +71,20 @@ export default function PropertiesPage() {
   const [error, setError] = useState("");
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+
+  type SortColumn = "name" | "type" | "epc" | "city";
+  type SortDirection = "asc" | "desc";
+  const [sortColumn, setSortColumn] = useState<SortColumn>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const toggleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -181,6 +195,48 @@ export default function PropertiesPage() {
     other: t("typeOther"),
   };
 
+  const SortHeader = ({ column, label }: { column: SortColumn; label: string }) => (
+    <button
+      type="button"
+      className="flex items-center gap-1 hover:text-foreground transition-colors text-left"
+      onClick={() => toggleSort(column)}
+    >
+      {label}
+      {sortColumn === column ? (
+        sortDirection === "asc" ? (
+          <ChevronUp className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )
+      ) : (
+        <ChevronUp className="h-3.5 w-3.5 opacity-0 group-hover:opacity-30" />
+      )}
+    </button>
+  );
+
+  const sortedProperties = [...properties].sort((a, b) => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    switch (sortColumn) {
+      case "name":
+        return (a.name || "").localeCompare(b.name || "") * dir;
+      case "type": {
+        const ta = typeLabels[a.type] || a.type;
+        const tb = typeLabels[b.type] || b.type;
+        return ta.localeCompare(tb) * dir;
+      }
+      case "epc":
+        // Properties without an EPC label always sort last, either direction.
+        if (!a.epcLabel && !b.epcLabel) return 0;
+        if (!a.epcLabel) return 1;
+        if (!b.epcLabel) return -1;
+        return a.epcLabel.localeCompare(b.epcLabel) * dir;
+      case "city":
+        return (a.city || "").localeCompare(b.city || "") * dir;
+      default:
+        return 0;
+    }
+  });
+
   const heatingLabels: Record<string, string> = {
     gas: t("heatingGas"),
     oil: t("heatingOil"),
@@ -266,15 +322,15 @@ export default function PropertiesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t("name")}</TableHead>
-                  <TableHead>{t("type")}</TableHead>
-                  <TableHead>EPC</TableHead>
-                  <TableHead>{t("city")}</TableHead>
+                  <TableHead><SortHeader column="name" label={t("name")} /></TableHead>
+                  <TableHead><SortHeader column="type" label={t("type")} /></TableHead>
+                  <TableHead><SortHeader column="epc" label="EPC" /></TableHead>
+                  <TableHead><SortHeader column="city" label={t("city")} /></TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {properties.map((p) => (
+                {sortedProperties.map((p) => (
                   <TableRow
                     key={p.id}
                     className="cursor-pointer"
@@ -342,7 +398,7 @@ export default function PropertiesPage() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {properties.map((p) => (
+            {sortedProperties.map((p) => (
               <Card
                 key={p.id}
                 className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
