@@ -228,22 +228,47 @@ export default function PaymentsPage() {
 
   const [leaseOptions, setLeaseOptions] = useState<LeaseOption[]>([]);
 
-  const payments: Payment[] = [];
+  const [payments, setPayments] = useState<Payment[]>([]);
   const visiblePayments = showIgnored ? payments : payments.filter((p) => !p.isIgnored);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const activePayments = payments.filter((p) => !p.isIgnored);
+  const overdueCount = activePayments.filter(
+    (p) => p.status === "pending" && p.dueDate < todayIso,
+  ).length;
+  const pendingCount = activePayments.filter(
+    (p) =>
+      p.status === "processing" ||
+      (p.status === "pending" && p.dueDate >= todayIso),
+  ).length;
+  const paidCount = activePayments.filter((p) => p.status === "paid").length;
+
   const fetchLeases = useCallback(async () => {
     try {
-      const [leasesRes, propsRes, tenantsRes] = await Promise.all([
+      const [leasesRes, propsRes, tenantsRes, paymentsRes] = await Promise.all([
         fetch(`${apiUrl}/api/v1/leases`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/properties`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/tenants`, { credentials: "include" }),
+        fetch(`${apiUrl}/api/v1/payments/?perPage=100`, { credentials: "include" }),
       ]);
       const leasesData = leasesRes.ok ? (await leasesRes.json()).data || [] : [];
       const propsData = propsRes.ok ? (await propsRes.json()).data || [] : [];
       const tenantsData = tenantsRes.ok ? (await tenantsRes.json()).data || [] : [];
+      const paymentsData = paymentsRes.ok ? (await paymentsRes.json()).data || [] : [];
       const propMap = new Map(propsData.map((p: any) => [p.id, p.name || p.city || p.id]));
       const tenantMap = new Map(tenantsData.map((t: any) => [t.id, `${t.firstName} ${t.lastName}`]));
+      const leaseInfo = new Map(
+        leasesData.map((l: any) => [
+          l.id,
+          {
+            propertyName: propMap.get(l.propertyId) || l.propertyId,
+            tenantNames: (l.tenantIds || [])
+              .map((id: string) => tenantMap.get(id) || id)
+              .join(", "),
+          },
+        ])
+      );
       setLeaseOptions(
         leasesData.map((l: any) => ({
           id: l.id,
@@ -252,6 +277,26 @@ export default function PaymentsPage() {
           monthlyRent: l.monthlyRent,
           type: l.type,
         }))
+      );
+      setPayments(
+        paymentsData.map((p: any) => {
+          const info = (leaseInfo.get(p.leaseId) as { propertyName: string; tenantNames: string } | undefined) || {
+            propertyName: "-",
+            tenantNames: "-",
+          };
+          return {
+            id: p.id,
+            tenantName: info.tenantNames || "-",
+            propertyName: info.propertyName || "-",
+            amount: Number(p.amount),
+            dueDate: (p.dueDate || "").slice(0, 10),
+            paidDate: p.paidDate ? String(p.paidDate).slice(0, 10) : null,
+            status: p.status,
+            isIgnored: !!p.isIgnored,
+            ignoreReason: p.ignoreReason ?? null,
+            reminders: [],
+          } as Payment;
+        })
       );
     } catch {
       toast.error(t("loadError") || "Failed to load data");
@@ -426,19 +471,19 @@ export default function PaymentsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{t("overdue")}</p>
-            <p className="mt-1 text-2xl font-bold text-red-600">0</p>
+            <p className="mt-1 text-2xl font-bold text-red-600">{overdueCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{t("pending")}</p>
-            <p className="mt-1 text-2xl font-bold text-yellow-600">0</p>
+            <p className="mt-1 text-2xl font-bold text-yellow-600">{pendingCount}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{t("paid")}</p>
-            <p className="mt-1 text-2xl font-bold text-green-600">0</p>
+            <p className="mt-1 text-2xl font-bold text-green-600">{paidCount}</p>
           </CardContent>
         </Card>
       </div>
