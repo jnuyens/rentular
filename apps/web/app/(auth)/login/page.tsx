@@ -48,7 +48,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (password.length < 12) {
+    if (password.length < 10) {
       setError(t("passwordTooShort"));
       return;
     }
@@ -149,7 +149,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("passwordPlaceholder")}
                 required
-                minLength={12}
+                minLength={10}
                 className="w-full rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
               />
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
@@ -165,7 +165,7 @@ export default function LoginPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={t("confirmPasswordPlaceholder")}
                 required
-                minLength={12}
+                minLength={10}
                 className="w-full rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
               />
             </div>

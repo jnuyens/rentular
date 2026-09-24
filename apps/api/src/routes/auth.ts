@@ -11,7 +11,7 @@ import { getRequiredUserId, requireAuth } from "../lib/routeAuth";
 
 export const authRouter = new Hono();
 
-const MIN_PASSWORD_LENGTH = 12;
+const MIN_PASSWORD_LENGTH = 10;
 const PASSWORD_SALT_ROUNDS = 12;
 const db = getDb();
 

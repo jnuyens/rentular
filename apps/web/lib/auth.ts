@@ -54,7 +54,7 @@ providers.push(
 
       const email = String(credentials.email).trim().toLowerCase();
       const password = String(credentials.password);
-      if (password.length < 12) return null;
+      if (password.length < 10) return null;
 
       const result = await db
         .select()
