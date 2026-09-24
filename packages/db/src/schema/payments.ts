@@ -51,6 +51,8 @@ export const payments = mysqlTable("payments", {
   // Non-rent payment: mark incoming payments as not rent-related (e.g. deposit refund, utility reimbursement)
   isIgnored: boolean("is_ignored").default(false).notNull(),
   ignoreReason: text("ignore_reason"),
+  // When the landlord was emailed that this payment is late (once per payment)
+  landlordNotifiedAt: timestamp("landlord_notified_at"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

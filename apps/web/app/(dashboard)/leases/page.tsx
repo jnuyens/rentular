@@ -74,6 +74,7 @@ interface Lease {
   bankAccountId?: string;
   tenantIds?: string[];
   indexationEnabled?: boolean;
+  landlordLateNotify?: boolean;
   paymentMethod?: string;
   gocardlessMandateId?: string;
 }
@@ -100,6 +101,7 @@ export default function LeasesPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
+  const [landlordLateNotify, setLandlordLateNotify] = useState(true);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
   const [showMandateSetup, setShowMandateSetup] = useState(false);
@@ -152,6 +154,7 @@ export default function LeasesPage() {
     setEditingLease(lease);
     setSelectedTenants(lease.tenantIds || []);
     setIndexationEnabled(lease.indexationEnabled !== false);
+    setLandlordLateNotify(lease.landlordLateNotify !== false);
     setPaymentMethod(lease.paymentMethod || "bank_transfer");
     setSelectedBankAccountId(lease.bankAccountId || "");
     setError("");
@@ -260,6 +263,7 @@ export default function LeasesPage() {
       ...data,
       tenantIds: selectedTenants,
       indexationEnabled,
+      landlordLateNotify,
       paymentMethod,
       bankAccountId: paymentMethod === "bank_transfer" ? selectedBankAccountId : undefined,
     };
@@ -887,6 +891,26 @@ export default function LeasesPage() {
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                     indexationEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+            {/* Late-payment landlord email toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-input px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">{t("landlordLateNotify")}</p>
+                <p className="text-xs text-muted-foreground">{t("landlordLateNotifyDescription")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLandlordLateNotify(!landlordLateNotify)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  landlordLateNotify ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    landlordLateNotify ? "translate-x-6" : "translate-x-1"
                   }`}
                 />
               </button>

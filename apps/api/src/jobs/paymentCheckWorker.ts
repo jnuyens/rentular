@@ -20,6 +20,7 @@ import {
   sendReminder,
   DEFAULT_SETTINGS,
 } from "../services/paymentFollowUp";
+import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
@@ -127,6 +128,7 @@ const worker = new Worker(
         status: payments.status,
         leaseId: payments.leaseId,
         isIgnored: payments.isIgnored,
+        landlordNotifiedAt: payments.landlordNotifiedAt,
       })
       .from(payments)
       .where(
@@ -149,6 +151,7 @@ const worker = new Worker(
             latePaymentFeeEnabled: leases.latePaymentFeeEnabled,
             latePaymentFeeAmount: leases.latePaymentFeeAmount,
             latePaymentFeeEnforcement: leases.latePaymentFeeEnforcement,
+            landlordLateNotify: leases.landlordLateNotify,
           })
           .from(leases)
           .where(eq(leases.id, payment.leaseId))
@@ -190,13 +193,45 @@ const worker = new Worker(
 
         // Get owner name
         const ownerData = await db
-          .select({ name: users.name, email: users.email })
+          .select({ name: users.name, email: users.email, locale: users.locale })
           .from(users)
           .where(eq(users.id, lease.ownerId))
           .limit(1);
 
         const ownerName =
           ownerData[0]?.name || ownerData[0]?.email || "Your landlord";
+
+        // Email the landlord (with one-click action links) the first time this
+        // payment is seen late, if enabled for the contract. Once per payment.
+        if (
+          lease.landlordLateNotify &&
+          !payment.landlordNotifiedAt &&
+          ownerData[0]?.email
+        ) {
+          const dueMs = new Date(payment.dueDate).getTime();
+          const daysLate = Math.max(
+            0,
+            Math.floor((Date.now() - dueMs) / 86_400_000),
+          );
+          try {
+            await sendLandlordLateEmail({
+              paymentId: payment.paymentId,
+              ownerEmail: ownerData[0].email,
+              ownerLocale: ownerData[0].locale || "en",
+              tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+              propertyName,
+              amount: Number(payment.amount),
+              dueDate: payment.dueDate,
+              daysPastDue: daysLate,
+            });
+            await db
+              .update(payments)
+              .set({ landlordNotifiedAt: new Date() })
+              .where(eq(payments.id, payment.paymentId));
+          } catch (err) {
+            console.error("[PaymentCheck] landlord late email failed:", err);
+          }
+        }
 
         // Get owner's follow-up settings, fall back to DEFAULT_SETTINGS
         const settingsData = await db

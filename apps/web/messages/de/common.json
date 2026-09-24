@@ -234,6 +234,8 @@
     "coTenantsNote": "Mehrere Mieter ausgewählt - sie werden als Mitmieter im Vertrag eingetragen.",
     "indexation": "Mietindexierung",
     "indexationDescription": "Miete automatisch auf Basis des belgischen Gesundheitsindex anpassen.",
+    "landlordLateNotify": "E-Mails bei Zahlungsverzug",
+    "landlordLateNotifyDescription": "Mir eine E-Mail mit Ein-Klick-Aktionen senden, wenn die Miete dieses Vertrags überfällig ist.",
     "paymentMethod": "Zahlungsmethode",
     "paymentMethodGoCardless": "GoCardless (SEPA-Lastschrift)",
     "paymentMethodBankTransfer": "Uberweisung",

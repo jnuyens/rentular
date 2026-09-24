@@ -42,6 +42,7 @@ const createLeaseSchema = z.object({
   bankAccountId: z.string().optional().default(""),
   status: z.enum(["active", "draft", "terminated", "expired"]).optional().default("active"),
   indexationEnabled: z.boolean().optional().default(true),
+  landlordLateNotify: z.boolean().optional().default(true),
   paymentDay: z.number().int().min(1).max(28).optional().default(1),
 });
 
@@ -123,6 +124,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     bankAccountId: data.bankAccountId || null,
     // Student leases are never indexed (see indexation route).
     indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
+    landlordLateNotify: data.landlordLateNotify,
     paymentDay: data.paymentDay,
   });
 
@@ -170,6 +172,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.monthlyCharges !== undefined) updates.monthlyCharges = String(data.monthlyCharges);
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
+  if (data.landlordLateNotify !== undefined) updates.landlordLateNotify = data.landlordLateNotify;
   if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
 
   // Student leases are never indexed, whatever the request asked for.

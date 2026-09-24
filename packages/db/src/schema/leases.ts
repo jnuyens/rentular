@@ -80,6 +80,8 @@ export const leases = mysqlTable("leases", {
     "soft",   // Waived if tenant pays within 7 days of the fee notice
     "strict", // Once charged, the fee and any interest remain due regardless
   ]).default("soft").notNull(),
+  // Email the landlord (with action links) when rent on this contract is late
+  landlordLateNotify: boolean("landlord_late_notify").default(true).notNull(),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

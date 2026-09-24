@@ -234,6 +234,8 @@
     "coTenantsNote": "Meerdere huurders geselecteerd - ze worden als medehuurders op het contract gezet.",
     "indexation": "Huurindexatie",
     "indexationDescription": "Pas de huur automatisch aan op basis van de Belgische gezondheidsindex.",
+    "landlordLateNotify": "E-mails bij late betaling",
+    "landlordLateNotifyDescription": "Stuur mij een e-mail met acties in één klik als de huur van dit contract te laat is.",
     "paymentMethod": "Betaalmethode",
     "paymentMethodGoCardless": "GoCardless (SEPA Domiciliering)",
     "paymentMethodBankTransfer": "Overschrijving",

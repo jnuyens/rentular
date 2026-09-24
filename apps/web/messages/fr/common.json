@@ -234,6 +234,8 @@
     "coTenantsNote": "Plusieurs locataires sélectionnés - ils seront ajoutés comme co-locataires sur le bail.",
     "indexation": "Indexation du loyer",
     "indexationDescription": "Ajustez automatiquement le loyer sur base de l'indice sante belge.",
+    "landlordLateNotify": "E-mails de retard de paiement",
+    "landlordLateNotifyDescription": "M'envoyer un e-mail avec des actions en un clic lorsque le loyer de ce contrat est en retard.",
     "paymentMethod": "Methode de paiement",
     "paymentMethodGoCardless": "GoCardless (Prelevement SEPA)",
     "paymentMethodBankTransfer": "Virement bancaire",
