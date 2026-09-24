@@ -201,6 +201,9 @@ export default function PropertyManagersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          {propertyName && (
+            <p className="text-sm font-medium">{propertyName}</p>
+          )}
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             {t("subtitle")}
           </p>

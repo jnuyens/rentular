@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Check, Building2, Users, FileText, CreditCard } from "lucide-react";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import PhoneInput from "@/components/PhoneInput";
@@ -822,12 +823,20 @@ export default function OnboardingPage() {
           <Image src="/rentular.png" alt="Rentular" width={36} height={36} />
           <span className="text-xl font-bold">Rentular</span>
         </div>
-        <button
-          onClick={handleSkip}
-          className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
-        >
-          {t("onboarding.skip")} &rarr;
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          >
+            {t("onboarding.logout")}
+          </button>
+          <button
+            onClick={handleSkip}
+            className="text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] transition-colors"
+          >
+            {t("onboarding.skip")} &rarr;
+          </button>
+        </div>
       </header>
 
       {/* Step indicator */}
