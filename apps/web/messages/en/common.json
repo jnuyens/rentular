@@ -7,6 +7,8 @@
     "termsNotice": "By continuing, you agree to our Terms of Service and Privacy Policy.",
     "emailPlaceholder": "Email address",
     "passwordPlaceholder": "Password",
+    "confirmPasswordPlaceholder": "Confirm password",
+    "passwordsDoNotMatch": "Passwords do not match",
     "passwordRequirement": "Minimum 12 characters",
     "passwordTooShort": "Password must be at least 12 characters.",
     "signIn": "Sign in",

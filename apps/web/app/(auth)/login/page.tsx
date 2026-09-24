@@ -12,11 +12,12 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [resetSent, setResetSent] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const resetToken = searchParams.get("resetToken");
 
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function LoginPage() {
     setError("");
 
     if (mode === "forgot") {
-      const res = await fetch(`${apiUrl}/auth/forgot-password`, {
+      const res = await fetch(`${apiUrl}/api/v1/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -58,7 +59,7 @@ export default function LoginPage() {
         return;
       }
 
-      const res = await fetch(`${apiUrl}/auth/reset-password`, {
+      const res = await fetch(`${apiUrl}/api/v1/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: resetToken, password }),
@@ -75,7 +76,11 @@ export default function LoginPage() {
     }
 
     if (mode === "register") {
-      const res = await fetch(`${apiUrl}/auth/register`, {
+      if (password !== confirmPassword) {
+        setError(t("passwordsDoNotMatch"));
+        return;
+      }
+      const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -150,6 +155,19 @@ export default function LoginPage() {
               <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
                 {t("passwordRequirement")}
               </p>
+            </div>
+          )}
+          {mode === "register" && (
+            <div>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t("confirmPasswordPlaceholder")}
+                required
+                minLength={12}
+                className="w-full rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))]"
+              />
             </div>
           )}
           {error && (
