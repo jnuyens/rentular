@@ -402,6 +402,14 @@ propertyManagersRouter.post(
         );
     }
 
+    // An invited manager/co-owner now has property access, so they don't need
+    // the "add your first property" onboarding — mark it complete so the
+    // onboarding gate lets them into the dashboard.
+    await db
+      .update(users)
+      .set({ onboardingComplete: true })
+      .where(eq(users.id, userId));
+
     return c.json({
       message: "Invitation accepted",
       propertyId: record.propertyId,
