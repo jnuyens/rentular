@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { Building2, Plus, MapPin, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Building2, Plus, MapPin, Pencil, Trash2, ChevronUp, ChevronDown, Users } from "lucide-react";
 import { toast } from "sonner";
 import BelgianCityInput from "@/components/BelgianCityInput";
 import CountrySelect from "@/components/CountrySelect";
@@ -389,6 +389,16 @@ export default function PropertiesPage() {
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
+                        )}
+                        {(!p.userRole || ["owner", "co_owner"].includes(p.userRole)) && (
+                          <a
+                            href={`/properties/${p.id}/managers`}
+                            onClick={(e) => e.stopPropagation()}
+                            title={tm("title")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Users className="h-3.5 w-3.5" />
+                          </a>
                         )}
                       </div>
                     </TableCell>
