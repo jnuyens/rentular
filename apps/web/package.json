@@ -23,7 +23,7 @@
     "@rentular/db": "workspace:*",
     "@rentular/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.36.0",
@@ -40,7 +40,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.0.2",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
