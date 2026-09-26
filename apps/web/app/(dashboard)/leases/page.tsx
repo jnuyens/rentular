@@ -132,9 +132,13 @@ export default function LeasesPage() {
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [landlordLateNotify, setLandlordLateNotify] = useState(true);
   const [baseRent, setBaseRent] = useState("");
-  const [refMonth, setRefMonth] = useState("");
   const [baseIndex, setBaseIndex] = useState("");
   const [baseIndexLoading, setBaseIndexLoading] = useState(false);
+  // Region + dates drive the reference month, which is fully derived (read-only).
+  const [regionState, setRegionState] = useState("flanders");
+  const [signingDateState, setSigningDateState] = useState("");
+  const [startDateState, setStartDateState] = useState("");
+  const refMonth = computeRefMonth(regionState, signingDateState, startDateState);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
   const [showMandateSetup, setShowMandateSetup] = useState(false);
@@ -296,15 +300,9 @@ export default function LeasesPage() {
   useEffect(() => {
     if (!showModal) return;
     setBaseRent(editingLease?.baseRent ?? "");
-    setRefMonth(
-      editingLease?.indexationBaseMonth ||
-        computeRefMonth(
-          editingLease?.region,
-          editingLease?.signingDate,
-          editingLease?.startDate,
-        ) ||
-        "",
-    );
+    setRegionState(editingLease?.region ?? "flanders");
+    setSigningDateState(editingLease?.signingDate ?? "");
+    setStartDateState(editingLease?.startDate ?? "");
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
   }, [showModal, editingLease]);
 
@@ -881,6 +879,7 @@ export default function LeasesPage() {
                   name="region"
                   required
                   defaultValue={editingLease?.region || "flanders"}
+                  onChange={(e) => setRegionState(e.target.value)}
                   className={ic}
                 >
                   <option value="flanders">{t("regionFlanders")}</option>
@@ -909,6 +908,7 @@ export default function LeasesPage() {
                   name="signingDate"
                   required
                   defaultValue={editingLease?.signingDate || ""}
+                  onChange={(iso) => setSigningDateState(iso)}
                 />
               </div>
               <div>
@@ -917,6 +917,7 @@ export default function LeasesPage() {
                   name="startDate"
                   required
                   defaultValue={editingLease?.startDate || ""}
+                  onChange={(iso) => setStartDateState(iso)}
                 />
               </div>
             </div>
@@ -1010,8 +1011,9 @@ export default function LeasesPage() {
                     <input
                       type="month"
                       value={refMonth}
-                      onChange={(e) => setRefMonth(e.target.value)}
-                      className={ic}
+                      readOnly
+                      disabled
+                      className={`${ic} bg-muted text-muted-foreground`}
                     />
                   </div>
                   <div>
