@@ -253,7 +253,15 @@
     "setupMandate": "Configurer le mandat",
     "cancelMandate": "Annuler le mandat",
     "payment": "Paiement",
-    "indexationResultHint": "Le loyer indexé possible s'affiche (et s'applique) sur la page Indexation après l'enregistrement de ce contrat."
+    "indexationResultHint": "Le loyer indexé possible s'affiche (et s'applique) sur la page Indexation après l'enregistrement de ce contrat.",
+    "calculatingRent": "Calcul du loyer possible…",
+    "previewUnavailable": "Loyer possible pas encore calculable. Vérifiez le loyer d'origine, le mois de référence et l'indice de base.",
+    "possibleRentNow": "Loyer possible maintenant",
+    "increaseVsCurrent": "Écart avec le loyer actuel",
+    "effectiveFrom": "Applicable à partir du",
+    "lastIndexation": "Dernière indexation",
+    "epcNeededShort": "⚠ Pas de label PEB sur ce bien. En Flandre et à Bruxelles, le PEB plafonne l'indexation, ce montant est donc défavorable. Ajoutez le label PEB au bien pour le montant exact.",
+    "onceAYearNote": "L'indexation ne peut être appliquée qu'une fois par an, à partir de la date anniversaire du contrat. Appliquez-la sur la page Indexation."
   },
   "indexation": {
     "title": "Indexation des loyers",

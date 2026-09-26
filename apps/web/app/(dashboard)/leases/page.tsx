@@ -50,6 +50,7 @@ interface Property {
   id: string;
   name: string;
   city: string;
+  epcLabel?: string | null;
 }
 
 interface Tenant {
@@ -74,6 +75,7 @@ interface Lease {
   baseRent?: string | null;
   indexationBaseMonth?: string | null;
   indexationBaseIndex?: string | null;
+  lastIndexationDate?: string | null;
   bankAccountId?: string;
   tenantIds?: string[];
   indexationEnabled?: boolean;
@@ -139,6 +141,17 @@ export default function LeasesPage() {
   const [signingDateState, setSigningDateState] = useState("");
   const [startDateState, setStartDateState] = useState("");
   const refMonth = computeRefMonth(regionState, signingDateState, startDateState);
+  // Live "possible rent" preview computed by the backend from the form inputs.
+  const [preview, setPreview] = useState<{
+    newRent: number;
+    difference: number;
+    effectiveDate: string;
+    region: string;
+    epcLabel?: string | null;
+    epcRestricted?: boolean;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
   const [showMandateSetup, setShowMandateSetup] = useState(false);
@@ -305,6 +318,65 @@ export default function LeasesPage() {
     setStartDateState(editingLease?.startDate ?? "");
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
   }, [showModal, editingLease]);
+
+  // Live possible-rent preview: recompute (debounced) from the current form inputs.
+  useEffect(() => {
+    if (!showModal || !indexationEnabled || !baseRent || !baseIndex || !startDateState) {
+      setPreview(null);
+      setPreviewError(null);
+      return;
+    }
+    const epcLabel =
+      properties.find((p) => p.id === editingLease?.propertyId)?.epcLabel ?? "";
+    const leaseType = editingLease?.type ?? "residential_long";
+    const controller = new AbortController();
+    const handle = setTimeout(() => {
+      setPreviewLoading(true);
+      setPreviewError(null);
+      const params = new URLSearchParams({
+        baseRent: String(baseRent),
+        baseIndex: String(baseIndex),
+        region: regionState,
+        startDate: startDateState,
+        leaseType,
+      });
+      if (epcLabel) params.set("epcLabel", epcLabel);
+      fetch(`${apiUrl}/api/v1/indexation/preview?${params.toString()}`, {
+        credentials: "include",
+        signal: controller.signal,
+      })
+        .then(async (res) => {
+          const json = await res.json().catch(() => ({}));
+          if (res.ok) {
+            setPreview(json);
+          } else {
+            setPreview(null);
+            setPreviewError(json?.error || "unavailable");
+          }
+        })
+        .catch((e) => {
+          if (e?.name !== "AbortError") {
+            setPreview(null);
+            setPreviewError("unavailable");
+          }
+        })
+        .finally(() => setPreviewLoading(false));
+    }, 400);
+    return () => {
+      clearTimeout(handle);
+      controller.abort();
+    };
+  }, [
+    showModal,
+    indexationEnabled,
+    baseRent,
+    baseIndex,
+    startDateState,
+    regionState,
+    editingLease,
+    properties,
+    apiUrl,
+  ]);
 
   // Auto-fill the base health index for the entered reference month.
   const fetchBaseIndex = async () => {
@@ -1040,7 +1112,52 @@ export default function LeasesPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{t("indexationSetupHelp")}</p>
-                <p className="text-xs text-muted-foreground">{t("indexationResultHint")}</p>
+
+                {previewLoading && !preview && (
+                  <p className="text-xs text-muted-foreground">{t("calculatingRent")}</p>
+                )}
+                {previewError && !preview && (
+                  <p className="text-xs text-muted-foreground">{t("previewUnavailable")}</p>
+                )}
+                {preview && (
+                  <div className="rounded-md border border-input bg-background p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("possibleRentNow")}</span>
+                      <span className="text-lg font-semibold text-green-700 dark:text-green-400">
+                        &euro;{preview.newRent.toFixed(2)}
+                      </span>
+                    </div>
+                    {editingLease?.monthlyRent && (
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("increaseVsCurrent")}</span>
+                        <span className="font-medium">
+                          {preview.newRent - Number(editingLease.monthlyRent) >= 0 ? "+" : ""}
+                          &euro;{(preview.newRent - Number(editingLease.monthlyRent)).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-muted-foreground">{t("effectiveFrom")}</span>
+                      <span className="font-medium">
+                        {new Date(preview.effectiveDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {editingLease?.lastIndexationDate && (
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("lastIndexation")}</span>
+                        <span className="font-medium">
+                          {new Date(editingLease.lastIndexationDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                    {["flanders", "brussels"].includes(preview.region) && !preview.epcLabel && (
+                      <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-500">
+                        {t("epcNeededShort")}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-muted-foreground">{t("onceAYearNote")}</p>
+                  </div>
+                )}
               </div>
             )}
             {/* Late-payment landlord email toggle */}

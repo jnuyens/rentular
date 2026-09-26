@@ -86,6 +86,110 @@ interface CalculationResult {
  * computes unrestricted and EPC-restricted new rents, and returns all results.
  * Throws with descriptive messages on error.
  */
+/**
+ * Pure indexation math: given the base rent/index, region, start date, EPC label
+ * and lease type, compute the current index, the (EPC-restricted) new rent and the
+ * effective date. Shared by the saved-lease calculation and the stateless preview
+ * endpoint so both use identical Belgian rules -- keep them in sync.
+ */
+async function computeIndexationCore(input: {
+  baseRent: number;
+  baseIndex: number;
+  region: string;
+  startDate: string;
+  epcLabel: string | null;
+  leaseType: string;
+}): Promise<{
+  currentIndex: number;
+  currentIndexMonth: string;
+  unrestrictedNewRent: number;
+  newRent: number;
+  epcIndexationFactor: number;
+  epcRestricted: boolean;
+  correctionApplied: boolean;
+  formulaNote: string | undefined;
+  effectiveDate: string;
+}> {
+  // Current index month = the month before the lease anniversary month.
+  const startDate = new Date(input.startDate);
+  const anniversaryMonth = startDate.getMonth(); // 0-based, already month-1 in 1-based terms
+  let currentIndexMonth = anniversaryMonth;
+  let currentIndexYear = new Date().getFullYear();
+  if (anniversaryMonth === 0) {
+    currentIndexMonth = 12;
+    currentIndexYear = currentIndexYear - 1;
+  }
+  const currentIndexMonthStr = currentIndexMonth.toString().padStart(2, "0");
+  const currentIndexYearStr = currentIndexYear.toString();
+
+  const currentIndexValue = await getHealthIndexValue(currentIndexYearStr, currentIndexMonthStr);
+  if (!currentIndexValue) {
+    throw {
+      status: 400,
+      message: `Current health index not available for ${currentIndexYearStr}-${currentIndexMonthStr}`,
+    };
+  }
+  const currentIndex = Number(currentIndexValue);
+
+  const unrestrictedNewRent = calculateIndexedRent(input.baseRent, input.baseIndex, currentIndex);
+
+  // Effective date = next lease anniversary.
+  const today = new Date();
+  let effectiveYear = today.getFullYear();
+  const anniversaryDate = new Date(effectiveYear, startDate.getMonth(), startDate.getDate());
+  if (anniversaryDate <= today) effectiveYear++;
+  const effectiveDate = new Date(effectiveYear, startDate.getMonth(), startDate.getDate());
+  const effectiveDateStr = effectiveDate.toISOString().split("T")[0]!;
+
+  // Apply EPC restrictions based on region.
+  let newRent = unrestrictedNewRent;
+  let epcIndexationFactor = 1.0;
+  let epcRestricted = false;
+  let correctionApplied = false;
+  let formulaNote: string | undefined;
+
+  if (input.region === "brussels") {
+    const result = applyBrusselsEpcRestriction(input.baseRent, unrestrictedNewRent, input.epcLabel);
+    newRent = result.newRent;
+    epcIndexationFactor = result.factor;
+    epcRestricted = result.restricted;
+    formulaNote = result.note;
+  } else if (input.region === "flanders") {
+    const freezeStartValue = await getHealthIndexValue("2022", "09");
+    const freezeEndValue = await getHealthIndexValue("2023", "09");
+    const result = applyFlandersEpcRestriction(
+      input.baseRent,
+      unrestrictedNewRent,
+      input.epcLabel,
+      input.startDate,
+      effectiveDateStr,
+      input.leaseType,
+      input.baseIndex,
+      currentIndex,
+      freezeStartValue ? Number(freezeStartValue) : 0,
+      freezeEndValue ? Number(freezeEndValue) : 0
+    );
+    newRent = result.newRent;
+    epcIndexationFactor = result.factor;
+    epcRestricted = result.restricted;
+    correctionApplied = result.correctionApplied;
+    formulaNote = result.note;
+  }
+  // Wallonia: no EPC restrictions, use unrestricted rent.
+
+  return {
+    currentIndex,
+    currentIndexMonth: `${currentIndexYearStr}-${currentIndexMonthStr}`,
+    unrestrictedNewRent,
+    newRent,
+    epcIndexationFactor,
+    epcRestricted,
+    correctionApplied,
+    formulaNote,
+    effectiveDate: effectiveDateStr,
+  };
+}
+
 async function calculateLeaseIndexation(
   leaseId: string,
   userId: string
@@ -166,107 +270,29 @@ async function calculateLeaseIndexation(
   }
   const baseIndex = Number(lease.indexationBaseIndex);
 
-  // Calculate the "current" index month: the month before the lease anniversary month
-  // Anniversary month = same month as lease start
-  const startDate = new Date(lease.startDate);
-  const anniversaryMonth = startDate.getMonth(); // 0-based
-  // Current index month = anniversary month - 1
-  let currentIndexMonth = anniversaryMonth; // getMonth() is 0-based, so this is already month-1 in 1-based
-  let currentIndexYear = new Date().getFullYear();
-
-  // If anniversary hasn't happened yet this year, use current year
-  // If it already passed, use current year (for the most recent indexation)
-  // The month before the anniversary: if anniversary is January (0), previous month is December (11) of previous year
-  if (anniversaryMonth === 0) {
-    currentIndexMonth = 12;
-    currentIndexYear = currentIndexYear - 1;
-  }
-
-  const currentIndexMonthStr = currentIndexMonth.toString().padStart(2, "0");
-  const currentIndexYearStr = currentIndexYear.toString();
-
-  const currentIndexValue = await getHealthIndexValue(
-    currentIndexYearStr,
-    currentIndexMonthStr
-  );
-  if (!currentIndexValue) {
-    throw {
-      status: 400,
-      message: `Current health index not available for ${currentIndexYearStr}-${currentIndexMonthStr}`,
-    };
-  }
-
-  const currentIndex = Number(currentIndexValue);
   // The indexation base is the original contract rent. Fall back to monthlyRent
   // for legacy leases created before the baseRent field existed.
   const baseRent = Number(lease.baseRent ?? lease.monthlyRent);
 
-  // Calculate unrestricted new rent using the standard formula
-  const unrestrictedNewRent = calculateIndexedRent(
+  const core = await computeIndexationCore({
     baseRent,
     baseIndex,
-    currentIndex
-  );
-
-  // Calculate effective date: next lease anniversary
-  const today = new Date();
-  let effectiveYear = today.getFullYear();
-  const anniversaryDate = new Date(
-    effectiveYear,
-    startDate.getMonth(),
-    startDate.getDate()
-  );
-  if (anniversaryDate <= today) {
-    effectiveYear++;
-  }
-  const effectiveDate = new Date(
-    effectiveYear,
-    startDate.getMonth(),
-    startDate.getDate()
-  );
-  const effectiveDateStr = effectiveDate.toISOString().split("T")[0]!;
-
-  // Apply EPC restrictions based on region
-  let newRent = unrestrictedNewRent;
-  let epcIndexationFactor = 1.0;
-  let epcRestricted = false;
-  let correctionApplied = false;
-  let formulaNote: string | undefined;
-
-  if (lease.region === "brussels") {
-    const result = applyBrusselsEpcRestriction(
-      baseRent,
-      unrestrictedNewRent,
-      property.epcLabel
-    );
-    newRent = result.newRent;
-    epcIndexationFactor = result.factor;
-    epcRestricted = result.restricted;
-    formulaNote = result.note;
-  } else if (lease.region === "flanders") {
-    // For Flanders correction factor: fetch freeze boundary indices
-    const freezeStartValue = await getHealthIndexValue("2022", "09");
-    const freezeEndValue = await getHealthIndexValue("2023", "09");
-
-    const result = applyFlandersEpcRestriction(
-      baseRent,
-      unrestrictedNewRent,
-      property.epcLabel,
-      lease.startDate,
-      effectiveDateStr,
-      lease.type,
-      baseIndex,
-      currentIndex,
-      freezeStartValue ? Number(freezeStartValue) : 0,
-      freezeEndValue ? Number(freezeEndValue) : 0
-    );
-    newRent = result.newRent;
-    epcIndexationFactor = result.factor;
-    epcRestricted = result.restricted;
-    correctionApplied = result.correctionApplied;
-    formulaNote = result.note;
-  }
-  // Wallonia: no EPC restrictions, use unrestricted rent
+    region: lease.region,
+    startDate: lease.startDate,
+    epcLabel: property.epcLabel,
+    leaseType: lease.type,
+  });
+  const {
+    currentIndex,
+    unrestrictedNewRent,
+    newRent,
+    epcIndexationFactor,
+    epcRestricted,
+    correctionApplied,
+    formulaNote,
+    effectiveDate: effectiveDateStr,
+  } = core;
+  const currentIndexValue = String(currentIndex);
 
   return {
     lease: {
@@ -569,6 +595,65 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[Indexation] Calculate error:", message);
     return c.json({ error: "Failed to calculate indexation" }, 500);
+  }
+});
+
+// =====================================================================
+// Endpoint 3b: GET /preview -- stateless indexation preview (unsaved lease)
+// Lets the contract form show the possible rent live from the form inputs,
+// without needing the lease to be saved first.
+// =====================================================================
+
+indexationRouter.get("/preview", async (c) => {
+  try {
+    getRequiredUserId(c);
+
+    const baseRent = Number(c.req.query("baseRent"));
+    const baseIndex = Number(c.req.query("baseIndex"));
+    const region = c.req.query("region") || "";
+    const startDate = c.req.query("startDate") || "";
+    const epcLabel = c.req.query("epcLabel") || null;
+    const leaseType = c.req.query("leaseType") || "residential_long";
+
+    if (!baseRent || !baseIndex || !startDate) {
+      return c.json(
+        { error: "baseRent, baseIndex and startDate are required" },
+        400
+      );
+    }
+
+    const core = await computeIndexationCore({
+      baseRent,
+      baseIndex,
+      region,
+      startDate,
+      epcLabel,
+      leaseType,
+    });
+
+    return c.json({
+      baseRent,
+      baseIndex,
+      currentIndex: core.currentIndex,
+      currentIndexMonth: core.currentIndexMonth,
+      unrestrictedNewRent: core.unrestrictedNewRent,
+      newRent: core.newRent,
+      difference: Number((core.newRent - baseRent).toFixed(2)),
+      effectiveDate: core.effectiveDate,
+      region,
+      epcLabel,
+      epcRestricted: core.epcRestricted,
+      correctionApplied: core.correctionApplied,
+      formulaNote: core.formulaNote,
+    });
+  } catch (error: unknown) {
+    if (error && typeof error === "object" && "status" in error && "message" in error) {
+      const e = error as { status: number; message: string };
+      return c.json({ error: e.message }, e.status as 400 | 404);
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Indexation] Preview error:", message);
+    return c.json({ error: "Failed to preview indexation" }, 500);
   }
 });
 

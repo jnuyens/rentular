@@ -253,7 +253,15 @@
     "setupMandate": "Setup Mandate",
     "cancelMandate": "Cancel Mandate",
     "payment": "Payment",
-    "indexationResultHint": "You can see the resulting indexed rent (and apply it) on the Indexation page after saving this contract."
+    "indexationResultHint": "You can see the resulting indexed rent (and apply it) on the Indexation page after saving this contract.",
+    "calculatingRent": "Calculating the possible rent…",
+    "previewUnavailable": "Possible rent can't be calculated yet. Check the original rent, reference month and base index.",
+    "possibleRentNow": "Possible rent now",
+    "increaseVsCurrent": "Change vs current rent",
+    "effectiveFrom": "Applicable from",
+    "lastIndexation": "Last indexation",
+    "epcNeededShort": "⚠ No EPC label on this property. In Flanders and Brussels the EPC caps indexation, so this is a worst-case figure. Add the EPC label to the property for the exact amount.",
+    "onceAYearNote": "Indexation may be applied at most once a year, from the contract anniversary. Apply it on the Indexation page."
   },
   "indexation": {
     "title": "Rent Indexation",

@@ -253,7 +253,15 @@
     "setupMandate": "Mandaat instellen",
     "cancelMandate": "Mandaat annuleren",
     "payment": "Betaling",
-    "indexationResultHint": "De mogelijke geïndexeerde huur zie je (en pas je toe) op de Indexatie-pagina nadat je dit contract hebt opgeslagen."
+    "indexationResultHint": "De mogelijke geïndexeerde huur zie je (en pas je toe) op de Indexatie-pagina nadat je dit contract hebt opgeslagen.",
+    "calculatingRent": "Mogelijke huur berekenen…",
+    "previewUnavailable": "Mogelijke huur nog niet te berekenen. Controleer de oorspronkelijke huur, referentiemaand en basisindex.",
+    "possibleRentNow": "Mogelijke huur nu",
+    "increaseVsCurrent": "Verschil met huidige huur",
+    "effectiveFrom": "Toepasbaar vanaf",
+    "lastIndexation": "Laatste indexatie",
+    "epcNeededShort": "⚠ Geen EPC-label op deze eigendom. In Vlaanderen en Brussel begrenst het EPC de indexatie, dus dit is een worst-case bedrag. Vul het EPC-label in bij de eigendom voor het exacte bedrag.",
+    "onceAYearNote": "Indexatie mag maximaal één keer per jaar, vanaf de verjaardag van het contract. Pas ze toe op de Indexatie-pagina."
   },
   "indexation": {
     "title": "Huurindexatie",

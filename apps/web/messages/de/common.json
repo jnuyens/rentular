@@ -253,7 +253,15 @@
     "setupMandate": "Mandat einrichten",
     "cancelMandate": "Mandat stornieren",
     "payment": "Zahlung",
-    "indexationResultHint": "Die mögliche indexierte Miete sehen Sie (und wenden sie an) auf der Indexierungsseite, nachdem Sie diesen Vertrag gespeichert haben."
+    "indexationResultHint": "Die mögliche indexierte Miete sehen Sie (und wenden sie an) auf der Indexierungsseite, nachdem Sie diesen Vertrag gespeichert haben.",
+    "calculatingRent": "Mögliche Miete wird berechnet…",
+    "previewUnavailable": "Mögliche Miete noch nicht berechenbar. Prüfen Sie ursprüngliche Miete, Referenzmonat und Basisindex.",
+    "possibleRentNow": "Mögliche Miete jetzt",
+    "increaseVsCurrent": "Differenz zur aktuellen Miete",
+    "effectiveFrom": "Anwendbar ab",
+    "lastIndexation": "Letzte Indexierung",
+    "epcNeededShort": "⚠ Kein EPC-Label bei dieser Immobilie. In Flandern und Brüssel begrenzt das EPC die Indexierung, dies ist daher ein Worst-Case-Betrag. Tragen Sie das EPC-Label bei der Immobilie ein, um den genauen Betrag zu erhalten.",
+    "onceAYearNote": "Die Indexierung darf höchstens einmal jährlich ab dem Jahrestag des Vertrags erfolgen. Wenden Sie sie auf der Indexierungsseite an."
   },
   "indexation": {
     "title": "Mietindexierung",
