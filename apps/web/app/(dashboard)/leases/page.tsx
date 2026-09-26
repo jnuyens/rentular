@@ -152,6 +152,10 @@ export default function LeasesPage() {
     epcRestricted?: boolean;
     currentRent?: number | null;
     differenceVsCurrent?: number | null;
+    newRentAtLatest?: number | null;
+    differenceAtLatest?: number | null;
+    canApply?: boolean;
+    applicableFrom?: string | null;
     impliedIndex?: number | null;
     estimatedLastIndexMonth?: string | null;
     monthsSinceEstimated?: number | null;
@@ -354,6 +358,7 @@ export default function LeasesPage() {
       });
       if (epcLabel) params.set("epcLabel", epcLabel);
       if (editingLease?.monthlyRent) params.set("currentRent", String(editingLease.monthlyRent));
+      if (lastIndexationDateState) params.set("lastIndexationDate", lastIndexationDateState);
       fetch(`${apiUrl}/api/v1/indexation/preview?${params.toString()}`, {
         credentials: "include",
         signal: controller.signal,
@@ -389,6 +394,7 @@ export default function LeasesPage() {
     editingLease,
     properties,
     apiUrl,
+    lastIndexationDateState,
   ]);
 
   // Is indexation available again? Prefer the manual last-indexation date; fall
@@ -404,6 +410,20 @@ export default function LeasesPage() {
           year: "numeric",
         })
       : "";
+
+  // When indexation can't be applied yet, show the rent at the latest published
+  // index ("risen so far") rather than the anniversary figure.
+  const previewCanApply = preview?.canApply ?? true;
+  const previewShownRent = preview
+    ? previewCanApply
+      ? preview.newRent
+      : preview.newRentAtLatest ?? preview.newRent
+    : 0;
+  const previewShownDiff: number | null = preview
+    ? previewCanApply
+      ? preview.differenceVsCurrent ?? null
+      : preview.differenceAtLatest ?? null
+    : null;
 
   // Auto-fill the base health index for the entered reference month.
   const fetchBaseIndex = async () => {
@@ -1158,17 +1178,19 @@ export default function LeasesPage() {
                 {preview && (
                   <div className="rounded-md border border-input bg-background p-3 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{t("possibleRentNow")}</span>
+                      <span className="text-muted-foreground">
+                        {previewCanApply ? t("possibleRentNow") : t("risenSoFar")}
+                      </span>
                       <span className="text-lg font-semibold text-green-700 dark:text-green-400">
-                        &euro;{preview.newRent.toFixed(2)}
+                        &euro;{previewShownRent.toFixed(2)}
                       </span>
                     </div>
-                    {preview.differenceVsCurrent != null && (
+                    {previewShownDiff != null && (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("increaseVsCurrent")}</span>
                         <span className="font-medium">
-                          {preview.differenceVsCurrent >= 0 ? "+" : ""}
-                          &euro;{preview.differenceVsCurrent.toFixed(2)}
+                          {previewShownDiff >= 0 ? "+" : ""}
+                          &euro;{previewShownDiff.toFixed(2)}
                         </span>
                       </div>
                     )}
@@ -1178,8 +1200,10 @@ export default function LeasesPage() {
                         {new Date(preview.effectiveDate).toLocaleDateString()}
                       </span>
                     </div>
-                    {preview.differenceVsCurrent != null && preview.differenceVsCurrent <= 0.005 && (
-                      <p className="mt-2 text-xs text-muted-foreground">{t("noIndexationYet")}</p>
+                    {!previewCanApply && preview.applicableFrom && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {t("notApplicableUntil", { date: new Date(preview.applicableFrom).toLocaleDateString() })}
+                      </p>
                     )}
                     {lastIndexationDateState && (
                       <div className="mt-1 flex items-center justify-between">
@@ -1197,8 +1221,7 @@ export default function LeasesPage() {
                         </span>
                       </div>
                     )}
-                    {indexationDue !== null &&
-                      !(preview.differenceVsCurrent != null && preview.differenceVsCurrent <= 0.005) && (
+                    {indexationDue !== null && previewCanApply && (
                       <p
                         className={`mt-2 text-xs font-medium ${
                           indexationDue

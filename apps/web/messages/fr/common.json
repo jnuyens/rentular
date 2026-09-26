@@ -268,7 +268,9 @@
     "indexationDueYes": "✓ Indexation possible (il y a plus d'un an)",
     "indexationDueNo": "Indexé il y a moins d'un an",
     "estimatedFromRent": "(estimé à partir du loyer actuel)",
-    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié)."
+    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié).",
+    "risenSoFar": "Déjà augmenté",
+    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -313,7 +315,9 @@
     "applyIndexation": "Appliquer l'indexation",
     "rent": "Loyer",
     "statusLabel": "Statut",
-    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié)."
+    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié).",
+    "risenSoFar": "Déjà augmenté",
+    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté."
   },
   "communications": {
     "title": "Communications",

@@ -80,6 +80,11 @@ interface CalculationResult {
   correctionApplied: boolean;
   formulaNote: string | undefined;
   effectiveDate: string;
+  latestIndex: number;
+  latestIndexMonth: string;
+  newRentAtLatest: number;
+  canApply: boolean;
+  applicableFrom: string;
 }
 
 /**
@@ -100,6 +105,7 @@ async function computeIndexationCore(input: {
   startDate: string;
   epcLabel: string | null;
   leaseType: string;
+  lastIndexationDate?: string | null;
 }): Promise<{
   currentIndex: number;
   currentIndexMonth: string;
@@ -110,6 +116,13 @@ async function computeIndexationCore(input: {
   correctionApplied: boolean;
   formulaNote: string | undefined;
   effectiveDate: string;
+  // Informational "risen so far" figure, using the latest published index.
+  latestIndex: number;
+  latestIndexMonth: string;
+  newRentAtLatest: number;
+  // Applicability: indexation may be applied once a year from the anniversary.
+  canApply: boolean;
+  applicableFrom: string;
 }> {
   // Current index month = the month before the lease anniversary month.
   const startDate = new Date(input.startDate);
@@ -132,7 +145,13 @@ async function computeIndexationCore(input: {
   }
   const currentIndex = Number(currentIndexValue);
 
-  const unrestrictedNewRent = calculateIndexedRent(input.baseRent, input.baseIndex, currentIndex);
+  // Latest published index -- used to show how much the rent has already risen,
+  // even for leases whose anniversary hasn't come round yet.
+  const latest = await getLatestHealthIndex();
+  const latestIndex = latest ? Number(latest.value) : currentIndex;
+  const latestIndexMonth = latest
+    ? `${latest.year}-${latest.month}`
+    : `${currentIndexYearStr}-${currentIndexMonthStr}`;
 
   // Effective date = next lease anniversary.
   const today = new Date();
@@ -142,52 +161,68 @@ async function computeIndexationCore(input: {
   const effectiveDate = new Date(effectiveYear, startDate.getMonth(), startDate.getDate());
   const effectiveDateStr = effectiveDate.toISOString().split("T")[0]!;
 
-  // Apply EPC restrictions based on region.
-  let newRent = unrestrictedNewRent;
-  let epcIndexationFactor = 1.0;
-  let epcRestricted = false;
-  let correctionApplied = false;
-  let formulaNote: string | undefined;
-
-  if (input.region === "brussels") {
-    const result = applyBrusselsEpcRestriction(input.baseRent, unrestrictedNewRent, input.epcLabel);
-    newRent = result.newRent;
-    epcIndexationFactor = result.factor;
-    epcRestricted = result.restricted;
-    formulaNote = result.note;
-  } else if (input.region === "flanders") {
-    const freezeStartValue = await getHealthIndexValue("2022", "09");
-    const freezeEndValue = await getHealthIndexValue("2023", "09");
-    const result = applyFlandersEpcRestriction(
-      input.baseRent,
-      unrestrictedNewRent,
-      input.epcLabel,
-      input.startDate,
-      effectiveDateStr,
-      input.leaseType,
-      input.baseIndex,
-      currentIndex,
-      freezeStartValue ? Number(freezeStartValue) : 0,
-      freezeEndValue ? Number(freezeEndValue) : 0
-    );
-    newRent = result.newRent;
-    epcIndexationFactor = result.factor;
-    epcRestricted = result.restricted;
-    correctionApplied = result.correctionApplied;
-    formulaNote = result.note;
+  // Freeze-period boundary indices (Flanders EPC correction), fetched once.
+  let freezeStart = 0;
+  let freezeEnd = 0;
+  if (input.region === "flanders") {
+    const fs = await getHealthIndexValue("2022", "09");
+    const fe = await getHealthIndexValue("2023", "09");
+    freezeStart = fs ? Number(fs) : 0;
+    freezeEnd = fe ? Number(fe) : 0;
   }
-  // Wallonia: no EPC restrictions, use unrestricted rent.
+
+  // Apply EPC restrictions for a given "current" index value.
+  const applyEpc = (atIndex: number) => {
+    const unrestricted = calculateIndexedRent(input.baseRent, input.baseIndex, atIndex);
+    if (input.region === "brussels") {
+      const r = applyBrusselsEpcRestriction(input.baseRent, unrestricted, input.epcLabel);
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: false, note: r.note };
+    }
+    if (input.region === "flanders") {
+      const r = applyFlandersEpcRestriction(
+        input.baseRent,
+        unrestricted,
+        input.epcLabel,
+        input.startDate,
+        effectiveDateStr,
+        input.leaseType,
+        input.baseIndex,
+        atIndex,
+        freezeStart,
+        freezeEnd
+      );
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, note: r.note };
+    }
+    // Wallonia: no EPC restrictions.
+    return { unrestricted, newRent: unrestricted, factor: 1.0, epcRestricted: false, correctionApplied: false, note: undefined as string | undefined };
+  };
+
+  const legal = applyEpc(currentIndex);
+  const atLatest = applyEpc(latestIndex);
+
+  // Indexation may be applied once a year, from the anniversary of the later of
+  // (last indexation, contract start). Before that date it's informational only.
+  const gateBase = input.lastIndexationDate ? new Date(input.lastIndexationDate) : startDate;
+  const applicableFrom = new Date(gateBase);
+  applicableFrom.setFullYear(applicableFrom.getFullYear() + 1);
+  const applicableFromStr = applicableFrom.toISOString().split("T")[0]!;
+  const canApply = today >= applicableFrom;
 
   return {
     currentIndex,
     currentIndexMonth: `${currentIndexYearStr}-${currentIndexMonthStr}`,
-    unrestrictedNewRent,
-    newRent,
-    epcIndexationFactor,
-    epcRestricted,
-    correctionApplied,
-    formulaNote,
+    unrestrictedNewRent: legal.unrestricted,
+    newRent: legal.newRent,
+    epcIndexationFactor: legal.factor,
+    epcRestricted: legal.epcRestricted,
+    correctionApplied: legal.correctionApplied,
+    formulaNote: legal.note,
     effectiveDate: effectiveDateStr,
+    latestIndex,
+    latestIndexMonth,
+    newRentAtLatest: atLatest.newRent,
+    canApply,
+    applicableFrom: applicableFromStr,
   };
 }
 
@@ -282,6 +317,7 @@ async function calculateLeaseIndexation(
     startDate: lease.startDate,
     epcLabel: property.epcLabel,
     leaseType: lease.type,
+    lastIndexationDate: lease.lastIndexationDate,
   });
   const {
     currentIndex,
@@ -292,6 +328,11 @@ async function calculateLeaseIndexation(
     correctionApplied,
     formulaNote,
     effectiveDate: effectiveDateStr,
+    latestIndex,
+    latestIndexMonth,
+    newRentAtLatest,
+    canApply,
+    applicableFrom,
   } = core;
   const currentIndexValue = String(currentIndex);
 
@@ -322,6 +363,11 @@ async function calculateLeaseIndexation(
     correctionApplied,
     formulaNote,
     effectiveDate: effectiveDateStr,
+    latestIndex,
+    latestIndexMonth,
+    newRentAtLatest,
+    canApply,
+    applicableFrom,
   };
 }
 
@@ -585,6 +631,11 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       epcIndexationFactor: calc.epcIndexationFactor,
       epcRestricted: calc.epcRestricted,
       correctionApplied: calc.correctionApplied,
+      latestIndex: calc.latestIndex,
+      latestIndexMonth: calc.latestIndexMonth,
+      newRentAtLatest: calc.newRentAtLatest,
+      canApply: calc.canApply,
+      applicableFrom: calc.applicableFrom,
       formula: "newRent = baseRent * (currentIndex / baseIndex)",
       formulaNote: calc.formulaNote,
     });
@@ -616,6 +667,7 @@ indexationRouter.get("/preview", async (c) => {
     const epcLabel = c.req.query("epcLabel") || null;
     const leaseType = c.req.query("leaseType") || "residential_long";
     const currentRent = Number(c.req.query("currentRent"));
+    const lastIndexationDate = c.req.query("lastIndexationDate") || null;
 
     if (!baseRent || !baseIndex || !startDate) {
       return c.json(
@@ -631,6 +683,7 @@ indexationRouter.get("/preview", async (c) => {
       startDate,
       epcLabel,
       leaseType,
+      lastIndexationDate,
     });
 
     // Estimate when the rent was last indexed by back-solving the health index
@@ -676,6 +729,15 @@ indexationRouter.get("/preview", async (c) => {
         Number.isFinite(currentRent) && currentRent > 0
           ? Number((core.newRent - currentRent).toFixed(2))
           : null,
+      latestIndex: core.latestIndex,
+      latestIndexMonth: core.latestIndexMonth,
+      newRentAtLatest: core.newRentAtLatest,
+      differenceAtLatest:
+        Number.isFinite(currentRent) && currentRent > 0
+          ? Number((core.newRentAtLatest - currentRent).toFixed(2))
+          : null,
+      canApply: core.canApply,
+      applicableFrom: core.applicableFrom,
       impliedIndex,
       estimatedLastIndexMonth,
       monthsSinceEstimated,
@@ -1001,6 +1063,16 @@ indexationRouter.post(
       const applyRole = await getUserPropertyRole(userId, calc.lease.propertyId);
       if (!applyRole || !hasMinimumRole(applyRole, "manager")) {
         return c.json({ error: "Insufficient permissions" }, 403);
+      }
+
+      // Indexation may only be applied once a year, from the anniversary.
+      if (!calc.canApply) {
+        return c.json(
+          {
+            error: `Indexation cannot be applied before ${calc.applicableFrom} (it may be applied once a year, from the contract anniversary)`,
+          },
+          400
+        );
       }
 
       const calculatedNewRent = calc.newRent;

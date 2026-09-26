@@ -63,6 +63,11 @@ interface CalcResult {
   epcRestricted?: boolean;
   correctionApplied?: boolean;
   formulaNote?: string;
+  latestIndex: number;
+  latestIndexMonth: string;
+  newRentAtLatest: number;
+  canApply: boolean;
+  applicableFrom: string;
 }
 
 function getNextIndexationDate(startDate: string): Date {
@@ -240,6 +245,13 @@ export default function IndexationPage() {
       toast.error(tc("toast.networkError") || "Network error");
     }
   };
+
+  // When indexation can't be applied yet (first year / less than a year since the
+  // last one), show the rent at the LATEST published index -- how much it has
+  // already risen -- instead of the anniversary figure.
+  const shownNewRent = calc ? (calc.canApply ? calc.newRent : calc.newRentAtLatest) : 0;
+  const shownIncrease =
+    calc && previewLease ? shownNewRent - Number(previewLease.monthlyRent) : 0;
 
   return (
     <div className="space-y-6">
@@ -574,24 +586,26 @@ export default function IndexationPage() {
                       </div>
                       <TrendingUp className="mb-1 h-5 w-5 shrink-0 text-muted-foreground" />
                       <div className="text-right">
-                        <p className="text-xs text-muted-foreground">{t("possibleRent")}</p>
-                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">&euro;{calc.newRent.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {calc.canApply ? t("possibleRent") : t("risenSoFar")}
+                        </p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">&euro;{shownNewRent.toFixed(2)}</p>
                       </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
                       <span className="text-muted-foreground">{t("increaseVsCurrent")}</span>
-                      <span className={`font-medium ${calc.newRent - Number(previewLease.monthlyRent) > 0 ? "text-green-700 dark:text-green-400" : ""}`}>
-                        {calc.newRent - Number(previewLease.monthlyRent) >= 0 ? "+" : ""}
-                        &euro;{(calc.newRent - Number(previewLease.monthlyRent)).toFixed(2)}/m
+                      <span className={`font-medium ${shownIncrease > 0 ? "text-green-700 dark:text-green-400" : ""}`}>
+                        {shownIncrease >= 0 ? "+" : ""}
+                        &euro;{shownIncrease.toFixed(2)}/m
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t("effectiveDateLabel")}</span>
                       <span className="font-medium">{new Date(calc.effectiveDate).toLocaleDateString()}</span>
                     </div>
-                    {calc.newRent - Number(previewLease.monthlyRent) <= 0.005 && (
+                    {!calc.canApply && (
                       <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                        {t("noIndexationYet")}
+                        {t("notApplicableUntil", { date: new Date(calc.applicableFrom).toLocaleDateString() })}
                       </p>
                     )}
                   </div>
@@ -626,13 +640,11 @@ export default function IndexationPage() {
               </Button>
               <Button
                 onClick={() => handleApplyIndexation(previewLease.id)}
-                disabled={
-                  !calc ||
-                  calcLoading ||
-                  (!!calc && calc.newRent - Number(previewLease.monthlyRent) <= 0.005)
-                }
+                disabled={!calc || calcLoading || (!!calc && !calc.canApply)}
               >
-                {calc ? `${t("applyIndexation")} (€${calc.newRent.toFixed(2)})` : t("applyIndexation")}
+                {calc && calc.canApply
+                  ? `${t("applyIndexation")} (€${calc.newRent.toFixed(2)})`
+                  : t("applyIndexation")}
               </Button>
             </DialogFooter>
           </DialogContent>

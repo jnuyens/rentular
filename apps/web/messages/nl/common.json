@@ -268,7 +268,9 @@
     "indexationDueYes": "✓ Indexatie mogelijk (meer dan een jaar geleden)",
     "indexationDueNo": "Minder dan een jaar geleden geïndexeerd",
     "estimatedFromRent": "(geschat uit de huidige huur)",
-    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd)."
+    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd).",
+    "risenSoFar": "Reeds gestegen",
+    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -313,7 +315,9 @@
     "applyIndexation": "Indexatie toepassen",
     "rent": "Huur",
     "statusLabel": "Status",
-    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd)."
+    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd).",
+    "risenSoFar": "Reeds gestegen",
+    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is."
   },
   "communications": {
     "title": "Communicatie",
