@@ -250,7 +250,7 @@ export default function PaymentsPage() {
         fetch(`${apiUrl}/api/v1/leases`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/properties`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/tenants`, { credentials: "include" }),
-        fetch(`${apiUrl}/api/v1/payments/?perPage=100`, { credentials: "include" }),
+        fetch(`${apiUrl}/api/v1/payments?perPage=100`, { credentials: "include" }),
       ]);
       const leasesData = leasesRes.ok ? (await leasesRes.json()).data || [] : [];
       const propsData = propsRes.ok ? (await propsRes.json()).data || [] : [];
