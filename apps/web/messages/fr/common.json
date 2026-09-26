@@ -240,7 +240,7 @@
     "referenceMonth": "Mois de reference",
     "baseIndex": "Indice de base",
     "autoFillBaseIndex": "Remplir depuis l'indice sante",
-    "indexationSetupHelp": "Le loyer initial et l'indice de base servent de base fixe a l'indexation. Le loyer mensuel reste le loyer actuel.",
+    "indexationSetupHelp": "Le loyer initial et l'indice de base servent de base fixe a l'indexation. Le loyer mensuel reste le loyer actuel. Le mois de reference est calcule automatiquement a partir des dates du contrat.",
     "baseIndexNotFound": "Aucun indice sante trouve pour ce mois. Saisissez-le manuellement.",
     "landlordLateNotify": "E-mails de retard de paiement",
     "landlordLateNotifyDescription": "M'envoyer un e-mail avec des actions en un clic lorsque le loyer de ce contrat est en retard.",

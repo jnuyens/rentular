@@ -52,6 +52,32 @@ const createLeaseSchema = z.object({
 
 export const leasesRouter = new Hono();
 
+// Belgian indexation base index (aanvangsindex) reference month:
+//   - contracts signed from 2019-01-01: the month before the START date
+//   - contracts signed before 2019-01-01: the month before the SIGNING date
+// (Flemish Housing Rental Decree; the app's primary market.) Returns YYYY-MM.
+const INDEX_RULE_CUTOFF = new Date("2019-01-01");
+function computeReferenceMonth(
+  signingDate?: string | null,
+  startDate?: string | null,
+): string | null {
+  const signing = signingDate ? new Date(signingDate) : null;
+  const start = startDate ? new Date(startDate) : null;
+  let anchor: Date | null;
+  if (signing && !isNaN(signing.getTime()) && signing >= INDEX_RULE_CUTOFF) {
+    anchor = start && !isNaN(start.getTime()) ? start : signing;
+  } else if (signing && !isNaN(signing.getTime())) {
+    anchor = signing;
+  } else {
+    anchor = start;
+  }
+  if (!anchor || isNaN(anchor.getTime())) return null;
+  const prev = new Date(
+    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
+  );
+  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 // List all leases for accessible properties (filtered by role)
 leasesRouter.get("/", async (c) => {
   const userId = getRequiredUserId(c);
@@ -126,7 +152,9 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     monthlyRent: String(data.monthlyRent),
     monthlyCharges: String(data.monthlyCharges),
     baseRent: data.baseRent !== undefined ? String(data.baseRent) : null,
-    indexationBaseMonth: data.indexationBaseMonth || null,
+    indexationBaseMonth:
+      data.indexationBaseMonth ||
+      computeReferenceMonth(data.signingDate, data.startDate),
     indexationBaseIndex:
       data.indexationBaseIndex !== undefined ? String(data.indexationBaseIndex) : null,
     bankAccountId: data.bankAccountId || null,
@@ -179,7 +207,14 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.monthlyRent !== undefined) updates.monthlyRent = String(data.monthlyRent);
   if (data.monthlyCharges !== undefined) updates.monthlyCharges = String(data.monthlyCharges);
   if (data.baseRent !== undefined) updates.baseRent = String(data.baseRent);
-  if (data.indexationBaseMonth !== undefined) updates.indexationBaseMonth = data.indexationBaseMonth || null;
+  if (data.indexationBaseMonth !== undefined) {
+    updates.indexationBaseMonth =
+      data.indexationBaseMonth ||
+      computeReferenceMonth(
+        data.signingDate ?? existing[0].signingDate,
+        data.startDate ?? existing[0].startDate,
+      );
+  }
   if (data.indexationBaseIndex !== undefined) updates.indexationBaseIndex = String(data.indexationBaseIndex);
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;

@@ -240,7 +240,7 @@
     "referenceMonth": "Referentiemaand",
     "baseIndex": "Basisindex",
     "autoFillBaseIndex": "Automatisch invullen uit gezondheidsindex",
-    "indexationSetupHelp": "De oorspronkelijke huur en basisindex zijn de vaste basis voor indexatie. Maandhuur blijft de huidige huur.",
+    "indexationSetupHelp": "De oorspronkelijke huur en basisindex zijn de vaste basis voor indexatie. Maandhuur blijft de huidige huur. De referentiemaand wordt automatisch berekend uit de contractdata.",
     "baseIndexNotFound": "Geen gezondheidsindex gevonden voor die maand. Voer deze handmatig in.",
     "landlordLateNotify": "E-mails bij late betaling",
     "landlordLateNotifyDescription": "Stuur mij een e-mail met acties in één klik als de huur van dit contract te laat is.",

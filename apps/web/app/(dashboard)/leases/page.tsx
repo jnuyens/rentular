@@ -88,6 +88,27 @@ interface BankAccountOption {
   iban: string;
 }
 
+// Belgian indexation reference month (YYYY-MM): month before the start date for
+// contracts signed from 2019-01-01, else month before the signing date.
+function computeRefMonth(
+  signing?: string | null,
+  start?: string | null,
+): string {
+  const cutoff = new Date("2019-01-01");
+  const s = signing ? new Date(signing) : null;
+  const st = start ? new Date(start) : null;
+  let anchor: Date | null;
+  if (s && !isNaN(s.getTime()) && s >= cutoff)
+    anchor = st && !isNaN(st.getTime()) ? st : s;
+  else if (s && !isNaN(s.getTime())) anchor = s;
+  else anchor = st;
+  if (!anchor || isNaN(anchor.getTime())) return "";
+  const prev = new Date(
+    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
+  );
+  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function LeasesPage() {
   const t = useTranslations("leases");
   const td = useTranslations("dashboard");
@@ -270,7 +291,11 @@ export default function LeasesPage() {
   useEffect(() => {
     if (!showModal) return;
     setBaseRent(editingLease?.baseRent ?? "");
-    setRefMonth(editingLease?.indexationBaseMonth ?? "");
+    setRefMonth(
+      editingLease?.indexationBaseMonth ||
+        computeRefMonth(editingLease?.signingDate, editingLease?.startDate) ||
+        "",
+    );
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
   }, [showModal, editingLease]);
 
