@@ -88,21 +88,26 @@ interface BankAccountOption {
   iban: string;
 }
 
-// Belgian indexation reference month (YYYY-MM): month before the start date for
-// contracts signed from 2019-01-01, else month before the signing date.
+// Belgian indexation reference month (YYYY-MM):
+//   Flanders & Brussels: month before the START date for contracts signed from
+//   2019-01-01, else month before the SIGNING date.
+//   Wallonia: always month before the SIGNING date.
 function computeRefMonth(
+  region?: string | null,
   signing?: string | null,
   start?: string | null,
 ): string {
   const cutoff = new Date("2019-01-01");
   const s = signing ? new Date(signing) : null;
   const st = start ? new Date(start) : null;
-  let anchor: Date | null;
-  if (s && !isNaN(s.getTime()) && s >= cutoff)
-    anchor = st && !isNaN(st.getTime()) ? st : s;
-  else if (s && !isNaN(s.getTime())) anchor = s;
-  else anchor = st;
-  if (!anchor || isNaN(anchor.getTime())) return "";
+  const validS = s && !isNaN(s.getTime()) ? s : null;
+  const validSt = st && !isNaN(st.getTime()) ? st : null;
+  const useStart =
+    (region === "flanders" || region === "brussels") &&
+    validS !== null &&
+    validS >= cutoff;
+  const anchor = useStart ? validSt ?? validS : validS ?? validSt;
+  if (!anchor) return "";
   const prev = new Date(
     Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
   );
@@ -293,7 +298,11 @@ export default function LeasesPage() {
     setBaseRent(editingLease?.baseRent ?? "");
     setRefMonth(
       editingLease?.indexationBaseMonth ||
-        computeRefMonth(editingLease?.signingDate, editingLease?.startDate) ||
+        computeRefMonth(
+          editingLease?.region,
+          editingLease?.signingDate,
+          editingLease?.startDate,
+        ) ||
         "",
     );
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");

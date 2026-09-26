@@ -52,26 +52,29 @@ const createLeaseSchema = z.object({
 
 export const leasesRouter = new Hono();
 
-// Belgian indexation base index (aanvangsindex) reference month:
-//   - contracts signed from 2019-01-01: the month before the START date
-//   - contracts signed before 2019-01-01: the month before the SIGNING date
-// (Flemish Housing Rental Decree; the app's primary market.) Returns YYYY-MM.
+// Belgian indexation base index (aanvangsindex) reference month, per region:
+//   - Flanders & Brussels: contracts signed from 2019-01-01 use the month
+//     before the START date; earlier contracts use the month before SIGNING.
+//   - Wallonia (Décret 15/03/2018, art. 26): always the month before SIGNING.
+// Returns YYYY-MM.
 const INDEX_RULE_CUTOFF = new Date("2019-01-01");
 function computeReferenceMonth(
+  region?: string | null,
   signingDate?: string | null,
   startDate?: string | null,
 ): string | null {
   const signing = signingDate ? new Date(signingDate) : null;
   const start = startDate ? new Date(startDate) : null;
-  let anchor: Date | null;
-  if (signing && !isNaN(signing.getTime()) && signing >= INDEX_RULE_CUTOFF) {
-    anchor = start && !isNaN(start.getTime()) ? start : signing;
-  } else if (signing && !isNaN(signing.getTime())) {
-    anchor = signing;
-  } else {
-    anchor = start;
-  }
-  if (!anchor || isNaN(anchor.getTime())) return null;
+  const validSigning = signing && !isNaN(signing.getTime()) ? signing : null;
+  const validStart = start && !isNaN(start.getTime()) ? start : null;
+  const useStart =
+    (region === "flanders" || region === "brussels") &&
+    validSigning !== null &&
+    validSigning >= INDEX_RULE_CUTOFF;
+  const anchor = useStart
+    ? validStart ?? validSigning
+    : validSigning ?? validStart;
+  if (!anchor) return null;
   const prev = new Date(
     Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
   );
@@ -154,7 +157,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     baseRent: data.baseRent !== undefined ? String(data.baseRent) : null,
     indexationBaseMonth:
       data.indexationBaseMonth ||
-      computeReferenceMonth(data.signingDate, data.startDate),
+      computeReferenceMonth(data.region, data.signingDate, data.startDate),
     indexationBaseIndex:
       data.indexationBaseIndex !== undefined ? String(data.indexationBaseIndex) : null,
     bankAccountId: data.bankAccountId || null,
@@ -211,6 +214,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
     updates.indexationBaseMonth =
       data.indexationBaseMonth ||
       computeReferenceMonth(
+        data.region ?? existing[0].region,
         data.signingDate ?? existing[0].signingDate,
         data.startDate ?? existing[0].startDate,
       );
