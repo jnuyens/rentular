@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { FileText, Plus, Search, Users, Pencil, Trash2, ChevronUp, ChevronDown, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
@@ -71,6 +71,9 @@ interface Lease {
   endDate?: string;
   monthlyRent: string;
   monthlyCharges: string;
+  baseRent?: string | null;
+  indexationBaseMonth?: string | null;
+  indexationBaseIndex?: string | null;
   bankAccountId?: string;
   tenantIds?: string[];
   indexationEnabled?: boolean;
@@ -102,6 +105,10 @@ export default function LeasesPage() {
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [landlordLateNotify, setLandlordLateNotify] = useState(true);
+  const [baseRent, setBaseRent] = useState("");
+  const [refMonth, setRefMonth] = useState("");
+  const [baseIndex, setBaseIndex] = useState("");
+  const [baseIndexLoading, setBaseIndexLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<string>("bank_transfer");
   const [showMandateSetup, setShowMandateSetup] = useState(false);
@@ -245,6 +252,55 @@ export default function LeasesPage() {
     }
   }, [editingLease?.gocardlessMandateId, apiUrl]);
 
+  // Show the contract's tenants first when the modal opens. Sorted on the
+  // initial selection (editingLease) only, so toggling doesn't reshuffle rows.
+  const sortedTenants = useMemo(() => {
+    const initial = new Set(editingLease?.tenantIds || []);
+    return [...tenants].sort((a, b) => {
+      const av = initial.has(a.id) ? 0 : 1;
+      const bv = initial.has(b.id) ? 0 : 1;
+      if (av !== bv) return av - bv;
+      return `${a.firstName} ${a.lastName}`.localeCompare(
+        `${b.firstName} ${b.lastName}`,
+      );
+    });
+  }, [tenants, editingLease]);
+
+  // Initialize indexation setup fields whenever the modal opens.
+  useEffect(() => {
+    if (!showModal) return;
+    setBaseRent(editingLease?.baseRent ?? "");
+    setRefMonth(editingLease?.indexationBaseMonth ?? "");
+    setBaseIndex(editingLease?.indexationBaseIndex ?? "");
+  }, [showModal, editingLease]);
+
+  // Auto-fill the base health index for the entered reference month.
+  const fetchBaseIndex = async () => {
+    if (!refMonth) return;
+    setBaseIndexLoading(true);
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/v1/indexation/health-index/history?from=${refMonth}&to=${refMonth}`,
+        { credentials: "include" },
+      );
+      if (res.ok) {
+        const json = await res.json();
+        const rows = json.data || json || [];
+        const [y, m] = refMonth.split("-");
+        const hit = rows.find(
+          (r: { year: string | number; month: string | number; value: string }) =>
+            String(r.year) === y && String(r.month).padStart(2, "0") === m,
+        );
+        if (hit?.value) setBaseIndex(String(hit.value));
+        else toast.error(t("baseIndexNotFound"));
+      }
+    } catch {
+      toast.error(t("baseIndexNotFound"));
+    } finally {
+      setBaseIndexLoading(false);
+    }
+  };
+
   const toggleTenant = (tenantId: string) => {
     setSelectedTenants((prev) =>
       prev.includes(tenantId)
@@ -264,6 +320,9 @@ export default function LeasesPage() {
       tenantIds: selectedTenants,
       indexationEnabled,
       landlordLateNotify,
+      baseRent,
+      indexationBaseMonth: refMonth,
+      indexationBaseIndex: baseIndex,
       paymentMethod,
       bankAccountId: paymentMethod === "bank_transfer" ? selectedBankAccountId : undefined,
     };
@@ -753,7 +812,7 @@ export default function LeasesPage() {
                 <p className="text-sm text-muted-foreground">{t("noTenantsYet")}</p>
               ) : (
                 <div className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-input p-2">
-                  {tenants.map((tenant) => (
+                  {sortedTenants.map((tenant) => (
                     <label
                       key={tenant.id}
                       className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors ${
@@ -895,6 +954,58 @@ export default function LeasesPage() {
                 />
               </button>
             </div>
+            {/* Indexation setup: original rent + reference month + base index */}
+            {indexationEnabled && (
+              <div className="space-y-3 rounded-lg border border-input p-4">
+                <p className="text-sm font-medium">{t("indexationSetup")}</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("originalRent")}</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={baseRent}
+                      onChange={(e) => setBaseRent(e.target.value)}
+                      placeholder="917.00"
+                      className={ic}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("referenceMonth")}</label>
+                    <input
+                      type="month"
+                      value={refMonth}
+                      onChange={(e) => setRefMonth(e.target.value)}
+                      className={ic}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">{t("baseIndex")}</label>
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={baseIndex}
+                        onChange={(e) => setBaseIndex(e.target.value)}
+                        className={ic}
+                      />
+                      <button
+                        type="button"
+                        onClick={fetchBaseIndex}
+                        disabled={!refMonth || baseIndexLoading}
+                        title={t("autoFillBaseIndex")}
+                        className="shrink-0 rounded-md border border-input px-2 text-sm hover:bg-muted disabled:opacity-50"
+                      >
+                        {baseIndexLoading ? "..." : "↻"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("indexationSetupHelp")}</p>
+              </div>
+            )}
             {/* Late-payment landlord email toggle */}
             <div className="flex items-center justify-between rounded-lg border border-input px-4 py-3">
               <div>

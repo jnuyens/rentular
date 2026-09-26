@@ -197,7 +197,9 @@ async function calculateLeaseIndexation(
   }
 
   const currentIndex = Number(currentIndexValue);
-  const baseRent = Number(lease.monthlyRent);
+  // The indexation base is the original contract rent. Fall back to monthlyRent
+  // for legacy leases created before the baseRent field existed.
+  const baseRent = Number(lease.baseRent ?? lease.monthlyRent);
 
   // Calculate unrestricted new rent using the standard formula
   const unrestrictedNewRent = calculateIndexedRent(
@@ -912,10 +914,13 @@ indexationRouter.post(
         notificationSentAt: sendNotification ? new Date() : null,
       });
 
-      // D-07: update lease -- only currentMonthlyRent changes, NEVER monthlyRent
+      // Applying indexation raises the current rent (monthlyRent, shown across
+      // the app). The original contract rent (baseRent) stays fixed as the
+      // indexation base. currentMonthlyRent is kept in sync for compatibility.
       await db
         .update(leases)
         .set({
+          monthlyRent: String(newRent),
           currentMonthlyRent: String(newRent),
           lastIndexationDate: calc.effectiveDate,
           updatedAt: new Date(),

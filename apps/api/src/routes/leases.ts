@@ -39,6 +39,10 @@ const createLeaseSchema = z.object({
   // Accept string or number for rent/charges (FormData sends strings)
   monthlyRent: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   monthlyCharges: z.union([z.number(), z.string()]).optional().default("0").transform((v) => Number(v)),
+  // Indexation setup: original contract rent + reference month + base index.
+  baseRent: z.union([z.number(), z.string()]).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
+  indexationBaseMonth: z.string().optional(),
+  indexationBaseIndex: z.union([z.number(), z.string()]).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
   bankAccountId: z.string().optional().default(""),
   status: z.enum(["active", "draft", "terminated", "expired"]).optional().default("active"),
   indexationEnabled: z.boolean().optional().default(true),
@@ -121,6 +125,10 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     endDate: data.endDate || null,
     monthlyRent: String(data.monthlyRent),
     monthlyCharges: String(data.monthlyCharges),
+    baseRent: data.baseRent !== undefined ? String(data.baseRent) : null,
+    indexationBaseMonth: data.indexationBaseMonth || null,
+    indexationBaseIndex:
+      data.indexationBaseIndex !== undefined ? String(data.indexationBaseIndex) : null,
     bankAccountId: data.bankAccountId || null,
     // Student leases are never indexed (see indexation route).
     indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
@@ -170,6 +178,9 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.endDate !== undefined) updates.endDate = data.endDate || null;
   if (data.monthlyRent !== undefined) updates.monthlyRent = String(data.monthlyRent);
   if (data.monthlyCharges !== undefined) updates.monthlyCharges = String(data.monthlyCharges);
+  if (data.baseRent !== undefined) updates.baseRent = String(data.baseRent);
+  if (data.indexationBaseMonth !== undefined) updates.indexationBaseMonth = data.indexationBaseMonth || null;
+  if (data.indexationBaseIndex !== undefined) updates.indexationBaseIndex = String(data.indexationBaseIndex);
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.landlordLateNotify !== undefined) updates.landlordLateNotify = data.landlordLateNotify;

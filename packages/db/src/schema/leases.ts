@@ -38,6 +38,9 @@ export const leases = mysqlTable("leases", {
   endDate: date("end_date", { mode: "string" }),
   // Financial
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
+  // Original contract rent — the fixed base for indexation. monthlyRent above
+  // is the current (possibly indexed) rent shown across the app.
+  baseRent: decimal("base_rent", { precision: 10, scale: 2 }),
   monthlyCharges: decimal("monthly_charges", { precision: 10, scale: 2 })
     .default("0.00")
     .notNull(),
