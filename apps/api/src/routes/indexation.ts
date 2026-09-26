@@ -124,42 +124,49 @@ async function computeIndexationCore(input: {
   canApply: boolean;
   applicableFrom: string;
 }> {
-  // Current index month = the month before the lease anniversary month.
   const startDate = new Date(input.startDate);
-  const anniversaryMonth = startDate.getMonth(); // 0-based, already month-1 in 1-based terms
-  let currentIndexMonth = anniversaryMonth;
-  let currentIndexYear = new Date().getFullYear();
-  if (anniversaryMonth === 0) {
-    currentIndexMonth = 12;
-    currentIndexYear = currentIndexYear - 1;
-  }
-  const currentIndexMonthStr = currentIndexMonth.toString().padStart(2, "0");
-  const currentIndexYearStr = currentIndexYear.toString();
-
-  const currentIndexValue = await getHealthIndexValue(currentIndexYearStr, currentIndexMonthStr);
-  if (!currentIndexValue) {
-    throw {
-      status: 400,
-      message: `Current health index not available for ${currentIndexYearStr}-${currentIndexMonthStr}`,
-    };
-  }
-  const currentIndex = Number(currentIndexValue);
-
-  // Latest published index -- used to show how much the rent has already risen,
-  // even for leases whose anniversary hasn't come round yet.
-  const latest = await getLatestHealthIndex();
-  const latestIndex = latest ? Number(latest.value) : currentIndex;
-  const latestIndexMonth = latest
-    ? `${latest.year}-${latest.month}`
-    : `${currentIndexYearStr}-${currentIndexMonthStr}`;
-
-  // Effective date = next lease anniversary.
+  const startMonth = startDate.getMonth();
+  const startDay = startDate.getDate();
   const today = new Date();
-  let effectiveYear = today.getFullYear();
-  const anniversaryDate = new Date(effectiveYear, startDate.getMonth(), startDate.getDate());
-  if (anniversaryDate <= today) effectiveYear++;
-  const effectiveDate = new Date(effectiveYear, startDate.getMonth(), startDate.getDate());
-  const effectiveDateStr = effectiveDate.toISOString().split("T")[0]!;
+
+  // Latest published index -- how much the rent has already risen, even before
+  // this lease's anniversary comes round again.
+  const latest = await getLatestHealthIndex();
+  const latestIndex = latest ? Number(latest.value) : input.baseIndex;
+  const latestIndexMonth = latest ? `${latest.year}-${latest.month}` : "";
+
+  // The applicable indexation is the one for the most recent anniversary that has
+  // already occurred; it uses the health index of the month BEFORE that
+  // anniversary (NOT this calendar year's, which for a lease whose anniversary is
+  // later in the year would be an unpublished, future month).
+  let anniversaryYear = today.getFullYear();
+  if (new Date(anniversaryYear, startMonth, startDay) > today) anniversaryYear -= 1;
+  const anniversaryHasPassed = anniversaryYear > startDate.getFullYear();
+
+  let currentIndex: number;
+  let currentIndexYearStr: string;
+  let currentIndexMonthStr: string;
+  let effectiveDateStr: string;
+  if (anniversaryHasPassed) {
+    const idxDate = new Date(anniversaryYear, startMonth - 1, 1); // month before the anniversary
+    currentIndexYearStr = String(idxDate.getFullYear());
+    currentIndexMonthStr = String(idxDate.getMonth() + 1).padStart(2, "0");
+    const v = await getHealthIndexValue(currentIndexYearStr, currentIndexMonthStr);
+    // If that month isn't published yet, fall back to the latest available index.
+    currentIndex = v ? Number(v) : latestIndex;
+    effectiveDateStr = new Date(anniversaryYear, startMonth, startDay).toISOString().split("T")[0]!;
+  } else {
+    // Before the first anniversary there is nothing to apply: the legal "current"
+    // index equals the base (0 change) and we avoid looking up a future month.
+    currentIndex = input.baseIndex;
+    const baseRefDate = new Date(startDate);
+    baseRefDate.setMonth(startDate.getMonth() - 1);
+    currentIndexYearStr = String(baseRefDate.getFullYear());
+    currentIndexMonthStr = String(baseRefDate.getMonth() + 1).padStart(2, "0");
+    const firstAnniversary = new Date(startDate);
+    firstAnniversary.setFullYear(startDate.getFullYear() + 1);
+    effectiveDateStr = firstAnniversary.toISOString().split("T")[0]!;
+  }
 
   // Freeze-period boundary indices (Flanders EPC correction), fetched once.
   let freezeStart = 0;
