@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { epcBadgeClass } from "@/lib/epc";
 import {
   Table,
   TableHeader,
@@ -371,9 +372,12 @@ export default function IndexationPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{prop?.name || lease.propertyId}</span>
-                            {epcRestricted && (
-                              <Badge variant="outline" className="bg-orange-100 text-orange-700 border-transparent text-xs">
-                                EPC {prop?.epcLabel}
+                            {prop?.epcLabel && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${epcBadgeClass(prop.epcLabel)}${epcRestricted ? " ring-1 ring-orange-400" : ""}`}
+                              >
+                                EPC {prop.epcLabel}
                               </Badge>
                             )}
                           </div>
@@ -453,9 +457,12 @@ export default function IndexationPage() {
                           >
                             {statusBadgeConfig[status]?.label || status}
                           </Badge>
-                          {epcRestricted && (
-                            <Badge variant="outline" className="bg-orange-100 text-orange-700 border-transparent">
-                              EPC {prop?.epcLabel}
+                          {prop?.epcLabel && (
+                            <Badge
+                              variant="outline"
+                              className={`${epcBadgeClass(prop.epcLabel)}${epcRestricted ? " ring-1 ring-orange-400" : ""}`}
+                            >
+                              EPC {prop.epcLabel}
                             </Badge>
                           )}
                         </div>
