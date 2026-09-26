@@ -1040,6 +1040,7 @@ export default function LeasesPage() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground">{t("indexationSetupHelp")}</p>
+                <p className="text-xs text-muted-foreground">{t("indexationResultHint")}</p>
               </div>
             )}
             {/* Late-payment landlord email toggle */}

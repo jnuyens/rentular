@@ -252,7 +252,8 @@
     "lastPayment": "Dernier paiement",
     "setupMandate": "Configurer le mandat",
     "cancelMandate": "Annuler le mandat",
-    "payment": "Paiement"
+    "payment": "Paiement",
+    "indexationResultHint": "Le loyer indexé possible s'affiche (et s'applique) sur la page Indexation après l'enregistrement de ce contrat."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -278,7 +279,25 @@
     "statusDueSoon": "Bientot",
     "statusOk": "En ordre",
     "emptyTitle": "Pas d'indexations a venir",
-    "emptyDescription": "Les calculs d'indexation apparaitront ici lorsque les baux auront des dates anniversaires approchantes."
+    "emptyDescription": "Les calculs d'indexation apparaitront ici lorsque les baux auront des dates anniversaires approchantes.",
+    "previewTitle": "Aperçu de l'indexation",
+    "currentRent": "Loyer actuel",
+    "possibleRent": "Loyer possible maintenant",
+    "increaseVsCurrent": "Écart avec le loyer actuel",
+    "effectiveDateLabel": "Date d'effet",
+    "epcNeededTitle": "Label PEB requis",
+    "epcNeededDesc": "Ce bien n'a pas de label PEB. En Flandre et à Bruxelles, le label PEB plafonne l'indexation, le montant affiché est donc une estimation la plus défavorable. Ajoutez le label PEB au bien pour obtenir le montant exact.",
+    "epcRestrictedTitle": "Indexation limitée par le PEB",
+    "epcRestrictedDesc": "L'indexation est plafonnée en raison du label PEB du bien. Le montant affiché en tient déjà compte.",
+    "calcErrorTitle": "Calcul impossible pour l'instant",
+    "calcErrorHint": "Ouvrez le contrat et complétez les paramètres d'indexation (loyer d'origine, mois de référence et indice de base), puis enregistrez.",
+    "property": "Bien",
+    "tenantLabel": "Locataire",
+    "region": "Région",
+    "cancel": "Annuler",
+    "applyIndexation": "Appliquer l'indexation",
+    "rent": "Loyer",
+    "statusLabel": "Statut"
   },
   "communications": {
     "title": "Communications",

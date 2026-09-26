@@ -252,7 +252,8 @@
     "lastPayment": "Letzte Zahlung",
     "setupMandate": "Mandat einrichten",
     "cancelMandate": "Mandat stornieren",
-    "payment": "Zahlung"
+    "payment": "Zahlung",
+    "indexationResultHint": "Die mögliche indexierte Miete sehen Sie (und wenden sie an) auf der Indexierungsseite, nachdem Sie diesen Vertrag gespeichert haben."
   },
   "indexation": {
     "title": "Mietindexierung",
@@ -278,7 +279,25 @@
     "statusDueSoon": "Bald faellig",
     "statusOk": "In Ordnung",
     "emptyTitle": "Keine anstehenden Indexierungen",
-    "emptyDescription": "Indexierungsberechnungen erscheinen hier, wenn Vertraege Jubilaeumsdaten haben."
+    "emptyDescription": "Indexierungsberechnungen erscheinen hier, wenn Vertraege Jubilaeumsdaten haben.",
+    "previewTitle": "Indexierungsvorschau",
+    "currentRent": "Aktuelle Miete",
+    "possibleRent": "Mögliche Miete jetzt",
+    "increaseVsCurrent": "Differenz zur aktuellen Miete",
+    "effectiveDateLabel": "Gültig ab",
+    "epcNeededTitle": "EPC-Label erforderlich",
+    "epcNeededDesc": "Diese Immobilie hat kein EPC-Label. In Flandern und Brüssel begrenzt das EPC-Label die Indexierung, daher ist der angezeigte Betrag eine Worst-Case-Schätzung. Tragen Sie das EPC-Label bei der Immobilie ein, um den korrekten Betrag zu erhalten.",
+    "epcRestrictedTitle": "Durch EPC begrenzte Indexierung",
+    "epcRestrictedDesc": "Die Indexierung ist aufgrund des EPC-Labels der Immobilie begrenzt. Der angezeigte Betrag berücksichtigt dies bereits.",
+    "calcErrorTitle": "Noch nicht berechenbar",
+    "calcErrorHint": "Öffnen Sie den Vertrag und vervollständigen Sie die Indexierungseinstellungen (ursprüngliche Miete, Referenzmonat und Basisindex), und speichern Sie.",
+    "property": "Immobilie",
+    "tenantLabel": "Mieter",
+    "region": "Region",
+    "cancel": "Abbrechen",
+    "applyIndexation": "Indexierung anwenden",
+    "rent": "Miete",
+    "statusLabel": "Status"
   },
   "communications": {
     "title": "Kommunikation",

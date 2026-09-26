@@ -252,7 +252,8 @@
     "lastPayment": "Laatste betaling",
     "setupMandate": "Mandaat instellen",
     "cancelMandate": "Mandaat annuleren",
-    "payment": "Betaling"
+    "payment": "Betaling",
+    "indexationResultHint": "De mogelijke geïndexeerde huur zie je (en pas je toe) op de Indexatie-pagina nadat je dit contract hebt opgeslagen."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -278,7 +279,25 @@
     "statusDueSoon": "Binnenkort",
     "statusOk": "In orde",
     "emptyTitle": "Geen aankomende indexaties",
-    "emptyDescription": "Indexatieberekeningen verschijnen hier wanneer contracten een verjaardagsdatum naderen."
+    "emptyDescription": "Indexatieberekeningen verschijnen hier wanneer contracten een verjaardagsdatum naderen.",
+    "previewTitle": "Indexatie voorbeeld",
+    "currentRent": "Huidige huur",
+    "possibleRent": "Mogelijke huur nu",
+    "increaseVsCurrent": "Verschil met huidige huur",
+    "effectiveDateLabel": "Ingangsdatum",
+    "epcNeededTitle": "EPC-label vereist",
+    "epcNeededDesc": "Deze eigendom heeft geen EPC-label. In Vlaanderen en Brussel bepaalt het EPC-label de maximale indexatie, dus het getoonde bedrag is een worst-case schatting. Vul het EPC-label in bij de eigendom voor het juiste bedrag.",
+    "epcRestrictedTitle": "Beperkte indexatie door EPC",
+    "epcRestrictedDesc": "De indexatie is beperkt door het EPC-label van de eigendom. Het getoonde bedrag houdt daar al rekening mee.",
+    "calcErrorTitle": "Nog niet te berekenen",
+    "calcErrorHint": "Open het contract en vul de indexatie-instellingen in (oorspronkelijke huur, referentiemaand en basisindex), en bewaar.",
+    "property": "Eigendom",
+    "tenantLabel": "Huurder",
+    "region": "Regio",
+    "cancel": "Annuleren",
+    "applyIndexation": "Indexatie toepassen",
+    "rent": "Huur",
+    "statusLabel": "Status"
   },
   "communications": {
     "title": "Communicatie",

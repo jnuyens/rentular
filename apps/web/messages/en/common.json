@@ -252,7 +252,8 @@
     "lastPayment": "Last Payment",
     "setupMandate": "Setup Mandate",
     "cancelMandate": "Cancel Mandate",
-    "payment": "Payment"
+    "payment": "Payment",
+    "indexationResultHint": "You can see the resulting indexed rent (and apply it) on the Indexation page after saving this contract."
   },
   "indexation": {
     "title": "Rent Indexation",
@@ -278,7 +279,25 @@
     "statusDueSoon": "Due soon",
     "statusOk": "Up to date",
     "emptyTitle": "No upcoming indexations",
-    "emptyDescription": "Indexation calculations will appear here when leases have anniversary dates approaching."
+    "emptyDescription": "Indexation calculations will appear here when leases have anniversary dates approaching.",
+    "previewTitle": "Indexation preview",
+    "currentRent": "Current rent",
+    "possibleRent": "Possible rent now",
+    "increaseVsCurrent": "Increase vs current rent",
+    "effectiveDateLabel": "Effective from",
+    "epcNeededTitle": "EPC label required",
+    "epcNeededDesc": "This property has no EPC label. In Flanders and Brussels the EPC label caps indexation, so the amount shown is a worst-case estimate. Add the EPC label to the property for the correct figure.",
+    "epcRestrictedTitle": "EPC-restricted indexation",
+    "epcRestrictedDesc": "Indexation is capped because of the property's EPC label. The amount shown already reflects that cap.",
+    "calcErrorTitle": "Cannot calculate yet",
+    "calcErrorHint": "Open the contract and complete the indexation setup (original rent, reference month and base index), then save.",
+    "property": "Property",
+    "tenantLabel": "Tenant",
+    "region": "Region",
+    "cancel": "Cancel",
+    "applyIndexation": "Apply indexation",
+    "rent": "Rent",
+    "statusLabel": "Status"
   },
   "communications": {
     "title": "Communications",

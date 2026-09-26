@@ -49,6 +49,21 @@ interface Lease {
   indexationEnabled?: boolean;
 }
 
+interface CalcResult {
+  baseRent: number;
+  baseIndex: number;
+  currentIndex: number;
+  newRent: number;
+  unrestrictedNewRent: number;
+  difference: number;
+  effectiveDate: string;
+  region: string;
+  epcLabel?: string | null;
+  epcRestricted?: boolean;
+  correctionApplied?: boolean;
+  formulaNote?: string;
+}
+
 function getNextIndexationDate(startDate: string): Date {
   const start = new Date(startDate);
   const now = new Date();
@@ -95,6 +110,9 @@ export default function IndexationPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewLease, setPreviewLease] = useState<Lease | null>(null);
+  const [calc, setCalc] = useState<CalcResult | null>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -127,6 +145,37 @@ export default function IndexationPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch the calculated (possible) rent whenever a lease preview is opened.
+  useEffect(() => {
+    if (!previewLease) {
+      setCalc(null);
+      setCalcError(null);
+      return;
+    }
+    let cancelled = false;
+    setCalc(null);
+    setCalcError(null);
+    setCalcLoading(true);
+    fetch(`${apiUrl}/api/v1/indexation/calculate/${previewLease.id}`, {
+      credentials: "include",
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (res.ok) setCalc(json as CalcResult);
+        else setCalcError(json?.error || "Failed to calculate");
+      })
+      .catch(() => {
+        if (!cancelled) setCalcError("Network error");
+      })
+      .finally(() => {
+        if (!cancelled) setCalcLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewLease, apiUrl]);
 
   // Filter active leases with indexation enabled
   const activeLeases = leases.filter(
@@ -478,32 +527,93 @@ export default function IndexationPage() {
             <DialogHeader>
               <DialogTitle>{t("previewTitle") || "Indexation Preview"}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">{t("property") || "Property"}:</span>
+                  <span className="text-muted-foreground">{t("property")}:</span>
                   <p className="font-medium">{getProp(previewLease.propertyId)?.name || previewLease.propertyId}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">{t("tenantLabel") || "Tenant"}:</span>
+                  <span className="text-muted-foreground">{t("tenantLabel")}:</span>
                   <p className="font-medium">{getTenantNames(previewLease.tenantIds)}</p>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">{t("currentRent") || "Current Rent"}:</span>
-                  <p className="font-medium">&euro;{previewLease.monthlyRent}/m</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">{t("region") || "Region"}:</span>
-                  <p className="font-medium">{previewLease.region}</p>
-                </div>
               </div>
+
+              {calcLoading && (
+                <div className="space-y-2">
+                  <Skeleton className="h-20 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              )}
+
+              {!calcLoading && calcError && (
+                <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                  <div>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">{t("calcErrorTitle")}</p>
+                    <p className="mt-1 text-sm text-red-700 dark:text-red-300">{calcError}</p>
+                    <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/80">{t("calcErrorHint")}</p>
+                  </div>
+                </div>
+              )}
+
+              {!calcLoading && calc && (
+                <>
+                  <div className="rounded-lg border bg-muted/40 p-4">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{t("currentRent")}</p>
+                        <p className="text-lg font-medium">&euro;{Number(previewLease.monthlyRent).toFixed(2)}</p>
+                      </div>
+                      <TrendingUp className="mb-1 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">{t("possibleRent")}</p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-400">&euro;{calc.newRent.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
+                      <span className="text-muted-foreground">{t("increaseVsCurrent")}</span>
+                      <span className={`font-medium ${calc.newRent - Number(previewLease.monthlyRent) > 0 ? "text-green-700 dark:text-green-400" : ""}`}>
+                        {calc.newRent - Number(previewLease.monthlyRent) >= 0 ? "+" : ""}
+                        &euro;{(calc.newRent - Number(previewLease.monthlyRent)).toFixed(2)}/m
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{t("effectiveDateLabel")}</span>
+                      <span className="font-medium">{new Date(calc.effectiveDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+
+                  {["flanders", "brussels"].includes(calc.region) && !calc.epcLabel && (
+                    <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">{t("epcNeededTitle")}</p>
+                        <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-300">{t("epcNeededDesc")}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {calc.epcLabel && calc.epcRestricted && (
+                    <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900 dark:bg-orange-950">
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
+                      <div>
+                        <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                          {t("epcRestrictedTitle")} (EPC {calc.epcLabel})
+                        </p>
+                        <p className="mt-1 text-sm text-orange-700 dark:text-orange-300">{t("epcRestrictedDesc")}</p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPreviewLease(null)}>
-                {t("cancel") || "Cancel"}
+                {t("cancel")}
               </Button>
-              <Button onClick={() => handleApplyIndexation(previewLease.id)}>
-                {t("applyIndexation") || "Apply Indexation"}
+              <Button onClick={() => handleApplyIndexation(previewLease.id)} disabled={!calc || calcLoading}>
+                {calc ? `${t("applyIndexation")} (€${calc.newRent.toFixed(2)})` : t("applyIndexation")}
               </Button>
             </DialogFooter>
           </DialogContent>
