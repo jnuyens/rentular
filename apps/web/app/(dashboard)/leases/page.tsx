@@ -136,6 +136,7 @@ export default function LeasesPage() {
   const [baseRent, setBaseRent] = useState("");
   const [baseIndex, setBaseIndex] = useState("");
   const [baseIndexLoading, setBaseIndexLoading] = useState(false);
+  const [lastIndexationDateState, setLastIndexationDateState] = useState("");
   // Region + dates drive the reference month, which is fully derived (read-only).
   const [regionState, setRegionState] = useState("flanders");
   const [signingDateState, setSigningDateState] = useState("");
@@ -317,6 +318,7 @@ export default function LeasesPage() {
     setSigningDateState(editingLease?.signingDate ?? "");
     setStartDateState(editingLease?.startDate ?? "");
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
+    setLastIndexationDateState(editingLease?.lastIndexationDate ?? "");
   }, [showModal, editingLease]);
 
   // Live possible-rent preview: recompute (debounced) from the current form inputs.
@@ -427,6 +429,7 @@ export default function LeasesPage() {
       baseRent,
       indexationBaseMonth: refMonth,
       indexationBaseIndex: baseIndex,
+      lastIndexationDate: lastIndexationDateState || null,
       paymentMethod,
       bankAccountId: paymentMethod === "bank_transfer" ? selectedBankAccountId : undefined,
     };
@@ -1111,6 +1114,14 @@ export default function LeasesPage() {
                     </div>
                   </div>
                 </div>
+                <div className="sm:max-w-[12rem]">
+                  <label className="mb-1 block text-xs font-medium">{t("lastIndexationLabel")}</label>
+                  <LocaleDateInput
+                    value={lastIndexationDateState}
+                    onChange={(iso) => setLastIndexationDateState(iso)}
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">{t("lastIndexationHelp")}</p>
+                </div>
                 <p className="text-xs text-muted-foreground">{t("indexationSetupHelp")}</p>
 
                 {previewLoading && !preview && (
@@ -1142,11 +1153,11 @@ export default function LeasesPage() {
                         {new Date(preview.effectiveDate).toLocaleDateString()}
                       </span>
                     </div>
-                    {editingLease?.lastIndexationDate && (
+                    {lastIndexationDateState && (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("lastIndexation")}</span>
                         <span className="font-medium">
-                          {new Date(editingLease.lastIndexationDate).toLocaleDateString()}
+                          {new Date(lastIndexationDateState).toLocaleDateString()}
                         </span>
                       </div>
                     )}
