@@ -589,6 +589,11 @@ export default function IndexationPage() {
                       <span className="text-muted-foreground">{t("effectiveDateLabel")}</span>
                       <span className="font-medium">{new Date(calc.effectiveDate).toLocaleDateString()}</span>
                     </div>
+                    {calc.newRent - Number(previewLease.monthlyRent) <= 0.005 && (
+                      <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
+                        {t("noIndexationYet")}
+                      </p>
+                    )}
                   </div>
 
                   {["flanders", "brussels"].includes(calc.region) && !calc.epcLabel && (
@@ -619,7 +624,14 @@ export default function IndexationPage() {
               <Button variant="outline" onClick={() => setPreviewLease(null)}>
                 {t("cancel")}
               </Button>
-              <Button onClick={() => handleApplyIndexation(previewLease.id)} disabled={!calc || calcLoading}>
+              <Button
+                onClick={() => handleApplyIndexation(previewLease.id)}
+                disabled={
+                  !calc ||
+                  calcLoading ||
+                  (!!calc && calc.newRent - Number(previewLease.monthlyRent) <= 0.005)
+                }
+              >
                 {calc ? `${t("applyIndexation")} (€${calc.newRent.toFixed(2)})` : t("applyIndexation")}
               </Button>
             </DialogFooter>

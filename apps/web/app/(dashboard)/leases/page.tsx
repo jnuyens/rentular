@@ -1178,6 +1178,9 @@ export default function LeasesPage() {
                         {new Date(preview.effectiveDate).toLocaleDateString()}
                       </span>
                     </div>
+                    {preview.differenceVsCurrent != null && preview.differenceVsCurrent <= 0.005 && (
+                      <p className="mt-2 text-xs text-muted-foreground">{t("noIndexationYet")}</p>
+                    )}
                     {lastIndexationDateState && (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("lastIndexation")}</span>
@@ -1194,7 +1197,8 @@ export default function LeasesPage() {
                         </span>
                       </div>
                     )}
-                    {indexationDue !== null && (
+                    {indexationDue !== null &&
+                      !(preview.differenceVsCurrent != null && preview.differenceVsCurrent <= 0.005) && (
                       <p
                         className={`mt-2 text-xs font-medium ${
                           indexationDue

@@ -267,7 +267,8 @@
     "estimatedLastIndexation": "Geschätzte letzte Indexierung",
     "indexationDueYes": "✓ Indexierung möglich (vor mehr als einem Jahr)",
     "indexationDueNo": "Vor weniger als einem Jahr indexiert",
-    "estimatedFromRent": "(geschätzt aus der aktuellen Miete)"
+    "estimatedFromRent": "(geschätzt aus der aktuellen Miete)",
+    "noIndexationYet": "Noch keine Indexierung fällig. Die erste Indexierung gilt ab dem oben angezeigten Vertragsjahrestag (der Gesundheitsindex für diesen Monat ist noch nicht veröffentlicht)."
   },
   "indexation": {
     "title": "Mietindexierung",
@@ -311,7 +312,8 @@
     "cancel": "Abbrechen",
     "applyIndexation": "Indexierung anwenden",
     "rent": "Miete",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "noIndexationYet": "Noch keine Indexierung fällig. Die erste Indexierung gilt ab dem oben angezeigten Vertragsjahrestag (der Gesundheitsindex für diesen Monat ist noch nicht veröffentlicht)."
   },
   "communications": {
     "title": "Kommunikation",

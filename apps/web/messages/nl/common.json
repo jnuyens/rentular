@@ -267,7 +267,8 @@
     "estimatedLastIndexation": "Geschatte laatste indexatie",
     "indexationDueYes": "✓ Indexatie mogelijk (meer dan een jaar geleden)",
     "indexationDueNo": "Minder dan een jaar geleden geïndexeerd",
-    "estimatedFromRent": "(geschat uit de huidige huur)"
+    "estimatedFromRent": "(geschat uit de huidige huur)",
+    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd)."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -311,7 +312,8 @@
     "cancel": "Annuleren",
     "applyIndexation": "Indexatie toepassen",
     "rent": "Huur",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd)."
   },
   "communications": {
     "title": "Communicatie",

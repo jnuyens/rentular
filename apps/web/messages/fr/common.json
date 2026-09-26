@@ -267,7 +267,8 @@
     "estimatedLastIndexation": "Dernière indexation estimée",
     "indexationDueYes": "✓ Indexation possible (il y a plus d'un an)",
     "indexationDueNo": "Indexé il y a moins d'un an",
-    "estimatedFromRent": "(estimé à partir du loyer actuel)"
+    "estimatedFromRent": "(estimé à partir du loyer actuel)",
+    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié)."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -311,7 +312,8 @@
     "cancel": "Annuler",
     "applyIndexation": "Appliquer l'indexation",
     "rent": "Loyer",
-    "statusLabel": "Statut"
+    "statusLabel": "Statut",
+    "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié)."
   },
   "communications": {
     "title": "Communications",

@@ -267,7 +267,8 @@
     "estimatedLastIndexation": "Estimated last indexation",
     "indexationDueYes": "✓ Indexation available (more than a year ago)",
     "indexationDueNo": "Indexed less than a year ago",
-    "estimatedFromRent": "(estimated from the current rent)"
+    "estimatedFromRent": "(estimated from the current rent)",
+    "noIndexationYet": "No indexation is due yet. The first indexation applies from the contract anniversary shown above (the health index for that month isn't published yet)."
   },
   "indexation": {
     "title": "Rent Indexation",
@@ -311,7 +312,8 @@
     "cancel": "Cancel",
     "applyIndexation": "Apply indexation",
     "rent": "Rent",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "noIndexationYet": "No indexation is due yet. The first indexation applies from the contract anniversary shown above (the health index for that month isn't published yet)."
   },
   "communications": {
     "title": "Communications",
