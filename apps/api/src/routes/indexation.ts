@@ -670,6 +670,12 @@ indexationRouter.get("/preview", async (c) => {
       epcRestricted: core.epcRestricted,
       correctionApplied: core.correctionApplied,
       formulaNote: core.formulaNote,
+      currentRent:
+        Number.isFinite(currentRent) && currentRent > 0 ? currentRent : null,
+      differenceVsCurrent:
+        Number.isFinite(currentRent) && currentRent > 0
+          ? Number((core.newRent - currentRent).toFixed(2))
+          : null,
       impliedIndex,
       estimatedLastIndexMonth,
       monthsSinceEstimated,

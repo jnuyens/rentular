@@ -150,6 +150,8 @@ export default function LeasesPage() {
     region: string;
     epcLabel?: string | null;
     epcRestricted?: boolean;
+    currentRent?: number | null;
+    differenceVsCurrent?: number | null;
     impliedIndex?: number | null;
     estimatedLastIndexMonth?: string | null;
     monthsSinceEstimated?: number | null;
@@ -323,6 +325,10 @@ export default function LeasesPage() {
     setStartDateState(editingLease?.startDate ?? "");
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
     setLastIndexationDateState(editingLease?.lastIndexationDate ?? "");
+    // Drop any preview from a previously-open contract so a stale possible-rent
+    // card can't show against the new contract's inputs. It refetches below.
+    setPreview(null);
+    setPreviewError(null);
   }, [showModal, editingLease]);
 
   // Live possible-rent preview: recompute (debounced) from the current form inputs.
@@ -1157,12 +1163,12 @@ export default function LeasesPage() {
                         &euro;{preview.newRent.toFixed(2)}
                       </span>
                     </div>
-                    {editingLease?.monthlyRent && (
+                    {preview.differenceVsCurrent != null && (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("increaseVsCurrent")}</span>
                         <span className="font-medium">
-                          {preview.newRent - Number(editingLease.monthlyRent) >= 0 ? "+" : ""}
-                          &euro;{(preview.newRent - Number(editingLease.monthlyRent)).toFixed(2)}
+                          {preview.differenceVsCurrent >= 0 ? "+" : ""}
+                          &euro;{preview.differenceVsCurrent.toFixed(2)}
                         </span>
                       </div>
                     )}
