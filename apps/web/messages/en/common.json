@@ -92,6 +92,7 @@
     "pending": "Pending",
     "paid": "Paid",
     "showIgnored": "Show ignored",
+    "hideIgnored": "Hide ignored",
     "emptyTitle": "No payments yet",
     "emptyDescription": "Payments will appear here once leases are active.",
     "tenant": "Tenant",

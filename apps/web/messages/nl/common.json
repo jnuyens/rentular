@@ -92,6 +92,7 @@
     "pending": "In afwachting",
     "paid": "Betaald",
     "showIgnored": "Genegeerde tonen",
+    "hideIgnored": "Genegeerde verbergen",
     "emptyTitle": "Nog geen betalingen",
     "emptyDescription": "Betalingen verschijnen hier zodra huurcontracten actief zijn.",
     "tenant": "Huurder",

@@ -92,6 +92,7 @@
     "pending": "Ausstehend",
     "paid": "Bezahlt",
     "showIgnored": "Ignorierte anzeigen",
+    "hideIgnored": "Ignorierte ausblenden",
     "emptyTitle": "Noch keine Zahlungen",
     "emptyDescription": "Zahlungen werden hier angezeigt, sobald Mietvertraege aktiv sind.",
     "tenant": "Mieter",

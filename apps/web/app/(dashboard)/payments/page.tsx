@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import {
   CreditCard,
   EyeOff,
-  Eye,
   AlertCircle,
   Clock,
   CheckCircle2,
@@ -454,15 +453,24 @@ export default function PaymentsPage() {
           <Button variant="outline" size="sm" onClick={() => setActiveModal("deduction")}>
             <TrendingDown className="mr-1 h-4 w-4" /> {t("addDeduction")}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowIgnored(!showIgnored)}
-            className={showIgnored ? "border-primary text-primary" : "text-muted-foreground"}
-          >
-            {showIgnored ? <Eye className="mr-1 h-4 w-4" /> : <EyeOff className="mr-1 h-4 w-4" />}
-            {t("showIgnored")}
-          </Button>
+          <div className="flex items-center gap-2 pl-1">
+            <span className="text-sm text-muted-foreground">{t("hideIgnored")}</span>
+            <button
+              type="button"
+              onClick={() => setShowIgnored(!showIgnored)}
+              aria-pressed={!showIgnored}
+              aria-label={t("hideIgnored")}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                !showIgnored ? "bg-primary" : "bg-muted"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  !showIgnored ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 

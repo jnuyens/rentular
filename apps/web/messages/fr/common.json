@@ -92,6 +92,7 @@
     "pending": "En attente",
     "paid": "Paye",
     "showIgnored": "Afficher ignores",
+    "hideIgnored": "Masquer ignores",
     "emptyTitle": "Aucun paiement",
     "emptyDescription": "Les paiements apparaitront ici lorsque les baux seront actifs.",
     "tenant": "Locataire",
