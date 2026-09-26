@@ -85,6 +85,7 @@ interface CalculationResult {
   newRentAtLatest: number;
   canApply: boolean;
   applicableFrom: string;
+  nextAnniversary: string;
 }
 
 /**
@@ -123,6 +124,8 @@ async function computeIndexationCore(input: {
   // Applicability: indexation may be applied once a year from the anniversary.
   canApply: boolean;
   applicableFrom: string;
+  // Next upcoming anniversary -- for a "coming up" forecast at the latest index.
+  nextAnniversary: string;
 }> {
   const startDate = new Date(input.startDate);
   const startMonth = startDate.getMonth();
@@ -215,6 +218,13 @@ async function computeIndexationCore(input: {
   const applicableFromStr = applicableFrom.toISOString().split("T")[0]!;
   const canApply = today >= applicableFrom;
 
+  // Next upcoming anniversary (strictly after today).
+  let nextAnnivYear = today.getFullYear();
+  if (new Date(nextAnnivYear, startMonth, startDay) <= today) nextAnnivYear += 1;
+  const nextAnniversaryStr = new Date(nextAnnivYear, startMonth, startDay)
+    .toISOString()
+    .split("T")[0]!;
+
   return {
     currentIndex,
     currentIndexMonth: `${currentIndexYearStr}-${currentIndexMonthStr}`,
@@ -230,6 +240,7 @@ async function computeIndexationCore(input: {
     newRentAtLatest: atLatest.newRent,
     canApply,
     applicableFrom: applicableFromStr,
+    nextAnniversary: nextAnniversaryStr,
   };
 }
 
@@ -340,6 +351,7 @@ async function calculateLeaseIndexation(
     newRentAtLatest,
     canApply,
     applicableFrom,
+    nextAnniversary,
   } = core;
   const currentIndexValue = String(currentIndex);
 
@@ -375,6 +387,7 @@ async function calculateLeaseIndexation(
     newRentAtLatest,
     canApply,
     applicableFrom,
+    nextAnniversary,
   };
 }
 
@@ -643,6 +656,7 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       newRentAtLatest: calc.newRentAtLatest,
       canApply: calc.canApply,
       applicableFrom: calc.applicableFrom,
+      nextAnniversary: calc.nextAnniversary,
       formula: "newRent = baseRent * (currentIndex / baseIndex)",
       formulaNote: calc.formulaNote,
     });
@@ -745,6 +759,7 @@ indexationRouter.get("/preview", async (c) => {
           : null,
       canApply: core.canApply,
       applicableFrom: core.applicableFrom,
+      nextAnniversary: core.nextAnniversary,
       impliedIndex,
       estimatedLastIndexMonth,
       monthsSinceEstimated,

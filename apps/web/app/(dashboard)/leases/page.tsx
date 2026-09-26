@@ -156,6 +156,7 @@ export default function LeasesPage() {
     differenceAtLatest?: number | null;
     canApply?: boolean;
     applicableFrom?: string | null;
+    nextAnniversary?: string | null;
     impliedIndex?: number | null;
     estimatedLastIndexMonth?: string | null;
     monthsSinceEstimated?: number | null;
@@ -1205,6 +1206,30 @@ export default function LeasesPage() {
                         {t("notApplicableUntil", { date: new Date(preview.applicableFrom).toLocaleDateString() })}
                       </p>
                     )}
+                    {(() => {
+                      if (!preview.nextAnniversary || preview.newRentAtLatest == null) return null;
+                      const days = Math.ceil(
+                        (new Date(preview.nextAnniversary).getTime() - Date.now()) / 86400000
+                      );
+                      const forecast = preview.newRentAtLatest;
+                      const current = editingLease?.monthlyRent ? Number(editingLease.monthlyRent) : 0;
+                      if (
+                        days < 0 ||
+                        days > 90 ||
+                        forecast - current <= 0.005 ||
+                        Math.abs(forecast - previewShownRent) <= 0.005
+                      )
+                        return null;
+                      return (
+                        <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
+                          {t("anniversaryForecast", {
+                            amount: `€${forecast.toFixed(2)}`,
+                            date: new Date(preview.nextAnniversary).toLocaleDateString(),
+                            days,
+                          })}
+                        </p>
+                      );
+                    })()}
                     {lastIndexationDateState && (
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("lastIndexation")}</span>

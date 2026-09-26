@@ -270,7 +270,8 @@
     "estimatedFromRent": "(estimé à partir du loyer actuel)",
     "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié).",
     "risenSoFar": "Déjà augmenté",
-    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté."
+    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté.",
+    "anniversaryForecast": "Environ {amount} à la prochaine date anniversaire ({date}, dans {days} jours), sur base de l'indice le plus récent."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -317,7 +318,8 @@
     "statusLabel": "Statut",
     "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié).",
     "risenSoFar": "Déjà augmenté",
-    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté."
+    "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté.",
+    "anniversaryForecast": "Environ {amount} à la prochaine date anniversaire ({date}, dans {days} jours), sur base de l'indice le plus récent."
   },
   "communications": {
     "title": "Communications",

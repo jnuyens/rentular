@@ -270,7 +270,8 @@
     "estimatedFromRent": "(estimated from the current rent)",
     "noIndexationYet": "No indexation is due yet. The first indexation applies from the contract anniversary shown above (the health index for that month isn't published yet).",
     "risenSoFar": "Risen so far",
-    "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen."
+    "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen.",
+    "anniversaryForecast": "Around {amount} at the next anniversary ({date}, in {days} days), based on the latest index."
   },
   "indexation": {
     "title": "Rent Indexation",
@@ -317,7 +318,8 @@
     "statusLabel": "Status",
     "noIndexationYet": "No indexation is due yet. The first indexation applies from the contract anniversary shown above (the health index for that month isn't published yet).",
     "risenSoFar": "Risen so far",
-    "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen."
+    "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen.",
+    "anniversaryForecast": "Around {amount} at the next anniversary ({date}, in {days} days), based on the latest index."
   },
   "communications": {
     "title": "Communications",

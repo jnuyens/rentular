@@ -270,7 +270,8 @@
     "estimatedFromRent": "(geschat uit de huidige huur)",
     "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd).",
     "risenSoFar": "Reeds gestegen",
-    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is."
+    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is.",
+    "anniversaryForecast": "Rond {amount} bij de volgende verjaardag ({date}, over {days} dagen), op basis van de recentste index."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -317,7 +318,8 @@
     "statusLabel": "Status",
     "noIndexationYet": "Nog geen indexatie mogelijk. De eerste indexatie geldt vanaf de contractverjaardag hierboven (de gezondheidsindex van die maand is nog niet gepubliceerd).",
     "risenSoFar": "Reeds gestegen",
-    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is."
+    "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is.",
+    "anniversaryForecast": "Rond {amount} bij de volgende verjaardag ({date}, over {days} dagen), op basis van de recentste index."
   },
   "communications": {
     "title": "Communicatie",

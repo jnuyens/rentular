@@ -68,6 +68,7 @@ interface CalcResult {
   newRentAtLatest: number;
   canApply: boolean;
   applicableFrom: string;
+  nextAnniversary: string;
 }
 
 function getNextIndexationDate(startDate: string): Date {
@@ -608,6 +609,28 @@ export default function IndexationPage() {
                         {t("notApplicableUntil", { date: new Date(calc.applicableFrom).toLocaleDateString() })}
                       </p>
                     )}
+                    {(() => {
+                      const days = Math.ceil(
+                        (new Date(calc.nextAnniversary).getTime() - Date.now()) / 86400000
+                      );
+                      const forecast = calc.newRentAtLatest;
+                      if (
+                        days < 0 ||
+                        days > 90 ||
+                        forecast - Number(previewLease.monthlyRent) <= 0.005 ||
+                        Math.abs(forecast - shownNewRent) <= 0.005
+                      )
+                        return null;
+                      return (
+                        <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
+                          {t("anniversaryForecast", {
+                            amount: `€${forecast.toFixed(2)}`,
+                            date: new Date(calc.nextAnniversary).toLocaleDateString(),
+                            days,
+                          })}
+                        </p>
+                      );
+                    })()}
                   </div>
 
                   {["flanders", "brussels"].includes(calc.region) && !calc.epcLabel && (
