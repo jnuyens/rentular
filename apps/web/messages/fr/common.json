@@ -263,7 +263,11 @@
     "epcNeededShort": "⚠ Pas de label PEB sur ce bien. En Flandre et à Bruxelles, le PEB plafonne l'indexation, ce montant est donc défavorable. Ajoutez le label PEB au bien pour le montant exact.",
     "onceAYearNote": "L'indexation ne peut être appliquée qu'une fois par an, à partir de la date anniversaire du contrat. Appliquez-la sur la page Indexation.",
     "lastIndexationLabel": "Date de la dernière indexation (facultatif)",
-    "lastIndexationHelp": "Quand vous avez augmenté ce loyer pour la dernière fois. L'historique bancaire ne remonte qu'à ~3 mois, cela ne peut donc pas être détecté automatiquement. Renseignez-le pour que la règle d'une fois par an soit correcte."
+    "lastIndexationHelp": "Quand vous avez augmenté ce loyer pour la dernière fois. L'historique bancaire ne remonte qu'à ~3 mois, cela ne peut donc pas être détecté automatiquement. Renseignez-le pour que la règle d'une fois par an soit correcte.",
+    "estimatedLastIndexation": "Dernière indexation estimée",
+    "indexationDueYes": "✓ Indexation possible (il y a plus d'un an)",
+    "indexationDueNo": "Indexé il y a moins d'un an",
+    "estimatedFromRent": "(estimé à partir du loyer actuel)"
   },
   "indexation": {
     "title": "Indexation des loyers",

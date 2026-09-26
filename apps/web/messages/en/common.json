@@ -263,7 +263,11 @@
     "epcNeededShort": "⚠ No EPC label on this property. In Flanders and Brussels the EPC caps indexation, so this is a worst-case figure. Add the EPC label to the property for the exact amount.",
     "onceAYearNote": "Indexation may be applied at most once a year, from the contract anniversary. Apply it on the Indexation page.",
     "lastIndexationLabel": "Last indexation date (optional)",
-    "lastIndexationHelp": "When you last raised this rent. Bank history only goes back ~3 months, so this can't be detected automatically. Set it so the once-a-year rule is right."
+    "lastIndexationHelp": "When you last raised this rent. Bank history only goes back ~3 months, so this can't be detected automatically. Set it so the once-a-year rule is right.",
+    "estimatedLastIndexation": "Estimated last indexation",
+    "indexationDueYes": "✓ Indexation available (more than a year ago)",
+    "indexationDueNo": "Indexed less than a year ago",
+    "estimatedFromRent": "(estimated from the current rent)"
   },
   "indexation": {
     "title": "Rent Indexation",

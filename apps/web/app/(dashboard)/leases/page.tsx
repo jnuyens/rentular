@@ -150,6 +150,10 @@ export default function LeasesPage() {
     region: string;
     epcLabel?: string | null;
     epcRestricted?: boolean;
+    impliedIndex?: number | null;
+    estimatedLastIndexMonth?: string | null;
+    monthsSinceEstimated?: number | null;
+    yearPassed?: boolean | null;
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -343,6 +347,7 @@ export default function LeasesPage() {
         leaseType,
       });
       if (epcLabel) params.set("epcLabel", epcLabel);
+      if (editingLease?.monthlyRent) params.set("currentRent", String(editingLease.monthlyRent));
       fetch(`${apiUrl}/api/v1/indexation/preview?${params.toString()}`, {
         credentials: "include",
         signal: controller.signal,
@@ -379,6 +384,20 @@ export default function LeasesPage() {
     properties,
     apiUrl,
   ]);
+
+  // Is indexation available again? Prefer the manual last-indexation date; fall
+  // back to the estimate derived from the current rent (backend `yearPassed`).
+  const indexationDue: boolean | null = lastIndexationDateState
+    ? (Date.now() - new Date(lastIndexationDateState).getTime()) / 86400000 >= 365
+    : preview?.yearPassed ?? null;
+
+  const formatMonth = (ym?: string | null) =>
+    ym
+      ? new Date(`${ym}-01T00:00:00`).toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        })
+      : "";
 
   // Auto-fill the base health index for the entered reference month.
   const fetchBaseIndex = async () => {
@@ -1160,6 +1179,28 @@ export default function LeasesPage() {
                           {new Date(lastIndexationDateState).toLocaleDateString()}
                         </span>
                       </div>
+                    )}
+                    {!lastIndexationDateState && preview.estimatedLastIndexMonth && (
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-muted-foreground">{t("estimatedLastIndexation")}</span>
+                        <span className="font-medium">
+                          ~{formatMonth(preview.estimatedLastIndexMonth)}
+                        </span>
+                      </div>
+                    )}
+                    {indexationDue !== null && (
+                      <p
+                        className={`mt-2 text-xs font-medium ${
+                          indexationDue
+                            ? "text-green-700 dark:text-green-400"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {indexationDue ? t("indexationDueYes") : t("indexationDueNo")}
+                        {!lastIndexationDateState && (
+                          <span className="font-normal"> {t("estimatedFromRent")}</span>
+                        )}
+                      </p>
                     )}
                     {["flanders", "brussels"].includes(preview.region) && !preview.epcLabel && (
                       <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-500">

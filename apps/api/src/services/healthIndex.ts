@@ -124,6 +124,40 @@ export async function getHealthIndexValue(
 }
 
 /**
+ * Find the cached health-index month whose value is closest to a target index.
+ * Used to estimate when a rent was last indexed by back-solving the index that
+ * the current rent reflects. Returns null if no values are cached.
+ */
+export async function findClosestHealthIndexMonth(
+  target: number
+): Promise<{ year: string; month: string; value: number } | null> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      year: healthIndexValues.year,
+      month: healthIndexValues.month,
+      value: healthIndexValues.value,
+    })
+    .from(healthIndexValues);
+
+  let best: { year: string; month: string; value: number } | null = null;
+  let bestDiff = Infinity;
+  let bestKey = Infinity;
+  for (const r of rows) {
+    const v = Number(r.value);
+    const diff = Math.abs(v - target);
+    const key = Number(r.year) * 12 + Number(r.month);
+    // Closest value wins; on a tie prefer the earlier month.
+    if (diff < bestDiff || (diff === bestDiff && key < bestKey)) {
+      bestDiff = diff;
+      bestKey = key;
+      best = { year: r.year, month: r.month, value: v };
+    }
+  }
+  return best;
+}
+
+/**
  * Get the most recent cached health index value.
  * Returns the row data or null if no values exist.
  */

@@ -263,7 +263,11 @@
     "epcNeededShort": "⚠ Kein EPC-Label bei dieser Immobilie. In Flandern und Brüssel begrenzt das EPC die Indexierung, dies ist daher ein Worst-Case-Betrag. Tragen Sie das EPC-Label bei der Immobilie ein, um den genauen Betrag zu erhalten.",
     "onceAYearNote": "Die Indexierung darf höchstens einmal jährlich ab dem Jahrestag des Vertrags erfolgen. Wenden Sie sie auf der Indexierungsseite an.",
     "lastIndexationLabel": "Datum der letzten Indexierung (optional)",
-    "lastIndexationHelp": "Wann Sie diese Miete zuletzt erhöht haben. Der Bankverlauf reicht nur ~3 Monate zurück, daher kann dies nicht automatisch erkannt werden. Tragen Sie es ein, damit die Einmal-pro-Jahr-Regel stimmt."
+    "lastIndexationHelp": "Wann Sie diese Miete zuletzt erhöht haben. Der Bankverlauf reicht nur ~3 Monate zurück, daher kann dies nicht automatisch erkannt werden. Tragen Sie es ein, damit die Einmal-pro-Jahr-Regel stimmt.",
+    "estimatedLastIndexation": "Geschätzte letzte Indexierung",
+    "indexationDueYes": "✓ Indexierung möglich (vor mehr als einem Jahr)",
+    "indexationDueNo": "Vor weniger als einem Jahr indexiert",
+    "estimatedFromRent": "(geschätzt aus der aktuellen Miete)"
   },
   "indexation": {
     "title": "Mietindexierung",

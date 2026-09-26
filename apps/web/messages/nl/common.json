@@ -263,7 +263,11 @@
     "epcNeededShort": "⚠ Geen EPC-label op deze eigendom. In Vlaanderen en Brussel begrenst het EPC de indexatie, dus dit is een worst-case bedrag. Vul het EPC-label in bij de eigendom voor het exacte bedrag.",
     "onceAYearNote": "Indexatie mag maximaal één keer per jaar, vanaf de verjaardag van het contract. Pas ze toe op de Indexatie-pagina.",
     "lastIndexationLabel": "Laatste indexatiedatum (optioneel)",
-    "lastIndexationHelp": "Wanneer je deze huur voor het laatst hebt verhoogd. De bankgeschiedenis gaat maar ~3 maanden terug, dus dit kan niet automatisch worden gevonden. Vul het in zodat de eens-per-jaar-regel klopt."
+    "lastIndexationHelp": "Wanneer je deze huur voor het laatst hebt verhoogd. De bankgeschiedenis gaat maar ~3 maanden terug, dus dit kan niet automatisch worden gevonden. Vul het in zodat de eens-per-jaar-regel klopt.",
+    "estimatedLastIndexation": "Geschatte laatste indexatie",
+    "indexationDueYes": "✓ Indexatie mogelijk (meer dan een jaar geleden)",
+    "indexationDueNo": "Minder dan een jaar geleden geïndexeerd",
+    "estimatedFromRent": "(geschat uit de huidige huur)"
   },
   "indexation": {
     "title": "Huurindexatie",

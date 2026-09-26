@@ -34,6 +34,7 @@ import {
   getHealthIndexValue,
   getLatestHealthIndex,
   isHealthIndexStale,
+  findClosestHealthIndexMonth,
 } from "../services/healthIndex";
 import {
   generateDefaultIndexationEmail,
@@ -614,6 +615,7 @@ indexationRouter.get("/preview", async (c) => {
     const startDate = c.req.query("startDate") || "";
     const epcLabel = c.req.query("epcLabel") || null;
     const leaseType = c.req.query("leaseType") || "residential_long";
+    const currentRent = Number(c.req.query("currentRent"));
 
     if (!baseRent || !baseIndex || !startDate) {
       return c.json(
@@ -631,6 +633,29 @@ indexationRouter.get("/preview", async (c) => {
       leaseType,
     });
 
+    // Estimate when the rent was last indexed by back-solving the health index
+    // the current rent reflects: currentRent = baseRent * (impliedIndex / baseIndex).
+    // The closest historical month to that index approximates the last indexation,
+    // which tells us whether more than a year has passed (indexation available again).
+    let estimatedLastIndexMonth: string | null = null;
+    let impliedIndex: number | null = null;
+    let monthsSinceEstimated: number | null = null;
+    let yearPassed: boolean | null = null;
+    if (Number.isFinite(currentRent) && currentRent > 0 && baseRent > 0) {
+      impliedIndex = Number(((currentRent * baseIndex) / baseRent).toFixed(2));
+      const closest = await findClosestHealthIndexMonth(impliedIndex);
+      if (closest) {
+        estimatedLastIndexMonth = `${closest.year}-${closest.month}`;
+        const [curY, curM] = core.currentIndexMonth.split("-").map(Number);
+        const estKey = Number(closest.year) * 12 + Number(closest.month);
+        const curKey = (curY ?? 0) * 12 + (curM ?? 0);
+        monthsSinceEstimated = curKey - estKey;
+        // A full annual cycle has elapsed if the current reference month is at
+        // least 12 months after the month the current rent reflects.
+        yearPassed = monthsSinceEstimated >= 12;
+      }
+    }
+
     return c.json({
       baseRent,
       baseIndex,
@@ -645,6 +670,10 @@ indexationRouter.get("/preview", async (c) => {
       epcRestricted: core.epcRestricted,
       correctionApplied: core.correctionApplied,
       formulaNote: core.formulaNote,
+      impliedIndex,
+      estimatedLastIndexMonth,
+      monthsSinceEstimated,
+      yearPassed,
     });
   } catch (error: unknown) {
     if (error && typeof error === "object" && "status" in error && "message" in error) {
