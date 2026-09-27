@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const locales = ["en", "nl", "fr", "de"];
-const publicPatterns = [/^\/$/, /^\/login$/, /^\/register$/, /^\/privacy$/, /^\/terms$/, /^\/accept-invitation$/];
+const publicPatterns = [/^\/$/, /^\/login$/, /^\/register$/, /^\/privacy$/, /^\/terms$/, /^\/accept-invitation$/, /^\/download$/];
 
 function stripLocale(pathname: string): string {
   return locales.some(

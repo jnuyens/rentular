@@ -117,6 +117,12 @@ export default function MarketingPage() {
             >
               {t("pricingTitle").split(" ")[0]}
             </a>
+            <Link
+              href="/download"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Android
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">
