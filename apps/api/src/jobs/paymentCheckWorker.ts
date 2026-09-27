@@ -323,7 +323,7 @@ const worker = new Worker(
         const level = determineReminderLevel(paymentInfo, followUpSettings);
 
         if (level) {
-          await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId);
+          await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId, ownerData[0]?.email);
 
           // Record the reminder in paymentReminders table
           await db.insert(paymentReminders).values({

@@ -172,11 +172,20 @@ export function determineReminderLevel(
   return null;
 }
 
+// TEST PHASE: while this env flag is on, tenant reminders are NOT sent to the
+// tenant. Instead they go to the landlord with "TEST PHASE MAIL" in the subject,
+// so the owner can verify the flow before real reminders go out. SMS is skipped.
+function isReminderTestPhase(): boolean {
+  const v = (process.env.PAYMENT_EMAIL_TEST_PHASE || "").toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 export async function sendReminder(
   payment: OverduePayment,
   level: ReminderLevel,
   settings: FollowUpSettings,
   ownerId: string,
+  ownerEmail?: string,
 ): Promise<void> {
   const vars = getTemplateVariables(payment, settings);
 
@@ -207,6 +216,19 @@ export async function sendReminder(
     body: renderTemplate(bodyTemplate, vars),
   };
 
+  // TEST PHASE: redirect the reminder to the landlord instead of the tenant.
+  const testPhase = isReminderTestPhase();
+  if (testPhase) {
+    if (!ownerEmail) {
+      console.log(
+        `[PaymentFollowUp] TEST PHASE: no landlord email for lease ${payment.leaseId}, skipping reminder`,
+      );
+      return;
+    }
+    emailOptions.to = ownerEmail;
+    emailOptions.subject = `TEST PHASE MAIL: ${emailOptions.subject} (would go to ${payment.tenantName} <${payment.tenantEmail}>)`;
+  }
+
   // For final reminders, attach a PDF overview
   if (level === "final") {
     const pdfContent = generateLatePaymentPdf(payment, settings);
@@ -226,8 +248,8 @@ export async function sendReminder(
     recipientName: payment.tenantName,
   });
 
-  // Send SMS if enabled and tenant has a phone number
-  if (settings.smsEnabled && payment.tenantPhone) {
+  // Send SMS if enabled and tenant has a phone number (never during test phase)
+  if (!testPhase && settings.smsEnabled && payment.tenantPhone) {
     // Use tenant language for SMS defaults, owner custom overrides
     const smsField = `sms${level.charAt(0).toUpperCase() + level.slice(1)}Message` as keyof FollowUpSettings;
     const ownerSms = settings[smsField] as string;
