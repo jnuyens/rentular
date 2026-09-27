@@ -153,7 +153,10 @@
     "typePermanent": "Dauerhaft",
     "deductionAmount": "Abzugsbetrag",
     "deductionReasonPlaceholder": "z.B. vereinbarte Mietminderung, Maengelkompensation...",
-    "saveDeduction": "Abzug speichern"
+    "saveDeduction": "Abzug speichern",
+    "markPaidCash": "Bezahlt (bar)",
+    "markPaidTransfer": "Bezahlt (Ueberweisung)",
+    "paidLabel": "Bezahlt"
   },
   "tenants": {
     "title": "Mieter",

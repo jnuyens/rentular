@@ -374,6 +374,63 @@ paymentsRouter.post(
   }
 );
 
+// Mark an existing pending/processing payment as paid (cash, transfer to another
+// account, etc.) -- e.g. a deposit or rent paid outside the app.
+paymentsRouter.post(
+  "/:id/mark-paid",
+  zValidator(
+    "json",
+    z.object({
+      method: z.enum(["cash", "bank_transfer", "other"]).optional().default("cash"),
+      date: z.string().date().optional(),
+      notes: z.string().optional(),
+    })
+  ),
+  async (c) => {
+    const id = c.req.param("id");
+    const userId = getRequiredUserId(c);
+
+    const result = await db
+      .select()
+      .from(payments)
+      .innerJoin(leases, eq(payments.leaseId, leases.id))
+      .where(eq(payments.id, id));
+    if (!result[0]) return c.json({ error: "Payment not found" }, 404);
+
+    const role = await getUserPropertyRole(userId, result[0].leases.propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+
+    const payment = result[0].payments;
+    if (payment.status === "paid") {
+      return c.json({ data: { id: payment.id, status: "paid" } });
+    }
+    if (payment.status !== "pending" && payment.status !== "processing") {
+      return c.json(
+        { error: "Only pending or processing payments can be marked paid" },
+        400
+      );
+    }
+
+    const data = c.req.valid("json");
+    const paidDate = data.date || new Date().toISOString().split("T")[0]!;
+    await transitionPayment(payment.id, "paid", { paidDate });
+    await db
+      .update(payments)
+      .set({
+        method: data.method,
+        ...(data.notes ? { notes: data.notes } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, payment.id));
+
+    return c.json({
+      data: { id: payment.id, status: "paid", method: data.method, paidDate },
+    });
+  }
+);
+
 // Generate the expected (pending) rent payments for all active leases.
 // Forward-only: never creates a past-due payment. Safe to run repeatedly.
 paymentsRouter.post("/generate-expected", async (c) => {

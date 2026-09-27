@@ -153,7 +153,10 @@
     "typePermanent": "Permanent",
     "deductionAmount": "Deduction Amount",
     "deductionReasonPlaceholder": "e.g. agreed rent reduction, defect compensation...",
-    "saveDeduction": "Save Deduction"
+    "saveDeduction": "Save Deduction",
+    "markPaidCash": "Mark paid (cash)",
+    "markPaidTransfer": "Mark paid (transfer)",
+    "paidLabel": "Paid"
   },
   "tenants": {
     "title": "Tenants",

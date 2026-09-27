@@ -153,7 +153,10 @@
     "typePermanent": "Permanente",
     "deductionAmount": "Montant de la deduction",
     "deductionReasonPlaceholder": "ex. reduction de loyer convenue, compensation pour defaut...",
-    "saveDeduction": "Enregistrer la deduction"
+    "saveDeduction": "Enregistrer la deduction",
+    "markPaidCash": "Paye (especes)",
+    "markPaidTransfer": "Paye (virement)",
+    "paidLabel": "Paye"
   },
   "tenants": {
     "title": "Locataires",

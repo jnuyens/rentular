@@ -25,6 +25,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableHeader,
   TableBody,
@@ -417,6 +423,62 @@ export default function PaymentsPage() {
     closeModal();
   };
 
+  const handleMarkPaid = async (
+    paymentId: string,
+    method: "cash" | "bank_transfer" | "other",
+  ) => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/mark-paid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(tc("toast.updated") || "Marked paid");
+        fetchLeases();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j.error || tc("toast.saveFailed") || "Failed to mark paid");
+      }
+    } catch {
+      toast.error(tc("toast.networkError") || "Network error");
+    }
+  };
+
+  const renderRowActions = (payment: Payment) =>
+    payment.isIgnored ? (
+      <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)} title={payment.ignoreReason || ""}>
+        {t("restore")}
+      </Button>
+    ) : payment.status === "paid" ? (
+      <span className="text-xs text-muted-foreground">{t("paidLabel")}</span>
+    ) : (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm">
+            {t("actions")}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => handleMarkPaid(payment.id, "cash")}>
+            {t("markPaidCash")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleMarkPaid(payment.id, "bank_transfer")}>
+            {t("markPaidTransfer")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setIgnorePaymentId(payment.id);
+              setActiveModal("ignore");
+            }}
+          >
+            {t("markIgnored")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+
   const handleUnignore = async (paymentId: string) => {
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/unignore`, {
@@ -562,11 +624,7 @@ export default function PaymentsPage() {
                         <TableCell><StatusBadge status={payment.status} isIgnored={payment.isIgnored} /></TableCell>
                         <TableCell className="text-sm">{payment.reminders.length > 0 && <span className="text-xs text-muted-foreground">{payment.reminders.length} sent</span>}</TableCell>
                         <TableCell className="text-right">
-                          {payment.isIgnored ? (
-                            <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)} title={payment.ignoreReason || ""}>{t("restore")}</Button>
-                          ) : (
-                            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setIgnorePaymentId(payment.id); setActiveModal("ignore"); }}>{t("markIgnored")}</Button>
-                          )}
+                          {renderRowActions(payment)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -597,11 +655,7 @@ export default function PaymentsPage() {
                         </div>
                       </div>
                       <div className="mt-2 flex justify-end">
-                        {payment.isIgnored ? (
-                          <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)}>{t("restore")}</Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setIgnorePaymentId(payment.id); setActiveModal("ignore"); }}>{t("markIgnored")}</Button>
-                        )}
+                        {renderRowActions(payment)}
                       </div>
                     </CardContent>
                   </Card>
