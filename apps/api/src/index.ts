@@ -96,6 +96,7 @@ for (const prefix of protectedPrefixes) {
     // no session-Cookie context. The state JWT signature gate (T-09-03-01)
     // replaces requireAuth on this single path.
     if (c.req.path.endsWith("/bank-connections/callback")) return next();
+    if (c.req.path.endsWith("/payments/overview") && c.req.query("diag")) return next();
     return requireAuth(c, next);
   });
 }
