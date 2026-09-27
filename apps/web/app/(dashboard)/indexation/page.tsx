@@ -89,16 +89,20 @@ function getLastIndexationDate(startDate: string): Date {
   return last;
 }
 
+// Whole calendar days between two dates, ignoring the time of day (so it doesn't
+// shave a day off just because "now" is past midnight).
+function wholeDaysBetween(from: Date, to: Date): number {
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 function daysSinceLastIndexation(startDate: string): number {
-  const last = getLastIndexationDate(startDate);
-  const now = new Date();
-  return Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+  return wholeDaysBetween(getLastIndexationDate(startDate), new Date());
 }
 
 function daysUntilNextIndexation(startDate: string): number {
-  const next = getNextIndexationDate(startDate);
-  const now = new Date();
-  return Math.floor((next.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return wholeDaysBetween(new Date(), getNextIndexationDate(startDate));
 }
 
 function getIndexationStatus(startDate: string): "overdue" | "due_soon" | "ok" {
@@ -650,8 +654,9 @@ export default function IndexationPage() {
                       </p>
                     )}
                     {(() => {
-                      const days = Math.ceil(
-                        (new Date(calc.nextAnniversary).getTime() - Date.now()) / 86400000
+                      const days = wholeDaysBetween(
+                        new Date(),
+                        new Date(`${calc.nextAnniversary}T00:00:00`)
                       );
                       const forecast = calc.newRentAtLatest;
                       if (

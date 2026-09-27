@@ -1208,8 +1208,12 @@ export default function LeasesPage() {
                     )}
                     {(() => {
                       if (!preview.nextAnniversary || preview.newRentAtLatest == null) return null;
-                      const days = Math.ceil(
-                        (new Date(preview.nextAnniversary).getTime() - Date.now()) / 86400000
+                      const nowD = new Date();
+                      const annivD = new Date(`${preview.nextAnniversary}T00:00:00`);
+                      const days = Math.round(
+                        (new Date(annivD.getFullYear(), annivD.getMonth(), annivD.getDate()).getTime() -
+                          new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate()).getTime()) /
+                          86400000
                       );
                       const forecast = preview.newRentAtLatest;
                       const current = editingLease?.monthlyRent ? Number(editingLease.monthlyRent) : 0;
