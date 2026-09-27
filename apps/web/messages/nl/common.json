@@ -157,7 +157,12 @@
     "saveDeduction": "Aftrek opslaan",
     "markPaidCash": "Betaald (cash)",
     "markPaidTransfer": "Betaald (overschrijving)",
-    "paidLabel": "Betaald"
+    "paidLabel": "Betaald",
+    "filterOverdue": "Achterstallige betalingen",
+    "filterPaidMonth": "Betaald deze maand",
+    "filterToReceive": "Nog te ontvangen deze maand",
+    "clearFilter": "Filter wissen",
+    "filterAll": "Alle"
   },
   "tenants": {
     "title": "Huurders",

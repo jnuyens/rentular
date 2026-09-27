@@ -157,7 +157,12 @@
     "saveDeduction": "Enregistrer la deduction",
     "markPaidCash": "Paye (especes)",
     "markPaidTransfer": "Paye (virement)",
-    "paidLabel": "Paye"
+    "paidLabel": "Paye",
+    "filterOverdue": "Paiements en retard",
+    "filterPaidMonth": "Paye ce mois",
+    "filterToReceive": "Encore a recevoir ce mois",
+    "clearFilter": "Effacer le filtre",
+    "filterAll": "Tout"
   },
   "tenants": {
     "title": "Locataires",

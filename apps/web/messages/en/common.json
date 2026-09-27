@@ -157,7 +157,12 @@
     "saveDeduction": "Save Deduction",
     "markPaidCash": "Mark paid (cash)",
     "markPaidTransfer": "Mark paid (transfer)",
-    "paidLabel": "Paid"
+    "paidLabel": "Paid",
+    "filterOverdue": "Overdue payments",
+    "filterPaidMonth": "Paid this month",
+    "filterToReceive": "Still to receive this month",
+    "clearFilter": "Clear filter",
+    "filterAll": "All"
   },
   "tenants": {
     "title": "Tenants",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   CreditCard,
@@ -219,6 +220,7 @@ function StatusBadge({ status, isIgnored }: { status: string; isIgnored: boolean
 export default function PaymentsPage() {
   const t = useTranslations("payments");
   const tc = useTranslations("dashboard");
+  const searchParams = useSearchParams();
   const [showIgnored, setShowIgnored] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [ignorePaymentId, setIgnorePaymentId] = useState<string | null>(null);
@@ -234,10 +236,32 @@ export default function PaymentsPage() {
   const [leaseOptions, setLeaseOptions] = useState<LeaseOption[]>([]);
 
   const [payments, setPayments] = useState<Payment[]>([]);
-  const visiblePayments = showIgnored ? payments : payments.filter((p) => !p.isIgnored);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const todayIso = new Date().toISOString().slice(0, 10);
+  const monthPrefix = todayIso.slice(0, 7);
+
+  // Filter views, usable both as clickable chips here and as ?view= drill-down
+  // links from the overview dashboard.
+  const view = searchParams.get("view") || "";
+  const matchesViewKey = (p: Payment, key: string): boolean => {
+    const d = String(p.dueDate);
+    const unpaid = p.status === "pending" || p.status === "failed";
+    if (key === "overdue") return unpaid && d < todayIso;
+    if (key === "paid-month") return p.status === "paid" && d.startsWith(monthPrefix);
+    if (key === "to-receive")
+      return (unpaid || p.status === "processing") && d.startsWith(monthPrefix) && d >= todayIso;
+    return true; // "" = all
+  };
+  const baseVisible = showIgnored ? payments : payments.filter((p) => !p.isIgnored);
+  const visiblePayments = baseVisible.filter((p) => matchesViewKey(p, view));
+
+  const filterViews: Array<{ key: string; label: string }> = [
+    { key: "", label: t("filterAll") },
+    { key: "to-receive", label: t("filterToReceive") },
+    { key: "paid-month", label: t("filterPaidMonth") },
+    { key: "overdue", label: t("filterOverdue") },
+  ];
   const activePayments = payments.filter((p) => !p.isIgnored);
   const overdueCount = activePayments.filter(
     (p) => p.status === "pending" && p.dueDate < todayIso,
@@ -587,6 +611,36 @@ export default function PaymentsPage() {
             ))}
           </div>
         </Card>
+      )}
+
+      {/* Filter chips (also driven by the overview drill-down ?view= links) */}
+      {!isLoading && (
+        <div className="flex flex-wrap items-center gap-2">
+          {filterViews.map((v) => {
+            const active = view === v.key;
+            const count = baseVisible.filter((p) => matchesViewKey(p, v.key)).length;
+            return (
+              <a
+                key={v.key || "all"}
+                href={v.key ? `/payments?view=${v.key}` : "/payments"}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors ${
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {v.label}
+                <span
+                  className={`rounded-full px-1.5 text-xs ${
+                    active ? "bg-primary-foreground/20" : "bg-muted"
+                  }`}
+                >
+                  {count}
+                </span>
+              </a>
+            );
+          })}
+        </div>
       )}
 
       {/* Payments table / empty state */}

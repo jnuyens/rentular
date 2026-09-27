@@ -157,7 +157,12 @@
     "saveDeduction": "Abzug speichern",
     "markPaidCash": "Bezahlt (bar)",
     "markPaidTransfer": "Bezahlt (Ueberweisung)",
-    "paidLabel": "Bezahlt"
+    "paidLabel": "Bezahlt",
+    "filterOverdue": "Ueberfaellige Zahlungen",
+    "filterPaidMonth": "Bezahlt diesen Monat",
+    "filterToReceive": "Noch ausstehend diesen Monat",
+    "clearFilter": "Filter loeschen",
+    "filterAll": "Alle"
   },
   "tenants": {
     "title": "Mieter",

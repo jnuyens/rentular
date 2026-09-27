@@ -155,6 +155,54 @@ export async function ensureExpectedPayments(
 }
 
 /**
+ * Ensure a rent payment record exists for the CURRENT calendar month for this
+ * lease, so the overview reconciles. Unlike ensureExpectedPayments this may
+ * create a record whose due date is earlier in the current month (i.e. already
+ * past-due), but never in a previous month. Idempotent: skips if any payment
+ * already exists for the lease in the current month. Returns the number created.
+ */
+export async function ensureCurrentMonthPayment(lease: LeaseRow): Promise<number> {
+  if (lease.status !== "active") return 0;
+  const rent = Number(lease.monthlyRent);
+  if (!(rent > 0)) return 0;
+
+  const db = getDb();
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const monthPrefix = `${y}-${pad(m + 1)}`;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const day = Math.min(Math.max(1, Math.floor(lease.paymentDay ?? 1) || 1), lastDay);
+  const due = `${monthPrefix}-${pad(day)}`;
+
+  // Never before the lease starts.
+  const startStr = lease.startDate ? String(lease.startDate).slice(0, 10) : undefined;
+  if (startStr && due < startStr) return 0;
+
+  const existing = await db
+    .select({ dueDate: payments.dueDate })
+    .from(payments)
+    .where(eq(payments.leaseId, lease.id));
+  if (existing.some((p) => String(p.dueDate).slice(0, 7) === monthPrefix)) return 0;
+
+  const charges = Number(lease.monthlyCharges ?? 0) || 0;
+  const method = lease.paymentMethod === "gocardless" ? "gocardless" : "bank_transfer";
+  await db.insert(payments).values({
+    id: crypto.randomUUID(),
+    leaseId: lease.id,
+    status: "pending",
+    amount: String(rent + charges),
+    dueDate: due,
+    method,
+    rentAmount: String(rent),
+    chargesAmount: String(charges),
+    notes: RENT_NOTE,
+  });
+  return 1;
+}
+
+/**
  * Generate expected payments for every active lease. Best-effort per lease.
  */
 export async function ensureExpectedPaymentsForAllActive(): Promise<{

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
@@ -83,6 +84,7 @@ export default function OverviewPage() {
               hint={t("expectedHint")}
             />
             <MetricCard
+              href="/payments?view=paid-month"
               icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
               label={t("paidThisMonth")}
               value={eur(paid)}
@@ -90,6 +92,7 @@ export default function OverviewPage() {
               hint={`${paidPct}% ${t("ofExpected")}`}
             />
             <MetricCard
+              href="/payments?view=to-receive"
               icon={<Clock className="h-5 w-5 text-blue-600" />}
               label={t("toCome")}
               value={eur(data?.toComeThisMonth ?? 0)}
@@ -97,6 +100,7 @@ export default function OverviewPage() {
               hint={t("toComeHint")}
             />
             <MetricCard
+              href="/payments?view=overdue"
               icon={<AlertTriangle className="h-5 w-5 text-red-600" />}
               label={t("overdue")}
               value={eur(data?.overdueTotal ?? 0)}
@@ -150,15 +154,17 @@ function MetricCard({
   value,
   valueClass = "",
   hint,
+  href,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   valueClass?: string;
   hint?: string;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const card = (
+    <Card className={href ? "transition-colors hover:bg-muted/50" : ""}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">{label}</p>
@@ -168,5 +174,12 @@ function MetricCard({
         {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
       </CardContent>
     </Card>
+  );
+  return href ? (
+    <Link href={href} className="block">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }

@@ -11,7 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -325,13 +325,20 @@ paymentsRouter.get("/dashboard", async (c) => {
   // Monthly income = the rent roll: what all active leases should bring in per
   // month (rent + charges), regardless of whether a payment row exists yet.
   const activeLeaseRows = await db
-    .select({
-      monthlyRent: leases.monthlyRent,
-      monthlyCharges: leases.monthlyCharges,
-      deposit: leases.deposit,
-    })
+    .select()
     .from(leases)
     .where(and(inArray(leases.propertyId, accessibleIds), eq(leases.status, "active")));
+
+  // Ensure a rent record exists for the current month for each active lease, so
+  // the figures reconcile. Best-effort: never fail the dashboard if this errors.
+  for (const l of activeLeaseRows) {
+    try {
+      await ensureCurrentMonthPayment(l);
+    } catch (err) {
+      console.error("[Payments] dashboard current-month generation failed:", err);
+    }
+  }
+
   const monthlyIncome = activeLeaseRows.reduce(
     (sum, l) => sum + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0),
     0
@@ -342,7 +349,7 @@ paymentsRouter.get("/dashboard", async (c) => {
     0
   );
 
-  // Payment records drive paid / overdue.
+  // Payment records (including any just generated) drive paid / to-come / overdue.
   const rows = await db
     .select({
       status: payments.status,
@@ -355,6 +362,7 @@ paymentsRouter.get("/dashboard", async (c) => {
     .where(inArray(leases.propertyId, accessibleIds));
 
   let paidThisMonth = 0;
+  let toComeThisMonth = 0;
   let overdueThisMonth = 0;
   let overdueTotal = 0;
 
@@ -362,17 +370,15 @@ paymentsRouter.get("/dashboard", async (c) => {
     if (p.isIgnored) continue;
     const amt = Number(p.amount);
     const d = String(p.dueDate);
-    const overdue = (p.status === "pending" || p.status === "failed") && d < todayStr;
+    const unpaid = p.status === "pending" || p.status === "failed";
+    const overdue = unpaid && d < todayStr;
     if (overdue) overdueTotal += amt;
     if (d >= monthStart && d <= monthEnd) {
       if (p.status === "paid") paidThisMonth += amt;
       else if (overdue) overdueThisMonth += amt;
+      else if (unpaid || p.status === "processing") toComeThisMonth += amt;
     }
   }
-
-  // What is still expected to come in this month = income minus what is already
-  // paid and what is counted as overdue for this month.
-  const toComeThisMonth = Math.max(0, monthlyIncome - paidThisMonth - overdueThisMonth);
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return c.json({
