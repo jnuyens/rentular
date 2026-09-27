@@ -157,7 +157,10 @@ async function computeIndexationCore(input: {
     const v = await getHealthIndexValue(currentIndexYearStr, currentIndexMonthStr);
     // If that month isn't published yet, fall back to the latest available index.
     currentIndex = v ? Number(v) : latestIndex;
-    effectiveDateStr = new Date(anniversaryYear, startMonth, startDay).toISOString().split("T")[0]!;
+    // Effective date = the anniversary, but a late application takes effect going
+    // forward (from today), not retroactively -- so never show a past date.
+    const anniv = new Date(anniversaryYear, startMonth, startDay);
+    effectiveDateStr = (anniv > today ? anniv : today).toISOString().split("T")[0]!;
   } else {
     // Before the first anniversary there is nothing to apply: the legal "current"
     // index equals the base (0 change) and we avoid looking up a future month.
