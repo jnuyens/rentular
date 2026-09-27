@@ -296,6 +296,29 @@ paymentsRouter.get("/summary/overdue", async (c) => {
 
 // Overview dashboard: current-calendar-month cash flow + total overdue.
 paymentsRouter.get("/overview", async (c) => {
+  // TEMP DIAGNOSTIC: secret-guarded, computes over ALL leases, no auth. Remove.
+  const diag = c.req.query("diag");
+  if (diag && process.env.AUTH_SECRET && diag === process.env.AUTH_SECRET) {
+    const now0 = new Date();
+    const pad0 = (n: number) => String(n).padStart(2, "0");
+    const y0 = now0.getFullYear();
+    const m0 = now0.getMonth();
+    const ms = `${y0}-${pad0(m0 + 1)}-01`;
+    const me = `${y0}-${pad0(m0 + 1)}-${pad0(new Date(y0, m0 + 1, 0).getDate())}`;
+    const td = `${y0}-${pad0(m0 + 1)}-${pad0(now0.getDate())}`;
+    const rows0 = await db.select({ status: payments.status, amount: payments.amount, dueDate: payments.dueDate, isIgnored: payments.isIgnored }).from(payments);
+    let e = 0, p = 0, tcm = 0, ot = 0;
+    for (const r of rows0) {
+      if (r.isIgnored) continue;
+      const a = Number(r.amount); const d = String(r.dueDate);
+      if ((r.status === "pending" || r.status === "failed") && d < td) ot += a;
+      if (d >= ms && d <= me) { e += a; if (r.status === "paid") p += a; else if ((r.status === "pending" || r.status === "processing") && d >= td) tcm += a; }
+    }
+    const lr0 = await db.select({ monthlyRent: leases.monthlyRent, monthlyCharges: leases.monthlyCharges }).from(leases).where(eq(leases.status, "active"));
+    const rentRoll = lr0.reduce((s, l) => s + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0), 0);
+    return c.json({ diag: true, month: `${y0}-${pad0(m0 + 1)}`, today: td, activeLeases: lr0.length, rentRoll, rows: rows0.length, recordsDueThisMonth: e, paidThisMonth: p, toComeFromRecords: tcm, overdueTotal: ot });
+  }
+
   const userId = getRequiredUserId(c);
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -319,6 +342,18 @@ paymentsRouter.get("/overview", async (c) => {
   const monthEnd = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
   const todayStr = `${y}-${pad(m + 1)}-${pad(now.getDate())}`;
 
+  // Monthly income = the rent roll: what all active leases should bring in per
+  // month (rent + charges), regardless of whether a payment row exists yet.
+  const activeLeaseRows = await db
+    .select({ monthlyRent: leases.monthlyRent, monthlyCharges: leases.monthlyCharges })
+    .from(leases)
+    .where(and(inArray(leases.propertyId, accessibleIds), eq(leases.status, "active")));
+  const monthlyIncome = activeLeaseRows.reduce(
+    (sum, l) => sum + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0),
+    0
+  );
+
+  // Payment records drive paid / overdue.
   const rows = await db
     .select({
       status: payments.status,
@@ -330,9 +365,7 @@ paymentsRouter.get("/overview", async (c) => {
     .innerJoin(leases, eq(payments.leaseId, leases.id))
     .where(inArray(leases.propertyId, accessibleIds));
 
-  let expectedThisMonth = 0;
   let paidThisMonth = 0;
-  let toComeThisMonth = 0;
   let overdueThisMonth = 0;
   let overdueTotal = 0;
 
@@ -342,24 +375,21 @@ paymentsRouter.get("/overview", async (c) => {
     const d = String(p.dueDate);
     const overdue = (p.status === "pending" || p.status === "failed") && d < todayStr;
     if (overdue) overdueTotal += amt;
-
     if (d >= monthStart && d <= monthEnd) {
-      expectedThisMonth += amt;
-      if (p.status === "paid") {
-        paidThisMonth += amt;
-      } else if ((p.status === "pending" || p.status === "processing") && d >= todayStr) {
-        toComeThisMonth += amt;
-      } else if (overdue) {
-        overdueThisMonth += amt;
-      }
+      if (p.status === "paid") paidThisMonth += amt;
+      else if (overdue) overdueThisMonth += amt;
     }
   }
+
+  // What is still expected to come in this month = income minus what is already
+  // paid and what is counted as overdue for this month.
+  const toComeThisMonth = Math.max(0, monthlyIncome - paidThisMonth - overdueThisMonth);
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return c.json({
     data: {
       month,
-      expectedThisMonth: r2(expectedThisMonth),
+      expectedThisMonth: r2(monthlyIncome),
       paidThisMonth: r2(paidThisMonth),
       toComeThisMonth: r2(toComeThisMonth),
       overdueThisMonth: r2(overdueThisMonth),
