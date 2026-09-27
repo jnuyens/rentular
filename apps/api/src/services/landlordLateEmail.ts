@@ -4,6 +4,7 @@ import { signLandlordActionToken } from "../lib/landlordActionToken";
 interface LateEmailInput {
   paymentId: string;
   ownerEmail: string;
+  cc?: string;
   ownerLocale: string;
   tenantName: string;
   propertyName: string;
@@ -129,6 +130,7 @@ export async function sendLandlordLateEmail(input: LateEmailInput): Promise<void
 
   await sendEmail({
     to: input.ownerEmail,
+    cc: input.cc,
     subject: tpl.subject(vars),
     body: tpl.body(vars),
   });

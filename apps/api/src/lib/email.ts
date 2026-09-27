@@ -16,6 +16,7 @@ const defaultTransporter = createTransport({
 
 export interface EmailOptions {
   to: string;
+  cc?: string;
   subject: string;
   body: string;
   ownerId?: string;
@@ -101,6 +102,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
   await transport.sendMail({
     from,
     to: options.to,
+    cc: options.cc || undefined,
     subject: options.subject,
     text: options.body,
     attachments: options.attachments,
