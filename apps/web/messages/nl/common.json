@@ -26,6 +26,7 @@
     "resetTokenMissing": "Deze resetlink is ongeldig of onvolledig."
   },
   "nav": {
+    "overview": "Overzicht",
     "properties": "Eigendommen",
     "tenants": "Huurders",
     "leases": "Huurcontracten",
@@ -1127,5 +1128,19 @@
       "noPendingPayment": "Geen openstaande betaling voor dit huurcontract.",
       "noMatch": "Geen overeenkomende betaling gevonden. Gebruik Toewijzen om handmatig een huurcontract te koppelen."
     }
+  },
+  "overview": {
+    "title": "Overzicht",
+    "subtitle": "Huurinkomsten voor",
+    "expectedThisMonth": "Verwacht deze maand",
+    "expectedHint": "Totale huur verschuldigd deze kalendermaand",
+    "paidThisMonth": "Betaald deze maand",
+    "ofExpected": "van verwacht",
+    "toCome": "Nog te ontvangen",
+    "toComeHint": "In afwachting, nog niet vervallen deze maand",
+    "overdue": "Achterstallig",
+    "overdueHint": "Niets achterstallig",
+    "overdueThisMonth": "incl. {amount} van deze maand",
+    "collected": "Geïnd deze maand"
   }
 }

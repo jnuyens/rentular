@@ -8,6 +8,7 @@ import DashboardSidebar from "@/components/DashboardSidebar";
 import MobileNav from "@/components/MobileNav";
 
 const navigationItems = [
+  { key: "overview" as const, href: "/overview", iconName: "LayoutDashboard" as const },
   { key: "properties" as const, href: "/properties", iconName: "Building2" as const },
   { key: "tenants" as const, href: "/tenants", iconName: "Users" as const },
   { key: "leases" as const, href: "/leases", iconName: "FileText" as const },

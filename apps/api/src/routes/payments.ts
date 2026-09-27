@@ -294,6 +294,81 @@ paymentsRouter.get("/summary/overdue", async (c) => {
   });
 });
 
+// Overview dashboard: current-calendar-month cash flow + total overdue.
+paymentsRouter.get("/overview", async (c) => {
+  const userId = getRequiredUserId(c);
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const month = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const empty = {
+    month,
+    expectedThisMonth: 0,
+    paidThisMonth: 0,
+    toComeThisMonth: 0,
+    overdueTotal: 0,
+    overdueThisMonth: 0,
+    currency: "EUR",
+  };
+
+  const accessibleIds = await getAccessiblePropertyIds(userId);
+  if (accessibleIds.length === 0) return c.json({ data: empty });
+
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const monthStart = `${y}-${pad(m + 1)}-01`;
+  const monthEnd = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
+  const todayStr = `${y}-${pad(m + 1)}-${pad(now.getDate())}`;
+
+  const rows = await db
+    .select({
+      status: payments.status,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      isIgnored: payments.isIgnored,
+    })
+    .from(payments)
+    .innerJoin(leases, eq(payments.leaseId, leases.id))
+    .where(inArray(leases.propertyId, accessibleIds));
+
+  let expectedThisMonth = 0;
+  let paidThisMonth = 0;
+  let toComeThisMonth = 0;
+  let overdueThisMonth = 0;
+  let overdueTotal = 0;
+
+  for (const p of rows) {
+    if (p.isIgnored) continue;
+    const amt = Number(p.amount);
+    const d = String(p.dueDate);
+    const overdue = (p.status === "pending" || p.status === "failed") && d < todayStr;
+    if (overdue) overdueTotal += amt;
+
+    if (d >= monthStart && d <= monthEnd) {
+      expectedThisMonth += amt;
+      if (p.status === "paid") {
+        paidThisMonth += amt;
+      } else if ((p.status === "pending" || p.status === "processing") && d >= todayStr) {
+        toComeThisMonth += amt;
+      } else if (overdue) {
+        overdueThisMonth += amt;
+      }
+    }
+  }
+
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return c.json({
+    data: {
+      month,
+      expectedThisMonth: r2(expectedThisMonth),
+      paidThisMonth: r2(paidThisMonth),
+      toComeThisMonth: r2(toComeThisMonth),
+      overdueThisMonth: r2(overdueThisMonth),
+      overdueTotal: r2(overdueTotal),
+      currency: "EUR",
+    },
+  });
+});
+
 // Get payment details (PAY-02)
 paymentsRouter.get("/:id", async (c) => {
   const id = c.req.param("id");

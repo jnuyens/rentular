@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Building2, Users, FileText, CreditCard, TrendingUp,
+  LayoutDashboard, Building2, Users, FileText, CreditCard, TrendingUp,
   MessageSquare, Wrench, Settings, Download, Menu, LogOut,
   FileSignature, Banknote, ArrowLeftRight,
 } from "lucide-react";
@@ -19,7 +19,7 @@ import {
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Building2, Users, FileText, CreditCard, TrendingUp,
+  LayoutDashboard, Building2, Users, FileText, CreditCard, TrendingUp,
   MessageSquare, Wrench, Settings, Download, FileSignature, Banknote,
   ArrowLeftRight,
 };

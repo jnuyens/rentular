@@ -26,6 +26,7 @@
     "resetTokenMissing": "Ce lien de reinitialisation est invalide ou incomplet."
   },
   "nav": {
+    "overview": "Apercu",
     "properties": "Biens",
     "tenants": "Locataires",
     "leases": "Baux",
@@ -1127,5 +1128,19 @@
       "noPendingPayment": "Aucun paiement en attente pour ce bail.",
       "noMatch": "Aucun paiement correspondant trouvé. Utilisez Attribuer pour associer un bail manuellement."
     }
+  },
+  "overview": {
+    "title": "Apercu",
+    "subtitle": "Revenus locatifs pour",
+    "expectedThisMonth": "Attendu ce mois",
+    "expectedHint": "Loyer total du pour ce mois calendaire",
+    "paidThisMonth": "Paye ce mois",
+    "ofExpected": "de l'attendu",
+    "toCome": "Encore a recevoir",
+    "toComeHint": "En attente, pas encore echu ce mois",
+    "overdue": "En retard",
+    "overdueHint": "Rien en retard",
+    "overdueThisMonth": "dont {amount} de ce mois",
+    "collected": "Encaisse ce mois"
   }
 }

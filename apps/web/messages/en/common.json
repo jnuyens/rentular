@@ -26,6 +26,7 @@
     "resetTokenMissing": "This reset link is invalid or incomplete."
   },
   "nav": {
+    "overview": "Overview",
     "properties": "Properties",
     "tenants": "Tenants",
     "leases": "Leases",
@@ -1127,5 +1128,19 @@
       "noPendingPayment": "No pending payment for this lease.",
       "noMatch": "No matching payment found. Use Assign to link a lease manually."
     }
+  },
+  "overview": {
+    "title": "Overview",
+    "subtitle": "Rent income for",
+    "expectedThisMonth": "Expected this month",
+    "expectedHint": "Total rent due this calendar month",
+    "paidThisMonth": "Paid this month",
+    "ofExpected": "of expected",
+    "toCome": "Still to come",
+    "toComeHint": "Pending, not yet due this month",
+    "overdue": "Overdue",
+    "overdueHint": "Nothing overdue",
+    "overdueThisMonth": "incl. {amount} from this month",
+    "collected": "Collected this month"
   }
 }

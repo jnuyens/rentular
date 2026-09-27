@@ -26,6 +26,7 @@
     "resetTokenMissing": "Dieser Link zum Zuruecksetzen ist ungueltig oder unvollstaendig."
   },
   "nav": {
+    "overview": "Uebersicht",
     "properties": "Immobilien",
     "tenants": "Mieter",
     "leases": "Mietvertraege",
@@ -1127,5 +1128,19 @@
       "noPendingPayment": "Keine offene Zahlung für diesen Mietvertrag.",
       "noMatch": "Keine passende Zahlung gefunden. Verwenden Sie Zuordnen, um manuell einen Mietvertrag zu verknüpfen."
     }
+  },
+  "overview": {
+    "title": "Uebersicht",
+    "subtitle": "Mieteinnahmen fuer",
+    "expectedThisMonth": "Erwartet diesen Monat",
+    "expectedHint": "Gesamtmiete faellig in diesem Kalendermonat",
+    "paidThisMonth": "Bezahlt diesen Monat",
+    "ofExpected": "des Erwarteten",
+    "toCome": "Noch ausstehend",
+    "toComeHint": "Ausstehend, diesen Monat noch nicht faellig",
+    "overdue": "Ueberfaellig",
+    "overdueHint": "Nichts ueberfaellig",
+    "overdueThisMonth": "inkl. {amount} aus diesem Monat",
+    "collected": "Eingezogen diesen Monat"
   }
 }
