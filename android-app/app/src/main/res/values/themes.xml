@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Rentular" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/rentular_primary</item>
+        <item name="colorPrimaryDark">@color/rentular_primary</item>
+        <item name="android:statusBarColor">@color/rentular_primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
