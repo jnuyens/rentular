@@ -11,6 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
+import { ensureExpectedPaymentsForAllActive } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -372,6 +373,17 @@ paymentsRouter.post(
     );
   }
 );
+
+// Generate the expected (pending) rent payments for all active leases.
+// Forward-only: never creates a past-due payment. Safe to run repeatedly.
+paymentsRouter.post("/generate-expected", async (c) => {
+  getRequiredUserId(c);
+  const result = await ensureExpectedPaymentsForAllActive();
+  console.log(
+    `[Payments] generate-expected: ${result.created} payment(s) created across ${result.leases} active lease(s)`
+  );
+  return c.json({ data: result });
+});
 
 // Trigger GoCardless payment for a lease (PAY-04)
 paymentsRouter.post(

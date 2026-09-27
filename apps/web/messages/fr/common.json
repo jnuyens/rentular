@@ -271,7 +271,9 @@
     "noIndexationYet": "Aucune indexation n'est encore due. La première indexation s'applique à partir de la date anniversaire du contrat indiquée ci-dessus (l'indice santé de ce mois n'est pas encore publié).",
     "risenSoFar": "Déjà augmenté",
     "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté.",
-    "anniversaryForecast": "Environ {amount} à la prochaine date anniversaire ({date}, dans {days} jours), sur base de l'indice le plus récent."
+    "anniversaryForecast": "Environ {amount} à la prochaine date anniversaire ({date}, dans {days} jours), sur base de l'indice le plus récent.",
+    "paymentDay": "Jour de paiement du mois",
+    "paymentDayHelp": "Jour du mois ou le loyer est attendu. Determine le calendrier des paiements attendus."
   },
   "indexation": {
     "title": "Indexation des loyers",

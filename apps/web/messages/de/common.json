@@ -271,7 +271,9 @@
     "noIndexationYet": "Noch keine Indexierung fällig. Die erste Indexierung gilt ab dem oben angezeigten Vertragsjahrestag (der Gesundheitsindex für diesen Monat ist noch nicht veröffentlicht).",
     "risenSoFar": "Bereits gestiegen",
     "notApplicableUntil": "Erst ab {date} anwendbar (Indexierung ist einmal jährlich ab dem Vertragsjahrestag erlaubt). So viel ist die Miete bereits gestiegen.",
-    "anniversaryForecast": "Rund {amount} beim nächsten Jahrestag ({date}, in {days} Tagen), auf Basis des neuesten Index."
+    "anniversaryForecast": "Rund {amount} beim nächsten Jahrestag ({date}, in {days} Tagen), auf Basis des neuesten Index.",
+    "paymentDay": "Zahltag des Monats",
+    "paymentDayHelp": "Tag des Monats, an dem die Miete erwartet wird. Bestimmt den Zeitplan der erwarteten Zahlungen."
   },
   "indexation": {
     "title": "Mietindexierung",

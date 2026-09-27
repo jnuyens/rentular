@@ -4,6 +4,7 @@ import { z } from "zod";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { getDb, leases, leaseTenants, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
+import { ensureExpectedPayments } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -181,6 +182,16 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
   }
 
   const [created] = await db.select().from(leases).where(eq(leases.id, id));
+  // Generate the expected (pending) rent payments for this contract. Best-effort:
+  // never fail the request if generation errors.
+  if (created && created.status === "active") {
+    try {
+      const n = await ensureExpectedPayments(created);
+      if (n > 0) console.log(`[Payments] Generated ${n} expected payment(s) for new lease ${id}`);
+    } catch (err) {
+      console.error("[Payments] Expected-payment generation failed on create:", err);
+    }
+  }
   return c.json({ data: { ...created, tenantIds: data.tenantIds || [] }, message: "Lease created" }, 201);
 });
 
@@ -250,6 +261,14 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   }
 
   const [updated] = await db.select().from(leases).where(eq(leases.id, id));
+  // Keep the expected-payment schedule in sync (idempotent, forward-only).
+  if (updated && updated.status === "active") {
+    try {
+      await ensureExpectedPayments(updated);
+    } catch (err) {
+      console.error("[Payments] Expected-payment generation failed on update:", err);
+    }
+  }
   const tenantRows = await db.select().from(leaseTenants)
     .where(eq(leaseTenants.leaseId, id));
   return c.json({ data: { ...updated, tenantIds: tenantRows.map(t => t.tenantId) }, message: "Lease updated" });

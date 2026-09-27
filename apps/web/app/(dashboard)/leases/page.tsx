@@ -72,6 +72,7 @@ interface Lease {
   endDate?: string;
   monthlyRent: string;
   monthlyCharges: string;
+  paymentDay?: number;
   baseRent?: string | null;
   indexationBaseMonth?: string | null;
   indexationBaseIndex?: string | null;
@@ -137,6 +138,7 @@ export default function LeasesPage() {
   const [baseIndex, setBaseIndex] = useState("");
   const [baseIndexLoading, setBaseIndexLoading] = useState(false);
   const [lastIndexationDateState, setLastIndexationDateState] = useState("");
+  const [paymentDayState, setPaymentDayState] = useState("1");
   // Region + dates drive the reference month, which is fully derived (read-only).
   const [regionState, setRegionState] = useState("flanders");
   const [signingDateState, setSigningDateState] = useState("");
@@ -330,6 +332,12 @@ export default function LeasesPage() {
     setStartDateState(editingLease?.startDate ?? "");
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
     setLastIndexationDateState(editingLease?.lastIndexationDate ?? "");
+    setPaymentDayState(
+      String(
+        editingLease?.paymentDay ??
+          (editingLease?.startDate ? new Date(editingLease.startDate).getDate() : 1)
+      )
+    );
     // Drop any preview from a previously-open contract so a stale possible-rent
     // card can't show against the new contract's inputs. It refetches below.
     setPreview(null);
@@ -476,6 +484,7 @@ export default function LeasesPage() {
       indexationBaseMonth: refMonth,
       indexationBaseIndex: baseIndex,
       lastIndexationDate: lastIndexationDateState || null,
+      paymentDay: Math.min(28, Math.max(1, Number(paymentDayState) || 1)),
       paymentMethod,
       bankAccountId: paymentMethod === "bank_transfer" ? selectedBankAccountId : undefined,
     };
@@ -1072,6 +1081,21 @@ export default function LeasesPage() {
                   defaultValue={editingLease?.monthlyCharges || "0"}
                   className={ic}
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("paymentDay")}</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="28"
+                  step="1"
+                  value={paymentDayState}
+                  onChange={(e) => setPaymentDayState(e.target.value)}
+                  className={ic}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">{t("paymentDayHelp")}</p>
               </div>
             </div>
             {/* Payment Method */}

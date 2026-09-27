@@ -24,6 +24,7 @@ import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
+import { ensureExpectedPaymentsForAllActive } from "../services/expectedPayments";
 import type { SupportedLanguage } from "@rentular/shared";
 
 const QUEUE_NAME = "payment-check";
@@ -492,6 +493,19 @@ const worker = new Worker(
     }
 
     console.log("[PaymentCheck] Balance check completed");
+
+    // Phase D: Roll the expected-payment schedule forward so each month's
+    // expected (pending) rent payment appears. Forward-only, so this never
+    // creates a past-due payment that would trigger reminders.
+    try {
+      console.log("[PaymentCheck] Phase D: Generating expected payments...");
+      const gen = await ensureExpectedPaymentsForAllActive();
+      console.log(
+        `[PaymentCheck] Phase D: ${gen.created} expected payment(s) created across ${gen.leases} active lease(s)`
+      );
+    } catch (err) {
+      console.error("[PaymentCheck] Phase D: expected-payment generation failed:", err);
+    }
   },
   { connection }
 );
