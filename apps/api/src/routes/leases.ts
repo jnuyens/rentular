@@ -261,10 +261,11 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   }
 
   const [updated] = await db.select().from(leases).where(eq(leases.id, id));
-  // Keep the expected-payment schedule in sync (idempotent, forward-only).
+  // Keep the expected-payment schedule in sync. resetFuture re-creates the
+  // not-yet-due auto-generated rows so a changed payment day is reflected.
   if (updated && updated.status === "active") {
     try {
-      await ensureExpectedPayments(updated);
+      await ensureExpectedPayments(updated, { resetFuture: true });
     } catch (err) {
       console.error("[Payments] Expected-payment generation failed on update:", err);
     }

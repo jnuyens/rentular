@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { getDb, leases, payments } from "@rentular/db";
 
 type LeaseRow = typeof leases.$inferSelect;
@@ -20,7 +20,7 @@ export function computeExpectedDueDates(
   paymentDay: number,
   startDate: string | undefined,
   today: Date,
-  monthsAhead = 2
+  count = 1
 ): string[] {
   const day = Math.max(1, Math.floor(paymentDay) || 1);
   const todayStr = toYMD(today);
@@ -29,8 +29,11 @@ export function computeExpectedDueDates(
   const baseYear = today.getFullYear();
   const baseMonth = today.getMonth(); // 0-based
 
+  // Return the next `count` upcoming due dates (the soonest payment-day
+  // occurrences that are today or later). We only surface the immediate upcoming
+  // month(s); the monthly job rolls the schedule forward as each one passes.
   const results: string[] = [];
-  for (let i = 0; i <= monthsAhead; i++) {
+  for (let i = 0; i < count + 24 && results.length < count; i++) {
     const y = baseYear + Math.floor((baseMonth + i) / 12);
     const m = (baseMonth + i) % 12; // 0-based
     const lastDay = new Date(y, m + 1, 0).getDate();
@@ -54,12 +57,33 @@ function toYMD(d: Date): string {
  * current and upcoming months. Idempotent: a month already having any payment
  * (paid, pending, or otherwise) is skipped. Returns the number created.
  */
-export async function ensureExpectedPayments(lease: LeaseRow): Promise<number> {
+export async function ensureExpectedPayments(
+  lease: LeaseRow,
+  opts: { resetFuture?: boolean } = {}
+): Promise<number> {
   if (lease.status !== "active") return 0;
   const rent = Number(lease.monthlyRent);
   if (!(rent > 0)) return 0;
 
   const db = getDb();
+  const todayStr = toYMD(new Date());
+
+  // When the contract's payment day changes, drop the not-yet-due auto-generated
+  // rows so they can be re-created on the new day. Only touches system-generated,
+  // still-pending, future rows -- never paid, matched, or past-due payments.
+  if (opts.resetFuture) {
+    await db
+      .delete(payments)
+      .where(
+        and(
+          eq(payments.leaseId, lease.id),
+          eq(payments.status, "pending"),
+          eq(payments.notes, "auto-generated expected payment"),
+          gte(payments.dueDate, todayStr)
+        )
+      );
+  }
+
   const dueDates = computeExpectedDueDates(
     lease.paymentDay ?? 1,
     lease.startDate,
