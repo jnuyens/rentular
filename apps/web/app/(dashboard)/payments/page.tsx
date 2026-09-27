@@ -240,6 +240,14 @@ export default function PaymentsPage() {
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const monthPrefix = todayIso.slice(0, 7);
+  // Window for "paid this month" that also catches rent paid a few weeks early.
+  const _now = new Date();
+  const _cut = new Date(_now.getFullYear(), _now.getMonth(), 1);
+  _cut.setDate(_cut.getDate() - 25);
+  const paidWindowStart = _cut.toISOString().slice(0, 10);
+  const monthEndIso = new Date(_now.getFullYear(), _now.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
 
   // Filter views, usable both as clickable chips here and as ?view= drill-down
   // links from the overview dashboard.
@@ -248,7 +256,13 @@ export default function PaymentsPage() {
     const d = String(p.dueDate);
     const unpaid = p.status === "pending" || p.status === "failed";
     if (key === "overdue") return unpaid && d < todayIso;
-    if (key === "paid-month") return p.status === "paid" && d.startsWith(monthPrefix);
+    if (key === "paid-month") {
+      if (p.status !== "paid") return false;
+      if (d.startsWith(monthPrefix)) return true; // due this month
+      // rent paid early (e.g. late last month) still counts for this month
+      const pd = p.paidDate ? String(p.paidDate) : d;
+      return pd >= paidWindowStart && pd <= monthEndIso;
+    }
     if (key === "to-receive")
       return (unpaid || p.status === "processing") && d.startsWith(monthPrefix) && d >= todayIso;
     return true; // "" = all

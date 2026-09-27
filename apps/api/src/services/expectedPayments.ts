@@ -155,11 +155,44 @@ export async function ensureExpectedPayments(
 }
 
 /**
- * Ensure a rent payment record exists for the CURRENT calendar month for this
- * lease, so the overview reconciles. Unlike ensureExpectedPayments this may
- * create a record whose due date is earlier in the current month (i.e. already
- * past-due), but never in a previous month. Idempotent: skips if any payment
- * already exists for the lease in the current month. Returns the number created.
+ * Does this PAID payment cover the rent for a period due on `dueDate`? Handles
+ * rent paid early (a few weeks before) or a little late, and small amount
+ * differences, so a payment dated in the prior month still counts.
+ */
+export function coversMonthRent(
+  p: { status: string; amount: string | number; dueDate: string; paidDate?: string | null },
+  dueDate: string,
+  rent: number
+): boolean {
+  if (p.status !== "paid") return false;
+  const amt = Number(p.amount);
+  if (amt < rent * 0.7 || amt > rent * 1.3) return false;
+  const ref = (p.paidDate ? String(p.paidDate) : String(p.dueDate)).slice(0, 10);
+  const due = new Date(`${dueDate}T00:00:00`);
+  const lo = new Date(due);
+  lo.setDate(lo.getDate() - 25); // paid up to ~25 days early
+  const hi = new Date(due);
+  hi.setDate(hi.getDate() + 10); // or a little late
+  const r = new Date(`${ref}T00:00:00`);
+  return r >= lo && r <= hi;
+}
+
+/** The current month's rent due date (YYYY-MM-DD) for a lease. */
+export function currentMonthDueDate(lease: LeaseRow, now = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const day = Math.min(Math.max(1, Math.floor(lease.paymentDay ?? 1) || 1), lastDay);
+  return `${y}-${pad(m + 1)}-${pad(day)}`;
+}
+
+/**
+ * Ensure the CURRENT calendar month is represented for this lease so the overview
+ * reconciles: if the month's rent is already covered by a (possibly early)
+ * payment, remove any stale auto-generated pending record and create nothing; if
+ * it is genuinely unpaid, create a single pending record. Never touches a
+ * previous month. Returns the number of pending records created.
  */
 export async function ensureCurrentMonthPayment(lease: LeaseRow): Promise<number> {
   if (lease.status !== "active") return 0;
@@ -168,22 +201,42 @@ export async function ensureCurrentMonthPayment(lease: LeaseRow): Promise<number
 
   const db = getDb();
   const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const monthPrefix = `${y}-${pad(m + 1)}`;
-  const lastDay = new Date(y, m + 1, 0).getDate();
-  const day = Math.min(Math.max(1, Math.floor(lease.paymentDay ?? 1) || 1), lastDay);
-  const due = `${monthPrefix}-${pad(day)}`;
+  const due = currentMonthDueDate(lease, now);
+  const monthPrefix = due.slice(0, 7);
 
   // Never before the lease starts.
   const startStr = lease.startDate ? String(lease.startDate).slice(0, 10) : undefined;
   if (startStr && due < startStr) return 0;
 
   const existing = await db
-    .select({ dueDate: payments.dueDate })
+    .select({
+      id: payments.id,
+      status: payments.status,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      paidDate: payments.paidDate,
+      notes: payments.notes,
+    })
     .from(payments)
     .where(eq(payments.leaseId, lease.id));
+
+  // Rent already covered by a paid payment (including one paid early last month)?
+  const covered = existing.some((p) => coversMonthRent(p, due, rent));
+  if (covered) {
+    // Drop any stale auto-generated pending record for this month (false overdue).
+    const stale = existing.filter(
+      (p) =>
+        p.notes === RENT_NOTE &&
+        p.status === "pending" &&
+        String(p.dueDate).slice(0, 7) === monthPrefix
+    );
+    for (const s of stale) {
+      await db.delete(payments).where(eq(payments.id, s.id));
+    }
+    return 0;
+  }
+
+  // Already has a record for this month (paid elsewhere, or a pending we made)?
   if (existing.some((p) => String(p.dueDate).slice(0, 7) === monthPrefix)) return 0;
 
   const charges = Number(lease.monthlyCharges ?? 0) || 0;

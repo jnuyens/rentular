@@ -11,7 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, currentMonthDueDate } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -349,35 +349,51 @@ paymentsRouter.get("/dashboard", async (c) => {
     0
   );
 
-  // Payment records (including any just generated) drive paid / to-come / overdue.
   const rows = await db
     .select({
+      leaseId: payments.leaseId,
       status: payments.status,
       amount: payments.amount,
       dueDate: payments.dueDate,
+      paidDate: payments.paidDate,
       isIgnored: payments.isIgnored,
     })
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
     .where(inArray(leases.propertyId, accessibleIds));
 
+  const byLease = new Map<string, typeof rows>();
+  for (const r of rows) {
+    if (r.isIgnored) continue;
+    const arr = byLease.get(r.leaseId) ?? [];
+    arr.push(r);
+    byLease.set(r.leaseId, arr);
+  }
+
+  // Per-lease this-month status. Rent counts as paid if a (possibly early)
+  // payment covers it, so early payers are not shown overdue.
   let paidThisMonth = 0;
   let toComeThisMonth = 0;
   let overdueThisMonth = 0;
-  let overdueTotal = 0;
+  for (const l of activeLeaseRows) {
+    const rent = Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0);
+    if (!(rent > 0)) continue;
+    const due = currentMonthDueDate(l, now);
+    const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
+    if (startStr && due < startStr) continue; // lease not active for this month yet
+    const lps = byLease.get(l.id) ?? [];
+    const covered = lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
+    if (covered) paidThisMonth += rent;
+    else if (due < todayStr) overdueThisMonth += rent;
+    else toComeThisMonth += rent;
+  }
 
+  // Total overdue = unpaid, past-due records (all months).
+  let overdueTotal = 0;
   for (const p of rows) {
     if (p.isIgnored) continue;
-    const amt = Number(p.amount);
-    const d = String(p.dueDate);
     const unpaid = p.status === "pending" || p.status === "failed";
-    const overdue = unpaid && d < todayStr;
-    if (overdue) overdueTotal += amt;
-    if (d >= monthStart && d <= monthEnd) {
-      if (p.status === "paid") paidThisMonth += amt;
-      else if (overdue) overdueThisMonth += amt;
-      else if (unpaid || p.status === "processing") toComeThisMonth += amt;
-    }
+    if (unpaid && String(p.dueDate) < todayStr) overdueTotal += Number(p.amount);
   }
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
