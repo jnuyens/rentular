@@ -273,7 +273,10 @@
     "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is.",
     "anniversaryForecast": "Rond {amount} bij de volgende verjaardag ({date}, over {days} dagen), op basis van de recentste index.",
     "paymentDay": "Betaaldag van de maand",
-    "paymentDayHelp": "Dag van de maand waarop de huur verwacht wordt. Bepaalt het schema van verwachte betalingen."
+    "paymentDayHelp": "Dag van de maand waarop de huur verwacht wordt. Bepaalt het schema van verwachte betalingen.",
+    "deposit": "Waarborg",
+    "depositHelp": "Huurwaarborg. Standaard 2x de maandhuur; pas aan indien nodig.",
+    "depositTwoMonths": "Zet op 2x de maandhuur"
   },
   "indexation": {
     "title": "Huurindexatie",

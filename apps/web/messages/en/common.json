@@ -273,7 +273,10 @@
     "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen.",
     "anniversaryForecast": "Around {amount} at the next anniversary ({date}, in {days} days), based on the latest index.",
     "paymentDay": "Payment day of month",
-    "paymentDayHelp": "Day of the month the rent is expected. Drives the expected-payment schedule."
+    "paymentDayHelp": "Day of the month the rent is expected. Drives the expected-payment schedule.",
+    "deposit": "Deposit (warranty)",
+    "depositHelp": "Rental deposit. Defaults to 2x the monthly rent; adjust as needed.",
+    "depositTwoMonths": "Set to 2x the monthly rent"
   },
   "indexation": {
     "title": "Rent Indexation",

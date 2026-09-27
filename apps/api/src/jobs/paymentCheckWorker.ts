@@ -1,7 +1,7 @@
 import { Worker, Queue } from "bullmq";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { eq, and, lt, lte, gte, inArray } from "drizzle-orm";
+import { eq, and, lt, lte, gte, inArray, or, isNull, ne } from "drizzle-orm";
 import {
   getDb,
   payments,
@@ -24,7 +24,7 @@ import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
-import { ensureExpectedPaymentsForAllActive } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, DEPOSIT_NOTE } from "../services/expectedPayments";
 import type { SupportedLanguage } from "@rentular/shared";
 
 const QUEUE_NAME = "payment-check";
@@ -136,7 +136,9 @@ const worker = new Worker(
         and(
           lt(payments.dueDate, today),
           inArray(payments.status, ["pending"]),
-          eq(payments.isIgnored, false)
+          eq(payments.isIgnored, false),
+          // Deposits (waarborg) are not dunned like rent.
+          or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE))
         )
       );
 

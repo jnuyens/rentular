@@ -40,6 +40,8 @@ const createLeaseSchema = z.object({
   // Accept string or number for rent/charges (FormData sends strings)
   monthlyRent: z.union([z.number(), z.string()]).transform((v) => Number(v)),
   monthlyCharges: z.union([z.number(), z.string()]).optional().default("0").transform((v) => Number(v)),
+  // Rental deposit / warranty (waarborg). Defaults to 2x monthly rent in the UI.
+  deposit: z.union([z.number(), z.string()]).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
   // Indexation setup: original contract rent + reference month + base index.
   baseRent: z.union([z.number(), z.string()]).optional().transform((v) => (v === undefined || v === "" ? undefined : Number(v))),
   indexationBaseMonth: z.string().optional(),
@@ -163,6 +165,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     indexationBaseIndex:
       data.indexationBaseIndex !== undefined ? String(data.indexationBaseIndex) : null,
     lastIndexationDate: data.lastIndexationDate || null,
+    deposit: data.deposit !== undefined ? String(data.deposit) : "0.00",
     bankAccountId: data.bankAccountId || null,
     // Student leases are never indexed (see indexation route).
     indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
@@ -234,6 +237,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   }
   if (data.indexationBaseIndex !== undefined) updates.indexationBaseIndex = String(data.indexationBaseIndex);
   if (data.lastIndexationDate !== undefined) updates.lastIndexationDate = data.lastIndexationDate || null;
+  if (data.deposit !== undefined) updates.deposit = String(data.deposit);
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.landlordLateNotify !== undefined) updates.landlordLateNotify = data.landlordLateNotify;

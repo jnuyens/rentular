@@ -273,7 +273,10 @@
     "notApplicableUntil": "Erst ab {date} anwendbar (Indexierung ist einmal jährlich ab dem Vertragsjahrestag erlaubt). So viel ist die Miete bereits gestiegen.",
     "anniversaryForecast": "Rund {amount} beim nächsten Jahrestag ({date}, in {days} Tagen), auf Basis des neuesten Index.",
     "paymentDay": "Zahltag des Monats",
-    "paymentDayHelp": "Tag des Monats, an dem die Miete erwartet wird. Bestimmt den Zeitplan der erwarteten Zahlungen."
+    "paymentDayHelp": "Tag des Monats, an dem die Miete erwartet wird. Bestimmt den Zeitplan der erwarteten Zahlungen.",
+    "deposit": "Kaution",
+    "depositHelp": "Mietkaution. Standardmaessig 2x die Monatsmiete; bei Bedarf anpassen.",
+    "depositTwoMonths": "Auf 2x die Monatsmiete setzen"
   },
   "indexation": {
     "title": "Mietindexierung",

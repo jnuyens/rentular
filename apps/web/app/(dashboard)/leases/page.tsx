@@ -74,6 +74,7 @@ interface Lease {
   monthlyRent: string;
   monthlyCharges: string;
   paymentDay?: number;
+  deposit?: string | null;
   baseRent?: string | null;
   indexationBaseMonth?: string | null;
   indexationBaseIndex?: string | null;
@@ -140,6 +141,7 @@ export default function LeasesPage() {
   const [baseIndexLoading, setBaseIndexLoading] = useState(false);
   const [lastIndexationDateState, setLastIndexationDateState] = useState("");
   const [paymentDayState, setPaymentDayState] = useState("1");
+  const [depositState, setDepositState] = useState("");
   // Region + dates drive the reference month, which is fully derived (read-only).
   const [regionState, setRegionState] = useState("flanders");
   const [signingDateState, setSigningDateState] = useState("");
@@ -339,6 +341,16 @@ export default function LeasesPage() {
           (editingLease?.startDate ? new Date(editingLease.startDate).getDate() : 1)
       )
     );
+    // Deposit (waarborg): use the stored value, else default to 2x the monthly rent.
+    const existingDeposit = Number(editingLease?.deposit ?? 0);
+    const rentForDeposit = Number(editingLease?.monthlyRent ?? 0);
+    setDepositState(
+      existingDeposit > 0
+        ? String(existingDeposit)
+        : rentForDeposit > 0
+          ? String(rentForDeposit * 2)
+          : ""
+    );
     // Drop any preview from a previously-open contract so a stale possible-rent
     // card can't show against the new contract's inputs. It refetches below.
     setPreview(null);
@@ -486,6 +498,7 @@ export default function LeasesPage() {
       indexationBaseIndex: baseIndex,
       lastIndexationDate: lastIndexationDateState || null,
       paymentDay: Math.min(28, Math.max(1, Number(paymentDayState) || 1)),
+      deposit: depositState === "" ? 0 : Number(depositState) || 0,
       paymentMethod,
       bankAccountId: paymentMethod === "bank_transfer" ? selectedBankAccountId : undefined,
     };
@@ -1097,6 +1110,35 @@ export default function LeasesPage() {
                   className={ic}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">{t("paymentDayHelp")}</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">{t("deposit")}</label>
+                <div className="flex gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={depositState}
+                    onChange={(e) => setDepositState(e.target.value)}
+                    placeholder="0.00"
+                    className={ic}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rentInput = document.querySelector<HTMLInputElement>(
+                        'input[name="monthlyRent"]',
+                      );
+                      const rent = Number(rentInput?.value || editingLease?.monthlyRent || 0);
+                      if (rent > 0) setDepositState(String(rent * 2));
+                    }}
+                    title={t("depositTwoMonths")}
+                    className="shrink-0 whitespace-nowrap rounded-md border border-input px-2 text-sm hover:bg-muted"
+                  >
+                    2&times;
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{t("depositHelp")}</p>
               </div>
             </div>
             {/* Payment Method */}

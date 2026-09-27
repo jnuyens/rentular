@@ -3,6 +3,10 @@ import { getDb, leases, payments } from "@rentular/db";
 
 type LeaseRow = typeof leases.$inferSelect;
 
+/** Marks an auto-generated deposit (waarborg) payment; excluded from reminders. */
+export const DEPOSIT_NOTE = "auto-generated deposit";
+const RENT_NOTE = "auto-generated expected payment";
+
 /**
  * Compute the due dates (YYYY-MM-DD) for the expected rent payments of a lease,
  * for the current month plus `monthsAhead` future months.
@@ -78,7 +82,7 @@ export async function ensureExpectedPayments(
         and(
           eq(payments.leaseId, lease.id),
           eq(payments.status, "pending"),
-          eq(payments.notes, "auto-generated expected payment"),
+          eq(payments.notes, RENT_NOTE),
           gte(payments.dueDate, todayStr)
         )
       );
@@ -89,7 +93,6 @@ export async function ensureExpectedPayments(
     lease.startDate,
     new Date()
   );
-  if (dueDates.length === 0) return 0;
 
   const existing = await db
     .select({ dueDate: payments.dueDate })
@@ -115,15 +118,39 @@ export async function ensureExpectedPayments(
       method,
       rentAmount: String(rent),
       chargesAmount: String(charges),
-      notes: "auto-generated expected payment",
+      notes: RENT_NOTE,
     });
     existingMonths.add(month);
     created++;
   }
 
-  // TODO(deposit): also generate a pending deposit payment when lease.deposit > 0
-  // and none exists. Skipped in v1 -- a deposit tied to a past start date would be
-  // overdue immediately and could trigger tenant reminders.
+  // Deposit / warranty (waarborg): one pending payment due at contract start.
+  // Idempotent by the deposit marker. Deposits are excluded from the tenant
+  // reminder worker, so a past-due deposit does not trigger dunning emails.
+  const deposit = Number(lease.deposit ?? 0) || 0;
+  if (deposit > 0) {
+    const existingDeposit = await db
+      .select({ id: payments.id })
+      .from(payments)
+      .where(
+        and(eq(payments.leaseId, lease.id), eq(payments.notes, DEPOSIT_NOTE))
+      )
+      .limit(1);
+    if (existingDeposit.length === 0) {
+      const depositDue = lease.startDate ? String(lease.startDate).slice(0, 10) : todayStr;
+      await db.insert(payments).values({
+        id: crypto.randomUUID(),
+        leaseId: lease.id,
+        status: "pending",
+        amount: String(deposit),
+        dueDate: depositDue,
+        method,
+        notes: DEPOSIT_NOTE,
+      });
+      created++;
+    }
+  }
+
   return created;
 }
 
