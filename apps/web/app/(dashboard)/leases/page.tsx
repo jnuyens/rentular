@@ -45,6 +45,7 @@ import { MandateStatusBadge } from "@/components/MandateStatusBadge";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import { CancelMandateDialog } from "@/components/CancelMandateDialog";
 import LocaleDateInput from "@/components/LocaleDateInput";
+import { formatDate } from "@/lib/dateLocale";
 
 interface Property {
   id: string;
@@ -1222,12 +1223,12 @@ export default function LeasesPage() {
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-muted-foreground">{t("effectiveFrom")}</span>
                       <span className="font-medium">
-                        {new Date(preview.effectiveDate).toLocaleDateString()}
+                        {formatDate(preview.effectiveDate)}
                       </span>
                     </div>
                     {!previewCanApply && preview.applicableFrom && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        {t("notApplicableUntil", { date: new Date(preview.applicableFrom).toLocaleDateString() })}
+                        {t("notApplicableUntil", { date: formatDate(preview.applicableFrom) })}
                       </p>
                     )}
                     {(() => {
@@ -1252,7 +1253,7 @@ export default function LeasesPage() {
                         <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
                           {t("anniversaryForecast", {
                             amount: `€${forecast.toFixed(2)}`,
-                            date: new Date(preview.nextAnniversary).toLocaleDateString(),
+                            date: formatDate(preview.nextAnniversary),
                             days,
                           })}
                         </p>
@@ -1262,7 +1263,7 @@ export default function LeasesPage() {
                       <div className="mt-1 flex items-center justify-between">
                         <span className="text-muted-foreground">{t("lastIndexation")}</span>
                         <span className="font-medium">
-                          {new Date(lastIndexationDateState).toLocaleDateString()}
+                          {formatDate(lastIndexationDateState)}
                         </span>
                       </div>
                     )}

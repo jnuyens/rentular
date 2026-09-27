@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { epcBadgeClass } from "@/lib/epc";
+import { formatDate } from "@/lib/dateLocale";
 import {
   Table,
   TableHeader,
@@ -432,7 +433,7 @@ export default function IndexationPage() {
                         </TableCell>
                         <TableCell className="text-sm">
                           <div>
-                            <span>{nextDate.toLocaleDateString()}</span>
+                            <span>{formatDate(nextDate)}</span>
                             {status === "overdue" ? (
                               <p className="text-xs font-medium text-red-600">
                                 {t("daysOverdue", { days: Math.abs(daysUntil) })}
@@ -530,7 +531,7 @@ export default function IndexationPage() {
                           );
                         })()}
                         <p className="text-xs text-muted-foreground">
-                          {t("nextDue")}: {nextDate.toLocaleDateString()}
+                          {t("nextDue")}: {formatDate(nextDate)}
                         </p>
                         {status === "overdue" ? (
                           <p className="text-xs font-medium text-red-600">
@@ -646,11 +647,11 @@ export default function IndexationPage() {
                     </div>
                     <div className="mt-1 flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t("effectiveDateLabel")}</span>
-                      <span className="font-medium">{new Date(calc.effectiveDate).toLocaleDateString()}</span>
+                      <span className="font-medium">{formatDate(calc.effectiveDate)}</span>
                     </div>
                     {!calc.canApply && (
                       <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                        {t("notApplicableUntil", { date: new Date(calc.applicableFrom).toLocaleDateString() })}
+                        {t("notApplicableUntil", { date: formatDate(calc.applicableFrom) })}
                       </p>
                     )}
                     {(() => {
@@ -670,7 +671,7 @@ export default function IndexationPage() {
                         <p className="mt-2 text-xs text-blue-700 dark:text-blue-400">
                           {t("anniversaryForecast", {
                             amount: `€${forecast.toFixed(2)}`,
-                            date: new Date(calc.nextAnniversary).toLocaleDateString(),
+                            date: formatDate(calc.nextAnniversary),
                             days,
                           })}
                         </p>

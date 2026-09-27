@@ -74,3 +74,24 @@ export function displayToIso(text: string, order: DateOrder): string {
 export function datePlaceholder(order: DateOrder): string {
   return order === "mdy" ? "mm/dd/yyyy" : "dd/mm/yyyy";
 }
+
+/**
+ * Format a Date or an ISO/date string for display in the viewer's date order
+ * (day-first in Belgium and most of the world). For a plain yyyy-mm-dd string
+ * the date parts are used as-is to avoid a timezone shift.
+ */
+export function formatDate(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const order = localeDateOrder();
+  const toLocalIso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")}`;
+  if (typeof value === "string") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (m) return isoToDisplay(`${m[1]}-${m[2]}-${m[3]}`, order);
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? "" : isoToDisplay(toLocalIso(d), order);
+  }
+  return isNaN(value.getTime()) ? "" : isoToDisplay(toLocalIso(value), order);
+}
