@@ -780,6 +780,94 @@ indexationRouter.get("/preview", async (c) => {
 });
 
 // =====================================================================
+// Endpoint 3c: GET /raise-summary -- per-lease indexation raise amounts,
+// for showing a "raise" column in the indexation list.
+// =====================================================================
+
+indexationRouter.get("/raise-summary", async (c) => {
+  try {
+    const userId = getRequiredUserId(c);
+    const db = getDb();
+
+    const accessibleIds = await getAccessiblePropertyIds(userId);
+    if (accessibleIds.length === 0) return c.json({ data: [] });
+
+    const roles = await db
+      .select({ propertyId: propertyManagers.propertyId, role: propertyManagers.role })
+      .from(propertyManagers)
+      .where(
+        and(
+          eq(propertyManagers.userId, userId),
+          isNotNull(propertyManagers.acceptedAt),
+          inArray(propertyManagers.propertyId, accessibleIds)
+        )
+      );
+    const allowedIds = roles
+      .filter((r) => canAccessDomain(r.role as PropertyManagerRole, "indexation"))
+      .map((r) => r.propertyId);
+    if (allowedIds.length === 0) return c.json({ data: [] });
+
+    const activeLeases = await db
+      .select()
+      .from(leases)
+      .where(
+        and(
+          inArray(leases.propertyId, allowedIds),
+          eq(leases.indexationEnabled, true),
+          eq(leases.status, "active")
+        )
+      );
+
+    const propRows = await db
+      .select({ id: properties.id, epcLabel: properties.epcLabel })
+      .from(properties)
+      .where(inArray(properties.id, allowedIds));
+    const epcById = new Map(propRows.map((p) => [p.id, p.epcLabel]));
+
+    const data: Array<{
+      leaseId: string;
+      canApply: boolean;
+      raiseAmount: number;
+      newRent: number;
+    }> = [];
+
+    for (const lease of activeLeases) {
+      if (lease.type === "student") continue;
+      if (!lease.indexationBaseIndex) continue; // not set up for indexation yet
+      try {
+        const baseIndex = Number(lease.indexationBaseIndex);
+        const baseRent = Number(lease.baseRent ?? lease.monthlyRent);
+        const core = await computeIndexationCore({
+          baseRent,
+          baseIndex,
+          region: lease.region,
+          startDate: lease.startDate,
+          epcLabel: epcById.get(lease.propertyId) ?? null,
+          leaseType: lease.type,
+          lastIndexationDate: lease.lastIndexationDate,
+        });
+        const currentRent = Number(lease.monthlyRent);
+        const shownRent = core.canApply ? core.newRent : core.newRentAtLatest;
+        data.push({
+          leaseId: lease.id,
+          canApply: core.canApply,
+          raiseAmount: Number((shownRent - currentRent).toFixed(2)),
+          newRent: shownRent,
+        });
+      } catch {
+        // Skip leases that can't be computed (e.g. missing index data).
+      }
+    }
+
+    return c.json({ data });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Indexation] Raise-summary error:", message);
+    return c.json({ error: "Failed to build raise summary" }, 500);
+  }
+});
+
+// =====================================================================
 // Endpoint 4: GET /upcoming -- bulk upcoming indexations
 // =====================================================================
 

@@ -120,15 +120,19 @@ export default function IndexationPage() {
   const [calc, setCalc] = useState<CalcResult | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
+  const [raiseByLease, setRaiseByLease] = useState<
+    Record<string, { canApply: boolean; raiseAmount: number }>
+  >({});
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const fetchData = useCallback(async () => {
     try {
-      const [leasesRes, propsRes, tenantsRes] = await Promise.all([
+      const [leasesRes, propsRes, tenantsRes, raiseRes] = await Promise.all([
         fetch(`${apiUrl}/api/v1/leases`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/properties`, { credentials: "include" }),
         fetch(`${apiUrl}/api/v1/tenants`, { credentials: "include" }),
+        fetch(`${apiUrl}/api/v1/indexation/raise-summary`, { credentials: "include" }),
       ]);
       if (leasesRes.ok) {
         const json = await leasesRes.json();
@@ -141,6 +145,14 @@ export default function IndexationPage() {
       if (tenantsRes.ok) {
         const json = await tenantsRes.json();
         setTenants(json.data || []);
+      }
+      if (raiseRes.ok) {
+        const json = await raiseRes.json();
+        const map: Record<string, { canApply: boolean; raiseAmount: number }> = {};
+        for (const r of json.data || []) {
+          map[r.leaseId] = { canApply: r.canApply, raiseAmount: r.raiseAmount };
+        }
+        setRaiseByLease(map);
       }
     } catch {
       toast.error(tc("toast.loadFailed") || "Failed to load data");
@@ -317,7 +329,7 @@ export default function IndexationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    {Array.from({ length: 5 }).map((_, i) => (
+                    {Array.from({ length: 6 }).map((_, i) => (
                       <TableHead key={i}><Skeleton className="h-4 w-20" /></TableHead>
                     ))}
                   </TableRow>
@@ -325,7 +337,7 @@ export default function IndexationPage() {
                 <TableBody>
                   {Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
-                      {Array.from({ length: 5 }).map((_, j) => (
+                      {Array.from({ length: 6 }).map((_, j) => (
                         <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                       ))}
                     </TableRow>
@@ -364,6 +376,7 @@ export default function IndexationPage() {
                     <TableHead className="text-xs uppercase">{t("property") || "Property"}</TableHead>
                     <TableHead className="text-xs uppercase">{t("tenantLabel") || "Tenant"}</TableHead>
                     <TableHead className="text-right text-xs uppercase">{t("rent") || "Rent"}</TableHead>
+                    <TableHead className="text-right text-xs uppercase">{t("raiseColumn")}</TableHead>
                     <TableHead className="text-xs uppercase">{t("nextDue")}</TableHead>
                     <TableHead className="text-xs uppercase">{t("statusLabel") || "Status"}</TableHead>
                   </TableRow>
@@ -398,6 +411,21 @@ export default function IndexationPage() {
                         </TableCell>
                         <TableCell className="text-sm">{getTenantNames(lease.tenantIds)}</TableCell>
                         <TableCell className="text-right text-sm font-medium">&euro;{lease.monthlyRent}/m</TableCell>
+                        <TableCell className="text-right text-sm">
+                          {(() => {
+                            const r = raiseByLease[lease.id];
+                            if (!r || r.raiseAmount <= 0.005)
+                              return <span className="text-muted-foreground">-</span>;
+                            return (
+                              <span
+                                className={`font-medium ${r.canApply ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}
+                                title={r.canApply ? undefined : t("raiseNotYet")}
+                              >
+                                +&euro;{r.raiseAmount.toFixed(2)}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-sm">
                           <div>
                             <span>{nextDate.toLocaleDateString()}</span>
@@ -432,6 +460,7 @@ export default function IndexationPage() {
                         </TableCell>
                         <TableCell className="text-sm">{getTenantNames(lease.tenantIds)}</TableCell>
                         <TableCell className="text-right text-sm font-medium">&euro;{lease.monthlyRent}/m</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">-</TableCell>
                         <TableCell className="text-sm">-</TableCell>
                         <TableCell>
                           <Badge variant="outline">{t("indexationOff")}</Badge>
@@ -485,6 +514,17 @@ export default function IndexationPage() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">&euro;{lease.monthlyRent}/m</p>
+                        {(() => {
+                          const r = raiseByLease[lease.id];
+                          if (!r || r.raiseAmount <= 0.005) return null;
+                          return (
+                            <p
+                              className={`text-xs font-medium ${r.canApply ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}
+                            >
+                              {t("raiseColumn")}: +&euro;{r.raiseAmount.toFixed(2)}
+                            </p>
+                          );
+                        })()}
                         <p className="text-xs text-muted-foreground">
                           {t("nextDue")}: {nextDate.toLocaleDateString()}
                         </p>
