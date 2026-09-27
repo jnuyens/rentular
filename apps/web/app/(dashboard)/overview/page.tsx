@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { TrendingUp, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -14,6 +14,7 @@ interface Overview {
   toComeThisMonth: number;
   overdueThisMonth: number;
   overdueTotal: number;
+  totalWarranty: number;
   currency: string;
 }
 
@@ -30,7 +31,7 @@ export default function OverviewPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/v1/payments/overview`, {
+      const res = await fetch(`${apiUrl}/api/v1/payments/dashboard`, {
         credentials: "include",
       });
       if (res.ok) setData((await res.json()).data);
@@ -45,12 +46,13 @@ export default function OverviewPage() {
     load();
   }, [load]);
 
-  const monthLabel = data
-    ? new Date(`${data.month}-01T00:00:00`).toLocaleDateString(undefined, {
-        month: "long",
-        year: "numeric",
-      })
-    : "";
+  const monthLabel = (() => {
+    if (!data?.month) return "";
+    const d = new Date(`${data.month}-01T00:00:00`);
+    return isNaN(d.getTime())
+      ? ""
+      : d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  })();
 
   const expected = data?.expectedThisMonth ?? 0;
   const paid = data?.paidThisMonth ?? 0;
@@ -109,23 +111,33 @@ export default function OverviewPage() {
             />
           </div>
 
-          {/* Collection progress for the month */}
-          <Card>
-            <CardContent className="p-6">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t("collected")}</span>
-                <span className="font-medium">
-                  {eur(paid)} / {eur(expected)} ({paidPct}%)
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-green-600 transition-all"
-                  style={{ width: `${paidPct}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {/* Collection progress for the month */}
+            <Card className="lg:col-span-2">
+              <CardContent className="p-6">
+                <div className="mb-2 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{t("collected")}</span>
+                  <span className="font-medium">
+                    {eur(paid)} / {eur(expected)} ({paidPct}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-green-600 transition-all"
+                    style={{ width: `${paidPct}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total warranty / deposits held */}
+            <MetricCard
+              icon={<ShieldCheck className="h-5 w-5 text-muted-foreground" />}
+              label={t("totalWarranty")}
+              value={eur(data?.totalWarranty ?? 0)}
+              hint={t("totalWarrantyHint")}
+            />
+          </div>
         </>
       )}
     </div>

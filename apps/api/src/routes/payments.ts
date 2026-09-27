@@ -294,31 +294,10 @@ paymentsRouter.get("/summary/overdue", async (c) => {
   });
 });
 
-// Overview dashboard: current-calendar-month cash flow + total overdue.
-paymentsRouter.get("/overview", async (c) => {
-  // TEMP DIAGNOSTIC: secret-guarded, computes over ALL leases, no auth. Remove.
-  const diag = c.req.query("diag");
-  if (diag === "showme") {
-    const now0 = new Date();
-    const pad0 = (n: number) => String(n).padStart(2, "0");
-    const y0 = now0.getFullYear();
-    const m0 = now0.getMonth();
-    const ms = `${y0}-${pad0(m0 + 1)}-01`;
-    const me = `${y0}-${pad0(m0 + 1)}-${pad0(new Date(y0, m0 + 1, 0).getDate())}`;
-    const td = `${y0}-${pad0(m0 + 1)}-${pad0(now0.getDate())}`;
-    const rows0 = await db.select({ status: payments.status, amount: payments.amount, dueDate: payments.dueDate, isIgnored: payments.isIgnored }).from(payments);
-    let e = 0, p = 0, tcm = 0, ot = 0;
-    for (const r of rows0) {
-      if (r.isIgnored) continue;
-      const a = Number(r.amount); const d = String(r.dueDate);
-      if ((r.status === "pending" || r.status === "failed") && d < td) ot += a;
-      if (d >= ms && d <= me) { e += a; if (r.status === "paid") p += a; else if ((r.status === "pending" || r.status === "processing") && d >= td) tcm += a; }
-    }
-    const lr0 = await db.select({ monthlyRent: leases.monthlyRent, monthlyCharges: leases.monthlyCharges }).from(leases).where(eq(leases.status, "active"));
-    const rentRoll = lr0.reduce((s, l) => s + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0), 0);
-    return c.json({ diag: true, month: `${y0}-${pad0(m0 + 1)}`, today: td, activeLeases: lr0.length, rentRoll, rows: rows0.length, recordsDueThisMonth: e, paidThisMonth: p, toComeFromRecords: tcm, overdueTotal: ot });
-  }
-
+// Financial dashboard: current-calendar-month cash flow + total overdue + deposits.
+// NOTE: mounted at /dashboard because /overview is already the (date-ranged)
+// payments summary endpoint.
+paymentsRouter.get("/dashboard", async (c) => {
   const userId = getRequiredUserId(c);
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -330,6 +309,7 @@ paymentsRouter.get("/overview", async (c) => {
     toComeThisMonth: 0,
     overdueTotal: 0,
     overdueThisMonth: 0,
+    totalWarranty: 0,
     currency: "EUR",
   };
 
@@ -345,11 +325,20 @@ paymentsRouter.get("/overview", async (c) => {
   // Monthly income = the rent roll: what all active leases should bring in per
   // month (rent + charges), regardless of whether a payment row exists yet.
   const activeLeaseRows = await db
-    .select({ monthlyRent: leases.monthlyRent, monthlyCharges: leases.monthlyCharges })
+    .select({
+      monthlyRent: leases.monthlyRent,
+      monthlyCharges: leases.monthlyCharges,
+      deposit: leases.deposit,
+    })
     .from(leases)
     .where(and(inArray(leases.propertyId, accessibleIds), eq(leases.status, "active")));
   const monthlyIncome = activeLeaseRows.reduce(
     (sum, l) => sum + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0),
+    0
+  );
+  // Total deposits/warranty held across active leases.
+  const totalWarranty = activeLeaseRows.reduce(
+    (sum, l) => sum + Number(l.deposit || 0),
     0
   );
 
@@ -394,6 +383,7 @@ paymentsRouter.get("/overview", async (c) => {
       toComeThisMonth: r2(toComeThisMonth),
       overdueThisMonth: r2(overdueThisMonth),
       overdueTotal: r2(overdueTotal),
+      totalWarranty: r2(totalWarranty),
       currency: "EUR",
     },
   });

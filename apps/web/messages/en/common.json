@@ -1133,7 +1133,7 @@
     "title": "Overview",
     "subtitle": "Rent income for",
     "expectedThisMonth": "Expected this month",
-    "expectedHint": "Total rent due this calendar month",
+    "expectedHint": "Total monthly rent of active contracts",
     "paidThisMonth": "Paid this month",
     "ofExpected": "of expected",
     "toCome": "Still to come",
@@ -1141,6 +1141,8 @@
     "overdue": "Overdue",
     "overdueHint": "Nothing overdue",
     "overdueThisMonth": "incl. {amount} from this month",
-    "collected": "Collected this month"
+    "collected": "Collected this month",
+    "totalWarranty": "Total warranty held",
+    "totalWarrantyHint": "Deposits across active contracts"
   }
 }

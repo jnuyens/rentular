@@ -1133,7 +1133,7 @@
     "title": "Overzicht",
     "subtitle": "Huurinkomsten voor",
     "expectedThisMonth": "Verwacht deze maand",
-    "expectedHint": "Totale huur verschuldigd deze kalendermaand",
+    "expectedHint": "Totale maandhuur van actieve contracten",
     "paidThisMonth": "Betaald deze maand",
     "ofExpected": "van verwacht",
     "toCome": "Nog te ontvangen",
@@ -1141,6 +1141,8 @@
     "overdue": "Achterstallig",
     "overdueHint": "Niets achterstallig",
     "overdueThisMonth": "incl. {amount} van deze maand",
-    "collected": "Geïnd deze maand"
+    "collected": "Geïnd deze maand",
+    "totalWarranty": "Totale waarborg",
+    "totalWarrantyHint": "Waarborgen over actieve contracten"
   }
 }

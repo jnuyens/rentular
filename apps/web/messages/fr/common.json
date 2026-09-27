@@ -1133,7 +1133,7 @@
     "title": "Apercu",
     "subtitle": "Revenus locatifs pour",
     "expectedThisMonth": "Attendu ce mois",
-    "expectedHint": "Loyer total du pour ce mois calendaire",
+    "expectedHint": "Loyer mensuel total des contrats actifs",
     "paidThisMonth": "Paye ce mois",
     "ofExpected": "de l'attendu",
     "toCome": "Encore a recevoir",
@@ -1141,6 +1141,8 @@
     "overdue": "En retard",
     "overdueHint": "Rien en retard",
     "overdueThisMonth": "dont {amount} de ce mois",
-    "collected": "Encaisse ce mois"
+    "collected": "Encaisse ce mois",
+    "totalWarranty": "Garanties totales",
+    "totalWarrantyHint": "Garanties sur les contrats actifs"
   }
 }

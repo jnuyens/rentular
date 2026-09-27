@@ -1133,7 +1133,7 @@
     "title": "Uebersicht",
     "subtitle": "Mieteinnahmen fuer",
     "expectedThisMonth": "Erwartet diesen Monat",
-    "expectedHint": "Gesamtmiete faellig in diesem Kalendermonat",
+    "expectedHint": "Gesamte Monatsmiete aktiver Vertraege",
     "paidThisMonth": "Bezahlt diesen Monat",
     "ofExpected": "des Erwarteten",
     "toCome": "Noch ausstehend",
@@ -1141,6 +1141,8 @@
     "overdue": "Ueberfaellig",
     "overdueHint": "Nichts ueberfaellig",
     "overdueThisMonth": "inkl. {amount} aus diesem Monat",
-    "collected": "Eingezogen diesen Monat"
+    "collected": "Eingezogen diesen Monat",
+    "totalWarranty": "Gesamte Kaution",
+    "totalWarrantyHint": "Kautionen ueber aktive Vertraege"
   }
 }
