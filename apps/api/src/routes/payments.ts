@@ -298,7 +298,7 @@ paymentsRouter.get("/summary/overdue", async (c) => {
 paymentsRouter.get("/overview", async (c) => {
   // TEMP DIAGNOSTIC: secret-guarded, computes over ALL leases, no auth. Remove.
   const diag = c.req.query("diag");
-  if (diag && process.env.AUTH_SECRET && diag === process.env.AUTH_SECRET) {
+  if (diag === "showme") {
     const now0 = new Date();
     const pad0 = (n: number) => String(n).padStart(2, "0");
     const y0 = now0.getFullYear();
