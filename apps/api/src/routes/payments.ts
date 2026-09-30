@@ -339,10 +339,6 @@ paymentsRouter.get("/dashboard", async (c) => {
     }
   }
 
-  const monthlyIncome = activeLeaseRows.reduce(
-    (sum, l) => sum + Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0),
-    0
-  );
   // Total deposits/warranty held across active leases.
   const totalWarranty = activeLeaseRows.reduce(
     (sum, l) => sum + Number(l.deposit || 0),
@@ -388,19 +384,25 @@ paymentsRouter.get("/dashboard", async (c) => {
     else toComeThisMonth += rent;
   }
 
-  // Total overdue = unpaid, past-due records (all months).
-  let overdueTotal = 0;
+  // Expected this month reconciles exactly with the three buckets (only counts
+  // contracts whose rent is actually due this month).
+  const expectedThisMonth = paidThisMonth + toComeThisMonth + overdueThisMonth;
+
+  // Total overdue = this month's overdue (same lease-centric basis) plus unpaid,
+  // past-due records from previous months.
+  let priorOverdue = 0;
   for (const p of rows) {
     if (p.isIgnored) continue;
     const unpaid = p.status === "pending" || p.status === "failed";
-    if (unpaid && String(p.dueDate) < todayStr) overdueTotal += Number(p.amount);
+    if (unpaid && String(p.dueDate) < monthStart) priorOverdue += Number(p.amount);
   }
+  const overdueTotal = overdueThisMonth + priorOverdue;
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return c.json({
     data: {
       month,
-      expectedThisMonth: r2(monthlyIncome),
+      expectedThisMonth: r2(expectedThisMonth),
       paidThisMonth: r2(paidThisMonth),
       toComeThisMonth: r2(toComeThisMonth),
       overdueThisMonth: r2(overdueThisMonth),
