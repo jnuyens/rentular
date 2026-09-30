@@ -67,6 +67,7 @@ const protectedPrefixes = [
   "/gocardless",
   "/maintenance",
   "/import",
+  "/ledger",
 ];
 
 // Middleware
