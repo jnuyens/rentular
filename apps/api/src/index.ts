@@ -29,6 +29,7 @@ import { stripeRouter } from "./routes/stripe";
 import { importRouter } from "./routes/import";
 import { landlordActionsRouter } from "./routes/landlordActions";
 import { smsRouter } from "./routes/sms";
+import { ledgerRouter } from "./routes/ledger";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
@@ -162,6 +163,7 @@ app.route("/import", importRouter);
 // Public: magic-link actions from the late-payment landlord email (token-authed).
 app.route("/landlord-action", landlordActionsRouter);
 app.route("/sms", smsRouter);
+app.route("/ledger", ledgerRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>

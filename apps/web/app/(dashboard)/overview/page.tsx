@@ -261,7 +261,7 @@ function BucketBreakdown({
                 <div className="flex items-center gap-3">
                   <span className={`font-semibold ${amountColor}`}>{eur(item.rentDue)}</span>
                   <Link
-                    href={`/payments`}
+                    href={`/ledger/${item.leaseId}`}
                     className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
                   >
                     {t("reconcile")}

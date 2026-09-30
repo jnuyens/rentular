@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc, lt, gte, lte, inArray, sql } from "drizzle-orm";
-import { getDb, payments, leases, properties, leaseTenants, tenants } from "@rentular/db";
+import { getDb, payments, paymentAllocations, leases, properties, leaseTenants, tenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   createPayment as gcCreatePayment,
@@ -367,6 +367,24 @@ paymentsRouter.get("/dashboard", async (c) => {
     byLease.set(r.leaseId, arr);
   }
 
+  // Manual allocations for the current month take precedence over the heuristic:
+  // if the landlord has assigned enough of a payment to this month's rent, it is
+  // paid regardless of how the raw payment dates line up.
+  const allocRows = await db
+    .select({ leaseId: paymentAllocations.leaseId, amount: paymentAllocations.amount })
+    .from(paymentAllocations)
+    .innerJoin(leases, eq(paymentAllocations.leaseId, leases.id))
+    .where(
+      and(
+        inArray(leases.propertyId, accessibleIds),
+        eq(paymentAllocations.periodMonth, month),
+      ),
+    );
+  const allocByLeaseMonth = new Map<string, number>();
+  for (const a of allocRows) {
+    allocByLeaseMonth.set(a.leaseId, (allocByLeaseMonth.get(a.leaseId) ?? 0) + Number(a.amount));
+  }
+
   // Names for the overdue breakdown.
   const propRows = await db
     .select({ id: properties.id, name: properties.name })
@@ -430,7 +448,10 @@ paymentsRouter.get("/dashboard", async (c) => {
       dueDate: due,
       recentPayments,
     };
-    const covered = lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
+    const allocatedThisMonth = allocByLeaseMonth.get(l.id) ?? 0;
+    const covered =
+      allocatedThisMonth >= Number(l.monthlyRent || 0) - 0.01 ||
+      lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
     if (covered) {
       paidThisMonth += rent;
       paidItems.push(item);

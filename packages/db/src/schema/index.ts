@@ -4,6 +4,7 @@ export * from "./tenants";
 export * from "./tenantBankAccounts";
 export * from "./leases";
 export * from "./payments";
+export * from "./paymentAllocations";
 export * from "./indexation";
 export * from "./costs";
 export * from "./bankAccounts";
