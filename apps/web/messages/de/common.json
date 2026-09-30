@@ -1154,6 +1154,11 @@
     "lastPayment": "Letzte Zahlung: {amount} am {date}",
     "noPaymentFound": "Keine passende Zahlung gefunden",
     "reconcile": "Abgleichen",
-    "overdueBreakdownHint": "Diese Vertraege haben keine Zahlung, die zur Miete dieses Monats passt. Eine Zahlung mit abweichendem Betrag oder Zeitpunkt wird nicht automatisch zugeordnet; oeffnen Sie sie zum Pruefen oder Zuordnen."
+    "overdueBreakdownHint": "Diese Vertraege haben keine Zahlung, die zur Miete dieses Monats passt. Eine Zahlung mit abweichendem Betrag oder Zeitpunkt wird nicht automatisch zugeordnet; oeffnen Sie sie zum Pruefen oder Zuordnen.",
+    "paidBreakdown": "Bezahlt diesen Monat -- Aufschluesselung",
+    "toComeBreakdown": "Noch ausstehend diesen Monat -- Aufschluesselung",
+    "toComeBreakdownHint": "Die Miete dieser Vertraege ist diesen Monat noch nicht faellig.",
+    "paidBreakdownHint": "Die Miete dieser Vertraege ist fuer diesen Monat eingegangen.",
+    "noItems": "Nichts hier."
   }
 }

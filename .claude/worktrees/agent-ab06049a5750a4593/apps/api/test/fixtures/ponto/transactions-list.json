@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "type": "transaction",
+      "id": "fixture-tx-id-1",
+      "attributes": {
+        "valueDate": "2026-05-01",
+        "executionDate": "2026-05-01",
+        "amount": 850.00,
+        "currency": "EUR",
+        "counterpartName": "Jan Janssens",
+        "counterpartReference": "BE68539007547034",
+        "remittanceInformation": "+++001/2345/67890+++",
+        "remittanceInformationType": "structured",
+        "description": "Rent May 2026"
+      }
+    },
+    {
+      "type": "transaction",
+      "id": "fixture-tx-id-2",
+      "attributes": {
+        "valueDate": "2026-04-30",
+        "executionDate": "2026-04-30",
+        "amount": 12.50,
+        "currency": "EUR",
+        "counterpartName": "Spotify",
+        "counterpartReference": "NL12ABNA1234567890",
+        "remittanceInformation": "Spotify Family Premium",
+        "remittanceInformationType": "unstructured",
+        "description": "Subscription"
+      }
+    }
+  ]
+}

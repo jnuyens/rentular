@@ -1154,6 +1154,11 @@
     "lastPayment": "Laatste betaling: {amount} op {date}",
     "noPaymentFound": "Geen passende betaling gevonden",
     "reconcile": "Afpunten",
-    "overdueBreakdownHint": "Deze contracten hebben geen betaling die met de huur van deze maand overeenkomt. Een betaling met een afwijkend bedrag of tijdstip matcht niet automatisch; open ze om te controleren of toe te wijzen."
+    "overdueBreakdownHint": "Deze contracten hebben geen betaling die met de huur van deze maand overeenkomt. Een betaling met een afwijkend bedrag of tijdstip matcht niet automatisch; open ze om te controleren of toe te wijzen.",
+    "paidBreakdown": "Betaald deze maand -- overzicht",
+    "toComeBreakdown": "Nog te ontvangen deze maand -- overzicht",
+    "toComeBreakdownHint": "De huur van deze contracten is deze maand nog niet vervallen.",
+    "paidBreakdownHint": "De huur van deze contracten is binnen voor deze maand.",
+    "noItems": "Niets hier."
   }
 }

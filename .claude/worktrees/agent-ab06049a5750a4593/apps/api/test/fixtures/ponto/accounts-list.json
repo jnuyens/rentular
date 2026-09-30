@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "type": "account",
+      "id": "fixture-account-id-CCCC3333",
+      "attributes": {
+        "reference": "BE71096123456769",
+        "referenceType": "IBAN",
+        "description": "Rentular Test Landlord Current",
+        "currency": "EUR",
+        "subtype": "checking",
+        "holderName": "TEST LANDLORD",
+        "authorizationExpirationExpectedAt": "2026-11-08T00:00:00.000Z"
+      }
+    }
+  ]
+}

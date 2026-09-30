@@ -168,17 +168,32 @@ export function coversMonthRent(
   if (p.notes === DEPOSIT_NOTE) return false; // a deposit is not the rent
   const amt = Number(p.amount);
   // At least the rent (partials don't fully cover); allow over-/multi-month
-  // payments, but not something as large as a typical 2x+ deposit-sized amount
-  // when it is way over.
+  // payments, but not something as large as a typical 2x+ deposit-sized amount.
   if (amt < rent * 0.9 || amt > rent * 3.5) return false;
-  const ref = (p.paidDate ? String(p.paidDate) : String(p.dueDate)).slice(0, 10);
-  const due = new Date(`${dueDate}T00:00:00`);
-  const lo = new Date(due);
-  lo.setDate(lo.getDate() - 15); // paid up to ~2 weeks early
-  const hi = new Date(due);
-  hi.setDate(hi.getDate() + 45); // or anytime during the rent period, plus grace
-  const r = new Date(`${ref}T00:00:00`);
-  return r >= lo && r <= hi;
+
+  const targetMonth = dueDate.slice(0, 7);
+  const refDue = String(p.dueDate).slice(0, 10);
+  // Primary: the payment is explicitly tagged to a rent period via its own due
+  // date. A pending record marked paid keeps its period's due date, so rent paid
+  // late (e.g. the 27th for a due date on the 2nd) still counts for the right
+  // month -- and, crucially, does NOT bleed into the next month.
+  if (refDue.slice(0, 7) === targetMonth) return true;
+
+  // Fallback for untagged bank-imported payments (due date == paid date): count
+  // one landing on or just before the due date, so rent paid a few days early
+  // (even in the prior calendar month) still covers this month. Restricted to
+  // due==paid so a payment already tagged to another month is never pulled in.
+  const paid = p.paidDate ? String(p.paidDate).slice(0, 10) : null;
+  if (paid && refDue === paid) {
+    const due = new Date(`${dueDate}T00:00:00`);
+    const lo = new Date(due);
+    lo.setDate(lo.getDate() - 8); // paid up to ~a week early
+    const hi = new Date(due);
+    hi.setDate(hi.getDate() + 5); // or a few days after the due date
+    const r = new Date(`${paid}T00:00:00`);
+    return r >= lo && r <= hi;
+  }
+  return false;
 }
 
 /** The current month's rent due date (YYYY-MM-DD) for a lease. */

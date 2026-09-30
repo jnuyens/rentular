@@ -1,0 +1,64 @@
+{
+  "data": [
+    {
+      "type": "financialInstitution",
+      "id": "fixture-belfius",
+      "attributes": {
+        "name": "Belfius",
+        "bic": "GKCCBEBB",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/belfius.svg"
+      }
+    },
+    {
+      "type": "financialInstitution",
+      "id": "fixture-kbc",
+      "attributes": {
+        "name": "KBC",
+        "bic": "KREDBEBB",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/kbc.svg"
+      }
+    },
+    {
+      "type": "financialInstitution",
+      "id": "fixture-bnp",
+      "attributes": {
+        "name": "BNP Paribas Fortis",
+        "bic": "GEBABEBB",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/bnp.svg"
+      }
+    },
+    {
+      "type": "financialInstitution",
+      "id": "fixture-ing-be",
+      "attributes": {
+        "name": "ING Belgium",
+        "bic": "BBRUBEBB",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/ing.svg"
+      }
+    },
+    {
+      "type": "financialInstitution",
+      "id": "fixture-argenta",
+      "attributes": {
+        "name": "Argenta",
+        "bic": "ARSPBE22",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/argenta.svg"
+      }
+    },
+    {
+      "type": "financialInstitution",
+      "id": "fixture-crelan",
+      "attributes": {
+        "name": "Crelan",
+        "bic": "NICABEBB",
+        "country": "BE",
+        "logoUrl": "https://example.com/logos/crelan.svg"
+      }
+    }
+  ]
+}

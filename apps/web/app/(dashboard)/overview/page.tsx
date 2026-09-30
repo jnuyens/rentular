@@ -4,12 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
+import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/dateLocale";
 
-interface OverdueItem {
+interface BucketItem {
   leaseId: string;
   propertyName: string;
   tenantName: string;
@@ -26,9 +26,13 @@ interface Overview {
   overdueThisMonth: number;
   overdueTotal: number;
   totalWarranty: number;
-  overdueItems?: OverdueItem[];
+  overdueItems?: BucketItem[];
+  toComeItems?: BucketItem[];
+  paidItems?: BucketItem[];
   currency: string;
 }
+
+type Bucket = "paid" | "to-come" | "overdue";
 
 const eur = (n: number) =>
   `€${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -38,6 +42,7 @@ export default function OverviewPage() {
   const tc = useTranslations("dashboard");
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openBucket, setOpenBucket] = useState<Bucket | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -70,6 +75,32 @@ export default function OverviewPage() {
   const paid = data?.paidThisMonth ?? 0;
   const paidPct = expected > 0 ? Math.min(100, Math.round((paid / expected) * 100)) : 0;
 
+  const toggle = (b: Bucket) => setOpenBucket((cur) => (cur === b ? null : b));
+
+  const bucketConfig: Record<
+    Bucket,
+    { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean }
+  > = {
+    paid: {
+      items: data?.paidItems ?? [],
+      title: t("paidBreakdown"),
+      hint: t("paidBreakdownHint"),
+      showLastPayment: true,
+    },
+    "to-come": {
+      items: data?.toComeItems ?? [],
+      title: t("toComeBreakdown"),
+      hint: t("toComeBreakdownHint"),
+      showLastPayment: false,
+    },
+    overdue: {
+      items: data?.overdueItems ?? [],
+      title: t("overdueBreakdown"),
+      hint: t("overdueBreakdownHint"),
+      showLastPayment: true,
+    },
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -95,7 +126,8 @@ export default function OverviewPage() {
               hint={t("expectedHint")}
             />
             <MetricCard
-              href="/payments?view=paid-month"
+              onClick={() => toggle("paid")}
+              expanded={openBucket === "paid"}
               icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
               label={t("paidThisMonth")}
               value={eur(paid)}
@@ -103,7 +135,8 @@ export default function OverviewPage() {
               hint={`${paidPct}% ${t("ofExpected")}`}
             />
             <MetricCard
-              href="/payments?view=to-receive"
+              onClick={() => toggle("to-come")}
+              expanded={openBucket === "to-come"}
               icon={<Clock className="h-5 w-5 text-blue-600" />}
               label={t("toCome")}
               value={eur(data?.toComeThisMonth ?? 0)}
@@ -111,7 +144,8 @@ export default function OverviewPage() {
               hint={t("toComeHint")}
             />
             <MetricCard
-              href="/payments?view=overdue"
+              onClick={() => toggle("overdue")}
+              expanded={openBucket === "overdue"}
               icon={<AlertTriangle className="h-5 w-5 text-red-600" />}
               label={t("overdue")}
               value={eur(data?.overdueTotal ?? 0)}
@@ -125,6 +159,15 @@ export default function OverviewPage() {
               }
             />
           </div>
+
+          {/* Inline breakdown for the selected card: same figures as the card. */}
+          {openBucket && (
+            <BucketBreakdown
+              bucket={openBucket}
+              config={bucketConfig[openBucket]}
+              t={t}
+            />
+          )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Collection progress for the month */}
@@ -153,56 +196,86 @@ export default function OverviewPage() {
               hint={t("totalWarrantyHint")}
             />
           </div>
-
-          {/* Overdue breakdown: the contracts that make up "Achterstallig" */}
-          {data?.overdueItems && data.overdueItems.length > 0 && (
-            <Card>
-              <CardContent className="p-6">
-                <div className="mb-3 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600" />
-                  <h2 className="font-semibold">{t("overdueBreakdown")}</h2>
-                </div>
-                <div className="space-y-3">
-                  {data.overdueItems.map((item) => (
-                    <div
-                      key={item.leaseId}
-                      className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-medium">{item.propertyName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
-                        </p>
-                        <p className="mt-1 text-xs">
-                          {item.recentPayments.length > 0
-                            ? t("lastPayment", {
-                                amount: eur(item.recentPayments[0].amount),
-                                date: formatDate(item.recentPayments[0].date),
-                              })
-                            : t("noPaymentFound")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-red-700 dark:text-red-400">
-                          {eur(item.rentDue)}
-                        </span>
-                        <Link
-                          href={`/payments?view=overdue`}
-                          className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
-                        >
-                          {t("reconcile")}
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-xs text-muted-foreground">{t("overdueBreakdownHint")}</p>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
     </div>
+  );
+}
+
+function BucketBreakdown({
+  bucket,
+  config,
+  t,
+}: {
+  bucket: Bucket;
+  config: { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean };
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const accent =
+    bucket === "overdue"
+      ? "text-red-600"
+      : bucket === "paid"
+        ? "text-green-600"
+        : "text-blue-600";
+  const amountColor =
+    bucket === "overdue"
+      ? "text-red-700 dark:text-red-400"
+      : bucket === "paid"
+        ? "text-green-700 dark:text-green-400"
+        : "text-blue-700 dark:text-blue-400";
+  const Icon =
+    bucket === "overdue" ? AlertTriangle : bucket === "paid" ? CheckCircle2 : Clock;
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="mb-3 flex items-center gap-2">
+          <Icon className={`h-5 w-5 ${accent}`} />
+          <h2 className="font-semibold">{config.title}</h2>
+        </div>
+        {config.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("noItems")}</p>
+        ) : (
+          <div className="space-y-3">
+            {config.items.map((item) => (
+              <div
+                key={item.leaseId}
+                className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-medium">{item.propertyName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
+                  </p>
+                  {config.showLastPayment && (
+                    <p className="mt-1 text-xs">
+                      {item.recentPayments.length > 0
+                        ? t("lastPayment", {
+                            amount: eur(item.recentPayments[0].amount),
+                            date: formatDate(item.recentPayments[0].date),
+                          })
+                        : t("noPaymentFound")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`font-semibold ${amountColor}`}>{eur(item.rentDue)}</span>
+                  <Link
+                    href={`/payments`}
+                    className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
+                  >
+                    {t("reconcile")}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {config.items.length > 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">{config.hint}</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -212,32 +285,52 @@ function MetricCard({
   value,
   valueClass = "",
   hint,
-  href,
+  onClick,
+  expanded,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   valueClass?: string;
   hint?: string;
-  href?: string;
+  onClick?: () => void;
+  expanded?: boolean;
 }) {
-  const card = (
-    <Card className={href ? "transition-colors hover:bg-muted/50" : ""}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          {icon}
-        </div>
-        <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{value}</p>
-        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      </CardContent>
-    </Card>
+  const inner = (
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        {icon}
+      </div>
+      <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{value}</p>
+      {hint && (
+        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+          {hint}
+          {onClick && (
+            <ChevronDown
+              className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+            />
+          )}
+        </p>
+      )}
+    </CardContent>
   );
-  return href ? (
-    <Link href={href} className="block">
-      {card}
-    </Link>
-  ) : (
-    card
-  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-expanded={expanded}
+        className="block w-full text-left"
+      >
+        <Card
+          className={`transition-colors hover:bg-muted/50 ${expanded ? "ring-2 ring-ring" : ""}`}
+        >
+          {inner}
+        </Card>
+      </button>
+    );
+  }
+  return <Card>{inner}</Card>;
 }

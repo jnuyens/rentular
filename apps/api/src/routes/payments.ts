@@ -393,14 +393,17 @@ paymentsRouter.get("/dashboard", async (c) => {
   let paidThisMonth = 0;
   let toComeThisMonth = 0;
   let overdueThisMonth = 0;
-  const overdueItems: Array<{
+  type BucketItem = {
     leaseId: string;
     propertyName: string;
     tenantName: string;
     rentDue: number;
     dueDate: string;
     recentPayments: Array<{ amount: number; date: string; status: string }>;
-  }> = [];
+  };
+  const overdueItems: BucketItem[] = [];
+  const toComeItems: BucketItem[] = [];
+  const paidItems: BucketItem[] = [];
   for (const l of activeLeaseRows) {
     const rent = Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0);
     if (!(rent > 0)) continue;
@@ -408,32 +411,35 @@ paymentsRouter.get("/dashboard", async (c) => {
     const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
     if (startStr && due < startStr) continue; // lease not active for this month yet
     const lps = byLease.get(l.id) ?? [];
+    const recentPayments = lps
+      .filter((p) => p.status === "paid")
+      .sort((a, b) =>
+        String(b.paidDate || b.dueDate).localeCompare(String(a.paidDate || a.dueDate)),
+      )
+      .slice(0, 3)
+      .map((p) => ({
+        amount: Number(p.amount),
+        date: String(p.paidDate || p.dueDate).slice(0, 10),
+        status: p.status,
+      }));
+    const item: BucketItem = {
+      leaseId: l.id,
+      propertyName: propName.get(l.propertyId) || l.propertyId,
+      tenantName: (tenantName.get(l.id) || []).join(", ") || "-",
+      rentDue: Math.round(rent * 100) / 100,
+      dueDate: due,
+      recentPayments,
+    };
     const covered = lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
     if (covered) {
       paidThisMonth += rent;
+      paidItems.push(item);
     } else if (due < todayStr) {
       overdueThisMonth += rent;
-      const recentPayments = lps
-        .filter((p) => p.status === "paid")
-        .sort((a, b) =>
-          String(b.paidDate || b.dueDate).localeCompare(String(a.paidDate || a.dueDate)),
-        )
-        .slice(0, 3)
-        .map((p) => ({
-          amount: Number(p.amount),
-          date: String(p.paidDate || p.dueDate).slice(0, 10),
-          status: p.status,
-        }));
-      overdueItems.push({
-        leaseId: l.id,
-        propertyName: propName.get(l.propertyId) || l.propertyId,
-        tenantName: (tenantName.get(l.id) || []).join(", ") || "-",
-        rentDue: Math.round(rent * 100) / 100,
-        dueDate: due,
-        recentPayments,
-      });
+      overdueItems.push(item);
     } else {
       toComeThisMonth += rent;
+      toComeItems.push(item);
     }
   }
 
@@ -470,6 +476,8 @@ paymentsRouter.get("/dashboard", async (c) => {
       overdueTotal: r2(overdueTotal),
       totalWarranty: r2(totalWarranty),
       overdueItems: overdueItems.sort((a, b) => b.rentDue - a.rentDue),
+      toComeItems: toComeItems.sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+      paidItems: paidItems.sort((a, b) => b.rentDue - a.rentDue),
       currency: "EUR",
     },
   });
