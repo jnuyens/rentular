@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeExpectedDueDates } from "../expectedPayments";
+import { computeExpectedDueDates, coversMonthRent, DEPOSIT_NOTE } from "../expectedPayments";
 
 describe("computeExpectedDueDates", () => {
   it("returns only the next upcoming due date by default", () => {
@@ -63,5 +63,62 @@ describe("computeExpectedDueDates", () => {
     // Nov 10 already passed -> next upcoming is Dec 10 2026, then Jan 10 2027.
     const dates = computeExpectedDueDates(10, undefined, today, 2);
     expect(dates).toEqual(["2026-12-10", "2027-01-10"]);
+  });
+});
+
+describe("coversMonthRent", () => {
+  const paid = (amount: number, paidDate: string, notes?: string | null) => ({
+    status: "paid",
+    amount,
+    dueDate: "2026-09-01",
+    paidDate,
+    notes: notes ?? null,
+  });
+
+  it("matches rent paid on the due date", () => {
+    expect(coversMonthRent(paid(1050, "2026-09-08"), "2026-09-08", 1050)).toBe(true);
+  });
+
+  it("matches rent paid weeks after the due date (tenants pay throughout the month)", () => {
+    // Due Sept 8, paid Sept 24 (16 days late) -- must still count as covered.
+    expect(coversMonthRent(paid(1050, "2026-09-24"), "2026-09-08", 1050)).toBe(true);
+    // Due Sept 2, paid Sept 27 (25 days late).
+    expect(coversMonthRent(paid(1150, "2026-09-27"), "2026-09-02", 1150)).toBe(true);
+  });
+
+  it("matches rent paid a couple of weeks early (in the prior month)", () => {
+    expect(coversMonthRent(paid(1150, "2026-08-27"), "2026-09-02", 1150)).toBe(true);
+  });
+
+  it("does not match a payment for a different month", () => {
+    // Paid mid-July for a September due date -> too far before.
+    expect(coversMonthRent(paid(1050, "2026-07-15"), "2026-09-08", 1050)).toBe(false);
+    // Paid mid-November -> too far after.
+    expect(coversMonthRent(paid(1050, "2026-11-20"), "2026-09-08", 1050)).toBe(false);
+  });
+
+  it("allows a small over-payment or an extra-charge amount", () => {
+    expect(coversMonthRent(paid(1140, "2026-09-03"), "2026-09-01", 1040)).toBe(true);
+  });
+
+  it("does not count a partial payment as full coverage", () => {
+    expect(coversMonthRent(paid(400, "2026-09-03"), "2026-09-01", 1040)).toBe(false);
+  });
+
+  it("does not let a deposit payment cover the rent", () => {
+    // A 2x-rent deposit paid in the window must not mark the rent as paid.
+    expect(
+      coversMonthRent(paid(2080, "2026-09-01", DEPOSIT_NOTE), "2026-09-01", 1040),
+    ).toBe(false);
+  });
+
+  it("ignores non-paid records", () => {
+    expect(
+      coversMonthRent(
+        { status: "pending", amount: 1040, dueDate: "2026-09-01", paidDate: null, notes: null },
+        "2026-09-01",
+        1040,
+      ),
+    ).toBe(false);
   });
 });

@@ -160,19 +160,23 @@ export async function ensureExpectedPayments(
  * differences, so a payment dated in the prior month still counts.
  */
 export function coversMonthRent(
-  p: { status: string; amount: string | number; dueDate: string; paidDate?: string | null },
+  p: { status: string; amount: string | number; dueDate: string; paidDate?: string | null; notes?: string | null },
   dueDate: string,
   rent: number
 ): boolean {
   if (p.status !== "paid") return false;
+  if (p.notes === DEPOSIT_NOTE) return false; // a deposit is not the rent
   const amt = Number(p.amount);
-  if (amt < rent * 0.7 || amt > rent * 1.3) return false;
+  // At least the rent (partials don't fully cover); allow over-/multi-month
+  // payments, but not something as large as a typical 2x+ deposit-sized amount
+  // when it is way over.
+  if (amt < rent * 0.9 || amt > rent * 3.5) return false;
   const ref = (p.paidDate ? String(p.paidDate) : String(p.dueDate)).slice(0, 10);
   const due = new Date(`${dueDate}T00:00:00`);
   const lo = new Date(due);
-  lo.setDate(lo.getDate() - 25); // paid up to ~25 days early
+  lo.setDate(lo.getDate() - 15); // paid up to ~2 weeks early
   const hi = new Date(due);
-  hi.setDate(hi.getDate() + 10); // or a little late
+  hi.setDate(hi.getDate() + 45); // or anytime during the rent period, plus grace
   const r = new Date(`${ref}T00:00:00`);
   return r >= lo && r <= hi;
 }

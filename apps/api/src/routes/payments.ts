@@ -11,7 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, currentMonthDueDate } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, currentMonthDueDate, DEPOSIT_NOTE } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -353,6 +353,7 @@ paymentsRouter.get("/dashboard", async (c) => {
       dueDate: payments.dueDate,
       paidDate: payments.paidDate,
       isIgnored: payments.isIgnored,
+      notes: payments.notes,
     })
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
@@ -441,12 +442,20 @@ paymentsRouter.get("/dashboard", async (c) => {
   const expectedThisMonth = paidThisMonth + toComeThisMonth + overdueThisMonth;
 
   // Total overdue = this month's overdue (same lease-centric basis) plus unpaid,
-  // past-due records from previous months.
+  // past-due records from previous months. A past-due pending record whose period
+  // is actually covered by a (possibly late) paid payment does not count -- this
+  // prevents stale auto-generated rows from inflating the overdue figure.
   let priorOverdue = 0;
   for (const p of rows) {
     if (p.isIgnored) continue;
+    if (p.notes === DEPOSIT_NOTE) continue; // deposits are not rent overdue
     const unpaid = p.status === "pending" || p.status === "failed";
-    if (unpaid && String(p.dueDate) < monthStart) priorOverdue += Number(p.amount);
+    if (!unpaid || String(p.dueDate) >= monthStart) continue;
+    const lps = byLease.get(p.leaseId) ?? [];
+    const covered = lps.some((q) =>
+      coversMonthRent(q, String(p.dueDate), Number(p.amount)),
+    );
+    if (!covered) priorOverdue += Number(p.amount);
   }
   const overdueTotal = overdueThisMonth + priorOverdue;
 
