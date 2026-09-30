@@ -1148,6 +1148,12 @@
     "overdueThisMonth": "inkl. {amount} aus diesem Monat",
     "collected": "Eingezogen diesen Monat",
     "totalWarranty": "Gesamte Kaution",
-    "totalWarrantyHint": "Kautionen ueber aktive Vertraege"
+    "totalWarrantyHint": "Kautionen ueber aktive Vertraege",
+    "overdueBreakdown": "Ueberfaellig diesen Monat -- Aufschluesselung",
+    "dueLabel": "faellig",
+    "lastPayment": "Letzte Zahlung: {amount} am {date}",
+    "noPaymentFound": "Keine passende Zahlung gefunden",
+    "reconcile": "Abgleichen",
+    "overdueBreakdownHint": "Diese Vertraege haben keine Zahlung, die zur Miete dieses Monats passt. Eine Zahlung mit abweichendem Betrag oder Zeitpunkt wird nicht automatisch zugeordnet; oeffnen Sie sie zum Pruefen oder Zuordnen."
   }
 }

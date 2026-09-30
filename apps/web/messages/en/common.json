@@ -1148,6 +1148,12 @@
     "overdueThisMonth": "incl. {amount} from this month",
     "collected": "Collected this month",
     "totalWarranty": "Total warranty held",
-    "totalWarrantyHint": "Deposits across active contracts"
+    "totalWarrantyHint": "Deposits across active contracts",
+    "overdueBreakdown": "Overdue this month -- breakdown",
+    "dueLabel": "due",
+    "lastPayment": "Last payment: {amount} on {date}",
+    "noPaymentFound": "No matching payment found",
+    "reconcile": "Reconcile",
+    "overdueBreakdownHint": "These contracts have no payment matching this month's rent. A payment made with a different amount or timing won't auto-match; open it to check or assign it."
   }
 }

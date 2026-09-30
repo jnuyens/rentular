@@ -1148,6 +1148,12 @@
     "overdueThisMonth": "dont {amount} de ce mois",
     "collected": "Encaisse ce mois",
     "totalWarranty": "Garanties totales",
-    "totalWarrantyHint": "Garanties sur les contrats actifs"
+    "totalWarrantyHint": "Garanties sur les contrats actifs",
+    "overdueBreakdown": "En retard ce mois -- detail",
+    "dueLabel": "echeance",
+    "lastPayment": "Dernier paiement : {amount} le {date}",
+    "noPaymentFound": "Aucun paiement correspondant",
+    "reconcile": "Rapprocher",
+    "overdueBreakdownHint": "Ces contrats n'ont pas de paiement correspondant au loyer de ce mois. Un paiement d'un montant ou d'une date differents ne se rapproche pas automatiquement ; ouvrez-le pour verifier ou l'affecter."
   }
 }

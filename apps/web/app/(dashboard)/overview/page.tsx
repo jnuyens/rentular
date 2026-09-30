@@ -7,6 +7,16 @@ import { toast } from "sonner";
 import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/dateLocale";
+
+interface OverdueItem {
+  leaseId: string;
+  propertyName: string;
+  tenantName: string;
+  rentDue: number;
+  dueDate: string;
+  recentPayments: Array<{ amount: number; date: string; status: string }>;
+}
 
 interface Overview {
   month: string; // YYYY-MM
@@ -16,6 +26,7 @@ interface Overview {
   overdueThisMonth: number;
   overdueTotal: number;
   totalWarranty: number;
+  overdueItems?: OverdueItem[];
   currency: string;
 }
 
@@ -142,6 +153,53 @@ export default function OverviewPage() {
               hint={t("totalWarrantyHint")}
             />
           </div>
+
+          {/* Overdue breakdown: the contracts that make up "Achterstallig" */}
+          {data?.overdueItems && data.overdueItems.length > 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  <h2 className="font-semibold">{t("overdueBreakdown")}</h2>
+                </div>
+                <div className="space-y-3">
+                  {data.overdueItems.map((item) => (
+                    <div
+                      key={item.leaseId}
+                      className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-medium">{item.propertyName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
+                        </p>
+                        <p className="mt-1 text-xs">
+                          {item.recentPayments.length > 0
+                            ? t("lastPayment", {
+                                amount: eur(item.recentPayments[0].amount),
+                                date: formatDate(item.recentPayments[0].date),
+                              })
+                            : t("noPaymentFound")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-red-700 dark:text-red-400">
+                          {eur(item.rentDue)}
+                        </span>
+                        <Link
+                          href={`/payments?view=overdue`}
+                          className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
+                        >
+                          {t("reconcile")}
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">{t("overdueBreakdownHint")}</p>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

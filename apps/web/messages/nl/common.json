@@ -1148,6 +1148,12 @@
     "overdueThisMonth": "incl. {amount} van deze maand",
     "collected": "Geïnd deze maand",
     "totalWarranty": "Totale waarborg",
-    "totalWarrantyHint": "Waarborgen over actieve contracten"
+    "totalWarrantyHint": "Waarborgen over actieve contracten",
+    "overdueBreakdown": "Achterstallig deze maand -- overzicht",
+    "dueLabel": "vervaldag",
+    "lastPayment": "Laatste betaling: {amount} op {date}",
+    "noPaymentFound": "Geen passende betaling gevonden",
+    "reconcile": "Afpunten",
+    "overdueBreakdownHint": "Deze contracten hebben geen betaling die met de huur van deze maand overeenkomt. Een betaling met een afwijkend bedrag of tijdstip matcht niet automatisch; open ze om te controleren of toe te wijzen."
   }
 }

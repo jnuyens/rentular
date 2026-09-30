@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc, lt, gte, lte, inArray, sql } from "drizzle-orm";
-import { getDb, payments, leases } from "@rentular/db";
+import { getDb, payments, leases, properties, leaseTenants, tenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   createPayment as gcCreatePayment,
@@ -366,11 +366,40 @@ paymentsRouter.get("/dashboard", async (c) => {
     byLease.set(r.leaseId, arr);
   }
 
+  // Names for the overdue breakdown.
+  const propRows = await db
+    .select({ id: properties.id, name: properties.name })
+    .from(properties)
+    .where(inArray(properties.id, accessibleIds));
+  const propName = new Map(propRows.map((p) => [p.id, p.name]));
+  const leaseIds = activeLeaseRows.map((l) => l.id);
+  const tenantName = new Map<string, string[]>();
+  if (leaseIds.length > 0) {
+    const ltRows = await db
+      .select({ leaseId: leaseTenants.leaseId, first: tenants.firstName, last: tenants.lastName })
+      .from(leaseTenants)
+      .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
+      .where(inArray(leaseTenants.leaseId, leaseIds));
+    for (const r of ltRows) {
+      const arr = tenantName.get(r.leaseId) ?? [];
+      arr.push(`${r.first} ${r.last}`.trim());
+      tenantName.set(r.leaseId, arr);
+    }
+  }
+
   // Per-lease this-month status. Rent counts as paid if a (possibly early)
   // payment covers it, so early payers are not shown overdue.
   let paidThisMonth = 0;
   let toComeThisMonth = 0;
   let overdueThisMonth = 0;
+  const overdueItems: Array<{
+    leaseId: string;
+    propertyName: string;
+    tenantName: string;
+    rentDue: number;
+    dueDate: string;
+    recentPayments: Array<{ amount: number; date: string; status: string }>;
+  }> = [];
   for (const l of activeLeaseRows) {
     const rent = Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0);
     if (!(rent > 0)) continue;
@@ -379,9 +408,32 @@ paymentsRouter.get("/dashboard", async (c) => {
     if (startStr && due < startStr) continue; // lease not active for this month yet
     const lps = byLease.get(l.id) ?? [];
     const covered = lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
-    if (covered) paidThisMonth += rent;
-    else if (due < todayStr) overdueThisMonth += rent;
-    else toComeThisMonth += rent;
+    if (covered) {
+      paidThisMonth += rent;
+    } else if (due < todayStr) {
+      overdueThisMonth += rent;
+      const recentPayments = lps
+        .filter((p) => p.status === "paid")
+        .sort((a, b) =>
+          String(b.paidDate || b.dueDate).localeCompare(String(a.paidDate || a.dueDate)),
+        )
+        .slice(0, 3)
+        .map((p) => ({
+          amount: Number(p.amount),
+          date: String(p.paidDate || p.dueDate).slice(0, 10),
+          status: p.status,
+        }));
+      overdueItems.push({
+        leaseId: l.id,
+        propertyName: propName.get(l.propertyId) || l.propertyId,
+        tenantName: (tenantName.get(l.id) || []).join(", ") || "-",
+        rentDue: Math.round(rent * 100) / 100,
+        dueDate: due,
+        recentPayments,
+      });
+    } else {
+      toComeThisMonth += rent;
+    }
   }
 
   // Expected this month reconciles exactly with the three buckets (only counts
@@ -408,6 +460,7 @@ paymentsRouter.get("/dashboard", async (c) => {
       overdueThisMonth: r2(overdueThisMonth),
       overdueTotal: r2(overdueTotal),
       totalWarranty: r2(totalWarranty),
+      overdueItems: overdueItems.sort((a, b) => b.rentDue - a.rentDue),
       currency: "EUR",
     },
   });
