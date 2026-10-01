@@ -335,7 +335,20 @@
     "notApplicableUntil": "Applicable seulement à partir du {date} (l'indexation est autorisée une fois par an, à partir de la date anniversaire). Voici de combien le loyer a déjà augmenté.",
     "anniversaryForecast": "Environ {amount} à la prochaine date anniversaire ({date}, dans {days} jours), sur base de l'indice le plus récent.",
     "raiseColumn": "Hausse",
-    "raiseNotYet": "Pas encore applicable (montant déjà augmenté)"
+    "raiseNotYet": "Pas encore applicable (montant déjà augmenté)",
+    "customRentLabel": "Nouveau loyer a appliquer",
+    "officialIndexedRent": "Loyer indexe officiel",
+    "roundDownHint": "Vous pouvez le baisser pour arrondir. Il ne peut pas depasser le loyer indexe officiel.",
+    "prepareEmail": "Preparer le-mail",
+    "backStep": "Retour",
+    "emailStepTitle": "E-mail de notification",
+    "emailSubjectLabel": "Objet",
+    "emailBodyLabel": "Message",
+    "sendToTenant": "Envoyer cet e-mail au locataire maintenant",
+    "applyAndSend": "Appliquer et envoyer",
+    "applyOnly": "Appliquer sans e-mail",
+    "emailPrepareFailed": "Impossible de preparer le-mail",
+    "overrideNoteLabel": "Loyer indexe {indexed}, applique {applied}"
   },
   "communications": {
     "title": "Communications",
@@ -879,7 +892,18 @@
     "emptyPaymentsTitle": "Pas encore de paiements",
     "emptyPaymentsDesc": "Les paiements apparaitront ici une fois un bail configure.",
     "emptyCommunicationsTitle": "Pas encore de communications",
-    "emptyCommunicationsDesc": "Les e-mails et SMS envoyes seront enregistres ici."
+    "emptyCommunicationsDesc": "Les e-mails et SMS envoyes seront enregistres ici.",
+    "toast": {
+      "created": "Cree",
+      "updated": "Enregistre",
+      "deleted": "Supprime",
+      "saveFailed": "Echec de lenregistrement",
+      "deleteFailed": "Echec de la suppression",
+      "loadFailed": "Impossible de charger les donnees",
+      "networkError": "Erreur reseau",
+      "success": "Termine",
+      "error": "Une erreur est survenue"
+    }
   },
   "marketing": {
     "getStarted": "Commencer",

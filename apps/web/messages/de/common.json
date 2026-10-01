@@ -335,7 +335,20 @@
     "notApplicableUntil": "Erst ab {date} anwendbar (Indexierung ist einmal jährlich ab dem Vertragsjahrestag erlaubt). So viel ist die Miete bereits gestiegen.",
     "anniversaryForecast": "Rund {amount} beim nächsten Jahrestag ({date}, in {days} Tagen), auf Basis des neuesten Index.",
     "raiseColumn": "Erhöhung",
-    "raiseNotYet": "Noch nicht anwendbar (so viel ist es gestiegen)"
+    "raiseNotYet": "Noch nicht anwendbar (so viel ist es gestiegen)",
+    "customRentLabel": "Anzuwendende neue Miete",
+    "officialIndexedRent": "Offizielle indexierte Miete",
+    "roundDownHint": "Sie koennen diesen Betrag senken, um abzurunden. Er darf die offizielle indexierte Miete nicht ueberschreiten.",
+    "prepareEmail": "E-Mail vorbereiten",
+    "backStep": "Zurueck",
+    "emailStepTitle": "Benachrichtigungs-E-Mail",
+    "emailSubjectLabel": "Betreff",
+    "emailBodyLabel": "Nachricht",
+    "sendToTenant": "Diese E-Mail jetzt an den Mieter senden",
+    "applyAndSend": "Anwenden und senden",
+    "applyOnly": "Ohne E-Mail anwenden",
+    "emailPrepareFailed": "E-Mail konnte nicht vorbereitet werden",
+    "overrideNoteLabel": "Indexierte Miete {indexed}, angewendet {applied}"
   },
   "communications": {
     "title": "Kommunikation",
@@ -879,7 +892,18 @@
     "emptyPaymentsTitle": "Noch keine Zahlungen",
     "emptyPaymentsDesc": "Zahlungen erscheinen hier, sobald ein Mietvertrag eingerichtet ist.",
     "emptyCommunicationsTitle": "Noch keine Kommunikation",
-    "emptyCommunicationsDesc": "Gesendete E-Mails und SMS-Nachrichten werden hier protokolliert."
+    "emptyCommunicationsDesc": "Gesendete E-Mails und SMS-Nachrichten werden hier protokolliert.",
+    "toast": {
+      "created": "Erstellt",
+      "updated": "Gespeichert",
+      "deleted": "Geloescht",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Loeschen fehlgeschlagen",
+      "loadFailed": "Daten konnten nicht geladen werden",
+      "networkError": "Netzwerkfehler",
+      "success": "Fertig",
+      "error": "Etwas ist schiefgelaufen"
+    }
   },
   "marketing": {
     "getStarted": "Loslegen",

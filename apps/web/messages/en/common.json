@@ -335,7 +335,20 @@
     "notApplicableUntil": "Can't be applied until {date} (indexation is allowed once a year, from the contract anniversary). This is how much it has already risen.",
     "anniversaryForecast": "Around {amount} at the next anniversary ({date}, in {days} days), based on the latest index.",
     "raiseColumn": "Raise",
-    "raiseNotYet": "Not applyable yet (this is how much it has risen)"
+    "raiseNotYet": "Not applyable yet (this is how much it has risen)",
+    "customRentLabel": "New rent to apply",
+    "officialIndexedRent": "Official indexed rent",
+    "roundDownHint": "You can lower this to round down. It cannot exceed the official indexed rent.",
+    "prepareEmail": "Prepare email",
+    "backStep": "Back",
+    "emailStepTitle": "Notification email",
+    "emailSubjectLabel": "Subject",
+    "emailBodyLabel": "Message",
+    "sendToTenant": "Send this email to the tenant now",
+    "applyAndSend": "Apply and send",
+    "applyOnly": "Apply without email",
+    "emailPrepareFailed": "Could not prepare the email",
+    "overrideNoteLabel": "Indexed rent {indexed}, applied {applied}"
   },
   "communications": {
     "title": "Communications",
@@ -879,7 +892,18 @@
     "emptyPaymentsTitle": "No payments yet",
     "emptyPaymentsDesc": "Payments will appear here once a lease has been set up.",
     "emptyCommunicationsTitle": "No communications yet",
-    "emptyCommunicationsDesc": "Sent emails and SMS messages will be logged here."
+    "emptyCommunicationsDesc": "Sent emails and SMS messages will be logged here.",
+    "toast": {
+      "created": "Created",
+      "updated": "Saved",
+      "deleted": "Deleted",
+      "saveFailed": "Could not save",
+      "deleteFailed": "Could not delete",
+      "loadFailed": "Could not load data",
+      "networkError": "Network error",
+      "success": "Done",
+      "error": "Something went wrong"
+    }
   },
   "marketing": {
     "getStarted": "Get Started",

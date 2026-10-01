@@ -335,7 +335,20 @@
     "notApplicableUntil": "Kan pas toegepast worden vanaf {date} (indexatie mag één keer per jaar, vanaf de contractverjaardag). Dit is hoeveel het al gestegen is.",
     "anniversaryForecast": "Rond {amount} bij de volgende verjaardag ({date}, over {days} dagen), op basis van de recentste index.",
     "raiseColumn": "Verhoging",
-    "raiseNotYet": "Nog niet toepasbaar (dit is hoeveel het gestegen is)"
+    "raiseNotYet": "Nog niet toepasbaar (dit is hoeveel het gestegen is)",
+    "customRentLabel": "Toe te passen nieuwe huur",
+    "officialIndexedRent": "Officiele geindexeerde huur",
+    "roundDownHint": "Je kan dit verlagen om af te ronden. Het mag de officiele geindexeerde huur niet overschrijden.",
+    "prepareEmail": "E-mail voorbereiden",
+    "backStep": "Terug",
+    "emailStepTitle": "Kennisgeving e-mail",
+    "emailSubjectLabel": "Onderwerp",
+    "emailBodyLabel": "Bericht",
+    "sendToTenant": "Stuur deze e-mail nu naar de huurder",
+    "applyAndSend": "Toepassen en versturen",
+    "applyOnly": "Toepassen zonder e-mail",
+    "emailPrepareFailed": "Kon de e-mail niet voorbereiden",
+    "overrideNoteLabel": "Geindexeerde huur {indexed}, toegepast {applied}"
   },
   "communications": {
     "title": "Communicatie",
@@ -879,7 +892,18 @@
     "emptyPaymentsTitle": "Nog geen betalingen",
     "emptyPaymentsDesc": "Betalingen verschijnen hier zodra een huurcontract is ingesteld.",
     "emptyCommunicationsTitle": "Nog geen communicatie",
-    "emptyCommunicationsDesc": "Verzonden e-mails en sms-berichten worden hier bijgehouden."
+    "emptyCommunicationsDesc": "Verzonden e-mails en sms-berichten worden hier bijgehouden.",
+    "toast": {
+      "created": "Aangemaakt",
+      "updated": "Opgeslagen",
+      "deleted": "Verwijderd",
+      "saveFailed": "Kon niet opslaan",
+      "deleteFailed": "Kon niet verwijderen",
+      "loadFailed": "Kon gegevens niet laden",
+      "networkError": "Netwerkfout",
+      "success": "Klaar",
+      "error": "Er ging iets mis"
+    }
   },
   "marketing": {
     "getStarted": "Aan de slag",

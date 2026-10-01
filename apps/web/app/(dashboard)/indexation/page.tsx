@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { epcBadgeClass } from "@/lib/epc";
 import { formatDate } from "@/lib/dateLocale";
@@ -125,6 +127,14 @@ export default function IndexationPage() {
   const [calc, setCalc] = useState<CalcResult | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
+  // Apply flow: step 1 = calculation + custom rent, step 2 = editable email.
+  const [step, setStep] = useState<"preview" | "email">("preview");
+  const [customRent, setCustomRent] = useState<string>("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [sendNotification, setSendNotification] = useState(true);
+  const [applying, setApplying] = useState(false);
   const [raiseByLease, setRaiseByLease] = useState<
     Record<string, { canApply: boolean; raiseAmount: number }>
   >({});
@@ -181,14 +191,22 @@ export default function IndexationPage() {
     setCalc(null);
     setCalcError(null);
     setCalcLoading(true);
+    setStep("preview");
+    setEmailSubject("");
+    setEmailBody("");
+    setSendNotification(true);
     fetch(`${apiUrl}/api/v1/indexation/calculate/${previewLease.id}`, {
       credentials: "include",
     })
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
         if (cancelled) return;
-        if (res.ok) setCalc(json as CalcResult);
-        else setCalcError(json?.error || "Failed to calculate");
+        if (res.ok) {
+          const c = json as CalcResult;
+          setCalc(c);
+          // Default the editable rent to the official indexed amount.
+          setCustomRent((c.canApply ? c.newRent : c.newRentAtLatest).toFixed(2));
+        } else setCalcError(json?.error || "Failed to calculate");
       })
       .catch(() => {
         if (!cancelled) setCalcError("Network error");
@@ -246,21 +264,69 @@ export default function IndexationPage() {
     ok: { variant: "default", className: "bg-green-100 text-green-700 border-transparent", label: t("statusOk") },
   };
 
-  const handleApplyIndexation = async (leaseId: string) => {
+  // Official indexed rent at the anniversary (the hard cap for the custom rent).
+  const officialRent = calc ? calc.newRent : 0;
+  const customRentNum = Number(customRent);
+  const customRentValid =
+    customRent !== "" && !Number.isNaN(customRentNum) && customRentNum > 0 && customRentNum <= officialRent + 0.005;
+  const isOverride = calc ? customRentNum < officialRent - 0.005 : false;
+
+  // Step 1 -> 2: ask the API to build the notification email (with the official
+  // calculation and, when rounded down, a note of both amounts). Fully editable.
+  const handlePrepareEmail = async (leaseId: string) => {
+    if (!customRentValid) return;
+    setEmailBusy(true);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/indexation/${leaseId}/apply`, {
+      const res = await fetch(`${apiUrl}/api/v1/indexation/preview/${leaseId}`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isOverride ? { overrideNewRent: customRentNum } : {}),
       });
+      const json = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success(tc("toast.updated") || "Indexation applied");
+        setEmailSubject(json.subject || "");
+        setEmailBody(json.body || "");
+        setStep("email");
+      } else {
+        toast.error(json?.error || t("emailPrepareFailed"));
+      }
+    } catch {
+      toast.error(tc("toast.networkError"));
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  // Step 2: apply the (possibly rounded-down) rent and, if requested, send the
+  // edited email to the tenant.
+  const handleApplyIndexation = async (leaseId: string) => {
+    if (!customRentValid) return;
+    setApplying(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/indexation/apply/${leaseId}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newRent: customRentNum,
+          subject: emailSubject,
+          body: emailBody,
+          sendNotification,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(tc("toast.updated"));
         setPreviewLease(null);
         fetchData();
       } else {
-        toast.error(tc("toast.saveFailed") || "Failed to apply indexation");
+        toast.error(json?.error || tc("toast.saveFailed"));
       }
     } catch {
-      toast.error(tc("toast.networkError") || "Network error");
+      toast.error(tc("toast.networkError"));
+    } finally {
+      setApplying(false);
     }
   };
 
@@ -588,7 +654,7 @@ export default function IndexationPage() {
       {/* Indexation preview dialog */}
       <Dialog open={!!previewLease} onOpenChange={(open) => !open && setPreviewLease(null)}>
         {previewLease && (
-          <DialogContent>
+          <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{t("previewTitle") || "Indexation Preview"}</DialogTitle>
             </DialogHeader>
@@ -700,21 +766,97 @@ export default function IndexationPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Step 1: the landlord can round the new rent down manually. */}
+                  {calc.canApply && step === "preview" && (
+                    <div className="space-y-2 rounded-lg border p-4">
+                      <label className="text-sm font-medium">{t("customRentLabel")}</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">&euro;</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max={officialRent}
+                          value={customRent}
+                          onChange={(e) => setCustomRent(e.target.value)}
+                          className="w-40"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("officialIndexedRent")}: &euro;{officialRent.toFixed(2)}. {t("roundDownHint")}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Step 2: the fully editable notification email. */}
+                  {step === "email" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3 text-sm">
+                        <span className="text-muted-foreground">{t("customRentLabel")}</span>
+                        <span className="font-semibold">
+                          &euro;{customRentNum.toFixed(2)}
+                          {isOverride && (
+                            <span className="ml-1 font-normal text-muted-foreground">
+                              ({t("officialIndexedRent")}: &euro;{officialRent.toFixed(2)})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium">{t("emailSubjectLabel")}</label>
+                        <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium">{t("emailBodyLabel")}</label>
+                        <Textarea
+                          value={emailBody}
+                          onChange={(e) => setEmailBody(e.target.value)}
+                          rows={14}
+                          className="text-xs"
+                        />
+                      </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={sendNotification}
+                          onChange={(e) => setSendNotification(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                        {t("sendToTenant")}
+                      </label>
+                    </div>
+                  )}
                 </>
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setPreviewLease(null)}>
-                {t("cancel")}
-              </Button>
-              <Button
-                onClick={() => handleApplyIndexation(previewLease.id)}
-                disabled={!calc || calcLoading || (!!calc && !calc.canApply)}
-              >
-                {calc && calc.canApply
-                  ? `${t("applyIndexation")} (€${calc.newRent.toFixed(2)})`
-                  : t("applyIndexation")}
-              </Button>
+              {step === "preview" ? (
+                <>
+                  <Button variant="outline" onClick={() => setPreviewLease(null)}>
+                    {t("cancel")}
+                  </Button>
+                  <Button
+                    onClick={() => previewLease && handlePrepareEmail(previewLease.id)}
+                    disabled={!calc || calcLoading || !calc.canApply || !customRentValid || emailBusy}
+                  >
+                    {t("prepareEmail")}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={() => setStep("preview")} disabled={applying}>
+                    {t("backStep")}
+                  </Button>
+                  <Button
+                    onClick={() => previewLease && handleApplyIndexation(previewLease.id)}
+                    disabled={applying || !customRentValid}
+                  >
+                    {(sendNotification ? t("applyAndSend") : t("applyOnly")) +
+                      ` (€${customRentNum.toFixed(2)})`}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         )}
