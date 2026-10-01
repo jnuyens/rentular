@@ -73,6 +73,15 @@ const protectedPrefixes = [
 // Middleware
 app.use("*", logger());
 app.use("*", prettyJSON());
+// Live data must never be served from a stale client cache (e.g. the Android
+// WebView). Mark every API response no-store unless a handler sets its own
+// caching policy.
+app.use("*", async (c, next) => {
+  await next();
+  if (!c.res.headers.has("Cache-Control")) {
+    c.res.headers.set("Cache-Control", "no-store");
+  }
+});
 app.use(
   "*",
   cors({

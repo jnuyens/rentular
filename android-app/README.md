@@ -17,22 +17,41 @@ is updated, no app-store release needed for web changes.
   system download manager with the session cookie attached. Links to other sites,
   `mailto:` and `tel:` open in the appropriate app.
 
-## Build
+## Build and release (the real logic)
 
-Requirements: Android Studio (or the Android SDK) and JDK 17.
+Requirements: Android Studio (it bundles a JDK 17 JBR) and the Android SDK.
+
+**To cut a new release of the sideloaded app, run the publish script:**
 
 ```bash
-# from this folder
-JAVA_HOME="/path/to/jdk-17" ./gradlew :app:assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
+# from the repo root
+./android-app/build-and-publish.sh
 ```
 
-Or open the `android-app` folder in Android Studio and press Run.
+It builds the debug APK, copies it to `apps/web/public/rentular.apk` (what the
+`/download` page serves), and prints the signature schemes. Then commit the APK
+and redeploy the web app:
 
-The debug APK is unsigned/debug-signed; install it by enabling "install unknown
-apps" on the phone. For Play Store distribution, create a release keystore and run
-`./gradlew :app:assembleRelease` (or use Android Studio's Build > Generate Signed
-Bundle / APK).
+```bash
+# on m1
+cd /var/www/rentular.com && git pull && pnpm --filter @rentular/web build && pm2 restart rentular-web
+```
+
+Key facts, so updates install cleanly:
+
+- **The installable build is the DEBUG build.** The `release` buildType has no
+  signing config, so only the debug build is signed (v1 + v2). v2 is required for
+  installing a targetSdk-34 app on Android 11+, and the debug build has it.
+- **Always rebuild on the same Mac.** Android updates an app in place only when the
+  new APK is signed with the same key. The debug key is this machine's
+  `~/.android/debug.keystore`; building elsewhere forces an uninstall/reinstall.
+- **Bump the version before building.** Increase `versionCode` (and `versionName`)
+  in `app/build.gradle.kts` so the phone treats it as an update.
+- The script finds the JDK (Android Studio JBR, else `java_home -v 17`) and the SDK
+  (`$ANDROID_HOME` or `~/Library/Android/sdk`) automatically.
+
+For Play Store distribution instead of sideloading, add a release keystore + signing
+config and use `./gradlew :app:assembleRelease`.
 
 ## Configuration
 

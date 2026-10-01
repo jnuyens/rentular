@@ -13,6 +13,7 @@ import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
@@ -33,6 +34,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var swipe: SwipeRefreshLayout
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    // When the page last finished loading. Used to reload stale content after the
+    // app has been in the background for a while, so figures are never too old.
+    private var lastLoadedAt: Long = 0L
 
     private val fileChooser: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -77,6 +82,10 @@ class MainActivity : AppCompatActivity() {
             setSupportMultipleWindows(false)
             mediaPlaybackRequiresUserGesture = false
             userAgentString = "$userAgentString RentularApp/1.0"
+            // Honour the server's cache headers (short for live data), and never
+            // fall back to the cache when the network is available, so the app
+            // shows current figures rather than a stale snapshot.
+            cacheMode = WebSettings.LOAD_DEFAULT
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -103,6 +112,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 swipe.isRefreshing = false
+                lastLoadedAt = System.currentTimeMillis()
                 CookieManager.getInstance().flush()
             }
         }
@@ -168,6 +178,18 @@ class MainActivity : AppCompatActivity() {
         webView.saveState(outState)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // If the app has been in the background long enough that figures could be
+        // stale, reload the current page on return. Caching within the window is
+        // fine; beyond it, always refresh.
+        if (lastLoadedAt != 0L &&
+            System.currentTimeMillis() - lastLoadedAt > STALE_AFTER_MS
+        ) {
+            webView.reload()
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         CookieManager.getInstance().flush()
@@ -176,5 +198,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val START_URL = "https://www.rentular.com"
         private const val ALLOWED_HOST = "rentular.com"
+        // Reload when resuming after this long in the background (2 hours).
+        private const val STALE_AFTER_MS = 2L * 60L * 60L * 1000L
     }
 }
