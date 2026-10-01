@@ -21,6 +21,7 @@ import {
   DEFAULT_SETTINGS,
 } from "../services/paymentFollowUp";
 import { sendLandlordLateEmail } from "../services/landlordLateEmail";
+import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
@@ -206,33 +207,37 @@ const worker = new Worker(
 
         // Email the landlord (with one-click action links) the first time this
         // payment is seen late, if enabled for the contract. Once per payment.
-        if (
-          lease.landlordLateNotify &&
-          !payment.landlordNotifiedAt &&
-          ownerData[0]?.email
-        ) {
-          const dueMs = new Date(payment.dueDate).getTime();
-          const daysLate = Math.max(
-            0,
-            Math.floor((Date.now() - dueMs) / 86_400_000),
+        if (lease.landlordLateNotify && !payment.landlordNotifiedAt) {
+          const recipients = await getLandlordNotificationRecipients(
+            lease.propertyId,
+            ownerData[0]?.email,
           );
-          try {
-            await sendLandlordLateEmail({
-              paymentId: payment.paymentId,
-              ownerEmail: ownerData[0].email,
-              ownerLocale: ownerData[0].locale || "en",
-              tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
-              propertyName,
-              amount: Number(payment.amount),
-              dueDate: payment.dueDate,
-              daysPastDue: daysLate,
-            });
-            await db
-              .update(payments)
-              .set({ landlordNotifiedAt: new Date() })
-              .where(eq(payments.id, payment.paymentId));
-          } catch (err) {
-            console.error("[PaymentCheck] landlord late email failed:", err);
+          if (recipients.to) {
+            const dueMs = new Date(payment.dueDate).getTime();
+            const daysLate = Math.max(
+              0,
+              Math.floor((Date.now() - dueMs) / 86_400_000),
+            );
+            try {
+              await sendLandlordLateEmail({
+                paymentId: payment.paymentId,
+                to: recipients.to,
+                cc: recipients.cc,
+                ownerLocale: ownerData[0]?.locale || "en",
+                tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+                propertyName,
+                amount: Number(payment.amount),
+                dueDate: payment.dueDate,
+                daysPastDue: daysLate,
+                kind: "late",
+              });
+              await db
+                .update(payments)
+                .set({ landlordNotifiedAt: new Date() })
+                .where(eq(payments.id, payment.paymentId));
+            } catch (err) {
+              console.error("[PaymentCheck] landlord late email failed:", err);
+            }
           }
         }
 
@@ -352,6 +357,109 @@ const worker = new Worker(
     console.log(
       `[PaymentCheck] Processed ${overduePayments.length} overdue payments, sent ${sentCount} reminders`
     );
+
+    // =======================================================
+    // Phase A2: Due-today heads-up to the landlord / managers
+    // A notice on the due date itself (before it is late), so the person who
+    // manages the property knows rent is expected today. Owner is CC'd.
+    // =======================================================
+    console.log("[PaymentCheck] Phase A2: Checking rent due today...");
+    try {
+      // Make sure the current month's expected records exist so due-today rent
+      // has a record to notify about and act on.
+      await ensureExpectedPaymentsForAllActive();
+    } catch (err) {
+      console.error("[PaymentCheck] expected-payment generation failed:", err);
+    }
+
+    const dueToday = await db
+      .select({
+        paymentId: payments.id,
+        amount: payments.amount,
+        dueDate: payments.dueDate,
+        leaseId: payments.leaseId,
+      })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.dueDate, today),
+          eq(payments.status, "pending"),
+          eq(payments.isIgnored, false),
+          isNull(payments.landlordDueNotifiedAt),
+          or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE))
+        )
+      );
+
+    let dueSent = 0;
+    for (const payment of dueToday) {
+      try {
+        const leaseData = await db
+          .select({
+            ownerId: leases.ownerId,
+            propertyId: leases.propertyId,
+            landlordLateNotify: leases.landlordLateNotify,
+          })
+          .from(leases)
+          .where(eq(leases.id, payment.leaseId))
+          .limit(1);
+        if (leaseData.length === 0) continue;
+        const lease = leaseData[0]!;
+        if (!lease.landlordLateNotify) continue;
+
+        const tenantData = await db
+          .select({ firstName: tenants.firstName, lastName: tenants.lastName })
+          .from(leaseTenants)
+          .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
+          .where(eq(leaseTenants.leaseId, payment.leaseId))
+          .limit(1);
+        const tenantName = tenantData[0]
+          ? `${tenantData[0].firstName} ${tenantData[0].lastName}`.trim()
+          : "Tenant";
+
+        const propertyData = await db
+          .select({ name: properties.name })
+          .from(properties)
+          .where(eq(properties.id, lease.propertyId))
+          .limit(1);
+        const propertyName = propertyData[0]?.name || "Unknown property";
+
+        const ownerData = await db
+          .select({ email: users.email, locale: users.locale })
+          .from(users)
+          .where(eq(users.id, lease.ownerId))
+          .limit(1);
+
+        const recipients = await getLandlordNotificationRecipients(
+          lease.propertyId,
+          ownerData[0]?.email,
+        );
+        if (!recipients.to) continue;
+
+        await sendLandlordLateEmail({
+          paymentId: payment.paymentId,
+          to: recipients.to,
+          cc: recipients.cc,
+          ownerLocale: ownerData[0]?.locale || "en",
+          tenantName,
+          propertyName,
+          amount: Number(payment.amount),
+          dueDate: payment.dueDate,
+          daysPastDue: 0,
+          kind: "due",
+        });
+        await db
+          .update(payments)
+          .set({ landlordDueNotifiedAt: new Date() })
+          .where(eq(payments.id, payment.paymentId));
+        dueSent++;
+      } catch (err) {
+        console.error(
+          `[PaymentCheck] due-today heads-up failed for payment ${payment.paymentId}:`,
+          err,
+        );
+      }
+    }
+    console.log(`[PaymentCheck] Phase A2: sent ${dueSent} due-today heads-up emails`);
 
     // =======================================================
     // Phase B: Bank account monitoring (D-07)

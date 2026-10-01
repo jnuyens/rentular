@@ -53,6 +53,8 @@ export const payments = mysqlTable("payments", {
   ignoreReason: text("ignore_reason"),
   // When the landlord was emailed that this payment is late (once per payment)
   landlordNotifiedAt: timestamp("landlord_notified_at"),
+  // When the landlord was emailed the due-date heads-up (once per payment)
+  landlordDueNotifiedAt: timestamp("landlord_due_notified_at"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
