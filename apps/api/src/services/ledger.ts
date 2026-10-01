@@ -363,6 +363,57 @@ export async function createAllocation(input: {
   return { ok: true, id };
 }
 
+/**
+ * Record a payment received for a period (e.g. cash or another account) and
+ * allocate it to that period in one step. Used by the ledger's "mark paid" so a
+ * month can be settled even when no payment record exists yet.
+ */
+export async function recordPeriodPayment(input: {
+  leaseId: string;
+  periodMonth: string; // YYYY-MM
+  amount: number;
+  method: "cash" | "bank_transfer" | "other";
+  date?: string;
+  userId: string | null;
+}): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
+  const db = getDb();
+  const amount = round2(input.amount);
+  if (!(amount > 0)) return { ok: false, error: "Amount must be positive" };
+  const m = /^(\d{4})-(\d{2})$/.exec(input.periodMonth);
+  if (!m) return { ok: false, error: "Invalid period" };
+
+  const leaseRows = await db
+    .select({ paymentDay: leases.paymentDay })
+    .from(leases)
+    .where(eq(leases.id, input.leaseId))
+    .limit(1);
+  if (!leaseRows[0]) return { ok: false, error: "Lease not found" };
+  const due = dueDateFor(Number(m[1]), Number(m[2]) - 1, leaseRows[0].paymentDay ?? 1);
+  const paidDate = input.date || new Date().toISOString().slice(0, 10);
+
+  const paymentId = crypto.randomUUID();
+  await db.insert(payments).values({
+    id: paymentId,
+    leaseId: input.leaseId,
+    status: "paid",
+    amount: amount.toFixed(2),
+    dueDate: due,
+    paidDate,
+    method: input.method,
+    notes: "recorded in ledger",
+  });
+  await db.insert(paymentAllocations).values({
+    id: crypto.randomUUID(),
+    paymentId,
+    leaseId: input.leaseId,
+    periodMonth: input.periodMonth,
+    periodDueDate: due,
+    amount: amount.toFixed(2),
+    createdBy: input.userId,
+  });
+  return { ok: true, paymentId };
+}
+
 /** Remove one allocation; returns false if it does not belong to the lease. */
 export async function deleteAllocation(leaseId: string, allocationId: string): Promise<boolean> {
   const db = getDb();

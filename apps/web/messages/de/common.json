@@ -1236,6 +1236,11 @@
     "removed": "Entfernt",
     "assignHint": "Ordnen Sie erhaltene Zahlungen den Monaten zu, fuer die sie gelten. Sie koennen eine Zahlung auf mehrere Monate aufteilen oder einen Monat mit mehreren Zahlungen decken.",
     "showAll": "Gesamte Historie anzeigen",
-    "showRecent": "Letzte 24 Monate anzeigen"
+    "showRecent": "Letzte 24 Monate anzeigen",
+    "markPaid": "Als bezahlt markieren",
+    "markPaidCash": "Bar bezahlt",
+    "markPaidTransfer": "Per Ueberweisung bezahlt",
+    "markPaidOther": "Bezahlt (anderes Konto)",
+    "markedPaid": "Als bezahlt erfasst"
   }
 }

@@ -1236,6 +1236,11 @@
     "removed": "Removed",
     "assignHint": "Assign received payments to the months they pay for. You can split one payment across months, or cover one month with several payments.",
     "showAll": "Show full history",
-    "showRecent": "Show last 24 months"
+    "showRecent": "Show last 24 months",
+    "markPaid": "Mark paid",
+    "markPaidCash": "Paid in cash",
+    "markPaidTransfer": "Paid by transfer",
+    "markPaidOther": "Paid (other account)",
+    "markedPaid": "Recorded as paid"
   }
 }

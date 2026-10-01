@@ -1236,6 +1236,11 @@
     "removed": "Retire",
     "assignHint": "Affectez les paiements recus aux mois quils couvrent. Vous pouvez repartir un paiement sur plusieurs mois, ou couvrir un mois avec plusieurs paiements.",
     "showAll": "Afficher tout lhistorique",
-    "showRecent": "Afficher les 24 derniers mois"
+    "showRecent": "Afficher les 24 derniers mois",
+    "markPaid": "Marquer paye",
+    "markPaidCash": "Paye en especes",
+    "markPaidTransfer": "Paye par virement",
+    "markPaidOther": "Paye (autre compte)",
+    "markedPaid": "Enregistre comme paye"
   }
 }

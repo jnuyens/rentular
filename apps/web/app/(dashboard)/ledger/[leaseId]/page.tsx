@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, Wand2, X, Plus } from "lucide-react";
+import { ArrowLeft, Wand2, X, Plus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -132,6 +132,31 @@ export default function LedgerPage() {
       if (res.ok) {
         toast.success(t("saved"));
         setAssigning(null);
+        await load();
+      } else {
+        const err = (await res.json().catch(() => ({}))).error || t("loadError");
+        toast.error(err);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const recordPayment = async (
+    periodMonth: string,
+    amount: number,
+    method: "cash" | "bank_transfer" | "other",
+  ) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/ledger/${leaseId}/record-payment`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periodMonth, amount, method }),
+      });
+      if (res.ok) {
+        toast.success(t("markedPaid"));
         await load();
       } else {
         const err = (await res.json().catch(() => ({}))).error || t("loadError");
@@ -286,16 +311,24 @@ export default function LedgerPage() {
                             onAssign={(paymentId, amount) => allocate(p.month, paymentId, amount)}
                           />
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => setAssigning(p.month)}
-                            disabled={busy}
-                          >
-                            <Plus className="mr-1 h-3.5 w-3.5" />
-                            {t("assign")}
-                          </Button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => setAssigning(p.month)}
+                              disabled={busy}
+                            >
+                              <Plus className="mr-1 h-3.5 w-3.5" />
+                              {t("assign")}
+                            </Button>
+                            <LedgerMarkPaid
+                              busy={busy}
+                              balance={p.balance}
+                              t={t}
+                              onRecord={(method) => recordPayment(p.month, p.balance, method)}
+                            />
+                          </div>
                         )}
                       </div>
                     )}
@@ -385,6 +418,63 @@ function Summary({ label, value, accent = "" }: { label: string; value: string; 
         <p className={`mt-1 text-lg font-bold ${accent}`}>{value}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function LedgerMarkPaid({
+  busy,
+  balance,
+  t,
+  onRecord,
+}: {
+  busy: boolean;
+  balance: number;
+  t: ReturnType<typeof useTranslations>;
+  onRecord: (method: "cash" | "bank_transfer" | "other") => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const methods: Array<{ method: "cash" | "bank_transfer" | "other"; label: string }> = [
+    { method: "cash", label: t("markPaidCash") },
+    { method: "bank_transfer", label: t("markPaidTransfer") },
+    { method: "other", label: t("markPaidOther") },
+  ];
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        className="flex items-center gap-1 rounded-md border border-green-600/40 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:opacity-50 dark:text-green-400 dark:hover:bg-green-950"
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {t("markPaid")} ({eur(balance)})
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-hidden
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute left-0 z-20 mt-1 w-48 overflow-hidden rounded-md border bg-popover shadow-md">
+            {methods.map((m) => (
+              <button
+                key={m.method}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onRecord(m.method);
+                }}
+                className="block w-full px-3 py-2 text-left text-xs hover:bg-muted"
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

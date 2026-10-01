@@ -10,6 +10,7 @@ import {
   autoReconcile,
   createAllocation,
   deleteAllocation,
+  recordPeriodPayment,
 } from "../services/ledger";
 
 export const ledgerRouter = new Hono();
@@ -56,6 +57,39 @@ ledgerRouter.post("/:leaseId/auto", async (c) => {
   const ledger = await computeLedger(leaseId, { months: 0 });
   return c.json({ data: { created, ledger } });
 });
+
+// Record a payment received for a period (cash / another account) and assign it
+// to that period in one step -- for rent paid outside the app.
+ledgerRouter.post(
+  "/:leaseId/record-payment",
+  zValidator(
+    "json",
+    z.object({
+      periodMonth: z.string().regex(/^\d{4}-\d{2}$/),
+      amount: z.number().positive(),
+      method: z.enum(["cash", "bank_transfer", "other"]).optional().default("cash"),
+      date: z.string().date().optional(),
+    }),
+  ),
+  async (c) => {
+    const userId = getRequiredUserId(c);
+    const leaseId = c.req.param("leaseId");
+    const auth = await authorizeLease(userId, leaseId);
+    if (!auth.ok) return c.json({ error: auth.status === 404 ? "Lease not found" : "Forbidden" }, auth.status);
+
+    const body = c.req.valid("json");
+    const result = await recordPeriodPayment({
+      leaseId,
+      periodMonth: body.periodMonth,
+      amount: body.amount,
+      method: body.method,
+      date: body.date,
+      userId,
+    });
+    if (!result.ok) return c.json({ error: result.error }, 400);
+    return c.json({ data: result }, 201);
+  },
+);
 
 // Assign (part of) a payment to a rent period.
 ledgerRouter.post(

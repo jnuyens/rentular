@@ -1236,6 +1236,11 @@
     "removed": "Verwijderd",
     "assignHint": "Wijs ontvangen betalingen toe aan de maanden waarvoor ze betalen. Je kan een betaling over meerdere maanden splitsen, of een maand met meerdere betalingen dekken.",
     "showAll": "Volledige historiek tonen",
-    "showRecent": "Laatste 24 maanden tonen"
+    "showRecent": "Laatste 24 maanden tonen",
+    "markPaid": "Markeer betaald",
+    "markPaidCash": "Betaald in cash",
+    "markPaidTransfer": "Betaald via overschrijving",
+    "markPaidOther": "Betaald (andere rekening)",
+    "markedPaid": "Geregistreerd als betaald"
   }
 }
