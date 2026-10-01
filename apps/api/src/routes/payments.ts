@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, lt, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, lt, gte, lte, inArray, like, sql } from "drizzle-orm";
 import { getDb, payments, paymentAllocations, leases, properties, leaseTenants, tenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
@@ -657,6 +657,81 @@ paymentsRouter.post(
     return c.json({
       data: { id: payment.id, status: "paid", method: data.method, paidDate },
     });
+  }
+);
+
+// Mark a lease's rent for a given month as paid, finding or creating the record.
+// Lets the overview mark rent received (cash / other account) in one tap, even
+// before a payment record has been materialised.
+paymentsRouter.post(
+  "/mark-month-paid",
+  zValidator(
+    "json",
+    z.object({
+      leaseId: z.string().min(1),
+      month: z.string().regex(/^\d{4}-\d{2}$/),
+      method: z.enum(["cash", "bank_transfer", "other"]).optional().default("cash"),
+      date: z.string().date().optional(),
+    })
+  ),
+  async (c) => {
+    const userId = getRequiredUserId(c);
+    const { leaseId, month, method, date } = c.req.valid("json");
+
+    const leaseRows = await db.select().from(leases).where(eq(leases.id, leaseId)).limit(1);
+    if (!leaseRows[0]) return c.json({ error: "Lease not found" }, 404);
+    const lease = leaseRows[0];
+
+    const role = await getUserPropertyRole(userId, lease.propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
+
+    const existing = await db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.leaseId, leaseId), like(payments.dueDate, `${month}-%`)));
+    const alreadyPaid = existing.find((p) => p.status === "paid" && !p.isIgnored);
+    if (alreadyPaid) {
+      return c.json({ data: { id: alreadyPaid.id, status: "paid", already: true } });
+    }
+    let target = existing.find(
+      (p) => !p.isIgnored && (p.status === "pending" || p.status === "processing"),
+    );
+
+    const paidDate = date || new Date().toISOString().split("T")[0]!;
+    if (!target) {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const y = Number(month.slice(0, 4));
+      const mo = Number(month.slice(5, 7));
+      const lastDay = new Date(y, mo, 0).getDate();
+      const day = Math.min(Math.max(1, Math.floor(lease.paymentDay ?? 1) || 1), lastDay);
+      const due = `${month}-${pad(day)}`;
+      const rent = Number(lease.monthlyRent || 0);
+      const charges = Number(lease.monthlyCharges || 0);
+      const id = crypto.randomUUID();
+      await db.insert(payments).values({
+        id,
+        leaseId,
+        status: "pending",
+        amount: String(rent + charges),
+        dueDate: due,
+        method,
+        rentAmount: String(rent),
+        chargesAmount: String(charges),
+        notes: "auto-generated expected payment",
+      });
+      const created = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+      target = created[0]!;
+    }
+
+    await transitionPayment(target.id, "paid", { paidDate });
+    await db
+      .update(payments)
+      .set({ method, updatedAt: new Date() })
+      .where(eq(payments.id, target.id));
+
+    return c.json({ data: { id: target.id, status: "paid", method, paidDate } });
   }
 );
 

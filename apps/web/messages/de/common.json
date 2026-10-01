@@ -1194,7 +1194,12 @@
     "reminderFailed": "Erinnerung konnte nicht gesendet werden",
     "prevMonth": "Voriger Monat",
     "nextMonth": "Naechster Monat",
-    "thisMonth": "Dieser Monat"
+    "thisMonth": "Dieser Monat",
+    "markPaid": "Als bezahlt markieren",
+    "markPaidCash": "Bar bezahlt",
+    "markPaidTransfer": "Per Ueberweisung bezahlt",
+    "markPaidOther": "Bezahlt (anderes Konto)",
+    "markedPaid": "Als bezahlt markiert"
   },
   "ledger": {
     "title": "Mietenbuch",

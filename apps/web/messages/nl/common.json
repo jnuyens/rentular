@@ -1194,7 +1194,12 @@
     "reminderFailed": "Kon de herinnering niet versturen",
     "prevMonth": "Vorige maand",
     "nextMonth": "Volgende maand",
-    "thisMonth": "Deze maand"
+    "thisMonth": "Deze maand",
+    "markPaid": "Markeer als betaald",
+    "markPaidCash": "Betaald in cash",
+    "markPaidTransfer": "Betaald via overschrijving",
+    "markPaidOther": "Betaald (andere rekening)",
+    "markedPaid": "Gemarkeerd als betaald"
   },
   "ledger": {
     "title": "Huurgrootboek",

@@ -1194,7 +1194,12 @@
     "reminderFailed": "Impossible denvoyer le rappel",
     "prevMonth": "Mois precedent",
     "nextMonth": "Mois suivant",
-    "thisMonth": "Ce mois"
+    "thisMonth": "Ce mois",
+    "markPaid": "Marquer comme paye",
+    "markPaidCash": "Paye en especes",
+    "markPaidTransfer": "Paye par virement",
+    "markPaidOther": "Paye (autre compte)",
+    "markedPaid": "Marque comme paye"
   },
   "ledger": {
     "title": "Grand livre des loyers",

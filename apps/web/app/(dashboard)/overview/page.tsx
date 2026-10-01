@@ -90,6 +90,27 @@ export default function OverviewPage() {
     setOpenBucket(null);
   };
 
+  const markPaid = async (leaseId: string, method: "cash" | "bank_transfer" | "other") => {
+    const periodMonth = data?.month ?? new Date().toISOString().slice(0, 7);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/mark-month-paid`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leaseId, month: periodMonth, method }),
+      });
+      if (res.ok) {
+        toast.success(t("markedPaid"));
+        await load();
+      } else {
+        const err = (await res.json().catch(() => ({}))).error || tc("toast.saveFailed");
+        toast.error(err);
+      }
+    } catch {
+      toast.error(tc("toast.networkError"));
+    }
+  };
+
   const sendReminder = async (leaseId: string, level: ReminderLevel) => {
     const periodMonth = data?.month ?? new Date().toISOString().slice(0, 7);
     try {
@@ -247,6 +268,7 @@ export default function OverviewPage() {
               config={bucketConfig[openBucket]}
               t={t}
               onRemind={sendReminder}
+              onMarkPaid={markPaid}
             />
           )}
 
@@ -288,14 +310,17 @@ function BucketBreakdown({
   config,
   t,
   onRemind,
+  onMarkPaid,
 }: {
   bucket: Bucket;
   config: { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean };
   t: ReturnType<typeof useTranslations>;
   onRemind: (leaseId: string, level: ReminderLevel) => void;
+  onMarkPaid: (leaseId: string, method: "cash" | "bank_transfer" | "other") => void;
 }) {
-  // Reminders make sense for money still owed, not for already-paid rent.
-  const canRemind = bucket !== "paid";
+  // Reminders and marking paid make sense for money still owed, not already-paid rent.
+  const canAct = bucket !== "paid";
+  const canRemind = canAct;
   const accent =
     bucket === "overdue"
       ? "text-red-600"
@@ -343,8 +368,11 @@ function BucketBreakdown({
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className={`font-semibold ${amountColor}`}>{eur(item.rentDue)}</span>
+                  {canAct && (
+                    <MarkPaidButton leaseId={item.leaseId} t={t} onMarkPaid={onMarkPaid} />
+                  )}
                   {canRemind && (
                     <ReminderButton leaseId={item.leaseId} t={t} onRemind={onRemind} />
                   )}
@@ -364,6 +392,68 @@ function BucketBreakdown({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MarkPaidButton({
+  leaseId,
+  t,
+  onMarkPaid,
+}: {
+  leaseId: string;
+  t: ReturnType<typeof useTranslations>;
+  onMarkPaid: (leaseId: string, method: "cash" | "bank_transfer" | "other") => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const pick = async (method: "cash" | "bank_transfer" | "other") => {
+    setOpen(false);
+    setBusy(true);
+    await onMarkPaid(leaseId, method);
+    setBusy(false);
+  };
+
+  const methods: Array<{ method: "cash" | "bank_transfer" | "other"; label: string }> = [
+    { method: "cash", label: t("markPaidCash") },
+    { method: "bank_transfer", label: t("markPaidTransfer") },
+    { method: "other", label: t("markPaidOther") },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={busy}
+        className="flex items-center gap-1 rounded-md border border-green-600/40 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:opacity-50 dark:text-green-400 dark:hover:bg-green-950"
+      >
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        {t("markPaid")}
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-hidden
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-md border bg-popover shadow-md">
+            {methods.map((m) => (
+              <button
+                key={m.method}
+                type="button"
+                onClick={() => pick(m.method)}
+                className="block w-full px-3 py-2 text-left text-xs hover:bg-muted"
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

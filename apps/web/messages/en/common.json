@@ -1194,7 +1194,12 @@
     "reminderFailed": "Could not send the reminder",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
-    "thisMonth": "This month"
+    "thisMonth": "This month",
+    "markPaid": "Mark as paid",
+    "markPaidCash": "Paid in cash",
+    "markPaidTransfer": "Paid by transfer",
+    "markPaidOther": "Paid (other account)",
+    "markedPaid": "Marked as paid"
   },
   "ledger": {
     "title": "Rent ledger",
