@@ -1159,7 +1159,17 @@
     "toComeBreakdown": "Nog te ontvangen deze maand -- overzicht",
     "toComeBreakdownHint": "De huur van deze contracten is deze maand nog niet vervallen.",
     "paidBreakdownHint": "De huur van deze contracten is binnen voor deze maand.",
-    "noItems": "Niets hier."
+    "noItems": "Niets hier.",
+    "sendReminder": "Herinnering sturen",
+    "reminderFriendly": "Vriendelijk (1e)",
+    "reminderFormal": "Formeel (2e)",
+    "reminderFinal": "Laatste aanmaning",
+    "reminderSent": "Herinnering verstuurd naar {to}",
+    "reminderSentTest": "Testherinnering naar jou verstuurd ({to})",
+    "reminderFailed": "Kon de herinnering niet versturen",
+    "prevMonth": "Vorige maand",
+    "nextMonth": "Volgende maand",
+    "thisMonth": "Deze maand"
   },
   "ledger": {
     "title": "Huurgrootboek",

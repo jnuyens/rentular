@@ -1159,7 +1159,17 @@
     "toComeBreakdown": "Noch ausstehend diesen Monat -- Aufschluesselung",
     "toComeBreakdownHint": "Die Miete dieser Vertraege ist diesen Monat noch nicht faellig.",
     "paidBreakdownHint": "Die Miete dieser Vertraege ist fuer diesen Monat eingegangen.",
-    "noItems": "Nichts hier."
+    "noItems": "Nichts hier.",
+    "sendReminder": "Erinnerung senden",
+    "reminderFriendly": "Freundlich (1.)",
+    "reminderFormal": "Formell (2.)",
+    "reminderFinal": "Letzte Mahnung",
+    "reminderSent": "Erinnerung gesendet an {to}",
+    "reminderSentTest": "Testerinnerung an Sie gesendet ({to})",
+    "reminderFailed": "Erinnerung konnte nicht gesendet werden",
+    "prevMonth": "Voriger Monat",
+    "nextMonth": "Naechster Monat",
+    "thisMonth": "Dieser Monat"
   },
   "ledger": {
     "title": "Mietenbuch",

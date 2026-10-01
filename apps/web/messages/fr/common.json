@@ -1159,7 +1159,17 @@
     "toComeBreakdown": "Encore a recevoir ce mois -- detail",
     "toComeBreakdownHint": "Le loyer de ces contrats n est pas encore echu ce mois.",
     "paidBreakdownHint": "Le loyer de ces contrats est rentre pour ce mois.",
-    "noItems": "Rien ici."
+    "noItems": "Rien ici.",
+    "sendReminder": "Envoyer un rappel",
+    "reminderFriendly": "Amical (1er)",
+    "reminderFormal": "Formel (2e)",
+    "reminderFinal": "Mise en demeure",
+    "reminderSent": "Rappel envoye a {to}",
+    "reminderSentTest": "Rappel de test envoye a vous ({to})",
+    "reminderFailed": "Impossible denvoyer le rappel",
+    "prevMonth": "Mois precedent",
+    "nextMonth": "Mois suivant",
+    "thisMonth": "Ce mois"
   },
   "ledger": {
     "title": "Grand livre des loyers",

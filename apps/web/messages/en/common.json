@@ -1159,7 +1159,17 @@
     "toComeBreakdown": "Still to come this month -- breakdown",
     "toComeBreakdownHint": "Rent for these contracts is not yet due this month.",
     "paidBreakdownHint": "Rent for these contracts is in for this month.",
-    "noItems": "Nothing here."
+    "noItems": "Nothing here.",
+    "sendReminder": "Send reminder",
+    "reminderFriendly": "Friendly (1st)",
+    "reminderFormal": "Formal (2nd)",
+    "reminderFinal": "Final notice",
+    "reminderSent": "Reminder sent to {to}",
+    "reminderSentTest": "Test reminder sent to you ({to})",
+    "reminderFailed": "Could not send the reminder",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "thisMonth": "This month"
   },
   "ledger": {
     "title": "Rent ledger",

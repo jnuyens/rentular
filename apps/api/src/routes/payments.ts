@@ -11,7 +11,8 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, currentMonthDueDate, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -301,7 +302,12 @@ paymentsRouter.get("/dashboard", async (c) => {
   const userId = getRequiredUserId(c);
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const month = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const requestedMonth = c.req.query("month");
+  const monthValid = !!requestedMonth && /^\d{4}-\d{2}$/.test(requestedMonth);
+  const targetY = monthValid ? Number(requestedMonth!.slice(0, 4)) : now.getFullYear();
+  const targetM = monthValid ? Number(requestedMonth!.slice(5, 7)) - 1 : now.getMonth();
+  const month = `${targetY}-${pad(targetM + 1)}`;
+  const isCurrentMonth = targetY === now.getFullYear() && targetM === now.getMonth();
   const empty = {
     month,
     expectedThisMonth: 0,
@@ -316,11 +322,13 @@ paymentsRouter.get("/dashboard", async (c) => {
   const accessibleIds = await getAccessiblePropertyIds(userId);
   if (accessibleIds.length === 0) return c.json({ data: empty });
 
-  const y = now.getFullYear();
-  const m = now.getMonth();
+  const y = targetY;
+  const m = targetM;
   const monthStart = `${y}-${pad(m + 1)}-01`;
   const monthEnd = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
-  const todayStr = `${y}-${pad(m + 1)}-${pad(now.getDate())}`;
+  // Real today: overdue-vs-still-to-come is split against the actual date, so a
+  // past month is all due and a future month is all still to come.
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   // Monthly income = the rent roll: what all active leases should bring in per
   // month (rent + charges), regardless of whether a payment row exists yet.
@@ -330,12 +338,15 @@ paymentsRouter.get("/dashboard", async (c) => {
     .where(and(inArray(leases.propertyId, accessibleIds), eq(leases.status, "active")));
 
   // Ensure a rent record exists for the current month for each active lease, so
-  // the figures reconcile. Best-effort: never fail the dashboard if this errors.
-  for (const l of activeLeaseRows) {
-    try {
-      await ensureCurrentMonthPayment(l);
-    } catch (err) {
-      console.error("[Payments] dashboard current-month generation failed:", err);
+  // the figures reconcile. Only for the live month: navigating to other months
+  // must never materialize records. Best-effort: never fail on error.
+  if (isCurrentMonth) {
+    for (const l of activeLeaseRows) {
+      try {
+        await ensureCurrentMonthPayment(l);
+      } catch (err) {
+        console.error("[Payments] dashboard current-month generation failed:", err);
+      }
     }
   }
 
@@ -425,9 +436,14 @@ paymentsRouter.get("/dashboard", async (c) => {
   for (const l of activeLeaseRows) {
     const rent = Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0);
     if (!(rent > 0)) continue;
-    const due = currentMonthDueDate(l, now);
+    const lastDay = new Date(targetY, targetM + 1, 0).getDate();
+    const dueDay = Math.min(Math.max(1, Math.floor(l.paymentDay ?? 1) || 1), lastDay);
+    const due = `${month}-${pad(dueDay)}`;
     const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
     if (startStr && due < startStr) continue; // lease not active for this month yet
+    // Do not show rent for months after the lease has ended.
+    const endStr = l.endDate ? String(l.endDate).slice(0, 10) : undefined;
+    if (endStr && due > endStr) continue;
     const lps = byLease.get(l.id) ?? [];
     const recentPayments = lps
       .filter((p) => p.status === "paid")
@@ -490,6 +506,7 @@ paymentsRouter.get("/dashboard", async (c) => {
   return c.json({
     data: {
       month,
+      isCurrentMonth,
       expectedThisMonth: r2(expectedThisMonth),
       paidThisMonth: r2(paidThisMonth),
       toComeThisMonth: r2(toComeThisMonth),
@@ -857,6 +874,45 @@ paymentsRouter.post(
       501
     );
   }
+);
+
+// Send a rent reminder for a lease's rent in a given month, at a chosen level
+// (friendly / formal / final). Works even for rent that is not yet due.
+paymentsRouter.post(
+  "/send-reminder",
+  zValidator(
+    "json",
+    z.object({
+      leaseId: z.string().min(1),
+      month: z.string().regex(/^\d{4}-\d{2}$/),
+      level: z.enum(["friendly", "formal", "final"]),
+    }),
+  ),
+  async (c) => {
+    const userId = getRequiredUserId(c);
+    const { leaseId, month, level } = c.req.valid("json");
+
+    // Confirm the user can access this lease's property.
+    const leaseRow = await db
+      .select({ propertyId: leases.propertyId })
+      .from(leases)
+      .where(eq(leases.id, leaseId))
+      .limit(1);
+    if (!leaseRow[0]) return c.json({ error: "Lease not found" }, 404);
+    const accessible = await getAccessiblePropertyIds(userId);
+    if (!accessible.includes(leaseRow[0].propertyId)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    try {
+      const result = await sendManualReminder({ leaseId, periodMonth: month, level, ownerId: userId });
+      if (!result.ok) return c.json({ error: result.error }, 400);
+      return c.json({ data: result });
+    } catch (err) {
+      console.error("[Payments] manual reminder failed:", err);
+      return c.json({ error: "Could not send the reminder" }, 500);
+    }
+  },
 );
 
 // Mark a payment as ignored (not rent-related)

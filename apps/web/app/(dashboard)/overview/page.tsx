@@ -4,10 +4,23 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { TrendingUp, CheckCircle2, Clock, AlertTriangle, ShieldCheck, ChevronDown } from "lucide-react";
+import {
+  TrendingUp,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  ShieldCheck,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/dateLocale";
+
+type ReminderLevel = "friendly" | "formal" | "final";
 
 interface BucketItem {
   leaseId: string;
@@ -20,6 +33,7 @@ interface BucketItem {
 
 interface Overview {
   month: string; // YYYY-MM
+  isCurrentMonth?: boolean;
   expectedThisMonth: number;
   paidThisMonth: number;
   toComeThisMonth: number;
@@ -43,12 +57,15 @@ export default function OverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [openBucket, setOpenBucket] = useState<Bucket | null>(null);
+  // null = the live current month; otherwise "YYYY-MM".
+  const [month, setMonth] = useState<string | null>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${apiUrl}/api/v1/payments/dashboard`, {
+      const q = month ? `?month=${month}` : "";
+      const res = await fetch(`${apiUrl}/api/v1/payments/dashboard${q}`, {
         credentials: "include",
       });
       if (res.ok) setData((await res.json()).data);
@@ -57,11 +74,46 @@ export default function OverviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, tc]);
+  }, [apiUrl, tc, month]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const shiftMonth = (delta: number) => {
+    const base = data?.month ?? new Date().toISOString().slice(0, 7);
+    const [yy, mm] = base.split("-").map(Number);
+    const d = new Date(yy, (mm - 1) + delta, 1);
+    const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const nowM = new Date().toISOString().slice(0, 7);
+    setMonth(next === nowM ? null : next);
+    setOpenBucket(null);
+  };
+
+  const sendReminder = async (leaseId: string, level: ReminderLevel) => {
+    const periodMonth = data?.month ?? new Date().toISOString().slice(0, 7);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/payments/send-reminder`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leaseId, month: periodMonth, level }),
+      });
+      if (res.ok) {
+        const r = (await res.json()).data;
+        toast.success(
+          r?.testPhase
+            ? t("reminderSentTest", { to: r.sentTo })
+            : t("reminderSent", { to: r?.sentTo ?? "" }),
+        );
+      } else {
+        const err = (await res.json().catch(() => ({}))).error || t("reminderFailed");
+        toast.error(err);
+      }
+    } catch {
+      toast.error(t("reminderFailed"));
+    }
+  };
 
   const monthLabel = (() => {
     if (!data?.month) return "";
@@ -103,12 +155,40 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="text-muted-foreground">
-          {t("subtitle")} {monthLabel && <span className="capitalize">{monthLabel}</span>}
-        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => shiftMonth(-1)}
+            aria-label={t("prevMonth")}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="min-w-[9rem] text-center text-sm font-medium capitalize">
+            {monthLabel}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => shiftMonth(1)}
+            aria-label={t("nextMonth")}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          {month && (
+            <Button variant="ghost" size="sm" className="h-8" onClick={() => { setMonth(null); setOpenBucket(null); }}>
+              {t("thisMonth")}
+            </Button>
+          )}
+        </div>
       </div>
+      <p className="-mt-4 text-muted-foreground">
+        {t("subtitle")} {monthLabel && <span className="capitalize">{monthLabel}</span>}
+      </p>
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -166,6 +246,7 @@ export default function OverviewPage() {
               bucket={openBucket}
               config={bucketConfig[openBucket]}
               t={t}
+              onRemind={sendReminder}
             />
           )}
 
@@ -206,11 +287,15 @@ function BucketBreakdown({
   bucket,
   config,
   t,
+  onRemind,
 }: {
   bucket: Bucket;
   config: { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean };
   t: ReturnType<typeof useTranslations>;
+  onRemind: (leaseId: string, level: ReminderLevel) => void;
 }) {
+  // Reminders make sense for money still owed, not for already-paid rent.
+  const canRemind = bucket !== "paid";
   const accent =
     bucket === "overdue"
       ? "text-red-600"
@@ -260,6 +345,9 @@ function BucketBreakdown({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`font-semibold ${amountColor}`}>{eur(item.rentDue)}</span>
+                  {canRemind && (
+                    <ReminderButton leaseId={item.leaseId} t={t} onRemind={onRemind} />
+                  )}
                   <Link
                     href={`/ledger/${item.leaseId}`}
                     className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
@@ -276,6 +364,69 @@ function BucketBreakdown({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function ReminderButton({
+  leaseId,
+  t,
+  onRemind,
+}: {
+  leaseId: string;
+  t: ReturnType<typeof useTranslations>;
+  onRemind: (leaseId: string, level: ReminderLevel) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const pick = async (level: ReminderLevel) => {
+    setOpen(false);
+    setSending(true);
+    await onRemind(leaseId, level);
+    setSending(false);
+  };
+
+  const levels: Array<{ level: ReminderLevel; label: string }> = [
+    { level: "friendly", label: t("reminderFriendly") },
+    { level: "formal", label: t("reminderFormal") },
+    { level: "final", label: t("reminderFinal") },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={sending}
+        className="flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        <Bell className="h-3.5 w-3.5" />
+        {t("sendReminder")}
+      </button>
+      {open && (
+        <>
+          {/* Click-away backdrop */}
+          <button
+            type="button"
+            aria-hidden
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md">
+            {levels.map((l) => (
+              <button
+                key={l.level}
+                type="button"
+                onClick={() => pick(l.level)}
+                className="block w-full px-3 py-2 text-left text-xs hover:bg-muted"
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
