@@ -23,7 +23,8 @@
     "resetEmailSent": "Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zuruecksetzen gesendet.",
     "setNewPassword": "Neues Passwort setzen",
     "resetPasswordSuccess": "Ihr Passwort wurde aktualisiert. Sie koennen sich jetzt anmelden.",
-    "resetTokenMissing": "Dieser Link zum Zuruecksetzen ist ungueltig oder unvollstaendig."
+    "resetTokenMissing": "Dieser Link zum Zuruecksetzen ist ungueltig oder unvollstaendig.",
+    "appLoginHint": "In der App melden Sie sich mit E-Mail und Passwort an. Die Google-Schaltflaeche funktioniert nur im Webbrowser, mit demselben Konto."
   },
   "nav": {
     "overview": "Uebersicht",

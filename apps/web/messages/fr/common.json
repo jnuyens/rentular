@@ -23,7 +23,8 @@
     "resetEmailSent": "Si un compte existe avec cet e-mail, un lien de reinitialisation a ete envoye.",
     "setNewPassword": "Definir un nouveau mot de passe",
     "resetPasswordSuccess": "Votre mot de passe a ete mis a jour. Vous pouvez maintenant vous connecter.",
-    "resetTokenMissing": "Ce lien de reinitialisation est invalide ou incomplet."
+    "resetTokenMissing": "Ce lien de reinitialisation est invalide ou incomplet.",
+    "appLoginHint": "Dans lapplication, connectez-vous avec votre e-mail et votre mot de passe. Le bouton Google ne fonctionne que dans un navigateur web, sur le meme compte."
   },
   "nav": {
     "overview": "Apercu",

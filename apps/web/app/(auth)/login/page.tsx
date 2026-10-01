@@ -17,8 +17,17 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register" | "forgot" | "reset">("login");
   const [resetSent, setResetSent] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
+  // Inside the Android app (a WebView), social logins (Google/Facebook/Twitter)
+  // are blocked by the providers, so we hide them and show only email/password.
+  const [isApp, setIsApp] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const resetToken = searchParams.get("resetToken");
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setIsApp(/RentularApp/i.test(navigator.userAgent));
+    }
+  }, []);
 
   useEffect(() => {
     if (resetToken) {
@@ -222,7 +231,13 @@ export default function LoginPage() {
           </div>
         </form>
 
-        {mode !== "reset" && (
+        {isApp && (mode === "login" || mode === "register") && (
+          <p className="mt-4 text-center text-xs text-[hsl(var(--muted-foreground))]">
+            {t("appLoginHint")}
+          </p>
+        )}
+
+        {mode !== "reset" && !isApp && (
           <>
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">

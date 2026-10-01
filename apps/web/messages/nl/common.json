@@ -23,7 +23,8 @@
     "resetEmailSent": "Als er een account met dat e-mailadres bestaat, is er een resetlink verstuurd.",
     "setNewPassword": "Nieuw wachtwoord instellen",
     "resetPasswordSuccess": "Je wachtwoord is bijgewerkt. Je kunt nu inloggen.",
-    "resetTokenMissing": "Deze resetlink is ongeldig of onvolledig."
+    "resetTokenMissing": "Deze resetlink is ongeldig of onvolledig.",
+    "appLoginHint": "In de app log je in met je e-mailadres en wachtwoord. De Google-knop werkt alleen in een webbrowser, op hetzelfde account."
   },
   "nav": {
     "overview": "Overzicht",

@@ -23,7 +23,8 @@
     "resetEmailSent": "If an account with that email exists, a reset link has been sent.",
     "setNewPassword": "Set new password",
     "resetPasswordSuccess": "Your password has been updated. You can sign in now.",
-    "resetTokenMissing": "This reset link is invalid or incomplete."
+    "resetTokenMissing": "This reset link is invalid or incomplete.",
+    "appLoginHint": "In the app, sign in with your email and password. The Google button only works in a web browser, on the same account."
   },
   "nav": {
     "overview": "Overview",
