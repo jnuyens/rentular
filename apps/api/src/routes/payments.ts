@@ -441,9 +441,11 @@ paymentsRouter.get("/dashboard", async (c) => {
     const due = `${month}-${pad(dueDay)}`;
     const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
     if (startStr && due < startStr) continue; // lease not active for this month yet
-    // Do not show rent for months after the lease has ended.
+    // Do not show rent for months after the lease has ended -- but only when the
+    // end date is sane (on or after the start). A corrupt end date before the
+    // start must never hide an active lease's rent.
     const endStr = l.endDate ? String(l.endDate).slice(0, 10) : undefined;
-    if (endStr && due > endStr) continue;
+    if (endStr && (!startStr || endStr >= startStr) && due > endStr) continue;
     const lps = byLease.get(l.id) ?? [];
     const recentPayments = lps
       .filter((p) => p.status === "paid")
