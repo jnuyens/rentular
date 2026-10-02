@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -59,6 +59,7 @@ export default function OverviewPage() {
   const [openBucket, setOpenBucket] = useState<Bucket | null>(null);
   // null = the live current month; otherwise "YYYY-MM".
   const [month, setMonth] = useState<string | null>(null);
+  const breakdownRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -79,6 +80,14 @@ export default function OverviewPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // When a card is expanded, bring its breakdown into view so the change below
+  // the fold is obvious (especially on a phone).
+  useEffect(() => {
+    if (openBucket && breakdownRef.current) {
+      breakdownRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [openBucket]);
 
   const shiftMonth = (delta: number) => {
     const base = data?.month ?? new Date().toISOString().slice(0, 7);
@@ -263,13 +272,15 @@ export default function OverviewPage() {
 
           {/* Inline breakdown for the selected card: same figures as the card. */}
           {openBucket && (
-            <BucketBreakdown
-              bucket={openBucket}
-              config={bucketConfig[openBucket]}
-              t={t}
-              onRemind={sendReminder}
-              onMarkPaid={markPaid}
-            />
+            <div ref={breakdownRef} className="scroll-mt-4">
+              <BucketBreakdown
+                bucket={openBucket}
+                config={bucketConfig[openBucket]}
+                t={t}
+                onRemind={sendReminder}
+                onMarkPaid={markPaid}
+              />
+            </div>
           )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
