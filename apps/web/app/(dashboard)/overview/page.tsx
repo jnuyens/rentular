@@ -81,12 +81,25 @@ export default function OverviewPage() {
     load();
   }, [load]);
 
-  // When a card is expanded, bring its breakdown into view so the change below
-  // the fold is obvious (especially on a phone).
+  // When a card is expanded, scroll the breakdown to the top so the change
+  // below the fold is obvious. Scroll the actual <main> scroll container (not the
+  // window) and account for the mobile header, so it lands reliably in the app.
   useEffect(() => {
-    if (openBucket && breakdownRef.current) {
-      breakdownRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (!openBucket) return;
+    const el = breakdownRef.current;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => {
+      const scroller = el.closest("main");
+      const headerOffset = window.innerWidth < 768 ? 64 : 16;
+      if (scroller instanceof HTMLElement) {
+        const delta =
+          el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+        scroller.scrollBy({ top: delta - headerOffset, behavior: "smooth" });
+      } else {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [openBucket]);
 
   const shiftMonth = (delta: number) => {
