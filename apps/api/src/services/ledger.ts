@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import {
   getDb,
   payments,
@@ -411,6 +411,20 @@ export async function recordPeriodPayment(input: {
     amount: amount.toFixed(2),
     createdBy: input.userId,
   });
+
+  // Remove any leftover auto-generated pending record for this month so it does
+  // not keep triggering due/overdue notices now that the rent is recorded paid.
+  await db
+    .delete(payments)
+    .where(
+      and(
+        eq(payments.leaseId, input.leaseId),
+        eq(payments.status, "pending"),
+        eq(payments.notes, "auto-generated expected payment"),
+        like(payments.dueDate, `${input.periodMonth}-%`),
+      ),
+    );
+
   return { ok: true, paymentId };
 }
 

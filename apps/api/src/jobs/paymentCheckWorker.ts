@@ -5,6 +5,7 @@ import { eq, and, lt, lte, gte, inArray, or, isNull, ne } from "drizzle-orm";
 import {
   getDb,
   payments,
+  paymentAllocations,
   leases,
   leaseTenants,
   tenants,
@@ -25,10 +26,45 @@ import { getLandlordNotificationRecipients } from "../lib/notificationRecipients
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
-import { ensureExpectedPaymentsForAllActive, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
 import type { SupportedLanguage } from "@rentular/shared";
 
 const QUEUE_NAME = "payment-check";
+
+/**
+ * Is a rent period already settled -- by a payment that covers it, or by manual
+ * allocations summing to the rent? Used so the worker never duns or sends a
+ * due/overdue notice for rent recorded paid, including via the ledger (which can
+ * leave the auto-generated pending record behind).
+ */
+async function isPeriodSettled(
+  db: ReturnType<typeof getDb>,
+  leaseId: string,
+  dueDate: string,
+  monthlyRent: number,
+): Promise<boolean> {
+  if (!(monthlyRent > 0)) return false;
+  const month = String(dueDate).slice(0, 7);
+  const allocs = await db
+    .select({ amount: paymentAllocations.amount })
+    .from(paymentAllocations)
+    .where(
+      and(eq(paymentAllocations.leaseId, leaseId), eq(paymentAllocations.periodMonth, month)),
+    );
+  const allocated = allocs.reduce((s, a) => s + Number(a.amount), 0);
+  if (allocated >= monthlyRent - 0.01) return true;
+  const paid = await db
+    .select({
+      status: payments.status,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      paidDate: payments.paidDate,
+      notes: payments.notes,
+    })
+    .from(payments)
+    .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "paid")));
+  return paid.some((p) => coversMonthRent(p, dueDate, monthlyRent));
+}
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -152,6 +188,7 @@ const worker = new Worker(
           .select({
             ownerId: leases.ownerId,
             propertyId: leases.propertyId,
+            monthlyRent: leases.monthlyRent,
             latePaymentFeeEnabled: leases.latePaymentFeeEnabled,
             latePaymentFeeAmount: leases.latePaymentFeeAmount,
             latePaymentFeeEnforcement: leases.latePaymentFeeEnforcement,
@@ -163,6 +200,12 @@ const worker = new Worker(
 
         if (leaseData.length === 0) continue;
         const lease = leaseData[0]!;
+
+        // Skip rent that has been recorded paid (a payment or ledger allocation
+        // covers it), even if this pending record was left behind.
+        if (await isPeriodSettled(db, payment.leaseId, payment.dueDate, Number(lease.monthlyRent || 0))) {
+          continue;
+        }
 
         // Get the primary tenant
         const tenantData = await db
@@ -397,6 +440,7 @@ const worker = new Worker(
           .select({
             ownerId: leases.ownerId,
             propertyId: leases.propertyId,
+            monthlyRent: leases.monthlyRent,
             landlordLateNotify: leases.landlordLateNotify,
           })
           .from(leases)
@@ -405,6 +449,11 @@ const worker = new Worker(
         if (leaseData.length === 0) continue;
         const lease = leaseData[0]!;
         if (!lease.landlordLateNotify) continue;
+
+        // Already recorded paid (payment or ledger allocation)? Do not notify.
+        if (await isPeriodSettled(db, payment.leaseId, payment.dueDate, Number(lease.monthlyRent || 0))) {
+          continue;
+        }
 
         const tenantData = await db
           .select({ firstName: tenants.firstName, lastName: tenants.lastName })
