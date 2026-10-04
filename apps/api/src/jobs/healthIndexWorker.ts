@@ -1,3 +1,4 @@
+import { getScheduleTimezone } from "../lib/timezone";
 import { Worker, Queue } from "bullmq";
 import { fetchAndCacheHealthIndex } from "../services/healthIndex";
 
@@ -48,7 +49,7 @@ export async function setupHealthIndexSchedule(): Promise<void> {
     "refresh-health-index",
     {},
     {
-      repeat: { pattern: "0 6 * * *" },
+      repeat: { pattern: "0 6 * * *", tz: getScheduleTimezone() },
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 50 },
     }

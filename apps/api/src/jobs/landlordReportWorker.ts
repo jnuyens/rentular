@@ -1,3 +1,4 @@
+import { getScheduleTimezone } from "../lib/timezone";
 import { Worker, Queue } from "bullmq";
 import { eq, and, gte, lte } from "drizzle-orm";
 import {
@@ -206,7 +207,7 @@ export async function setupLandlordReportSchedule(): Promise<void> {
     "daily-landlord-report",
     {},
     {
-      repeat: { pattern: "0 8 * * *" },
+      repeat: { pattern: "0 8 * * *", tz: getScheduleTimezone() },
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 20 },
     }

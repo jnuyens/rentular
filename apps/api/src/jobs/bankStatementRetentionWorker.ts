@@ -1,3 +1,4 @@
+import { getScheduleTimezone } from "../lib/timezone";
 import { Worker, Queue } from "bullmq";
 import { deleteExpiredBankStatements } from "../services/bankStatementRetention";
 
@@ -39,7 +40,7 @@ export async function setupBankStatementRetentionSchedule(): Promise<void> {
     "cleanup-bank-statements",
     {},
     {
-      repeat: { pattern: CRON_PATTERN },
+      repeat: { pattern: CRON_PATTERN, tz: getScheduleTimezone() },
       removeOnComplete: { count: 50 },
       removeOnFail: { count: 25 },
     }

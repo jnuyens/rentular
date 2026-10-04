@@ -1,3 +1,4 @@
+import { getScheduleTimezone } from "../lib/timezone";
 import { Worker, Queue } from "bullmq";
 import { lt } from "drizzle-orm";
 import { getDb, webhookEvents } from "@rentular/db";
@@ -52,7 +53,7 @@ export async function setupWebhookCleanupSchedule(): Promise<void> {
     "cleanup-old-events",
     {},
     {
-      repeat: { pattern: "0 3 * * 0" }, // Sunday 03:00
+      repeat: { pattern: "0 3 * * 0", tz: getScheduleTimezone() }, // Sunday 03:00
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 5 },
     }

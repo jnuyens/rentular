@@ -69,11 +69,13 @@ export const SOFT_ENFORCEMENT_GRACE_DAYS = 7;
 // Default days of the month to send landlord payment overview reports
 export const DEFAULT_LANDLORD_REPORT_DAYS = [3, 7, 15, 28] as const;
 
-// Balance check schedule (3x per day)
+// Balance check schedule (3x per day), in the scheduling timezone (not UTC).
+// The evening sync at 19:00 runs just before the 19:15 reminders so paid rent is
+// reflected before anyone is contacted.
 export const BALANCE_CHECK_CRON = [
-  "0 0 * * *",   // 00:00
-  "0 10 * * *",  // 10:00
-  "0 17 * * *",  // 17:00
+  "0 0 * * *",   // 00:00 local
+  "0 12 * * *",  // 12:00 local
+  "0 19 * * *",  // 19:00 local (before the 19:15 reminders)
 ] as const;
 
 // Default email templates with placeholder variables — per language
