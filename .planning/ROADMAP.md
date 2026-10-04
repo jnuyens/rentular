@@ -21,6 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: UI Polish, Onboarding & Launch Readiness** - Responsive dashboard, visual consistency, guided setup wizard, and full i18n coverage
 - [ ] **Phase 8: GoCardless Settings UI & SEPA Mandate Management** - GoCardless configuration tab, mandate management page, payment method on leases, onboarding integration
 - [x] **Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)** - Ponto Connect provider, OAuth flow, bank_statements audit table, Bank Connections dashboard, locale-aware renewal emails, TOS + Privacy disclosures, retention cron (09-05 Tasks 1-4 done; awaiting human-verify checkpoint) (completed 2026-06-30)
+- [ ] **Phase 11: MCP Server & External API Access** - Personal Access Tokens for machine auth (reusing per-property role checks), a standalone MCP server exposing scoped read + guarded write tools to Claude/agents, and the path to remote (Streamable HTTP + OAuth) access. See `specs/mcp-and-api-access.md`.
 
 ## Phase Details
 
@@ -232,3 +233,15 @@ Plans:
 - [x] 10-04-PLAN.md — Hardened docker-compose.prod.yml (loopback binds, no default DB passwords, env_file) + prod env template
 - [x] 10-05-PLAN.md — Deploy pipeline: atomic deploy.sh (build gate not lint), HMAC webhook receiver, smoke.sh, nginx conf
 - [x] 10-06-PLAN.md — Live deployment on m1: DNS/secrets/TLS, deploy+bootstrap+smoke, owner login, unblock 09-HUMAN-UAT (checkpoints)
+
+### Phase 11: MCP Server & External API Access
+**Goal**: Rentular is reachable by agents and integrations through token-authenticated API access and an MCP server, without weakening the browser session flow, and every tool/endpoint stays scoped to the caller's accessible properties and role.
+**Depends on**: Phase 5 (Property Manager Roles / access model), Phase 10 (production deploy)
+**Requirements**: API-01, API-02, API-03, MCP-01, MCP-02, MCP-03
+**Success Criteria** (what must be TRUE):
+  1. A user can mint and revoke Personal Access Tokens in Settings; tokens are stored hashed with an expiry and last-used timestamp
+  2. The API authenticates `Authorization: Bearer rtl_…` to the same userId + per-property role checks as the session cookie, and rejects revoked/expired tokens
+  3. A standalone MCP server exposes read tools (properties, leases, tenants, payment overview, ledger, indexation status) scoped to the token's accessible properties
+  4. The MCP server exposes guarded write tools (mark rent paid, send reminder, record ledger payment, apply indexation) that require manager+ and are logged
+  5. The design decision (`specs/mcp-and-api-access.md`) is reflected: standalone server, stdio first, remote (Streamable HTTP + OAuth) documented as the follow-on
+**Plans**: TBD (to be produced by /bm:plan-phase)

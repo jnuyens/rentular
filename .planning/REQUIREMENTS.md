@@ -238,6 +238,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BANK-I18N | Phase 9: PSD2 Bank Connection Flow | Pending |
 | BANK-TOS | Phase 9: PSD2 Bank Connection Flow | Pending |
 | BANK-RETENTION | Phase 9: PSD2 Bank Connection Flow | Pending |
+| API-01 | Phase 11: MCP Server & External API Access | Pending |
+| API-02 | Phase 11: MCP Server & External API Access | Pending |
+| API-03 | Phase 11: MCP Server & External API Access | Pending |
+| MCP-01 | Phase 11: MCP Server & External API Access | Pending |
+| MCP-02 | Phase 11: MCP Server & External API Access | Pending |
+| MCP-03 | Phase 11: MCP Server & External API Access | Pending |
+
+**Phase 11 requirement family (MCP & API access):**
+- **API-01** , Personal Access Tokens: an `api_tokens` store (hashed token, userId, scopes, expiry, lastUsedAt) with mint/revoke.
+- **API-02** , `authMiddleware` accepts `Authorization: Bearer rtl_…` resolving to the same userId + per-property role checks as the session cookie; rejects expired/revoked.
+- **API-03** , token management UI in Settings (create, name, scope read/write, revoke, show once).
+- **MCP-01** , standalone MCP server (`@modelcontextprotocol/sdk`) authenticating with a PAT, stdio transport.
+- **MCP-02** , scoped read tools (properties, leases, tenants, payment overview, ledger, indexation status).
+- **MCP-03** , guarded write tools (mark paid, send reminder, record ledger payment, apply indexation) requiring manager+, logged.
 
 **Coverage:**
 - v1 requirements: 70 total (55 v1 launch features + 15 Phase 9 BANK-* additions)
