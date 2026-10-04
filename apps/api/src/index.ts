@@ -68,6 +68,7 @@ const protectedPrefixes = [
   "/maintenance",
   "/import",
   "/ledger",
+  "/sms",
 ];
 
 // Middleware

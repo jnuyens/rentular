@@ -276,7 +276,12 @@ function getProvider(): SmsProvider {
 }
 
 export async function sendSms(options: SmsOptions): Promise<{ messageId: string }> {
-  return getProvider().send(options);
+  // Prefix every SMS so the recipient can see where it comes from. Configurable
+  // via SMS_SENDER_PREFIX; set it empty to disable. Not added twice.
+  const prefix = process.env.SMS_SENDER_PREFIX ?? "[Rentular] ";
+  const body =
+    prefix && !options.body.startsWith(prefix) ? `${prefix}${options.body}` : options.body;
+  return getProvider().send({ ...options, body });
 }
 
 /** Whether a real SMS provider is configured (not the console/no-op default). */
