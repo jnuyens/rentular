@@ -10,6 +10,8 @@ describe("smsgateway provider", () => {
     for (const k of Object.keys(process.env)) {
       if (k.startsWith("SMS_")) delete process.env[k];
     }
+    // These tests check raw provider output; disable the sender prefix.
+    process.env.SMS_SENDER_PREFIX = "";
   });
 
   afterEach(() => {
@@ -47,6 +49,28 @@ describe("smsgateway provider", () => {
       message: "Hello",
       phoneNumbers: ["+32470123456"],
     });
+  });
+
+  it("prepends the sender prefix by default", async () => {
+    delete process.env.SMS_SENDER_PREFIX; // fall back to the default prefix
+    process.env.SMS_PROVIDER = "smsgateway";
+    process.env.SMS_GATEWAY_URL = "http://phone.local:8080/message";
+    process.env.SMS_GATEWAY_USERNAME = "sms";
+    process.env.SMS_GATEWAY_PASSWORD = "pw";
+
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ id: "x" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { sendSms } = await import("../sms");
+    await sendSms({ to: "+32470123456", body: "Hello" });
+    const call = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(call[1].body as string).message).toBe("[Rentular] Hello");
   });
 
   it("supports a custom template + api-key header (httpSMS style) and escapes JSON", async () => {

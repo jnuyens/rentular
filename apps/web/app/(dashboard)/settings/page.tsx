@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { SmsSettingsCard } from "@/components/SmsSettingsCard";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -823,6 +824,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* SMS: provider status, due-date reminder, test */}
+            <SmsSettingsCard apiUrl={apiUrl} />
 
             {/* Escalation timeline */}
             <Card>

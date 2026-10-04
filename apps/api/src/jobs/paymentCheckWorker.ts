@@ -26,8 +26,11 @@ import { getLandlordNotificationRecipients } from "../lib/notificationRecipients
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
+import { queueSms } from "./smsQueueWorker";
+import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
+import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
-import type { SupportedLanguage } from "@rentular/shared";
+import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
 
 const QUEUE_NAME = "payment-check";
 
@@ -143,15 +146,159 @@ function buildRenewalEmail(
 }
 
 // Process payment checks
+/** dd/mm/yyyy without timezone drift. */
+function fmtDueDate(d: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+}
+
+function isReminderTestPhase(): boolean {
+  const v = (process.env.PAYMENT_EMAIL_TEST_PHASE || "").toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
+/**
+ * Send a friendly SMS to tenants whose rent is due today and still unpaid, if
+ * their landlord enabled it. Runs in the evening after the payment sync, once
+ * per payment, in the tenant's language. Skipped entirely in test phase.
+ */
+async function sendDueDateTenantSms(
+  db: ReturnType<typeof getDb>,
+  today: string,
+): Promise<void> {
+  if (!isSmsConfigured() || isReminderTestPhase()) return;
+  try {
+    await ensureExpectedPaymentsForAllActive();
+  } catch (err) {
+    console.error("[PaymentCheck] due-sms generation failed:", err);
+  }
+
+  const dueToday = await db
+    .select({
+      paymentId: payments.id,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      leaseId: payments.leaseId,
+    })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.dueDate, today),
+        eq(payments.status, "pending"),
+        eq(payments.isIgnored, false),
+        or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE)),
+      ),
+    );
+
+  let sent = 0;
+  for (const p of dueToday) {
+    try {
+      const lease = (
+        await db
+          .select({
+            ownerId: leases.ownerId,
+            propertyId: leases.propertyId,
+            monthlyRent: leases.monthlyRent,
+          })
+          .from(leases)
+          .where(eq(leases.id, p.leaseId))
+          .limit(1)
+      )[0];
+      if (!lease) continue;
+      if (await isPeriodSettled(db, p.leaseId, p.dueDate, Number(lease.monthlyRent || 0))) continue;
+
+      const settings = (
+        await db
+          .select({ enabled: paymentFollowUpSettings.smsDueReminderEnabled })
+          .from(paymentFollowUpSettings)
+          .where(eq(paymentFollowUpSettings.ownerId, lease.ownerId))
+          .limit(1)
+      )[0];
+      if (!settings?.enabled) continue;
+
+      const tenant = (
+        await db
+          .select({
+            firstName: tenants.firstName,
+            lastName: tenants.lastName,
+            phone: tenants.phone,
+            language: tenants.language,
+          })
+          .from(leaseTenants)
+          .innerJoin(tenants, eq(tenants.id, leaseTenants.tenantId))
+          .where(and(eq(leaseTenants.leaseId, p.leaseId), eq(leaseTenants.isPrimary, true)))
+          .limit(1)
+      )[0];
+      if (!tenant?.phone) continue;
+
+      // Once per payment.
+      const already = await db
+        .select({ id: paymentReminders.id })
+        .from(paymentReminders)
+        .where(and(eq(paymentReminders.paymentId, p.paymentId), eq(paymentReminders.channel, "sms")));
+      if (already.length > 0) continue;
+
+      const prop = (
+        await db
+          .select({ name: properties.name })
+          .from(properties)
+          .where(eq(properties.id, lease.propertyId))
+          .limit(1)
+      )[0];
+
+      const lang = (tenant.language || "nl") as SupportedLanguage;
+      const tpl = (DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en)!.friendly;
+      const tenantName = `${tenant.firstName} ${tenant.lastName}`.trim();
+      const body = renderTemplate(tpl, {
+        tenantName,
+        amount: `€${Number(p.amount).toFixed(2)}`,
+        dueDate: fmtDueDate(p.dueDate),
+        propertyName: prop?.name || "",
+        daysPastDue: "0",
+        ownerName: "",
+      });
+
+      await queueSms(
+        { to: normalizePhoneNumber(tenant.phone), body },
+        undefined,
+        {
+          ownerId: lease.ownerId,
+          leaseId: p.leaseId,
+          type: "payment_reminder_friendly",
+          recipientName: tenantName,
+        },
+      );
+      await db.insert(paymentReminders).values({
+        id: crypto.randomUUID(),
+        paymentId: p.paymentId,
+        type: "friendly",
+        channel: "sms",
+        sentAt: new Date(),
+      });
+      sent++;
+    } catch (err) {
+      console.error(`[PaymentCheck] due-date SMS failed for ${p.paymentId}:`, err);
+    }
+  }
+  console.log(`[PaymentCheck] due-date tenant SMS: sent ${sent}`);
+}
+
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
+    const db = getDb();
+    const today = new Date().toISOString().split("T")[0]!;
+
+    // Dedicated evening job (~19:15 local): a friendly due-date SMS to tenants,
+    // run after the 19:00 payment sync so people who already paid aren't nudged.
+    if (job.name === "due-reminder-sms") {
+      await sendDueDateTenantSms(db, today);
+      return { ok: true };
+    }
+
     console.log(
       `[PaymentCheck] Running balance check at ${new Date().toISOString()}`
     );
-
-    const db = getDb();
-    const today = new Date().toISOString().split("T")[0]!;
 
     // =======================================================
     // Phase A: Overdue payment reminders
@@ -694,7 +841,19 @@ export async function setupPaymentCheckSchedule(): Promise<void> {
     );
   }
 
-  console.log("[PaymentCheck] Scheduled balance checks at 00:00, 10:00, 17:00");
+  // Friendly due-date SMS to tenants, in the evening (19:15 Belgian time) so it
+  // lands in the payment-action sweet spot and after the 19:00 payment sync.
+  await paymentCheckQueue.add(
+    "due-reminder-sms",
+    { scheduledAt: "15 19 * * *" },
+    {
+      repeat: { pattern: "15 19 * * *", tz: "Europe/Brussels" },
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 50 },
+    },
+  );
+
+  console.log("[PaymentCheck] Scheduled balance checks at 00:00, 10:00, 17:00 + due-SMS at 19:15 Brussels");
 }
 
 export { paymentCheckQueue, worker };

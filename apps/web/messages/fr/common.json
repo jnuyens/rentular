@@ -498,7 +498,19 @@
       "title": "Bank account connection (PSD2)",
       "description": "Connect your bank account so Rentular can automatically match incoming rent transfers.",
       "manageButton": "Manage bank connections"
-    }
+    },
+    "smsTitle": "Rappels SMS",
+    "smsDescription": "Envoyez des rappels SMS aux locataires via votre propre passerelle telephone.",
+    "smsConfigured": "La passerelle SMS est connectee.",
+    "smsNotConfigured": "Aucune passerelle SMS configuree.",
+    "smsDueReminder": "SMS amical a l echeance",
+    "smsDueReminderDesc": "A 19h15 le jour de l echeance, un SMS aux locataires dont le loyer est impaye (dans leur langue).",
+    "smsTestLabel": "Envoyer un SMS de test",
+    "smsSendTest": "Envoyer le test",
+    "smsTestSent": "SMS de test envoye.",
+    "smsTestFailed": "Impossible denvoyer le SMS de test.",
+    "smsSaved": "Enregistre.",
+    "smsSaveFailed": "Impossible denregistrer."
   },
   "landing": {
     "navFeatures": "Fonctionnalites",

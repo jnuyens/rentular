@@ -498,7 +498,19 @@
       "title": "Bank account connection (PSD2)",
       "description": "Connect your bank account so Rentular can automatically match incoming rent transfers.",
       "manageButton": "Manage bank connections"
-    }
+    },
+    "smsTitle": "SMS reminders",
+    "smsDescription": "Send tenants SMS reminders through your own phone gateway.",
+    "smsConfigured": "SMS gateway is connected.",
+    "smsNotConfigured": "No SMS gateway configured yet.",
+    "smsDueReminder": "Friendly SMS on the due date",
+    "smsDueReminderDesc": "At 19:15 on the due date, text tenants whose rent is still unpaid (in their language).",
+    "smsTestLabel": "Send a test SMS",
+    "smsSendTest": "Send test",
+    "smsTestSent": "Test SMS sent.",
+    "smsTestFailed": "Could not send the test SMS.",
+    "smsSaved": "Saved.",
+    "smsSaveFailed": "Could not save."
   },
   "landing": {
     "navFeatures": "Features",

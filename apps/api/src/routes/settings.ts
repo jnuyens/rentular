@@ -93,6 +93,7 @@ settingsRouter.get("/payment-follow-up", async (c) => {
       smsFriendlyMessage: defaultSmsTemplates.friendly,
       smsFormalMessage: defaultSmsTemplates.formal,
       smsFinalMessage: defaultSmsTemplates.final,
+      smsDueReminderEnabled: false,
     },
   });
 });
@@ -118,6 +119,7 @@ settingsRouter.put(
       smsFriendlyMessage: z.string().optional(),
       smsFormalMessage: z.string().optional(),
       smsFinalMessage: z.string().optional(),
+      smsDueReminderEnabled: z.boolean().optional(),
     }).refine(
       (data) =>
         data.friendlyReminderDays <= data.formalReminderDays &&
@@ -149,6 +151,7 @@ settingsRouter.put(
         smsFriendlyMessage: data.smsFriendlyMessage || null,
         smsFormalMessage: data.smsFormalMessage || null,
         smsFinalMessage: data.smsFinalMessage || null,
+        smsDueReminderEnabled: data.smsDueReminderEnabled ?? false,
       }).where(eq(paymentFollowUpSettings.ownerId, ownerId));
     } else {
       await db.insert(paymentFollowUpSettings).values({
@@ -169,10 +172,58 @@ settingsRouter.put(
         smsFriendlyMessage: data.smsFriendlyMessage || null,
         smsFormalMessage: data.smsFormalMessage || null,
         smsFinalMessage: data.smsFinalMessage || null,
+        smsDueReminderEnabled: data.smsDueReminderEnabled ?? false,
       });
     }
     return c.json({ data, message: "Payment follow-up settings updated" });
   }
+);
+
+// Lightweight SMS settings: provider status + the due-date reminder toggle.
+settingsRouter.get("/sms", async (c) => {
+  const ownerId = getRequiredUserId(c);
+  const row = (
+    await db
+      .select({ due: paymentFollowUpSettings.smsDueReminderEnabled })
+      .from(paymentFollowUpSettings)
+      .where(eq(paymentFollowUpSettings.ownerId, ownerId))
+      .limit(1)
+  )[0];
+  const provider = (process.env.SMS_PROVIDER || "console").toLowerCase();
+  return c.json({
+    data: {
+      configured: provider !== "" && provider !== "console",
+      provider,
+      dueReminderEnabled: row?.due ?? false,
+    },
+  });
+});
+
+settingsRouter.put(
+  "/sms",
+  zValidator("json", z.object({ dueReminderEnabled: z.boolean() })),
+  async (c) => {
+    const ownerId = getRequiredUserId(c);
+    const { dueReminderEnabled } = c.req.valid("json");
+    const existing = await db
+      .select({ id: paymentFollowUpSettings.id })
+      .from(paymentFollowUpSettings)
+      .where(eq(paymentFollowUpSettings.ownerId, ownerId))
+      .limit(1);
+    if (existing[0]) {
+      await db
+        .update(paymentFollowUpSettings)
+        .set({ smsDueReminderEnabled: dueReminderEnabled })
+        .where(eq(paymentFollowUpSettings.ownerId, ownerId));
+    } else {
+      await db.insert(paymentFollowUpSettings).values({
+        id: crypto.randomUUID(),
+        ownerId,
+        smsDueReminderEnabled: dueReminderEnabled,
+      });
+    }
+    return c.json({ data: { dueReminderEnabled } });
+  },
 );
 
 // Reset payment follow-up settings to defaults
