@@ -28,6 +28,7 @@ import { verifyLandlordActionToken } from "../lib/landlordActionToken";
 import { sendReminder, DEFAULT_SETTINGS } from "../services/paymentFollowUp";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
+import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueSms } from "../jobs/smsQueueWorker";
 import { renderTemplate } from "../lib/email";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
@@ -187,6 +188,7 @@ function remindDetailHtml(lang: string, ctx: ReminderContext, token: string, tes
       tenant: "Tenant", property: "Property", amount: "Amount", due: "Due date",
       copy: "A copy was sent to", testNote: "with \"TEST PHASE MAIL\" in the subject so you can preview it. It was not sent to the tenant. Turn off the test phase to send real reminders.",
       sms: "Send an SMS too",
+      whatsapp: "Send a WhatsApp too",
     },
     nl: {
       titleReal: "Er is een vriendelijke herinnering naar de huurder gemaild.",
@@ -194,6 +196,7 @@ function remindDetailHtml(lang: string, ctx: ReminderContext, token: string, tes
       tenant: "Huurder", property: "Pand", amount: "Bedrag", due: "Vervaldag",
       copy: "Een kopie is gestuurd naar", testNote: "met \"TEST PHASE MAIL\" in het onderwerp zodat je ze kan nakijken. Ze is niet naar de huurder gestuurd. Schakel de testfase uit om echte herinneringen te sturen.",
       sms: "Stuur ook een SMS",
+      whatsapp: "Stuur ook een WhatsApp",
     },
     fr: {
       titleReal: "Un rappel amical a été envoyé par e-mail au locataire.",
@@ -201,6 +204,7 @@ function remindDetailHtml(lang: string, ctx: ReminderContext, token: string, tes
       tenant: "Locataire", property: "Bien", amount: "Montant", due: "Échéance",
       copy: "Une copie a été envoyée à", testNote: "avec \"TEST PHASE MAIL\" dans l'objet pour que vous puissiez le vérifier. Il n'a pas été envoyé au locataire. Désactivez la phase de test pour envoyer de vrais rappels.",
       sms: "Envoyer aussi un SMS",
+      whatsapp: "Envoyer aussi un WhatsApp",
     },
     de: {
       titleReal: "Eine freundliche Erinnerung wurde an den Mieter gemailt.",
@@ -208,6 +212,7 @@ function remindDetailHtml(lang: string, ctx: ReminderContext, token: string, tes
       tenant: "Mieter", property: "Immobilie", amount: "Betrag", due: "Fälligkeit",
       copy: "Eine Kopie ging an", testNote: "mit \"TEST PHASE MAIL\" im Betreff, damit Sie sie prüfen können. Sie wurde nicht an den Mieter gesendet. Schalten Sie die Testphase aus, um echte Erinnerungen zu senden.",
       sms: "Auch eine SMS senden",
+      whatsapp: "Auch eine WhatsApp senden",
     },
   };
   const t = L[lang] || L.en!;
@@ -221,11 +226,21 @@ function remindDetailHtml(lang: string, ctx: ReminderContext, token: string, tes
     html = `<p>${esc(t.titleReal)}</p>${detail}${copyLine}`;
   }
 
-  // SMS option: only when a provider is configured, the tenant has a phone, and
-  // we are not in test phase (SMS is skipped in test phase).
-  if (!testPhase && ctx.tenantPhone && isSmsConfigured()) {
-    const url = `${base}/api/v1/landlord-action/${token}?channel=sms`;
-    html += `<p style="margin-top:1rem"><a href="${url}" style="display:inline-block;background:#111;color:#fff;padding:.6rem 1.1rem;border-radius:8px;text-decoration:none">${esc(t.sms)}</a></p>`;
+  // SMS / WhatsApp options: only when configured, the tenant has a phone, and we
+  // are not in test phase.
+  if (!testPhase && ctx.tenantPhone) {
+    const buttons: string[] = [];
+    if (isSmsConfigured()) {
+      buttons.push(
+        `<a href="${base}/api/v1/landlord-action/${token}?channel=sms" style="display:inline-block;margin:.25rem;background:#111;color:#fff;padding:.6rem 1.1rem;border-radius:8px;text-decoration:none">${esc(t.sms)}</a>`,
+      );
+    }
+    if (isWhatsAppConfigured()) {
+      buttons.push(
+        `<a href="${base}/api/v1/landlord-action/${token}?channel=whatsapp" style="display:inline-block;margin:.25rem;background:#25D366;color:#fff;padding:.6rem 1.1rem;border-radius:8px;text-decoration:none">${esc(t.whatsapp)}</a>`,
+      );
+    }
+    if (buttons.length) html += `<p style="margin-top:1rem">${buttons.join("")}</p>`;
   }
   return html;
 }
@@ -236,6 +251,34 @@ function smsResultHtml(lang: string, result: "sent" | "nophone" | "notconfigured
     nl: { sent: `Er is een SMS-herinnering naar de huurder gestuurd (${phone}).`, nophone: "De huurder heeft geen telefoonnummer, dus er is geen SMS verstuurd.", notconfigured: "SMS is nog niet ingesteld. Configureer eerst een SMS-provider." },
     fr: { sent: `Un rappel SMS a été envoyé au locataire (${phone}).`, nophone: "Le locataire n'a pas de numéro de téléphone, aucun SMS envoyé.", notconfigured: "Le SMS n'est pas encore configuré." },
     de: { sent: `Eine SMS-Erinnerung wurde an den Mieter gesendet (${phone}).`, nophone: "Der Mieter hat keine Telefonnummer, es wurde keine SMS gesendet.", notconfigured: "SMS ist noch nicht eingerichtet." },
+  };
+  const t = L[lang] || L.en!;
+  return `<p>${esc(t[result])}</p>`;
+}
+
+async function sendWhatsAppReminder(ctx: ReminderContext): Promise<"sent" | "nophone" | "notconfigured"> {
+  if (!isWhatsAppConfigured()) return "notconfigured";
+  if (!ctx.tenantPhone) return "nophone";
+  const lang = ctx.tenantLanguage || "nl";
+  const tpl = (DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en)!.friendly;
+  const body = renderTemplate(tpl, {
+    tenantName: ctx.tenantName,
+    amount: `€${ctx.amount.toFixed(2)}`,
+    dueDate: fmtDate(ctx.dueDate),
+    propertyName: ctx.propertyName,
+    daysPastDue: String(ctx.daysPastDue),
+    ownerName: ctx.ownerName,
+  });
+  await sendWhatsApp({ to: normalizePhoneNumber(ctx.tenantPhone), body });
+  return "sent";
+}
+
+function waResultHtml(lang: string, result: "sent" | "nophone" | "notconfigured", phone?: string): string {
+  const L: Record<string, Record<string, string>> = {
+    en: { sent: `A WhatsApp reminder was sent to the tenant (${phone}).`, nophone: "The tenant has no phone number, so no WhatsApp was sent.", notconfigured: "WhatsApp is not set up yet." },
+    nl: { sent: `Er is een WhatsApp-herinnering naar de huurder gestuurd (${phone}).`, nophone: "De huurder heeft geen telefoonnummer, dus er is geen WhatsApp gestuurd.", notconfigured: "WhatsApp is nog niet ingesteld." },
+    fr: { sent: `Un rappel WhatsApp a été envoyé au locataire (${phone}).`, nophone: "Le locataire n'a pas de numéro, aucun WhatsApp envoyé.", notconfigured: "WhatsApp n'est pas encore configuré." },
+    de: { sent: `Eine WhatsApp-Erinnerung wurde an den Mieter gesendet (${phone}).`, nophone: "Der Mieter hat keine Telefonnummer, es wurde kein WhatsApp gesendet.", notconfigured: "WhatsApp ist noch nicht eingerichtet." },
   };
   const t = L[lang] || L.en!;
   return `<p>${esc(t[result])}</p>`;
@@ -309,6 +352,11 @@ landlordActionsRouter.get("/:token", async (c) => {
       if (channel === "sms") {
         const result = await sendSmsReminder(ctx, rows[0].leaseId);
         return renderHtml(c, lang, smsResultHtml(lang, result, ctx.tenantPhone || undefined));
+      }
+
+      if (channel === "whatsapp") {
+        const result = await sendWhatsAppReminder(ctx);
+        return renderHtml(c, lang, waResultHtml(lang, result, ctx.tenantPhone || undefined));
       }
 
       const testPhase = isTestPhase();
