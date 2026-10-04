@@ -320,6 +320,10 @@ const worker = new Worker(
       `[PaymentCheck] Running balance check at ${new Date().toISOString()}`
     );
 
+    // Overdue tenant reminders run ONLY in the dedicated evening job (19:15),
+    // after the 19:00 bank sync, so tenants who paid today are excluded and
+    // nobody is texted at 02:00/12:00. Balance-check runs skip this block.
+    if (job.name === "overdue-reminders") {
     // =======================================================
     // Phase A: Overdue payment reminders
     // =======================================================
@@ -594,6 +598,8 @@ const worker = new Worker(
     console.log(
       `[PaymentCheck] Processed ${overduePayments.length} overdue payments, sent ${sentCount} reminders`
     );
+    return { ok: true };
+    }
 
     // =======================================================
     // Phase A2: Due-today heads-up to the landlord / managers
@@ -888,19 +894,22 @@ export async function setupPaymentCheckSchedule(): Promise<void> {
     );
   }
 
-  // Friendly due-date SMS to tenants, in the evening (19:15 Belgian time) so it
-  // lands in the payment-action sweet spot and after the 19:00 payment sync.
-  await paymentCheckQueue.add(
-    "due-reminder-sms",
-    { scheduledAt: "15 19 * * *" },
-    {
-      repeat: { pattern: "15 19 * * *", tz: "Europe/Brussels" },
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 50 },
-    },
-  );
+  // Evening (19:15 Belgian time), after the 19:00 bank sync: the overdue tenant
+  // reminders, and the friendly due-date nudge. Both land in the payment-action
+  // sweet spot and exclude anyone whose payment synced at 19:00.
+  for (const name of ["overdue-reminders", "due-reminder-sms"]) {
+    await paymentCheckQueue.add(
+      name,
+      { scheduledAt: "15 19 * * *" },
+      {
+        repeat: { pattern: "15 19 * * *", tz: "Europe/Brussels" },
+        removeOnComplete: { count: 100 },
+        removeOnFail: { count: 50 },
+      },
+    );
+  }
 
-  console.log("[PaymentCheck] Scheduled balance checks at 00:00, 10:00, 17:00 + due-SMS at 19:15 Brussels");
+  console.log("[PaymentCheck] Scheduled balance checks at 00:00, 10:00, 17:00 + overdue-reminders & due-SMS at 19:15 Brussels");
 }
 
 export { paymentCheckQueue, worker };
