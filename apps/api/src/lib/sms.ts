@@ -279,6 +279,12 @@ export async function sendSms(options: SmsOptions): Promise<{ messageId: string 
   return getProvider().send(options);
 }
 
+/** Whether a real SMS provider is configured (not the console/no-op default). */
+export function isSmsConfigured(): boolean {
+  const t = (process.env.SMS_PROVIDER || "").toLowerCase();
+  return t !== "" && t !== "console";
+}
+
 // Normalize Belgian phone numbers to E.164 format
 export function normalizePhoneNumber(phone: string): string {
   const cleaned = phone.replace(/[\s\-\(\)\.]/g, "");

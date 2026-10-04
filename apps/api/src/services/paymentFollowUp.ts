@@ -186,6 +186,7 @@ export async function sendReminder(
   settings: FollowUpSettings,
   ownerId: string,
   ownerEmail?: string,
+  cc?: string,
 ): Promise<void> {
   const vars = getTemplateVariables(payment, settings);
 
@@ -212,6 +213,7 @@ export async function sendReminder(
 
   const emailOptions: EmailOptions = {
     to: payment.tenantEmail,
+    cc: cc || undefined,
     subject: renderTemplate(subjectTemplate, vars),
     body: renderTemplate(bodyTemplate, vars),
   };
