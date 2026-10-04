@@ -197,7 +197,12 @@
     "noMandate": "Kein Mandat",
     "setupMandate": "Mandat einrichten",
     "editTenant": "Bearbeiten",
-    "deleteTenant": "Loschen"
+    "deleteTenant": "Loschen",
+    "preferredChannel": "Bevorzugter Erinnerungskanal",
+    "preferredChannelHint": "Wie automatische Erinnerungen diesen Mieter erreichen. SMS/WhatsApp brauchen eine Telefonnummer.",
+    "channelEmail": "E-Mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp"
   },
   "leases": {
     "title": "Mietvertraege",

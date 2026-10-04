@@ -25,9 +25,10 @@ import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
-import { queueEmail } from "./emailQueueWorker";
+import { queueEmail, type CommunicationMeta } from "./emailQueueWorker";
 import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
+import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
@@ -157,6 +158,16 @@ function isReminderTestPhase(): boolean {
   return v === "true" || v === "1" || v === "yes";
 }
 
+/** Short reminder text (SMS/WhatsApp) for a level, in the tenant's language. */
+function shortReminderBody(
+  lang: SupportedLanguage,
+  level: "friendly" | "formal" | "final",
+  vars: Record<string, string>,
+): string {
+  const set = DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en;
+  return renderTemplate(set[level], vars);
+}
+
 /**
  * Send a friendly SMS to tenants whose rent is due today and still unpaid, if
  * their landlord enabled it. Runs in the evening after the payment sync, once
@@ -166,7 +177,7 @@ async function sendDueDateTenantSms(
   db: ReturnType<typeof getDb>,
   today: string,
 ): Promise<void> {
-  if (!isSmsConfigured() || isReminderTestPhase()) return;
+  if ((!isSmsConfigured() && !isWhatsAppConfigured()) || isReminderTestPhase()) return;
   try {
     await ensureExpectedPaymentsForAllActive();
   } catch (err) {
@@ -223,6 +234,7 @@ async function sendDueDateTenantSms(
             lastName: tenants.lastName,
             phone: tenants.phone,
             language: tenants.language,
+            preferredChannel: tenants.preferredChannel,
           })
           .from(leaseTenants)
           .innerJoin(tenants, eq(tenants.id, leaseTenants.tenantId))
@@ -230,12 +242,16 @@ async function sendDueDateTenantSms(
           .limit(1)
       )[0];
       if (!tenant?.phone) continue;
+      // The due-date nudge goes over SMS or WhatsApp (short message). Tenants who
+      // prefer email get the normal overdue escalation instead, not a due-day ping.
+      const dueChannel = tenant.preferredChannel === "whatsapp" ? "whatsapp" : "sms";
+      if (dueChannel === "whatsapp" && !isWhatsAppConfigured()) continue;
 
       // Once per payment.
       const already = await db
         .select({ id: paymentReminders.id })
         .from(paymentReminders)
-        .where(and(eq(paymentReminders.paymentId, p.paymentId), eq(paymentReminders.channel, "sms")));
+        .where(and(eq(paymentReminders.paymentId, p.paymentId), inArray(paymentReminders.channel, ["sms", "whatsapp"])));
       if (already.length > 0) continue;
 
       const prop = (
@@ -258,21 +274,25 @@ async function sendDueDateTenantSms(
         ownerName: "",
       });
 
-      await queueSms(
-        { to: normalizePhoneNumber(tenant.phone), body },
-        undefined,
-        {
-          ownerId: lease.ownerId,
-          leaseId: p.leaseId,
-          type: "payment_reminder_friendly",
-          recipientName: tenantName,
-        },
-      );
+      if (dueChannel === "whatsapp") {
+        await sendWhatsApp({ to: normalizePhoneNumber(tenant.phone), body });
+      } else {
+        await queueSms(
+          { to: normalizePhoneNumber(tenant.phone), body },
+          undefined,
+          {
+            ownerId: lease.ownerId,
+            leaseId: p.leaseId,
+            type: "payment_reminder_friendly",
+            recipientName: tenantName,
+          },
+        );
+      }
       await db.insert(paymentReminders).values({
         id: crypto.randomUUID(),
         paymentId: p.paymentId,
         type: "friendly",
-        channel: "sms",
+        channel: dueChannel,
         sentAt: new Date(),
       });
       sent++;
@@ -362,6 +382,7 @@ const worker = new Worker(
             email: tenants.email,
             phone: tenants.phone,
             language: tenants.language,
+            preferredChannel: tenants.preferredChannel,
           })
           .from(leaseTenants)
           .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
@@ -520,20 +541,46 @@ const worker = new Worker(
         const level = determineReminderLevel(paymentInfo, followUpSettings);
 
         if (level) {
-          await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId, ownerData[0]?.email);
+          // Route to the tenant's preferred channel. SMS/WhatsApp use the short
+          // template in the tenant's language; otherwise (or on fallback) email.
+          const pref = tenant.preferredChannel || "email";
+          const phone = paymentInfo.tenantPhone;
+          const shortVars = {
+            tenantName: paymentInfo.tenantName,
+            amount: `€${paymentInfo.amount.toFixed(2)}`,
+            dueDate: fmtDueDate(paymentInfo.dueDate),
+            propertyName,
+            daysPastDue: String(paymentInfo.daysPastDue),
+            ownerName,
+          };
+          let usedChannel: "email" | "sms" | "whatsapp" = "email";
+          if (pref === "whatsapp" && isWhatsAppConfigured() && phone && !isReminderTestPhase()) {
+            await sendWhatsApp({ to: normalizePhoneNumber(phone), body: shortReminderBody(paymentInfo.tenantLanguage, level, shortVars) });
+            usedChannel = "whatsapp";
+          } else if (pref === "sms" && isSmsConfigured() && phone && !isReminderTestPhase()) {
+            await queueSms(
+              { to: normalizePhoneNumber(phone), body: shortReminderBody(paymentInfo.tenantLanguage, level, shortVars) },
+              undefined,
+              { ownerId: lease.ownerId, leaseId: payment.leaseId, type: `payment_reminder_${level}` as CommunicationMeta["type"], recipientName: paymentInfo.tenantName },
+            );
+            usedChannel = "sms";
+          } else {
+            await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId, ownerData[0]?.email);
+            usedChannel = "email";
+          }
 
           // Record the reminder in paymentReminders table
           await db.insert(paymentReminders).values({
             id: crypto.randomUUID(),
             paymentId: payment.paymentId,
             type: level,
-            channel: "email",
+            channel: usedChannel,
             sentAt: new Date(),
           });
 
           sentCount++;
           console.log(
-            `[PaymentCheck] Sent ${level} reminder for payment ${payment.paymentId}`
+            `[PaymentCheck] Sent ${level} reminder for payment ${payment.paymentId} via ${usedChannel}`
           );
         }
       } catch (err) {

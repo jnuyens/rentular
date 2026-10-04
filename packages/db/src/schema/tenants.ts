@@ -21,6 +21,10 @@ export const tenants = mysqlTable("tenants", {
   language: mysqlEnum("language", ["nl", "fr", "de", "en"])
     .default("nl")
     .notNull(),
+  // Preferred reminder channel (some tenants are only reachable on WhatsApp)
+  preferredChannel: mysqlEnum("preferred_channel", ["email", "sms", "whatsapp"])
+    .default("email")
+    .notNull(),
   // Belgian-specific
   nationalRegister: varchar("national_register", { length: 20 }), // Rijksregisternummer
   iban: varchar("iban", { length: 34 }),

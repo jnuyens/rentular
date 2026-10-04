@@ -75,6 +75,7 @@ interface Tenant {
   email: string;
   phone?: string;
   language: string;
+  preferredChannel?: string;
   avatar?: string;
   nationalRegister?: string;
   bankAccount?: string;
@@ -615,6 +616,15 @@ export default function TenantsPage() {
                 <option value="en">{t("langEn")}</option>
                 <option value="de">{t("langDe")}</option>
               </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">{t("preferredChannel")}</label>
+              <select name="preferredChannel" defaultValue={editing?.preferredChannel || "email"} className={ic}>
+                <option value="email">{t("channelEmail")}</option>
+                <option value="sms">{t("channelSms")}</option>
+                <option value="whatsapp">{t("channelWhatsapp")}</option>
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">{t("preferredChannelHint")}</p>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium">{t("nationalRegister")}</label>

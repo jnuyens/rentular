@@ -197,7 +197,12 @@
     "noMandate": "Aucun mandat",
     "setupMandate": "Configurer le mandat",
     "editTenant": "Modifier",
-    "deleteTenant": "Supprimer"
+    "deleteTenant": "Supprimer",
+    "preferredChannel": "Canal de rappel prefere",
+    "preferredChannelHint": "Comment les rappels automatiques atteignent ce locataire. SMS/WhatsApp necessitent un numero.",
+    "channelEmail": "E-mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp"
   },
   "leases": {
     "title": "Baux",

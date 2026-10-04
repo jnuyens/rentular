@@ -197,7 +197,12 @@
     "noMandate": "Geen mandaat",
     "setupMandate": "Mandaat instellen",
     "editTenant": "Bewerken",
-    "deleteTenant": "Verwijderen"
+    "deleteTenant": "Verwijderen",
+    "preferredChannel": "Voorkeurskanaal voor herinneringen",
+    "preferredChannelHint": "Hoe automatische herinneringen deze huurder bereiken. SMS/WhatsApp vereisen een telefoonnummer.",
+    "channelEmail": "E-mail",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp"
   },
   "leases": {
     "title": "Huurcontracten",

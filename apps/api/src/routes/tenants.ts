@@ -21,6 +21,7 @@ const createTenantSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional().default(""),
   language: z.enum(["nl", "fr", "de", "en"]).optional(),
+  preferredChannel: z.enum(["email", "sms", "whatsapp"]).optional(),
   nationalRegister: z.string().optional().default(""),
   bankAccount: z.string().optional().default(""),
   // Full list of the tenant's bank account IBANs (multiple accounts allowed).
@@ -184,6 +185,7 @@ tenantsRouter.post("/", zValidator("json", createTenantSchema), async (c) => {
     email: data.email || null,
     phone: data.phone || null,
     language: tenantLanguage,
+    preferredChannel: data.preferredChannel || "email",
     nationalRegister: data.nationalRegister || null,
     iban: ibans[0] || null,
     notes: data.notes || null,

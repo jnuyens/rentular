@@ -197,7 +197,12 @@
     "noMandate": "No mandate",
     "setupMandate": "Setup Mandate",
     "editTenant": "Edit",
-    "deleteTenant": "Delete"
+    "deleteTenant": "Delete",
+    "preferredChannel": "Preferred reminder channel",
+    "preferredChannelHint": "How automatic reminders reach this tenant. SMS/WhatsApp need a phone number.",
+    "channelEmail": "Email",
+    "channelSms": "SMS",
+    "channelWhatsapp": "WhatsApp"
   },
   "leases": {
     "title": "Leases",
