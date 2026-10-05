@@ -4,7 +4,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb, leases } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
-import { getAccessiblePropertyIds } from "../lib/propertyAccess";
+import { getAccessiblePropertyIds, getUserPropertyRole, hasMinimumRole } from "../lib/propertyAccess";
 import {
   computeLedger,
   autoReconcile,
@@ -19,7 +19,7 @@ export const ledgerRouter = new Hono();
 async function authorizeLease(
   userId: string,
   leaseId: string,
-): Promise<{ ok: true } | { ok: false; status: 403 | 404 }> {
+): Promise<{ ok: true; propertyId: string } | { ok: false; status: 403 | 404 }> {
   const db = getDb();
   const rows = await db
     .select({ propertyId: leases.propertyId })
@@ -29,7 +29,7 @@ async function authorizeLease(
   if (!rows[0]) return { ok: false, status: 404 };
   const accessible = await getAccessiblePropertyIds(userId);
   if (!accessible.includes(rows[0].propertyId)) return { ok: false, status: 403 };
-  return { ok: true };
+  return { ok: true, propertyId: rows[0].propertyId };
 }
 
 // The rent ledger for a lease: periods, payments, and allocations.
@@ -76,6 +76,13 @@ ledgerRouter.post(
     const leaseId = c.req.param("leaseId");
     const auth = await authorizeLease(userId, leaseId);
     if (!auth.ok) return c.json({ error: auth.status === 404 ? "Lease not found" : "Forbidden" }, auth.status);
+
+    // T-11-04 / CONTEXT: writes require manager+. A viewer or accountant may
+    // read the ledger but may not record a payment against it.
+    const role = await getUserPropertyRole(userId, auth.propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Insufficient permissions" }, 403);
+    }
 
     const body = c.req.valid("json");
     const result = await recordPeriodPayment({
