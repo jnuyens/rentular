@@ -18,14 +18,18 @@ import {
 import { BALANCE_CHECK_CRON } from "@rentular/shared";
 import {
   determineReminderLevel,
-  sendReminder,
   DEFAULT_SETTINGS,
 } from "../services/paymentFollowUp";
+import {
+  fmtDueDate,
+  isReminderTestPhase,
+  sendReminderViaPreferredChannel,
+} from "../services/reminderChannel";
 import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
-import { queueEmail, type CommunicationMeta } from "./emailQueueWorker";
+import { queueEmail } from "./emailQueueWorker";
 import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
@@ -148,26 +152,6 @@ function buildRenewalEmail(
 }
 
 // Process payment checks
-/** dd/mm/yyyy without timezone drift. */
-function fmtDueDate(d: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
-}
-
-function isReminderTestPhase(): boolean {
-  const v = (process.env.PAYMENT_EMAIL_TEST_PHASE || "").toLowerCase();
-  return v === "true" || v === "1" || v === "yes";
-}
-
-/** Short reminder text (SMS/WhatsApp) for a level, in the tenant's language. */
-function shortReminderBody(
-  lang: SupportedLanguage,
-  level: "friendly" | "formal" | "final",
-  vars: Record<string, string>,
-): string {
-  const set = DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en;
-  return renderTemplate(set[level], vars);
-}
 
 /**
  * Send a friendly SMS to tenants whose rent is due today and still unpaid, if
@@ -546,33 +530,14 @@ const worker = new Worker(
         const level = determineReminderLevel(paymentInfo, followUpSettings);
 
         if (level) {
-          // Route to the tenant's preferred channel. SMS/WhatsApp use the short
-          // template in the tenant's language; otherwise (or on fallback) email.
-          const pref = tenant.preferredChannel || "email";
-          const phone = paymentInfo.tenantPhone;
-          const shortVars = {
-            tenantName: paymentInfo.tenantName,
-            amount: `€${paymentInfo.amount.toFixed(2)}`,
-            dueDate: fmtDueDate(paymentInfo.dueDate),
-            propertyName,
-            daysPastDue: String(paymentInfo.daysPastDue),
-            ownerName,
-          };
-          let usedChannel: "email" | "sms" | "whatsapp" = "email";
-          if (pref === "whatsapp" && isWhatsAppConfigured() && phone && !isReminderTestPhase()) {
-            await sendWhatsApp({ to: normalizePhoneNumber(phone), body: shortReminderBody(paymentInfo.tenantLanguage, level, shortVars) });
-            usedChannel = "whatsapp";
-          } else if (pref === "sms" && isSmsConfigured() && phone && !isReminderTestPhase()) {
-            await queueSms(
-              { to: normalizePhoneNumber(phone), body: shortReminderBody(paymentInfo.tenantLanguage, level, shortVars) },
-              undefined,
-              { ownerId: lease.ownerId, leaseId: payment.leaseId, type: `payment_reminder_${level}` as CommunicationMeta["type"], recipientName: paymentInfo.tenantName },
-            );
-            usedChannel = "sms";
-          } else {
-            await sendReminder(paymentInfo, level, followUpSettings, lease.ownerId, ownerData[0]?.email);
-            usedChannel = "email";
-          }
+          const usedChannel = await sendReminderViaPreferredChannel({
+            payment: paymentInfo,
+            level,
+            settings: followUpSettings,
+            ownerId: lease.ownerId,
+            ownerEmail: ownerData[0]?.email,
+            preferredChannel: tenant.preferredChannel,
+          });
 
           // Record the reminder in paymentReminders table
           await db.insert(paymentReminders).values({

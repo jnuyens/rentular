@@ -273,22 +273,22 @@ export const DEFAULT_SMS_TEMPLATES: Record<SupportedLanguage, {
 }> = {
   en: {
     friendly: "Reminder: rent of {{amount}} for {{propertyName}} was due {{dueDate}}. Please arrange payment. - {{ownerName}}",
-    formal: "Your rent of {{amount}} for {{propertyName}} is {{daysPastDue}} days overdue. Please pay immediately. - {{ownerName}}",
+    formal: "Your rent of {{amount}} for {{propertyName}} (due {{dueDate}}) is {{daysPastDue}} days overdue. Please pay immediately. - {{ownerName}}",
     final: "FINAL NOTICE: {{amount}} + fees (total {{totalOwed}}) overdue for {{propertyName}}. Immediate payment required. - {{ownerName}}",
   },
   nl: {
     friendly: "Herinnering: huur van {{amount}} voor {{propertyName}} was verschuldigd op {{dueDate}}. Gelieve te betalen. - {{ownerName}}",
-    formal: "Uw huur van {{amount}} voor {{propertyName}} is {{daysPastDue}} dagen te laat. Gelieve onmiddellijk te betalen. - {{ownerName}}",
+    formal: "Uw huur van {{amount}} voor {{propertyName}} (verschuldigd op {{dueDate}}) is {{daysPastDue}} dagen te laat. Gelieve onmiddellijk te betalen. - {{ownerName}}",
     final: "LAATSTE AANMANING: {{amount}} + kosten (totaal {{totalOwed}}) achterstallig voor {{propertyName}}. Onmiddellijke betaling vereist. - {{ownerName}}",
   },
   fr: {
     friendly: "Rappel : loyer de {{amount}} pour {{propertyName}} du le {{dueDate}}. Veuillez payer. - {{ownerName}}",
-    formal: "Votre loyer de {{amount}} pour {{propertyName}} a {{daysPastDue}} jours de retard. Veuillez payer immediatement. - {{ownerName}}",
+    formal: "Votre loyer de {{amount}} pour {{propertyName}} (echeance {{dueDate}}) a {{daysPastDue}} jours de retard. Veuillez payer immediatement. - {{ownerName}}",
     final: "DERNIER AVIS : {{amount}} + frais (total {{totalOwed}}) impaye pour {{propertyName}}. Paiement immediat requis. - {{ownerName}}",
   },
   de: {
     friendly: "Erinnerung: Miete von {{amount}} fuer {{propertyName}} war am {{dueDate}} faellig. Bitte zahlen Sie. - {{ownerName}}",
-    formal: "Ihre Miete von {{amount}} fuer {{propertyName}} ist {{daysPastDue}} Tage ueberfaellig. Bitte zahlen Sie sofort. - {{ownerName}}",
+    formal: "Ihre Miete von {{amount}} fuer {{propertyName}} (faellig am {{dueDate}}) ist {{daysPastDue}} Tage ueberfaellig. Bitte zahlen Sie sofort. - {{ownerName}}",
     final: "LETZTE MAHNUNG: {{amount}} + Gebuehren (Gesamt {{totalOwed}}) ueberfaellig fuer {{propertyName}}. Sofortige Zahlung erforderlich. - {{ownerName}}",
   },
 };

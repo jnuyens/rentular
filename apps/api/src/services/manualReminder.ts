@@ -11,18 +11,21 @@ import {
   paymentReminders,
 } from "@rentular/db";
 import type { SupportedLanguage } from "@rentular/shared";
-import { sendReminder, DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
+import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
+import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
 
 export type ManualReminderResult =
-  | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel }
+  | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel; channel: ReminderChannel }
   | { ok: false; error: string };
 
 /**
  * Send a single rent reminder for a lease's rent in a given month, at a level
  * the landlord picks (friendly / formal / final). Works even when the rent is
  * not yet due: a pending expected record for that month is found or created so
- * the reminder has a payment to attach to, then the shared sendReminder() path
- * (tenant-language templates, test-phase redirect, email + SMS, final PDF) runs.
+ * the reminder has a payment to attach to, then the shared
+ * sendReminderViaPreferredChannel() path routes the reminder over the tenant's
+ * preferred channel (whatsapp / sms / email) with email as the fallback, the
+ * same dispatch the automated 19:15 worker uses.
  */
 export async function sendManualReminder(input: {
   leaseId: string;
@@ -46,6 +49,7 @@ export async function sendManualReminder(input: {
       email: tenants.email,
       phone: tenants.phone,
       language: tenants.language,
+      preferredChannel: tenants.preferredChannel,
     })
     .from(leaseTenants)
     .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
@@ -59,6 +63,7 @@ export async function sendManualReminder(input: {
         email: tenants.email,
         phone: tenants.phone,
         language: tenants.language,
+        preferredChannel: tenants.preferredChannel,
       })
       .from(leaseTenants)
       .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
@@ -175,22 +180,41 @@ export async function sendManualReminder(input: {
     latePaymentFeeEnforcement: lease.latePaymentFeeEnforcement,
   };
 
-  await sendReminder(paymentInfo, input.level, followUpSettings, lease.ownerId, ownerRow[0]?.email);
+  // T-11-22 / CONTEXT: send_reminder (channel-aware). Route over the tenant's
+  // preferred channel through the same dispatch the 19:15 worker uses; email
+  // stays the guaranteed fallback.
+  const usedChannel = await sendReminderViaPreferredChannel({
+    payment: paymentInfo,
+    level: input.level,
+    settings: followUpSettings,
+    ownerId: lease.ownerId,
+    ownerEmail: ownerRow[0]?.email,
+    preferredChannel: tenant.preferredChannel,
+  });
 
   await db.insert(paymentReminders).values({
     id: crypto.randomUUID(),
     paymentId,
     type: input.level,
-    channel: "email",
+    channel: usedChannel,
     sentAt: new Date(),
   });
 
   const testPhase = (process.env.PAYMENT_EMAIL_TEST_PHASE || "").toLowerCase();
   const isTest = testPhase === "true" || testPhase === "1" || testPhase === "yes";
+  // SMS/WhatsApp only run outside the test phase and only with a phone present,
+  // so report the phone there; email (and test-phase) report the email address.
+  const sentTo =
+    usedChannel === "sms" || usedChannel === "whatsapp"
+      ? tenant.phone || tenant.email
+      : isTest
+        ? ownerRow[0]?.email || ""
+        : tenant.email;
   return {
     ok: true,
-    sentTo: isTest ? ownerRow[0]?.email || "" : tenant.email,
+    sentTo,
     testPhase: isTest,
     level: input.level,
+    channel: usedChannel,
   };
 }
