@@ -1,0 +1,514 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-05T17:54:12.669Z",
+  "source": "auto-postool",
+  "partial": true,
+  "phase": "11",
+  "phase_name": "mcp-server-external-api-access",
+  "phase_dir": ".planning/phases/11-mcp-server-external-api-access",
+  "plan": null,
+  "task": null,
+  "total_tasks": 7,
+  "status": "auto-checkpoint",
+  "completed_tasks": [
+    {
+      "id": "01",
+      "name": "Task 1: Write the shared token contracts and Hono context typing",
+      "status": "done"
+    },
+    {
+      "id": "02",
+      "name": "Task 1: Add the api_tokens and api_tool_calls Drizzle tables",
+      "status": "done"
+    },
+    {
+      "id": "03",
+      "name": "Task 1: Harden POST /ledger/:leaseId/record-payment to manager+",
+      "status": "done"
+    },
+    {
+      "id": "04",
+      "name": "Task 1: Add the exclusive fail-closed Bearer branch and requireWriteScope",
+      "status": "done"
+    },
+    {
+      "id": "05",
+      "name": "Task 1: Build ApiTokensCard (list, create, show-once, revoke)",
+      "status": "done"
+    },
+    {
+      "id": "06",
+      "name": "Task 1: Scaffold the ESM package, HTTP client, tool contracts and the Wave 0 tool tests",
+      "status": "done"
+    },
+    {
+      "id": "07",
+      "name": "Task 1: Generate the migration locally and verify its SQL",
+      "status": "done"
+    }
+  ],
+  "remaining_tasks": [],
+  "blockers": [
+    {
+      "description": "[Research]: GoCardless webhook handlers return 200 OK without persisting state -- critical bug, addressed in Phase 2",
+      "type": "technical",
+      "workaround": ""
+    },
+    {
+      "description": "[Research]: Statbel beSTAT API has no SLA or versioning -- needs caching with manual fallback in Phase 3",
+      "type": "technical",
+      "workaround": ""
+    },
+    {
+      "description": "[Research]: Smovin scraping approach has LOW confidence -- Cloudflare anti-bot may block Playwright",
+      "type": "technical",
+      "workaround": ""
+    },
+    {
+      "description": "[RESOLVED 2026-07-09, quick 260708-x0r]: ~~`pnpm lint` is RED — ~57 pre-existing @rentular/api `tsc --noEmit` errors~~ Fixed: 59 errors → 0. Root cause was Drizzle `date()` columns typed as `Date` while mysql2/code use strings — flipped 17 columns to `mode:\"string\"` (type-only), fixed `getDb()` generic, added module shims. `pnpm lint` now clean (api+web); 77 tests pass.",
+      "type": "technical",
+      "workaround": ""
+    },
+    {
+      "description": "[Phase 09]: `db:push` idempotency unverified in sandbox (no MySQL; ECONNREFUSED). Plan 05 changed zero schema files — human must confirm \"no changes to apply\" against the real DB at the checkpoint.",
+      "type": "technical",
+      "workaround": ""
+    }
+  ],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "[Roadmap]: Phases ordered to prioritize core value (payments) before expansion features (property managers, Smovin import)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Roadmap]: Smovin import treated as beta feature due to LOW confidence on scraping approach",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Roadmap]: I18N-01 (full translation coverage) placed in final phase since it validates all prior phases",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Used Hono built-in csrf() middleware with ALLOWED_ORIGINS env var shared by both CORS and CSRF",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Health check verifies DB and Redis but skips SMTP (email is async via BullMQ)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Used object-return callback format for Drizzle index definitions matching existing propertyManagers.ts convention",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Removed memoryStore fallback from properties, tenants, bankAccounts routes -- fail-fast on DB errors instead of silent degradation",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Added 401 auth guard to bankAccounts GET / endpoint after removing memoryStore fallback",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Full rewrite of leases.ts and maintenance.ts (100% memoryStore) to database; memoryStore.ts deleted",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Used static imports for DB access in route files instead of dynamic require() with memory-store fallback",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 01]: Phase marker format established: // Phase N: brief description of deferred work",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: eventId unique constraint for DB-level webhook idempotency",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Provider-agnostic bank_connections table supporting GoCardless BAD, Ponto, Enable Banking",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Forward-jump state transitions allowed to handle out-of-order GoCardless webhook events",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Overdue summary route placed before /:id to avoid Hono route parameter conflict",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Manual payments immediately marked as paid (no state machine transition needed)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: GoCardless not configured returns 503 vs missing mandate returns 400 to distinguish infra vs data issues",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Webhook events inserted as processing before handler runs, updated to processed/failed after -- ensures audit trail even on crash",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Unknown GoCardless payments auto-created with amount 0.00 and review note (D-12), rather than silently discarding",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Mandate terminal events append timestamped note to lease.notes before clearing mandateId (D-13 lease flagging)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Provider-agnostic BankAccountDataProvider interface supports future Ponto/Enable Banking swap",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: GoCardless BAD silent renewal not supported; email warning at 7/1 day thresholds",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Transaction matching: digits-only normalization of structured communications for tolerance",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Payment overview uses in-memory aggregation after single Drizzle query for flexibility with ignored payment filtering",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 02]: Webhook cleanup runs weekly Sunday 03:00 following same BullMQ pattern as paymentCheckWorker",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 03]: Skip-if-exists upsert for health index: values never change once published by Statbel",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 03]: Silent failure on Statbel API errors with retry-next-day via daily cron (D-03)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 03]: Shared calculateLeaseIndexation helper centralizes lease/property/index lookup across 3 endpoints",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 03]: Override rent capped at EPC-restricted maximum, base rent never modified (D-07/D-08)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: CommunicationMeta is optional third parameter on queueEmail/queueSms for backward compatibility",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: Support chat endpoint skipped for communication logging (no authenticated user, ownerId is NOT NULL)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: Direct sendEmail calls replaced with queueEmail in landlordReportWorker and paymentCheckWorker for centralized logging",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: SMTP transport cache stores transport + fromAddress/fromName together to avoid extra DB query on cache hit",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: ownerId passed through email queue job data for per-landlord SMTP transport selection at send time",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 04]: Communications send endpoint relies on queueEmail/queueSms auto-logging instead of manual db.insert",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: D-01 implemented as full auto-accept (sets userId + acceptedAt + clears token) for all pending invitations on first token accept",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Properties PATCH requires manager+ role, DELETE requires co_owner+ role -- graduated access replacing ownerId checks",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Removed memoryStore fallback from properties.ts -- fail-fast with typed DB imports",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Lease ownerId on creation set to property owner (not current user) so managers can create leases that belong to the property owner",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Communications use OR filter (accessible leases OR ownerId=user) for backwards compatibility",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Costs with no propertyId remain accessible only to ownerId user (general costs not property-scoped)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 05]: Tenant POST does not require property check; tenants linked to properties via leases",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: Dynamic import for importWriteWorker to avoid compile-time dependency on Plan 03 (concurrent execution)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: sessionPublicFields pattern excludes credential columns from all GET API responses",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: Discovery worker uses per-section try-catch for partial scraping resilience",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: Belgian address parser handles bus/bte/boite/slash box indicators for street number parsing",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: Duplicate property detection by street+streetNumber+postalCode+city for same owner (D-06)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: Payments linked to first lease of property; skipped if no leases exist",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 06]: NAV_VISIBILITY blocking pattern added to layout to restrict import and settings sidebar items to owner role",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Used shadcn@2.3.0 (pinned) for Tailwind v3 compatibility instead of @latest which targets v4",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Preserved brand primary color (207 90% 46%) during CSS variable merge with shadcn/ui defaults",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Database migration generated but push/migrate deferred -- migration file committed for deployment",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Used Stripe.Product type cast instead of any for GET /plans endpoint",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Marketing page uses useEffect fetch for pricing with static fallback for resilience",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: DashboardSidebar/MobileNav split: server layout passes data as props to client components for responsive sidebar/drawer",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Table-to-Card responsive pattern (hidden md:block / md:hidden) for properties, tenants, leases pages",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: NextAuth type augmentation via .d.ts module declaration eliminates as-any casts for session.onboardingComplete",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Onboarding status cached in JWT token at sign-in to avoid per-request database queries",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: Settings page uses shadcn Tabs with grid-cols-2/md:grid-cols-4 for mobile-responsive tab wrapping",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 07]: All 9 dashboard pages now use shadcn/ui exclusively; i18n audit confirms 751 keys per locale with 0 missing",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 09]: Plan 04 already seeded the bankConnections.* UI keys with full NL/FR/DE values; Plan 05 added only the email.renewalWarning block (11 keys → 76 total per locale) to avoid churn that could break the live UI",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 09]: Renewal-warning email is locale-aware (loaded from web messages by users.locale at runtime, fallback en); no tokens interpolated (T-09-05-02)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 09]: bank_statements GDPR retention is a hard-delete weekly cron (Sunday 03:00) driven by BANK_STATEMENTS_RETENTION_DAYS (default 2555 / 7-year Belgian tax law), mirroring the webhookCleanup pattern",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 09]: Rule 1 fix in 09-05 — transactionMatcher auto-mark-paid wrote a string to payments.paidDate (Date column) in the bank-reconciliation path; wrapped with new Date()",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 10]: Stripe client lazily constructed via getStripeClient() inside handlers (mirrors gocardless guard) so API boots crash-safe with STRIPE_SECRET_KEY unset (D-09)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 10]: D-10 confirmed — no dotenv in apps/api/src; container-injected process.env is sufficient",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 10]: next.config.ts uses output standalone + outputFileTracingRoot at monorepo root; build emits apps/web/server.js for Docker runner",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: First-run bootstrap seeds owner as plain user (name=Owner, onboardingComplete=true) — no role column in users schema (D-08)",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: Bootstrap CLI guarded by import.meta.url entrypoint check so the unit test imports createOwnerIfMissing without triggering drizzle-kit push or a DB connection",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: tsup bundles first-party @rentular/* (main points at raw .ts) + createRequire banner for CJS deps so the API ESM entry dist/index.mjs is actually runnable — verified by booting it locally",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: NEXT_PUBLIC_API_URL baked as a Docker build ARG (ENV before next build) in apps/web/Dockerfile; runtime injection is ignored by the compiled browser bundle",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: docker-compose.prod.yml publishes every port on 127.0.0.1 loopback only (host nginx sole ingress); mariadb/redis loopback-published so deploy.sh host-shell bootstrap reaches DB at 127.0.0.1:3306 while off the public interface",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 10]: prod DB passwords required via VAR-colon-question form (no default fallbacks/literals); api+web secrets via env_file /opt/rentular/.env (root:600); web NEXT_PUBLIC_API_URL baked via compose build.args",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: Wave 0 RED tests load not-yet-existing modules via non-literal import specifiers so tsc --noEmit stays green while tests fail at runtime",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: 11-01 is RED-only; API-01/02/03 and MCP-03 are tested but not implemented, so requirements stay unmarked until Plans 02/03/04",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: Dedicated API_TOKEN_PEPPER env var (not HKDF from AUTH_SECRET) so the PAT pepper rotates independently of session encryption",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: Peppered SHA-256 over 256-bit random tokens (no bcrypt) for O(1) indexed Bearer lookup plus timingSafeEqual compare",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: /api-tokens router is session-only (403 when tokenId set) and re-projects to ApiTokenPublic so a leaked PAT cannot manage tokens and the stored hash never leaks",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: record-payment and send-reminder hardened to manager+ via the mark-month-paid gate (getUserPropertyRole + hasMinimumRole); send-reminder keeps the access check so writeGuards can distinguish not-accessible from accessible-manager",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: one shared reminderChannel.sendReminderViaPreferredChannel dispatch used by both the 19:15 worker and the manual send-reminder path; channel used is recorded in payment_reminders, email is the fallback",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: added dueDate to the formal SMS templates (all 4 locales) to resolve the 11-01 advisory without weakening reminderChannel.test.ts",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: 11-04: Bearer PAT branch is exclusive and fail-closed at the top of authMiddleware; a non-rtl or unresolved Bearer sets userId null and returns before any cookie read",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: 11-04: CSRF exemption is rtl_-only (narrower than the auth branch); requireWriteScope applied at prefix and prefix/* blocks read PATs on writes while cookie sessions pass",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: 11-04: redactAuditArgs keeps exact sensitive field names (value masked) but masks compound keys embedding a sensitive word, so audit rows leak no token material or field-name context",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase ?]: [Phase 11]: 11-05 Settings API-tokens UI keeps the plaintext rtl_ token only in React newToken state (show-once dialog, cleared on close), scope defaults to read, revoke needs a naming confirmation; 34 keys added across en/nl/fr/de",
+      "rationale": "",
+      "phase": "11"
+    },
+    {
+      "decision": "[Phase 11]: 11-06 MCP server is a standalone ESM package (apps/mcp-server) holding a PAT and calling the HTTP API; 7 read + 4 write tools, Bearer rtl_ + X-Rentular-Tool, transport confined to index.ts so remote/OpenAPI stay a clean follow-on",
+      "rationale": "",
+      "phase": "11"
+    }
+  ],
+  "uncommitted_files": [],
+  "next_action": null,
+  "context_notes": "Stopped at: Milestone complete (Phase 11 was final phase)"
+}
