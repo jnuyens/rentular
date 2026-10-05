@@ -26,19 +26,19 @@ Two correctness gaps surfaced while mapping tools to endpoints, both worth a har
 - **The browser session flow** (NextAuth encrypted JWT cookie, decoded with `AUTH_SECRET`) is left untouched and must keep working exactly as today.
 - **Token scoping:** at least read vs write; optionally by property. Writes require `manager+`.
 - **MCP server is standalone**, using `@modelcontextprotocol/sdk`, calling the Rentular HTTP API with a PAT. The Hono API is NOT modified to embed MCP in-process. Deploys independently.
-- **Transport: stdio first** (PAT in an env var). Remote Streamable HTTP + OAuth is the documented follow-on. SSE transport is deprecated — do not use it.
-- **Tools — Read:** `list_properties`, `get_property`, `list_leases`, `list_tenants`, `payment_overview` (dashboard), `lease_ledger`, `indexation_status`.
-- **Tools — Write (manager+):** `mark_rent_paid`, `send_reminder` (channel-aware), `record_ledger_payment`, `apply_indexation`. Read tools gate before write; all scoped to the token's user + accessible properties.
+- **Transport: stdio first** (PAT in an env var). Remote Streamable HTTP + OAuth is the documented follow-on. SSE transport is deprecated - do not use it.
+- **Tools - Read:** `list_properties`, `get_property`, `list_leases`, `list_tenants`, `payment_overview` (dashboard), `lease_ledger`, `indexation_status`.
+- **Tools - Write (manager+):** `mark_rent_paid`, `send_reminder` (channel-aware), `record_ledger_payment`, `apply_indexation`. Read tools gate before write; all scoped to the token's user + accessible properties.
 - **Security:** reuse per-tool role checks (writes require `manager+`); hashed tokens with expiry + revoke; rate-limit; log tool calls (reuse the `communications` logging pattern); keep the `no-store` headers. Never weaken the cookie flow.
 
 ### Claude's Discretion
 - Exact `api_tokens` Drizzle schema column types and index choices.
-- Hashing choice for tokens (reuse bcrypt vs a faster SHA-256-with-pepper) — researcher to recommend.
+- Hashing choice for tokens (reuse bcrypt vs a faster SHA-256-with-pepper) - researcher to recommend.
 - Rate-limiting mechanism (reuse Redis/ioredis already present).
 - MCP server repo layout (in-monorepo package vs standalone like the WA bridge).
 - Settings UI component structure and i18n keys (EN/NL/FR/DE required).
 
-### Deferred Ideas (OUT OF SCOPE — document only, do not build)
+### Deferred Ideas (OUT OF SCOPE - document only, do not build)
 - OAuth2 / OIDC authorization server + consent + refresh.
 - Remote MCP over Streamable HTTP, fronted by Caddy/nginx on m1.
 - OpenAPI spec generation (`zod-openapi`) and public API docs.
@@ -64,7 +64,7 @@ Two correctness gaps surfaced while mapping tools to endpoints, both worth a har
 |------------|-------------|----------------|-----------|
 | Token minting / hashing / storage | API / Backend | Database | Secret generation + hashing must happen server-side; plaintext shown once in the HTTP response and never stored |
 | Bearer token verification | API / Backend (`authMiddleware`) | Database | Must resolve to the same `userId` the cookie path produces, inside the existing middleware |
-| Per-property / role authorization | API / Backend (`propertyAccess.ts`) | — | Already centralized; PAT path reuses it verbatim — no new authz logic |
+| Per-property / role authorization | API / Backend (`propertyAccess.ts`) | - | Already centralized; PAT path reuses it verbatim - no new authz logic |
 | Token management UI (create/name/scope/revoke) | Frontend Server (Next 15) | API | Settings page + API calls; show-once secret handling is a client concern |
 | MCP tool orchestration | Standalone MCP process | API (over HTTP) | Decoupled from the API lifecycle per locked decision; tools are thin HTTP clients |
 | Rate limiting | API / Backend | Redis | Enforced at the API boundary so it protects both PAT and (future) OAuth callers; Redis already present |
@@ -75,24 +75,24 @@ Two correctness gaps surfaced while mapping tools to endpoints, both worth a har
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| `@modelcontextprotocol/sdk` | `1.32.0` | MCP server (stdio transport, tool registration) | Official MCP TypeScript SDK (`github.com/modelcontextprotocol/typescript-sdk`), ~75M downloads/week [VERIFIED: npm registry — slopcheck [OK] on npm ecosystem] |
+| `@modelcontextprotocol/sdk` | `1.32.0` | MCP server (stdio transport, tool registration) | Official MCP TypeScript SDK (`github.com/modelcontextprotocol/typescript-sdk`), ~75M downloads/week [VERIFIED: npm registry - slopcheck [OK] on npm ecosystem] |
 | `node:crypto` (built-in) | Node 20.19 | `randomBytes` for token secret, `createHash('sha256')` for the keyed digest, `timingSafeEqual` | No dependency; standard for high-entropy token hashing [CITED: nodejs.org/api/crypto.html] |
 | `drizzle-orm` | `^0.36.0` (in repo) | `api_tokens` table + queries | Already the project ORM [VERIFIED: apps/api/package.json] |
 | `hono` | `^4.6.0` (in repo) | Bearer parsing in `authMiddleware` | Already the API framework [VERIFIED: apps/api/package.json] |
-| `zod` | `^3.25` (MCP pkg only) | MCP tool `inputSchema` raw shapes | SDK peer range is `^3.25 \|\| ^4.0`; repo pins `3.24.0`, so the MCP package needs its own newer zod [VERIFIED: npm — SDK package.json peerDependencies] |
+| `zod` | `^3.25` (MCP pkg only) | MCP tool `inputSchema` raw shapes | SDK peer range is `^3.25 \|\| ^4.0`; repo pins `3.24.0`, so the MCP package needs its own newer zod [VERIFIED: npm - SDK package.json peerDependencies] |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `ioredis` | `^5.4.0` (in repo) | Rate-limit counter (`INCR`+`EXPIRE` fixed window) keyed by token id | Reuse existing Redis — no new dep for a simple limiter [VERIFIED: apps/api/package.json] |
-| `rate-limiter-flexible` | latest | Sliding-window / token-bucket on top of ioredis, if the simple fixed-window proves too coarse | Only if INCR+EXPIRE is insufficient — adds a dep [ASSUMED — not verified this session] |
+| `ioredis` | `^5.4.0` (in repo) | Rate-limit counter (`INCR`+`EXPIRE` fixed window) keyed by token id | Reuse existing Redis - no new dep for a simple limiter [VERIFIED: apps/api/package.json] |
+| `rate-limiter-flexible` | latest | Sliding-window / token-bucket on top of ioredis, if the simple fixed-window proves too coarse | Only if INCR+EXPIRE is insufficient - adds a dep [ASSUMED - not verified this session] |
 | `tsup` / `tsx` | `^8.3.0` / `^4.19.0` (in repo) | Build / dev-run the MCP server (same toolchain as the API) | Mirror `apps/api` build setup [VERIFIED: apps/api/package.json] |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
 | SHA-256 + pepper | bcrypt (reuse `bcrypt@^5.1.0`) | bcrypt is salted per-row → cannot index/look up by hash → full scan + slow hash per request. Wrong for a per-request API path. Only correct for low-entropy passwords. |
-| SHA-256 + pepper | lookup-id + hashed-secret split (`rtl_<id>_<secret>`) | Equivalent security; the id lets you avoid even an indexed-hash scan and makes targeted revocation trivial. Slightly more token-parsing code. Acceptable alternative — see Pattern 1 note. |
+| SHA-256 + pepper | lookup-id + hashed-secret split (`rtl_<id>_<secret>`) | Equivalent security; the id lets you avoid even an indexed-hash scan and makes targeted revocation trivial. Slightly more token-parsing code. Acceptable alternative - see Pattern 1 note. |
 | Standalone HTTP-calling MCP server | Embed MCP endpoint in the Hono API | Locked decision is standalone; embedding couples MCP lifecycle to the API (rejected in the decision doc). |
 | stdio transport | SSE transport | SSE is deprecated in MCP; stdio now, Streamable HTTP later. |
 
@@ -117,7 +117,7 @@ No new dependency is required in `apps/api` (token hashing uses `node:crypto`; r
 **Packages removed due to slopcheck [SLOP] verdict:** none
 **Packages flagged as suspicious [SUS]:** none
 
-> Note: slopcheck auto-detected PyPI first and returned a false [SLOP] (`does not exist on pypi`). Re-running with `--ecosystem npm` returned `[OK]`. This is exactly the cross-ecosystem confusion the protocol warns about — the package is an npm scoped package, verified clean on npm with ~75M weekly downloads and an official Anthropic-maintained repo. `rate-limiter-flexible` is listed only as an optional upgrade and is tagged `[ASSUMED]`; if the planner chooses it, gate it behind a `checkpoint:human-verify`.
+> Note: slopcheck auto-detected PyPI first and returned a false [SLOP] (`does not exist on pypi`). Re-running with `--ecosystem npm` returned `[OK]`. This is exactly the cross-ecosystem confusion the protocol warns about - the package is an npm scoped package, verified clean on npm with ~75M weekly downloads and an official Anthropic-maintained repo. `rate-limiter-flexible` is listed only as an optional upgrade and is tagged `[ASSUMED]`; if the planner chooses it, gate it behind a `checkpoint:human-verify`.
 
 ## Architecture Patterns
 
@@ -165,7 +165,7 @@ No new dependency is required in `apps/api` (token hashing uses `node:crypto`; r
 | Bearer resolution | `apps/api/src/lib/authMiddleware.ts` (edit) | Parse `Bearer rtl_…` before cookie; set `userId` + `tokenScope`; fail closed |
 | CSRF exemption | `apps/api/src/index.ts` (edit) | Skip `csrf()` when `Authorization: Bearer rtl_` present |
 | Token routes | `apps/api/src/routes/apiTokens.ts` (new) → mount `/api-tokens` | List, create (show-once), revoke |
-| Scope guard helper | `apps/api/src/lib/routeAuth.ts` (edit) | `requireWriteScope` — 403 if `tokenScope === "read"` |
+| Scope guard helper | `apps/api/src/lib/routeAuth.ts` (edit) | `requireWriteScope` - 403 if `tokenScope === "read"` |
 | Audit table | `packages/db/src/schema/apiToolCalls.ts` (new) | Record tool/endpoint, tokenId, userId, status, timestamp |
 | MCP server | `apps/mcp-server/` (new package) | stdio server, thin HTTP client, read+write tools |
 | Settings UI | `apps/web/app/(dashboard)/settings/page.tsx` (edit) + new tab component | Mint/name/scope/revoke, show-once modal, i18n |
@@ -176,7 +176,7 @@ No new dependency is required in `apps/api` (token hashing uses `node:crypto`; r
 **Why not bcrypt:** bcrypt salts per row, so you cannot `WHERE hash = ?`; you would scan every token and bcrypt-compare (50-100ms each). SHA-256 is ~microseconds and the 256-bit entropy makes "fast hash" brute force a non-issue. This is the GitHub/GitLab PAT model.
 **Pepper:** a server-only secret (new `API_TOKEN_PEPPER` env, or derive from `AUTH_SECRET` via HKDF like `authMiddleware` already does). It ensures a stolen DB dump alone cannot be used to verify guessed tokens. Keep it out of the DB.
 ```typescript
-// Source: node:crypto — nodejs.org/api/crypto.html  [CITED]
+// Source: node:crypto - nodejs.org/api/crypto.html  [CITED]
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 
 const PEPPER = process.env.API_TOKEN_PEPPER!; // fail closed if unset (mirror authSecret.ts)
@@ -238,7 +238,7 @@ Cookie sessions have no `tokenScope` → treated as full access (browser flow un
 
 ### Pattern 5: MCP tool registration (verified SDK 1.32.0 shape)
 ```typescript
-// Source: @modelcontextprotocol/sdk@1.32.0 (ESM) — verified from the package's server/mcp.d.ts
+// Source: @modelcontextprotocol/sdk@1.32.0 (ESM) - verified from the package's server/mcp.d.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -294,11 +294,11 @@ apps/mcp-server/
 ```
 
 ### Anti-Patterns to Avoid
-- **bcrypt for per-request token verification** — unindexable + slow (see Pattern 1 rationale).
-- **Letting an invalid Bearer fall through to the cookie** — breaks fail-closed.
-- **Re-implementing authorization in the MCP server** — tools must call the HTTP API and let the API enforce roles. The MCP client runs on the user's machine and cannot be trusted to self-enforce.
-- **Writing `lastUsedAt` synchronously every request** — turns reads into writes.
-- **Embedding MCP in the Hono process** — contradicts the locked standalone decision.
+- **bcrypt for per-request token verification** - unindexable + slow (see Pattern 1 rationale).
+- **Letting an invalid Bearer fall through to the cookie** - breaks fail-closed.
+- **Re-implementing authorization in the MCP server** - tools must call the HTTP API and let the API enforce roles. The MCP client runs on the user's machine and cannot be trusted to self-enforce.
+- **Writing `lastUsedAt` synchronously every request** - turns reads into writes.
+- **Embedding MCP in the Hono process** - contradicts the locked standalone decision.
 
 ## Don't Hand-Roll
 
@@ -318,7 +318,7 @@ apps/mcp-server/
 
 | Category | Items Found | Action Required |
 |----------|-------------|------------------|
-| Stored data | None — new `api_tokens` / `api_tool_calls` tables only; no existing data is renamed or re-keyed | drizzle-kit push for the two new tables |
+| Stored data | None - new `api_tokens` / `api_tool_calls` tables only; no existing data is renamed or re-keyed | drizzle-kit push for the two new tables |
 | Live service config | New env vars only: `API_TOKEN_PEPPER` (API), `RENTULAR_API_URL` + `RENTULAR_PAT` (MCP client). None stored outside git-tracked `.env.example` | Add to `.env.example`; set the pepper on m1 before enabling PAT auth |
 | OS-registered state | None for stdio (Claude Desktop spawns the MCP process on the user's machine). The future remote server would add a systemd unit (WA-bridge shape) | None this phase |
 | Secrets/env vars | `API_TOKEN_PEPPER` must fail closed if unset (mirror `authSecret.ts`); PAT plaintext exists only in the mint response and the user's MCP config | Implement fail-closed pepper guard |
@@ -357,18 +357,18 @@ Contrast with the correctly-gated `POST /indexation/apply/:leaseId` (`:1176` che
 
 ### Pitfall 4: zod version skew between the SDK and the repo
 **What goes wrong:** `@modelcontextprotocol/sdk@1.32.0` peer-depends on `zod@^3.25 || ^4.0`; the repo pins `zod@^3.24.0`. If the MCP package imports `@rentular/shared` (zod 3.24) or hoisting dedupes to 3.24, tool schema types can mis-resolve.
-**How to avoid:** Give `apps/mcp-server` its own `zod@^3.25` dependency and keep it HTTP-only — do not import `@rentular/shared` zod schemas into it. (pnpm isolates per-package versions, so this is safe without bumping the API's zod.)
+**How to avoid:** Give `apps/mcp-server` its own `zod@^3.25` dependency and keep it HTTP-only - do not import `@rentular/shared` zod schemas into it. (pnpm isolates per-package versions, so this is safe without bumping the API's zod.)
 **Warning signs:** TypeScript errors on `inputSchema`, or runtime "invalid schema" from the SDK.
 
 ### Pitfall 5: `getAccessiblePropertyIds` returns `null`-userId access rows
-**What goes wrong:** `propertyManagers.userId` is nullable (invitations for not-yet-registered users; `propertyManagers.ts:19`). The PAT always resolves to a concrete `userId`, so this is fine — but any new query must filter `isNotNull(acceptedAt)` exactly as the existing helpers do. Do not write a new membership query that forgets the `acceptedAt` guard.
+**What goes wrong:** `propertyManagers.userId` is nullable (invitations for not-yet-registered users; `propertyManagers.ts:19`). The PAT always resolves to a concrete `userId`, so this is fine - but any new query must filter `isNotNull(acceptedAt)` exactly as the existing helpers do. Do not write a new membership query that forgets the `acceptedAt` guard.
 **How to avoid:** Reuse the existing helpers verbatim; never re-query `propertyManagers` ad hoc in the token path.
 
 ## Code Examples
 
 ### Modelling `api_tokens` on existing tables
 ```typescript
-// packages/db/src/schema/apiTokens.ts  — mirrors users.ts/propertyManagers.ts conventions
+// packages/db/src/schema/apiTokens.ts  - mirrors users.ts/propertyManagers.ts conventions
 // Source: existing schema patterns in packages/db/src/schema/  [VERIFIED: repo]
 import { mysqlTable, varchar, timestamp, mysqlEnum, index, uniqueIndex, char } from "drizzle-orm/mysql-core";
 import { users } from "./users";
@@ -410,7 +410,7 @@ export const apiToolCalls = mysqlTable("api_tool_calls", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({ userIdx: index("api_tool_calls_user_idx").on(t.userId) }));
 ```
-Where write tools already send communications (`apply_indexation` → `queueEmail` with `type: "indexation_notification"`, `send_reminder` → email), that logging continues via the existing `CommunicationMeta` path in `emailQueueWorker.ts:103` — no change needed there.
+Where write tools already send communications (`apply_indexation` → `queueEmail` with `type: "indexation_notification"`, `send_reminder` → email), that logging continues via the existing `CommunicationMeta` path in `emailQueueWorker.ts:103` - no change needed there.
 
 ## Tool → Endpoint Map
 
@@ -435,7 +435,7 @@ All endpoints are under `/api/v1`. Scoping is automatic: the PAT resolves to `us
 | `record_ledger_payment` | POST `/ledger/:leaseId/record-payment` | ledger.ts:63 | **access only** ✗ | Harden to manager+ |
 | `apply_indexation` | POST `/indexation/apply/:leaseId` | indexation.ts:1156 | **manager+** ✓ | Already correct; also EPC-caps the rent |
 
-**No endpoint is missing** for any of the seven read tools or four write tools — every tool maps to existing code. The only work on the API side is the two role-hardening edits (`send-reminder`, `record-payment`) plus the auth/CSRF/scope wiring.
+**No endpoint is missing** for any of the seven read tools or four write tools - every tool maps to existing code. The only work on the API side is the two role-hardening edits (`send-reminder`, `record-payment`) plus the auth/CSRF/scope wiring.
 
 ## State of the Art
 
@@ -446,27 +446,27 @@ All endpoints are under `/api/v1`. Scoping is automatic: the PAT resolves to `us
 | bcrypt for API keys | SHA-256 (+pepper) of high-entropy tokens, indexed | Long-standing industry practice (GitHub/GitLab/Stripe) | Fast, indexable verification |
 
 **Deprecated/outdated:**
-- MCP SSE transport — replaced by Streamable HTTP.
-- `McpServer.prototype.tool()` — replaced by `registerTool()`.
+- MCP SSE transport - replaced by Streamable HTTP.
+- `McpServer.prototype.tool()` - replaced by `registerTool()`.
 
-## Remote (Streamable HTTP + OAuth) — design-now notes (DO NOT BUILD)
+## Remote (Streamable HTTP + OAuth) - design-now notes (DO NOT BUILD)
 
 Only the decisions that avoid painting us into a corner:
 1. **Keep tool logic transport-agnostic.** Put all tool handlers in `tools/*.ts` and only the transport in `index.ts`. Swapping `StdioServerTransport` for the Streamable HTTP transport later must not touch tool code.
 2. **Tools call the HTTP API, never the DB.** Remote vs local then differs only in where the bearer token comes from (env var vs OAuth access token), not in tool logic.
 3. **Model scopes as a typed set now** (`read`/`write`, optional `propertyId`) so OAuth scopes map cleanly onto PAT scopes later.
 4. **Add a `type`-style discriminator on `api_tokens` only if cheap** (e.g. keep room for `oauth` alongside `pat`); otherwise a later additive migration is fine. Not required this phase.
-5. **The Bearer resolution in `authMiddleware` is already the reusable seam** — a future OAuth access token can be resolved in the same place without disturbing the cookie path.
-6. **Deployment shape for the future remote server** mirrors the WhatsApp Baileys bridge (`sendWhatsApp` in `apps/api/src/lib/whatsapp.ts`): a standalone process reached over Tailscale, fronted by the m1 reverse proxy. The **stdio** server, by contrast, runs on the *user's* machine (Claude Desktop spawns it) and reaches the public API over HTTPS — so it is distributed as a package + a `claude_desktop_config.json` snippet, not deployed to m1.
+5. **The Bearer resolution in `authMiddleware` is already the reusable seam** - a future OAuth access token can be resolved in the same place without disturbing the cookie path.
+6. **Deployment shape for the future remote server** mirrors the WhatsApp Baileys bridge (`sendWhatsApp` in `apps/api/src/lib/whatsapp.ts`): a standalone process reached over Tailscale, fronted by the m1 reverse proxy. The **stdio** server, by contrast, runs on the *user's* machine (Claude Desktop spawns it) and reaches the public API over HTTPS - so it is distributed as a package + a `claude_desktop_config.json` snippet, not deployed to m1.
 
 ## Assumptions Log
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | `rate-limiter-flexible` is the right upgrade if fixed-window INCR proves too coarse | Standard Stack (Supporting) | Low — only an optional path; the INCR+EXPIRE primary needs no new dep. Gate behind human-verify if chosen. |
-| A2 | A new `api_tool_calls` audit table is preferable to overloading `communications` | Code Examples | Low — `communications` enums genuinely don't fit; if the planner prefers a `communications` "other" row, that also works |
-| A3 | `payment_overview` should map to `/payments/dashboard` rather than `/payments/overview` | Tool→Endpoint Map | Low — CONTEXT says "(dashboard)"; both endpoints exist, easy to switch |
-| A4 | Deriving the pepper from `AUTH_SECRET` via HKDF is acceptable vs a separate `API_TOKEN_PEPPER` | Pattern 1 | Low — either is secure; a dedicated env is cleaner for rotation |
+| A1 | `rate-limiter-flexible` is the right upgrade if fixed-window INCR proves too coarse | Standard Stack (Supporting) | Low - only an optional path; the INCR+EXPIRE primary needs no new dep. Gate behind human-verify if chosen. |
+| A2 | A new `api_tool_calls` audit table is preferable to overloading `communications` | Code Examples | Low - `communications` enums genuinely don't fit; if the planner prefers a `communications` "other" row, that also works |
+| A3 | `payment_overview` should map to `/payments/dashboard` rather than `/payments/overview` | Tool→Endpoint Map | Low - CONTEXT says "(dashboard)"; both endpoints exist, easy to switch |
+| A4 | Deriving the pepper from `AUTH_SECRET` via HKDF is acceptable vs a separate `API_TOKEN_PEPPER` | Pattern 1 | Low - either is secure; a dedicated env is cleaner for rotation |
 
 ## Open Questions (RESOLVED)
 
@@ -488,15 +488,15 @@ Only the decisions that avoid painting us into a corner:
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
-| Node.js | MCP server (SDK needs >=18) | ✓ | 20.19.0 (volta) | — |
-| pnpm workspace | new `apps/mcp-server` package | ✓ | 9.15.0 | — |
+| Node.js | MCP server (SDK needs >=18) | ✓ | 20.19.0 (volta) | - |
+| pnpm workspace | new `apps/mcp-server` package | ✓ | 9.15.0 | - |
 | Redis / ioredis | rate limiting | ✓ | ioredis ^5.4.0, Redis on m1 | in-memory counter (single-process only; not recommended) |
-| MariaDB | `api_tokens`, `api_tool_calls` | ✓ | `rentular` DB on m1 | — |
-| `@modelcontextprotocol/sdk` | MCP server | ✓ (installs clean) | 1.32.0 | — |
-| Claude Desktop / Claude Code | runs the stdio MCP server (user machine) | user-side | — | any MCP-capable client |
+| MariaDB | `api_tokens`, `api_tool_calls` | ✓ | `rentular` DB on m1 | - |
+| `@modelcontextprotocol/sdk` | MCP server | ✓ (installs clean) | 1.32.0 | - |
+| Claude Desktop / Claude Code | runs the stdio MCP server (user machine) | user-side | - | any MCP-capable client |
 
 **Missing dependencies with no fallback:** none.
-**Missing dependencies with fallback:** none material — all core infra already runs.
+**Missing dependencies with fallback:** none material - all core infra already runs.
 
 ## Validation Architecture
 
@@ -510,7 +510,7 @@ Only the decisions that avoid painting us into a corner:
 | Quick run command | `pnpm --filter @rentular/api test` (alias `vitest run`) |
 | Full suite command | `pnpm --filter @rentular/api test && pnpm --filter @rentular/mcp-server test` |
 
-Existing tests mock `@rentular/db` with spy-based `eq`/`and` and a fake db (see `apps/api/src/routes/__tests__/bankAccounts.test.ts`) — the new auth/token tests should follow the same mock-the-db, assert-the-conditions style.
+Existing tests mock `@rentular/db` with spy-based `eq`/`and` and a fake db (see `apps/api/src/routes/__tests__/bankAccounts.test.ts`) - the new auth/token tests should follow the same mock-the-db, assert-the-conditions style.
 
 ### Phase Requirements → Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
@@ -530,9 +530,9 @@ Existing tests mock `@rentular/db` with spy-based `eq`/`and` and a fake db (see 
 - **Phase gate:** full API + MCP suites green, plus `pnpm --filter @rentular/db db:push` applied for the two new tables, before `/bm:verify-work`.
 
 ### Wave 0 Gaps
-- [ ] `apps/api/src/lib/__tests__/apiTokens.test.ts` — API-01 hashing/mint/verify/revoke
-- [ ] `apps/api/src/lib/__tests__/authMiddleware.test.ts` — API-02 Bearer resolution + fail-closed + no cookie fall-through
-- [ ] `apps/api/src/routes/__tests__/apiTokens.test.ts` — API-03 route ownership scoping
+- [ ] `apps/api/src/lib/__tests__/apiTokens.test.ts` - API-01 hashing/mint/verify/revoke
+- [ ] `apps/api/src/lib/__tests__/authMiddleware.test.ts` - API-02 Bearer resolution + fail-closed + no cookie fall-through
+- [ ] `apps/api/src/routes/__tests__/apiTokens.test.ts` - API-03 route ownership scoping
 - [ ] Extend `apps/api/src/routes/__tests__/` for `ledger`/`payments` manager+ hardening (MCP-03)
 - [ ] `apps/mcp-server/src/__tests__/tools.test.ts` + a vitest config for the new package (framework install: `pnpm --filter @rentular/mcp-server add -D vitest`)
 
@@ -544,7 +544,7 @@ Existing tests mock `@rentular/db` with spy-based `eq`/`and` and a fake db (see 
 | ASVS Category | Applies | Standard Control |
 |---------------|---------|-----------------|
 | V2 Authentication | yes | PAT = bearer credential; SHA-256+pepper hashed at rest; expiry + revoke; fail closed on invalid |
-| V3 Session Management | yes | PATs are long-lived non-session credentials — must be revocable and show `lastUsedAt`; cookie session flow untouched |
+| V3 Session Management | yes | PATs are long-lived non-session credentials - must be revocable and show `lastUsedAt`; cookie session flow untouched |
 | V4 Access Control | yes | Reuse `getUserPropertyRole`/`hasMinimumRole`/`getAccessiblePropertyIds`; writes require `manager+` + write scope |
 | V5 Input Validation | yes | `@hono/zod-validator` on API routes; zod `inputSchema` on MCP tools |
 | V6 Cryptography | yes | `node:crypto` `randomBytes` (token), `createHash('sha256')` (keyed digest), `timingSafeEqual`; never hand-roll |
@@ -564,26 +564,26 @@ Existing tests mock `@rentular/db` with spy-based `eq`/`and` and a fake db (see 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `@modelcontextprotocol/sdk@1.32.0` package (unpacked tarball: `package.json` exports/engines/peerDeps, `dist/esm/server/mcp.d.ts` `registerTool` signature) — tool API, ESM, Node/zod requirements.
+- `@modelcontextprotocol/sdk@1.32.0` package (unpacked tarball: `package.json` exports/engines/peerDeps, `dist/esm/server/mcp.d.ts` `registerTool` signature) - tool API, ESM, Node/zod requirements.
 - npm registry: `npm view @modelcontextprotocol/sdk` (version 1.32.0, modified 2026-10-02); `api.npmjs.org` downloads (74.98M/wk).
 - slopcheck 0.6.1 `install … --ecosystem npm` → `[OK]`.
 - Repo source (verified by reading): `apps/api/src/lib/authMiddleware.ts`, `lib/propertyAccess.ts`, `lib/routeAuth.ts`, `lib/authSecret.ts`, `src/index.ts`, `routes/{properties,leases,tenants,payments,ledger,indexation,communications}.ts`, `jobs/emailQueueWorker.ts`, `services/manualReminder.ts`, `lib/whatsapp.ts`; `packages/db/src/schema/{index,users,communications,propertyManagers}.ts`; `apps/api/vitest.config.ts`, `apps/api/package.json`, root `package.json`, `.planning/config.json`.
-- `node:crypto` documentation (nodejs.org/api/crypto.html) — `randomBytes`, `createHash`, `timingSafeEqual`.
+- `node:crypto` documentation (nodejs.org/api/crypto.html) - `randomBytes`, `createHash`, `timingSafeEqual`.
 
 ### Secondary (MEDIUM confidence)
-- MCP transport guidance (stdio current, SSE deprecated, Streamable HTTP for remote) — from the decision doc and corroborated by the SDK's current export surface.
+- MCP transport guidance (stdio current, SSE deprecated, Streamable HTTP for remote) - from the decision doc and corroborated by the SDK's current export surface.
 
 ### Tertiary (LOW confidence)
-- `rate-limiter-flexible` as the sliding-window upgrade — [ASSUMED], not verified this session.
+- `rate-limiter-flexible` as the sliding-window upgrade - [ASSUMED], not verified this session.
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH — SDK API and versions verified against the published package; repo deps read directly.
-- Architecture / token design: HIGH — SHA-256+pepper vs bcrypt is well-established; the auth seam and role model were read in source.
-- Tool→endpoint mapping: HIGH — every endpoint and its current role gate was read directly (file:line cited).
-- Pitfalls (CSRF, under-gated writes, channel-awareness, zod skew): HIGH — each confirmed in source.
-- Rate-limiter-flexible upgrade: LOW — not verified.
+- Standard stack: HIGH - SDK API and versions verified against the published package; repo deps read directly.
+- Architecture / token design: HIGH - SHA-256+pepper vs bcrypt is well-established; the auth seam and role model were read in source.
+- Tool→endpoint mapping: HIGH - every endpoint and its current role gate was read directly (file:line cited).
+- Pitfalls (CSRF, under-gated writes, channel-awareness, zod skew): HIGH - each confirmed in source.
+- Rate-limiter-flexible upgrade: LOW - not verified.
 
 **Research date:** 2026-10-04
-**Valid until:** ~2026-11-03 for the MCP SDK (fast-moving — re-check `registerTool`/transport before building); ~2026-12 for the repo facts (stable).
+**Valid until:** ~2026-11-03 for the MCP SDK (fast-moving - re-check `registerTool`/transport before building); ~2026-12 for the repo facts (stable).

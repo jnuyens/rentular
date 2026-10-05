@@ -7,7 +7,7 @@ wave_0_complete: false
 created: 2026-10-04
 ---
 
-# Phase 11 — Validation Strategy
+# Phase 11 - Validation Strategy
 
 > Per-phase validation contract for feedback sampling during execution.
 
@@ -52,12 +52,12 @@ created: 2026-10-04
 
 ## Wave 0 Requirements
 
-- [ ] `apps/api/src/**/apiTokens*.test.ts` — token mint/hash/verify/revoke/expiry stubs (API-01)
-- [ ] `apps/api/src/**/authMiddleware*.test.ts` — Bearer accept/reject + CSRF-exempt stubs (API-02)
-- [ ] token-scope test — PAT request is still property/role scoped (API-02)
-- [ ] write-guard test — manager+ enforcement on record-payment + send-reminder (MCP-03)
+- [ ] `apps/api/src/**/apiTokens*.test.ts` - token mint/hash/verify/revoke/expiry stubs (API-01)
+- [ ] `apps/api/src/**/authMiddleware*.test.ts` - Bearer accept/reject + CSRF-exempt stubs (API-02)
+- [ ] token-scope test - PAT request is still property/role scoped (API-02)
+- [ ] write-guard test - manager+ enforcement on record-payment + send-reminder (MCP-03)
 - [ ] `apps/api/src/services/__tests__/reminderChannel.test.ts` + `manualReminder.test.ts`: preferred-channel dispatch with email fallback, channel recorded (MCP-03, T-11-22)
-- [ ] MCP tool test harness — tools call the API with a PAT and stay scoped (MCP-01/02/03)
+- [ ] MCP tool test harness - tools call the API with a PAT and stay scoped (MCP-01/02/03)
 
 *Existing vitest infrastructure covers framework install; only new test files are needed.*
 
