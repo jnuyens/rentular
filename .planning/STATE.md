@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_execute
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-10-05T04:03:03.113Z"
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-10-05T04:17:54.366Z"
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 51
-  completed_plans: 47
-  percent: 91
+  completed_plans: 48
+  percent: 94
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 Phase: 11 (mcp-server-external-api-access) — EXECUTING
 Next: /bm:execute-phase 11
-Plan: 4 of 7
+Plan: 5 of 7
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Plan: 4 of 7
 | Phase 11 P01 | 16min | 3 tasks | 10 files |
 | Phase 11 P02 | 6min | 3 tasks | 6 files |
 | Phase 11 P03 | 12min | 3 tasks | 6 files |
+| Phase 11 P04 | 7min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 11]: record-payment and send-reminder hardened to manager+ via the mark-month-paid gate (getUserPropertyRole + hasMinimumRole); send-reminder keeps the access check so writeGuards can distinguish not-accessible from accessible-manager
 - [Phase ?]: [Phase 11]: one shared reminderChannel.sendReminderViaPreferredChannel dispatch used by both the 19:15 worker and the manual send-reminder path; channel used is recorded in payment_reminders, email is the fallback
 - [Phase ?]: [Phase 11]: added dueDate to the formal SMS templates (all 4 locales) to resolve the 11-01 advisory without weakening reminderChannel.test.ts
+- [Phase 11]: 11-04: Bearer PAT branch is exclusive and fail-closed at the top of authMiddleware; a non-rtl or unresolved Bearer sets userId null and returns before any cookie read
+- [Phase 11]: 11-04: CSRF exemption is rtl_-only (narrower than the auth branch); requireWriteScope applied at prefix and prefix/* blocks read PATs on writes while cookie sessions pass
+- [Phase 11]: 11-04: redactAuditArgs keeps exact sensitive field names (value masked) but masks compound keys embedding a sensitive word, so audit rows leak no token material or field-name context
 
 ### Pending Todos
 
@@ -197,6 +201,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T04:02:56.587Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-10-05T04:17:53.558Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
