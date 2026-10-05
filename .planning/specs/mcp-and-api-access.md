@@ -1,6 +1,6 @@
 # Decision: MCP server & external API access
 
-*Status: Proposed · 2026-10-04 · Owner: Jasper*
+*Status: Accepted (Phase 11: PAT + stdio MCP built; remote + OpenAPI deferred) · 2026-10-04 · Owner: Jasper*
 
 ## Context
 
