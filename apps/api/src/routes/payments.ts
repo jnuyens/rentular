@@ -980,6 +980,12 @@ paymentsRouter.post(
     if (!accessible.includes(leaseRow[0].propertyId)) {
       return c.json({ error: "Forbidden" }, 403);
     }
+    // T-11-04 / CONTEXT: writes require manager+. Sending a reminder is a write,
+    // so a viewer or accountant with property access must still be refused.
+    const role = await getUserPropertyRole(userId, leaseRow[0].propertyId);
+    if (!role || !hasMinimumRole(role, "manager")) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
 
     try {
       const result = await sendManualReminder({ leaseId, periodMonth: month, level, ownerId: userId });
