@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_execute
 stopped_at: Completed 11-04-PLAN.md
-last_updated: "2026-10-05T04:17:54.366Z"
+last_updated: "2026-10-05T04:23:31.654Z"
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 51
   completed_plans: 48
-  percent: 94
+  percent: 91
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 Phase: 11 (mcp-server-external-api-access) — EXECUTING
 Next: /bm:execute-phase 11
-Plan: 5 of 7
+Plan: 6 of 7
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Plan: 5 of 7
 | Phase 11 P02 | 6min | 3 tasks | 6 files |
 | Phase 11 P03 | 12min | 3 tasks | 6 files |
 | Phase 11 P04 | 7min | 3 tasks | 5 files |
+| Phase 11 P5 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,7 @@ Recent decisions affecting current work:
 - [Phase 11]: 11-04: Bearer PAT branch is exclusive and fail-closed at the top of authMiddleware; a non-rtl or unresolved Bearer sets userId null and returns before any cookie read
 - [Phase 11]: 11-04: CSRF exemption is rtl_-only (narrower than the auth branch); requireWriteScope applied at prefix and prefix/* blocks read PATs on writes while cookie sessions pass
 - [Phase 11]: 11-04: redactAuditArgs keeps exact sensitive field names (value masked) but masks compound keys embedding a sensitive word, so audit rows leak no token material or field-name context
+- [Phase ?]: [Phase 11]: 11-05 Settings API-tokens UI keeps the plaintext rtl_ token only in React newToken state (show-once dialog, cleared on close), scope defaults to read, revoke needs a naming confirmation; 34 keys added across en/nl/fr/de
 
 ### Pending Todos
 
@@ -201,6 +203,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T04:17:53.558Z
+Last session: 2026-10-05T04:23:14.379Z
 Stopped at: Completed 11-04-PLAN.md
 Resume file: None
