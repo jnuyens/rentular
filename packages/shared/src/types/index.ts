@@ -94,6 +94,21 @@ export type EpcScore = "A++" | "A+" | "A" | "B" | "C" | "D" | "E" | "F" | "G";
 // Property manager roles
 export type PropertyManagerRole = "owner" | "co_owner" | "manager" | "accountant" | "viewer";
 
+// API token contracts (external API access).
+// tokenHash is deliberately absent from this public shape and must never be
+// serialized to clients: only the one-way SHA-256 hash is stored server-side,
+// the plaintext token is shown once at creation and never again (T-11-01).
+export type ApiTokenScope = "read" | "write";
+export const API_TOKEN_PREFIX = "rtl_";
+export interface ApiTokenPublic {
+  id: string;
+  name: string;
+  scope: ApiTokenScope;
+  createdAt: string; // ISO
+  expiresAt: string | null; // ISO or null = no expiry
+  lastUsedAt: string | null; // ISO or null = never used
+}
+
 // Bank account
 export interface BankAccount {
   id: string;
