@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { SmsSettingsCard } from "@/components/SmsSettingsCard";
+import { ApiTokensCard } from "@/components/ApiTokensCard";
 import IbanInput, { BicSelect, BankNameSelect } from "@/components/IbanInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -791,12 +792,13 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="follow-up" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 mb-6">
           <TabsTrigger value="follow-up">{t("paymentFollowUp")}</TabsTrigger>
           <TabsTrigger value="landlord-reports">{t("landlordReports")}</TabsTrigger>
           <TabsTrigger value="bank-accounts">{t("bankAccounts")}</TabsTrigger>
           <TabsTrigger value="gocardless">{t("goCardless")}</TabsTrigger>
           <TabsTrigger value="profile">{t("profileTab")}</TabsTrigger>
+          <TabsTrigger value="api-tokens">{t("apiTokensTab")}</TabsTrigger>
         </TabsList>
 
         {/* Payment Follow-up Tab */}
@@ -1341,6 +1343,11 @@ export default function SettingsPage() {
         {/* Profile Tab */}
         <TabsContent value="profile">
           <ProfileTab apiUrl={apiUrl} />
+        </TabsContent>
+
+        {/* API Tokens Tab */}
+        <TabsContent value="api-tokens">
+          <ApiTokensCard apiUrl={apiUrl} />
         </TabsContent>
       </Tabs>
     </div>
