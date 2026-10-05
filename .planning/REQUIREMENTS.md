@@ -238,9 +238,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BANK-I18N | Phase 9: PSD2 Bank Connection Flow | Pending |
 | BANK-TOS | Phase 9: PSD2 Bank Connection Flow | Pending |
 | BANK-RETENTION | Phase 9: PSD2 Bank Connection Flow | Pending |
-| API-01 | Phase 11: MCP Server & External API Access | Pending |
+| API-01 | Phase 11: MCP Server & External API Access | Complete |
 | API-02 | Phase 11: MCP Server & External API Access | Pending |
-| API-03 | Phase 11: MCP Server & External API Access | Pending |
+| API-03 | Phase 11: MCP Server & External API Access | Complete |
 | MCP-01 | Phase 11: MCP Server & External API Access | Pending |
 | MCP-02 | Phase 11: MCP Server & External API Access | Pending |
 | MCP-03 | Phase 11: MCP Server & External API Access | Pending |

@@ -248,7 +248,7 @@ Plans:
 
 Plans:
 - [x] 11-01-PLAN.md -- Shared token contracts, Hono context typing, Wave 0 red tests for the API side
-- [ ] 11-02-PLAN.md -- api_tokens + api_tool_calls schema, SHA-256+pepper token service, owner-scoped /api-tokens routes
+- [x] 11-02-PLAN.md -- api_tokens + api_tool_calls schema, SHA-256+pepper token service, owner-scoped /api-tokens routes
 - [ ] 11-03-PLAN.md -- Harden ledger record-payment and payments send-reminder to manager+
 - [ ] 11-04-PLAN.md -- Fail-closed Bearer branch, CSRF exemption, requireWriteScope, per-token rate limit, audit log, index.ts wiring
 - [ ] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings

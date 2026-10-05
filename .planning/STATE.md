@@ -4,13 +4,13 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_execute
 stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-10-05T03:43:37.944Z"
+last_updated: "2026-10-05T03:53:05.474Z"
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 51
-  completed_plans: 45
-  percent: 88
+  completed_plans: 46
+  percent: 90
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 Phase: 11 (mcp-server-external-api-access) — EXECUTING
 Next: /bm:execute-phase 11
-Plan: 2 of 7
+Plan: 3 of 7
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Plan: 2 of 7
 | Phase 10 P04 | 2min | 2 tasks | 2 files |
 | Phase 10 P05 | 4min | 3 tasks | 6 files |
 | Phase 11 P01 | 16min | 3 tasks | 10 files |
+| Phase 11 P02 | 6min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 10]: prod DB passwords required via VAR-colon-question form (no default fallbacks/literals); api+web secrets via env_file /opt/rentular/.env (root:600); web NEXT_PUBLIC_API_URL baked via compose build.args
 - [Phase 11]: Wave 0 RED tests load not-yet-existing modules via non-literal import specifiers so tsc --noEmit stays green while tests fail at runtime
 - [Phase 11]: 11-01 is RED-only; API-01/02/03 and MCP-03 are tested but not implemented, so requirements stay unmarked until Plans 02/03/04
+- [Phase ?]: [Phase 11]: Dedicated API_TOKEN_PEPPER env var (not HKDF from AUTH_SECRET) so the PAT pepper rotates independently of session encryption
+- [Phase ?]: [Phase 11]: Peppered SHA-256 over 256-bit random tokens (no bcrypt) for O(1) indexed Bearer lookup plus timingSafeEqual compare
+- [Phase ?]: [Phase 11]: /api-tokens router is session-only (403 when tokenId set) and re-projects to ApiTokenPublic so a leaked PAT cannot manage tokens and the stored hash never leaks
 
 ### Pending Todos
 
@@ -189,6 +193,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T03:41:34.385Z
+Last session: 2026-10-05T03:53:05.460Z
 Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
