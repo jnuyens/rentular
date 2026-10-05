@@ -244,4 +244,13 @@ Plans:
   3. A standalone MCP server exposes read tools (properties, leases, tenants, payment overview, ledger, indexation status) scoped to the token's accessible properties
   4. The MCP server exposes guarded write tools (mark rent paid, send reminder, record ledger payment, apply indexation) that require manager+ and are logged
   5. The design decision (`specs/mcp-and-api-access.md`) is reflected: standalone server, stdio first, remote (Streamable HTTP + OAuth) documented as the follow-on
-**Plans**: TBD (to be produced by /bm:plan-phase)
+**Plans**: 7 plans
+
+Plans:
+- [ ] 11-01-PLAN.md -- Shared token contracts, Hono context typing, Wave 0 red tests for the API side
+- [ ] 11-02-PLAN.md -- api_tokens + api_tool_calls schema, SHA-256+pepper token service, owner-scoped /api-tokens routes
+- [ ] 11-03-PLAN.md -- Harden ledger record-payment and payments send-reminder to manager+
+- [ ] 11-04-PLAN.md -- Fail-closed Bearer branch, CSRF exemption, requireWriteScope, per-token rate limit, audit log, index.ts wiring
+- [ ] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings
+- [ ] 11-06-PLAN.md -- Standalone stdio MCP server package: 7 read + 4 write tools, README with remote/OpenAPI follow-on
+- [ ] 11-07-PLAN.md -- [BLOCKING] Drizzle migration generation + human-run apply on m1 with API_TOKEN_PEPPER

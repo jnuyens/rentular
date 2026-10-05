@@ -1,7 +1,7 @@
 ---
 phase: 11
 slug: mcp-server-external-api-access
-status: draft
+status: planned
 nyquist_compliant: false
 wave_0_complete: false
 created: 2026-10-04
