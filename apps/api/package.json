@@ -17,7 +17,7 @@
     "@panva/hkdf": "^1.2.1",
     "@rentular/db": "workspace:*",
     "@rentular/shared": "workspace:*",
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.25.0",
     "drizzle-orm": "^0.36.0",
     "gocardless-nodejs": "^4.2.0",
@@ -34,7 +34,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@types/bcrypt": "^5.0.0",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^22.0.0",
     "@types/nodemailer": "^6.4.0",
     "msw": "^2.6.0",
