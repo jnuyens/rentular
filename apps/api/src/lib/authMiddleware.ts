@@ -102,7 +102,7 @@ export async function authMiddleware(c: Context, next: Next) {
   // Bearer header is treated as a Personal Access Token attempt and resolved (or
   // rejected) here; it never falls through to the cookie path below. This keeps a
   // malformed or foreign Bearer from silently acquiring a cookie session, and
-  // keeps the cookie flow untouched for header-less requests (RESEARCH Pattern 2).
+  // keeps the cookie flow untouched for header-less requests.
   const authz = c.req.header("Authorization");
   if (typeof authz === "string" && authz.startsWith("Bearer ")) {
     const raw = authz.slice(7).trim();
