@@ -30,6 +30,7 @@ import { importRouter } from "./routes/import";
 import { landlordActionsRouter } from "./routes/landlordActions";
 import { smsRouter } from "./routes/sms";
 import { ledgerRouter } from "./routes/ledger";
+import { apiTokensRouter } from "./routes/apiTokens";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
@@ -40,7 +41,9 @@ import { smsQueue } from "./jobs/smsQueueWorker";
 import { importDiscoveryQueue } from "./jobs/importDiscoveryWorker";
 import { importWriteQueue } from "./jobs/importWriteWorker";
 import { authMiddleware } from "./lib/authMiddleware";
-import { requireAuth } from "./lib/routeAuth";
+import { requireAuth, requireWriteScope } from "./lib/routeAuth";
+import { shouldSkipCsrf } from "./lib/csrfPolicy";
+import { bearerRateLimit, bearerAuditLog } from "./lib/apiTokenGuards";
 
 const app = new Hono().basePath("/api/v1");
 
@@ -69,6 +72,7 @@ const protectedPrefixes = [
   "/import",
   "/ledger",
   "/sms",
+  "/api-tokens",
 ];
 
 // Middleware
@@ -91,15 +95,18 @@ app.use(
   })
 );
 // CSRF protection for all state-changing requests (per D-01)
-// Skip webhook endpoints -- they use signature verification instead
+// Webhooks use provider signature verification instead, and Bearer PATs are not
+// cookie credentials, so both are exempt (see shouldSkipCsrf).
 app.use("*", async (c, next) => {
-  const path = c.req.path;
-  if (path.includes("/webhooks/") || path.includes("/stripe/webhook")) {
-    return next();
-  }
+  if (shouldSkipCsrf(c)) return next();
   return csrf({ origin: (origin) => allowedOrigins.includes(origin) })(c, next);
 });
 app.use("*", authMiddleware);
+// Rate limit before audit so a flood is rejected without flooding the audit
+// table; audit then wraps everything after it, including 401s from requireAuth,
+// so denied PAT calls are still recorded.
+app.use("*", bearerRateLimit);
+app.use("*", bearerAuditLog);
 for (const prefix of protectedPrefixes) {
   app.use(prefix, requireAuth);
   app.use(`${prefix}/*`, async (c, next) => {
@@ -110,6 +117,10 @@ for (const prefix of protectedPrefixes) {
     if (c.req.path.endsWith("/bank-connections/callback")) return next();
     return requireAuth(c, next);
   });
+  // A read-scoped PAT gets 403 on any state-changing method under a protected
+  // prefix; cookie sessions (tokenScope null) and write PATs are unaffected.
+  app.use(prefix, requireWriteScope);
+  app.use(`${prefix}/*`, requireWriteScope);
 }
 app.use("/support/chat", requireAuth);
 app.use("/support/chat/*", requireAuth);
@@ -175,6 +186,7 @@ app.route("/import", importRouter);
 app.route("/landlord-action", landlordActionsRouter);
 app.route("/sms", smsRouter);
 app.route("/ledger", ledgerRouter);
+app.route("/api-tokens", apiTokensRouter);
 
 // Start background job schedules
 setupPaymentCheckSchedule().catch((err) =>
