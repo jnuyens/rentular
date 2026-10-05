@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 7: UI Polish, Onboarding & Launch Readiness** - Responsive dashboard, visual consistency, guided setup wizard, and full i18n coverage
 - [ ] **Phase 8: GoCardless Settings UI & SEPA Mandate Management** - GoCardless configuration tab, mandate management page, payment method on leases, onboarding integration
 - [x] **Phase 9: PSD2 Bank Connection Flow (Ponto Connect, Customer-Paying)** - Ponto Connect provider, OAuth flow, bank_statements audit table, Bank Connections dashboard, locale-aware renewal emails, TOS + Privacy disclosures, retention cron (09-05 Tasks 1-4 done; awaiting human-verify checkpoint) (completed 2026-06-30)
-- [ ] **Phase 11: MCP Server & External API Access** - Personal Access Tokens for machine auth (reusing per-property role checks), a standalone MCP server exposing scoped read + guarded write tools to Claude/agents, and the path to remote (Streamable HTTP + OAuth) access. See `specs/mcp-and-api-access.md`.
+- [x] **Phase 11: MCP Server & External API Access** - Personal Access Tokens for machine auth (reusing per-property role checks), a standalone MCP server exposing scoped read + guarded write tools to Claude/agents, and the path to remote (Streamable HTTP + OAuth) access. See `specs/mcp-and-api-access.md`. (completed 2026-10-05)
 
 ## Phase Details
 
@@ -253,4 +253,4 @@ Plans:
 - [x] 11-04-PLAN.md -- Fail-closed Bearer branch, CSRF exemption, requireWriteScope, per-token rate limit, audit log, index.ts wiring
 - [x] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings
 - [x] 11-06-PLAN.md -- Standalone stdio MCP server package: 7 read + 4 write tools, README with remote/OpenAPI follow-on
-- [ ] 11-07-PLAN.md -- [BLOCKING] Drizzle migration generation + human-run apply on m1 with API_TOKEN_PEPPER
+- [x] 11-07-PLAN.md -- [BLOCKING] Drizzle migration generation + human-run apply on m1 with API_TOKEN_PEPPER
