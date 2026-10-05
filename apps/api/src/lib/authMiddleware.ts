@@ -5,6 +5,7 @@ import { hkdf } from "@panva/hkdf";
 import { eq } from "drizzle-orm";
 import { getDb, users } from "@rentular/db";
 import { notifyNewUserSignup } from "./adminNotify";
+import { hashToken, findActiveTokenByHash, touchLastUsed } from "./apiTokens";
 
 const AUTH_SECRET = process.env.AUTH_SECRET || "";
 const COOKIE_NAME = "__Secure-authjs.session-token";
@@ -97,6 +98,51 @@ async function ensureUser(payload: JWTPayload): Promise<string> {
 
 // Hono middleware: extract user from NextAuth JWT cookie
 export async function authMiddleware(c: Context, next: Next) {
+  // Exclusive, fail-closed Bearer branch. Any request carrying an Authorization:
+  // Bearer header is treated as a Personal Access Token attempt and resolved (or
+  // rejected) here; it never falls through to the cookie path below. This keeps a
+  // malformed or foreign Bearer from silently acquiring a cookie session, and
+  // keeps the cookie flow untouched for header-less requests (RESEARCH Pattern 2).
+  const authz = c.req.header("Authorization");
+  if (typeof authz === "string" && authz.startsWith("Bearer ")) {
+    const raw = authz.slice(7).trim();
+    try {
+      if (raw.startsWith("rtl_")) {
+        const row = await findActiveTokenByHash(hashToken(raw));
+        if (row) {
+          c.set("userId", row.userId);
+          c.set("tokenScope", row.scope);
+          c.set("tokenId", row.id);
+          c.set("userEmail", null);
+          c.set("userName", null);
+          // Fire-and-forget: a throttled timestamp write must never block or fail
+          // the request, and its errors are swallowed inside the service.
+          touchLastUsed(row.id).catch(() => {});
+          return next();
+        }
+      }
+      // No row, or a non-rtl Bearer: reject without reading cookies.
+      c.set("userId", null);
+      c.set("tokenScope", null);
+      c.set("tokenId", null);
+    } catch (err) {
+      // Never log the token or its hash (T-11-09); only a generic message plus
+      // the error text (e.g. a missing pepper).
+      console.error(
+        "[Auth] Bearer token rejected",
+        err instanceof Error ? err.message : "",
+      );
+      c.set("userId", null);
+      c.set("tokenScope", null);
+      c.set("tokenId", null);
+    }
+    return next();
+  }
+
+  // No Bearer header: cookie sessions carry no token scope.
+  c.set("tokenScope", null);
+  c.set("tokenId", null);
+
   const secureCookie = getCookie(c, COOKIE_NAME);
   const plainCookie = getCookie(c, "authjs.session-token");
   const token = secureCookie || plainCookie;
