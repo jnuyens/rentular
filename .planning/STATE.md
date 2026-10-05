@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 status: ready_to_execute
 stopped_at: Completed 11-04-PLAN.md
-last_updated: "2026-10-05T04:23:31.654Z"
+last_updated: "2026-10-05T04:34:35.045Z"
 progress:
   total_phases: 11
   completed_phases: 10
   total_plans: 51
-  completed_plans: 48
+  completed_plans: 50
   percent: 91
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 Phase: 11 (mcp-server-external-api-access) — EXECUTING
 Next: /bm:execute-phase 11
-Plan: 6 of 7
+Plan: 7 of 7
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Plan: 6 of 7
 | Phase 11 P03 | 12min | 3 tasks | 6 files |
 | Phase 11 P04 | 7min | 3 tasks | 5 files |
 | Phase 11 P5 | 4min | 2 tasks | 6 files |
+| Phase 11 P06 | 5min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ Recent decisions affecting current work:
 - [Phase 11]: 11-04: CSRF exemption is rtl_-only (narrower than the auth branch); requireWriteScope applied at prefix and prefix/* blocks read PATs on writes while cookie sessions pass
 - [Phase 11]: 11-04: redactAuditArgs keeps exact sensitive field names (value masked) but masks compound keys embedding a sensitive word, so audit rows leak no token material or field-name context
 - [Phase ?]: [Phase 11]: 11-05 Settings API-tokens UI keeps the plaintext rtl_ token only in React newToken state (show-once dialog, cleared on close), scope defaults to read, revoke needs a naming confirmation; 34 keys added across en/nl/fr/de
+- [Phase 11]: 11-06 MCP server is a standalone ESM package (apps/mcp-server) holding a PAT and calling the HTTP API; 7 read + 4 write tools, Bearer rtl_ + X-Rentular-Tool, transport confined to index.ts so remote/OpenAPI stay a clean follow-on
 
 ### Pending Todos
 
@@ -203,6 +205,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T04:23:14.379Z
+Last session: 2026-10-05T04:32:52.902Z
 Stopped at: Completed 11-04-PLAN.md
 Resume file: None

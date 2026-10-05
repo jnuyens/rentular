@@ -251,6 +251,6 @@ Plans:
 - [x] 11-02-PLAN.md -- api_tokens + api_tool_calls schema, SHA-256+pepper token service, owner-scoped /api-tokens routes
 - [x] 11-03-PLAN.md -- Harden ledger record-payment and payments send-reminder to manager+
 - [x] 11-04-PLAN.md -- Fail-closed Bearer branch, CSRF exemption, requireWriteScope, per-token rate limit, audit log, index.ts wiring
-- [ ] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings
-- [ ] 11-06-PLAN.md -- Standalone stdio MCP server package: 7 read + 4 write tools, README with remote/OpenAPI follow-on
+- [x] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings
+- [x] 11-06-PLAN.md -- Standalone stdio MCP server package: 7 read + 4 write tools, README with remote/OpenAPI follow-on
 - [ ] 11-07-PLAN.md -- [BLOCKING] Drizzle migration generation + human-run apply on m1 with API_TOKEN_PEPPER

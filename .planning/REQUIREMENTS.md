@@ -241,8 +241,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-01 | Phase 11: MCP Server & External API Access | Complete |
 | API-02 | Phase 11: MCP Server & External API Access | Complete |
 | API-03 | Phase 11: MCP Server & External API Access | Complete |
-| MCP-01 | Phase 11: MCP Server & External API Access | Pending |
-| MCP-02 | Phase 11: MCP Server & External API Access | Pending |
+| MCP-01 | Phase 11: MCP Server & External API Access | Complete |
+| MCP-02 | Phase 11: MCP Server & External API Access | Complete |
 | MCP-03 | Phase 11: MCP Server & External API Access | Complete |
 
 **Phase 11 requirement family (MCP & API access):**
