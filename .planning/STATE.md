@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_execute
-stopped_at: Planned Phase 11 (7 plans, 5 waves)
-last_updated: "2026-10-05T00:00:00.000Z"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-10-05T03:43:37.944Z"
 progress:
   total_phases: 11
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 51
-  completed_plans: 43
-  percent: 84
+  completed_plans: 45
+  percent: 88
 ---
 
 # Project State
@@ -20,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Landlords can automatically collect rent via SEPA direct debit and track all their properties in one affordable, multilingual platform.
-**Current focus:** Phase 11, mcp-server-external-api-access
+**Current focus:** Phase 11 — mcp-server-external-api-access
 
 ## Current Position
 
-Phase: 11 (mcp-server-external-api-access), PLANNED (7 plans, 5 waves)
+Phase: 11 (mcp-server-external-api-access) — EXECUTING
 Next: /bm:execute-phase 11
-Plan: 0 of 7
+Plan: 2 of 7
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Plan: 0 of 7
 | Phase 10 P03 | 6min | 2 tasks | 6 files |
 | Phase 10 P04 | 2min | 2 tasks | 2 files |
 | Phase 10 P05 | 4min | 3 tasks | 6 files |
+| Phase 11 P01 | 16min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 10]: NEXT_PUBLIC_API_URL baked as a Docker build ARG (ENV before next build) in apps/web/Dockerfile; runtime injection is ignored by the compiled browser bundle
 - [Phase ?]: [Phase 10]: docker-compose.prod.yml publishes every port on 127.0.0.1 loopback only (host nginx sole ingress); mariadb/redis loopback-published so deploy.sh host-shell bootstrap reaches DB at 127.0.0.1:3306 while off the public interface
 - [Phase ?]: [Phase 10]: prod DB passwords required via VAR-colon-question form (no default fallbacks/literals); api+web secrets via env_file /opt/rentular/.env (root:600); web NEXT_PUBLIC_API_URL baked via compose build.args
+- [Phase 11]: Wave 0 RED tests load not-yet-existing modules via non-literal import specifiers so tsc --noEmit stays green while tests fail at runtime
+- [Phase 11]: 11-01 is RED-only; API-01/02/03 and MCP-03 are tested but not implemented, so requirements stay unmarked until Plans 02/03/04
 
 ### Pending Todos
 
@@ -186,6 +189,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-07-01T01:11:35.650Z
+Last session: 2026-10-05T03:41:34.385Z
 Stopped at: Completed 10-01-PLAN.md
 Resume file: .planning/phases/10-deploy-to-hetzner-m1-production-deployment/10-01-PLAN.md
