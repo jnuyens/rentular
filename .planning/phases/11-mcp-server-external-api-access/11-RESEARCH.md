@@ -468,18 +468,21 @@ Only the decisions that avoid painting us into a corner:
 | A3 | `payment_overview` should map to `/payments/dashboard` rather than `/payments/overview` | Tool→Endpoint Map | Low — CONTEXT says "(dashboard)"; both endpoints exist, easy to switch |
 | A4 | Deriving the pepper from `AUTH_SECRET` via HKDF is acceptable vs a separate `API_TOKEN_PEPPER` | Pattern 1 | Low — either is secure; a dedicated env is cleaner for rotation |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is `send_reminder` email-only acceptable for v1, or must it honour the tenant's preferred channel?**
    - What we know: `sendManualReminder` hard-codes `channel: "email"` (manualReminder.ts:184); channel routing exists only in the automated worker path.
    - What's unclear: whether "channel-aware" in CONTEXT is a hard v1 requirement.
    - Recommendation: ship email-only with an explicit tool description, and file channel-awareness as follow-on, unless the user insists.
+   - Resolved: send_reminder is channel-aware now via Plan 03 Task 3 (shared sendReminderViaPreferredChannel extracted from the worker, email fallback); user decision 2026-10-05.
 
 2. **Where does the pepper live, and how is it set on m1?**
    - What we know: the API does not load `.env` itself in prod (MEMORY: env injected via PM2/compose); `authSecret.ts` already fails closed on a weak `AUTH_SECRET`.
    - Recommendation: add `API_TOKEN_PEPPER` to the m1 process env and fail closed if unset; or derive via HKDF from `AUTH_SECRET` to avoid a new secret entirely (A4).
+   - Resolved: dedicated `API_TOKEN_PEPPER` env, fail closed when unset or short (Plan 02).
 
 3. **Token expiry default?** CONTEXT requires an `expiry` column but not a default. Recommendation: allow "no expiry" (null) with an optional user-chosen expiry in the Settings UI; show `lastUsedAt` so stale tokens are easy to spot and revoke.
+   - Resolved: nullable expiry, no expiry by default, optional user-chosen expiresInDays (Plan 02).
 
 ## Environment Availability
 

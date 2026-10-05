@@ -2,7 +2,7 @@
 phase: 11
 slug: mcp-server-external-api-access
 status: planned
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-10-04
 ---
@@ -42,6 +42,7 @@ created: 2026-10-04
 | 11-02-xx | 02 | 2 | API-02 | T-11-02 | `Bearer rtl_…` resolves to same userId as cookie; expired/revoked rejected (401); CSRF exempts Bearer | unit | `pnpm --filter @rentular/api test authMiddleware` | ❌ W0 | ⬜ pending |
 | 11-02-xx | 02 | 2 | API-02 | T-11-03 | PAT request still passes `getAccessiblePropertyIds` scope + role checks (cross-landlord denied) | unit | `pnpm --filter @rentular/api test tokenScope` | ❌ W0 | ⬜ pending |
 | 11-03-xx | 03 | 2 | MCP-03 | T-11-04 | record-payment + send-reminder hardened to manager+ (viewer → 403) | unit | `pnpm --filter @rentular/api test writeGuards` | ❌ W0 | ⬜ pending |
+| 11-03-03 | 03 | 2 | MCP-03 | T-11-22 | send-reminder honors `tenants.preferred_channel`: sms → queueSms, whatsapp → sendWhatsApp, email or unavailable channel → email; channel used recorded in payment_reminders | unit | `pnpm --filter @rentular/api test reminderChannel manualReminder` | ❌ W0 | ⬜ pending |
 | 11-04-xx | 04 | 3 | MCP-01/02/03 | T-11-05 | MCP tools scope to accessible properties; write tools require manager+; calls logged | unit | `pnpm --filter @rentular/api test mcpTools` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -55,6 +56,7 @@ created: 2026-10-04
 - [ ] `apps/api/src/**/authMiddleware*.test.ts` — Bearer accept/reject + CSRF-exempt stubs (API-02)
 - [ ] token-scope test — PAT request is still property/role scoped (API-02)
 - [ ] write-guard test — manager+ enforcement on record-payment + send-reminder (MCP-03)
+- [ ] `apps/api/src/services/__tests__/reminderChannel.test.ts` + `manualReminder.test.ts`: preferred-channel dispatch with email fallback, channel recorded (MCP-03, T-11-22)
 - [ ] MCP tool test harness — tools call the API with a PAT and stay scoped (MCP-01/02/03)
 
 *Existing vitest infrastructure covers framework install; only new test files are needed.*
@@ -72,11 +74,11 @@ created: 2026-10-04
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-10-05
