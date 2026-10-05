@@ -23,7 +23,7 @@ export interface ApiClient {
 // A tool definition decoupled from the MCP transport. index.ts registers each
 // of these against the SDK server; the handler receives validated args plus the
 // shared ApiClient. inputSchema is a zod RAW SHAPE (a plain object of
-// validators), never z.object(...), as the SDK requires.
+// validators), not a wrapped object, as the SDK requires.
 export interface ToolDef<Shape extends ZodRawShape = ZodRawShape> {
   name: string;
   description: string;
