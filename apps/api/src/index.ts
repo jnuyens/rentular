@@ -122,10 +122,13 @@ for (const prefix of protectedPrefixes) {
   app.use(prefix, requireWriteScope);
   app.use(`${prefix}/*`, requireWriteScope);
 }
-app.use("/support/chat", requireAuth);
-app.use("/support/chat/*", requireAuth);
-app.use("/stripe/checkout", requireAuth);
-app.use("/stripe/subscription", requireAuth);
+// These write endpoints live outside protectedPrefixes but still change state,
+// so a read-scoped PAT must get 403 here too (cookie sessions, tokenScope null,
+// pass unchanged; GET subscription is a no-op for requireWriteScope).
+app.use("/support/chat", requireAuth, requireWriteScope);
+app.use("/support/chat/*", requireAuth, requireWriteScope);
+app.use("/stripe/checkout", requireAuth, requireWriteScope);
+app.use("/stripe/subscription", requireAuth, requireWriteScope);
 
 // Health check -- verifies DB + Redis connectivity (per D-12, not SMTP)
 app.get("/health", async (c) => {
