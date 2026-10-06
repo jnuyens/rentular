@@ -21,7 +21,9 @@ export const readTools: ToolDef[] = [
       "Get one property by its property id. Returns 404 (surfaced as an error) if the property is not among those the token can access.",
     inputSchema: { propertyId: z.string().min(1) },
     handler: async (args, api) =>
-      textResult(await api.get(`/properties/${args.propertyId}`, "get_property")),
+      textResult(
+        await api.get(`/properties/${encodeURIComponent(args.propertyId)}`, "get_property"),
+      ),
   },
   {
     name: "list_leases",
@@ -55,7 +57,7 @@ export const readTools: ToolDef[] = [
     },
     handler: async (args, api) =>
       textResult(
-        await api.get(`/ledger/${args.leaseId}`, "lease_ledger", {
+        await api.get(`/ledger/${encodeURIComponent(args.leaseId)}`, "lease_ledger", {
           months: args.months,
         }),
       ),
@@ -67,7 +69,10 @@ export const readTools: ToolDef[] = [
     inputSchema: { leaseId: z.string().min(1) },
     handler: async (args, api) =>
       textResult(
-        await api.get(`/indexation/calculate/${args.leaseId}`, "indexation_status"),
+        await api.get(
+          `/indexation/calculate/${encodeURIComponent(args.leaseId)}`,
+          "indexation_status",
+        ),
       ),
   },
 ];

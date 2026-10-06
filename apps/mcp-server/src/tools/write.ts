@@ -77,12 +77,17 @@ export const writeTools: ToolDef[] = [
       date: dateShape.optional(),
     },
     handler: async (args, api) =>
-      postWrite(api, `/ledger/${args.leaseId}/record-payment`, "record_ledger_payment", {
-        periodMonth: args.periodMonth,
-        amount: args.amount,
-        method: args.method,
-        date: args.date,
-      }),
+      postWrite(
+        api,
+        `/ledger/${encodeURIComponent(args.leaseId)}/record-payment`,
+        "record_ledger_payment",
+        {
+          periodMonth: args.periodMonth,
+          amount: args.amount,
+          method: args.method,
+          date: args.date,
+        },
+      ),
   },
   {
     name: "apply_indexation",
@@ -96,7 +101,7 @@ export const writeTools: ToolDef[] = [
       sendNotification: z.boolean().default(true),
     },
     handler: async (args, api) =>
-      postWrite(api, `/indexation/apply/${args.leaseId}`, "apply_indexation", {
+      postWrite(api, `/indexation/apply/${encodeURIComponent(args.leaseId)}`, "apply_indexation", {
         newRent: args.newRent,
         subject: args.subject,
         body: args.body,
