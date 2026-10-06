@@ -254,3 +254,21 @@ Plans:
 - [x] 11-05-PLAN.md -- Settings API tokens tab (create show-once, scope, expiry, revoke) with EN/NL/FR/DE strings
 - [x] 11-06-PLAN.md -- Standalone stdio MCP server package: 7 read + 4 write tools, README with remote/OpenAPI follow-on
 - [x] 11-07-PLAN.md -- [BLOCKING] Drizzle migration generation + human-run apply on m1 with API_TOKEN_PEPPER
+
+## Backlog
+
+### Phase 999.1: Smovin import scraper hardening (Beta follow-on) (BACKLOG)
+
+**Goal:** Fix the three deferred data-quality issues from the resolved `smovin-import-write-failure` debug session so Smovin import produces accurate, complete data.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Deferred items (see `.planning/debug/resolved/smovin-import-write-failure.md`):
+- **Issue 3 (payments never imported):** the discovery worker explicitly skips payment scraping, so the payments array is always empty. Needs new scraping logic plus a mapping decision against `expectedPayments.ts`.
+- **Issue 1 (wrong rent amounts):** rent scraping falls back to the largest euro amount on the page instead of the labeled contract rent.
+- **Issue 5 (wrong/missing lease start dates):** start-date scraping fails and falls back to today, which also drives the identical-indexation-date symptom and weakens the `propertyId + startDate` lease dedup across import days.
+
+Issues 1 and 5 are regex-over-page-text heuristics that do not match Smovin's real DOM; fixing them properly requires a real Smovin login with saved contract-page HTML (NL + FR) and known-correct values. No selectors should be guessed blind.
+
+Plans:
+- [ ] TBD (promote with /bm:review-backlog when ready)
