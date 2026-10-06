@@ -126,7 +126,7 @@ describe("bearerAuditLog (T-11-05)", () => {
     return app;
   }
 
-  it("records the tool from X-Rentular-Tool with redacted args and status ok", async () => {
+  it("records the real METHOD PATH and appends the X-Rentular-Tool hint, with redacted args and status ok", async () => {
     const app = await buildAuditApp({ tokenId: "tok-1" });
     const res = await app.request("/payments/mark-month-paid", {
       method: "POST",
@@ -136,7 +136,7 @@ describe("bearerAuditLog (T-11-05)", () => {
     expect(res.status).toBe(201);
     expect(inserted).toHaveLength(1);
     const row = inserted[0]!;
-    expect(row.tool).toBe("mark_rent_paid");
+    expect(row.tool).toBe("POST /payments/mark-month-paid (mark_rent_paid)");
     expect(row.userId).toBe("user-A");
     expect(row.tokenId).toBe("tok-1");
     expect(row.status).toBe("ok");

@@ -101,15 +101,23 @@ export function redactAuditArgs(input: unknown, depth = 0): unknown {
   return input;
 }
 
-// Sanitize the optional client-supplied tool name: lowercase, [a-z0-9_] only,
-// max 80 chars. Falls back to "METHOD path" when the header is absent.
+// Build the audit log's authoritative action label. The real request
+// "METHOD path" is always present and is server-derived, so it cannot be
+// spoofed by the caller. The client-supplied X-Rentular-Tool header is only
+// ever appended as a claimed label (never a replacement): when present and
+// non-empty after sanitization (lowercase, [a-z0-9_] only), it is added in
+// parentheses. The whole string is capped at 80 chars to fit the tool column
+// (varchar(80)), keeping the authoritative prefix first.
 function resolveTool(c: Context): string {
+  const real = `${c.req.method} ${c.req.path}`;
   const header = c.req.header("X-Rentular-Tool");
   if (header) {
     const cleaned = header.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 80);
-    if (cleaned.length > 0) return cleaned;
+    if (cleaned.length > 0) {
+      return `${real} (${cleaned})`.slice(0, 80);
+    }
   }
-  return `${c.req.method} ${c.req.path}`;
+  return real.slice(0, 80);
 }
 
 // Records one api_tool_calls row per Bearer request, including denied ones, so a
