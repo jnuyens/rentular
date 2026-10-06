@@ -116,8 +116,9 @@ export async function authMiddleware(c: Context, next: Next) {
           c.set("userEmail", null);
           c.set("userName", null);
           // Fire-and-forget: a throttled timestamp write must never block or fail
-          // the request, and its errors are swallowed inside the service.
-          touchLastUsed(row.id).catch(() => {});
+          // the request. touchLastUsed swallows its own errors and never rejects,
+          // so no local .catch is needed here.
+          void touchLastUsed(row.id);
           return next();
         }
       }
