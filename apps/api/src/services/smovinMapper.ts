@@ -18,7 +18,9 @@ export interface SmovinTenant {
   lastName: string;
   email?: string;
   phone?: string;
-  language?: string; // Smovin UI locale (nl, fr, en) — used as tenant language hint
+  // Landlord's Smovin UI locale (nl, fr, en, de) detected from the URL. Smovin does
+  // not expose a per-tenant language, so this is only a hint, not the tenant's own choice.
+  language?: string;
 }
 
 export interface SmovinLease {
@@ -341,9 +343,15 @@ export function mapSmovinProperty(
 
 /**
  * Map a Smovin UI locale string to a Rentular language enum value.
- * Falls back to "nl" for Belgian imports when no language hint is available.
+ *
+ * Smovin does not expose a per-tenant language. The discovery worker passes the
+ * landlord's Smovin UI locale (detected from the URL) as a hint, which is the best
+ * signal available. When there is no hint, or the hint is not a supported language,
+ * fall back to "nl" (the most common case for Belgian imports). Either way the
+ * choice is recorded in the tenant notes (see mapSmovinTenant) so the landlord can
+ * see it was inferred and correct it.
  */
-function mapTenantLanguage(
+export function mapTenantLanguage(
   langHint?: string,
 ): "nl" | "fr" | "de" | "en" {
   if (!langHint) return "nl";
@@ -352,7 +360,7 @@ function mapTenantLanguage(
   if (normalized === "de") return "de";
   if (normalized === "en") return "en";
   if (normalized === "nl") return "nl";
-  return "nl"; // Default for Belgian imports
+  return "nl"; // Unsupported hint: default for Belgian imports
 }
 
 export function mapSmovinTenant(
@@ -371,6 +379,11 @@ export function mapSmovinTenant(
   createdAt: Date;
   updatedAt: Date;
 } {
+  const language = mapTenantLanguage(smovinTenant.language);
+  // Make the inferred language visible to the landlord instead of silently guessing.
+  const languageNote = smovinTenant.language
+    ? `language "${language}" taken from your Smovin UI locale`
+    : `language defaulted to "${language}"`;
   return {
     id: crypto.randomUUID(),
     ownerId,
@@ -378,8 +391,8 @@ export function mapSmovinTenant(
     lastName: smovinTenant.lastName,
     email: smovinTenant.email || null,
     phone: smovinTenant.phone || null,
-    language: mapTenantLanguage(smovinTenant.language),
-    notes: "Imported from Smovin",
+    language,
+    notes: `Imported from Smovin (${languageNote}, please verify with the tenant)`,
     isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
