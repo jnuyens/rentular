@@ -11,7 +11,9 @@ import type { Context } from "hono";
 // must not gain a CSRF skip.
 export function shouldSkipCsrf(c: Context): boolean {
   const path = c.req.path;
-  if (path.includes("/webhooks/") || path.includes("/stripe/webhook")) {
+  // Anchored prefix match (not substring): a future nested route that merely
+  // contains "/webhooks/" or "/stripe/webhook" must not inherit the CSRF skip.
+  if (path.startsWith("/api/v1/webhooks/") || path.startsWith("/api/v1/stripe/webhook")) {
     return true;
   }
   return c.req.header("Authorization")?.startsWith("Bearer rtl_") ?? false;
