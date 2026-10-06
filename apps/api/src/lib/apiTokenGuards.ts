@@ -86,11 +86,17 @@ export function redactAuditArgs(input: unknown, depth = 0): unknown {
 
   if (input !== null && typeof input === "object") {
     const out: Record<string, unknown> = {};
+    let redactedCount = 0;
     for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
       if (SENSITIVE_KEY_EXACT.test(key)) {
         out[key] = "[redacted]";
       } else if (SENSITIVE_KEY.test(key)) {
-        out["[redacted]"] = "[redacted]";
+        // Compound key that merely embeds a sensitive word: mask both the name
+        // (so it cannot leak embedded context) and the value. Use a per-object
+        // counter for a collision-free placeholder, so two distinct such keys
+        // produce two distinct entries instead of overwriting one another.
+        redactedCount += 1;
+        out[`[redacted:${redactedCount}]`] = "[redacted]";
       } else {
         out[key] = redactAuditArgs(value, depth + 1);
       }
