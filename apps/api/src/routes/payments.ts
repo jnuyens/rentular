@@ -11,7 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, DEPOSIT_NOTE, isDepositNote } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, isDepositNote, keepDepositMarker } from "../services/expectedPayments";
 import { sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
@@ -649,7 +649,7 @@ paymentsRouter.post(
       .update(payments)
       .set({
         method: data.method,
-        ...(data.notes ? { notes: data.notes } : {}),
+        ...(data.notes ? { notes: keepDepositMarker(payment.notes, data.notes) } : {}),
         updatedAt: new Date(),
       })
       .where(eq(payments.id, payment.id));

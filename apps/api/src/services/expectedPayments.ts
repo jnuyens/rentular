@@ -17,6 +17,18 @@ export function isDepositNote(notes: string | null | undefined): boolean {
 
 /** SQL `like` / `notLike` pattern matching any deposit note. */
 export const depositNoteLike = `${DEPOSIT_NOTE}%`;
+
+/**
+ * Notes to store when a payment's notes are replaced. A deposit keeps its
+ * DEPOSIT_NOTE prefix, so editing its notes never turns it into rent.
+ */
+export function keepDepositMarker(
+  existingNotes: string | null | undefined,
+  newNotes: string
+): string {
+  if (!isDepositNote(existingNotes) || isDepositNote(newNotes)) return newNotes;
+  return `${DEPOSIT_NOTE}\n${newNotes}`;
+}
 const RENT_NOTE = "auto-generated expected payment";
 
 /**

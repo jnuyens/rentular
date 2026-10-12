@@ -57,6 +57,7 @@ vi.mock("../../services/expectedPayments", () => ({
   isDepositNote: (notes: string | null | undefined) =>
     notes != null && notes.startsWith("deposit"),
   depositNoteLike: "deposit%",
+  keepDepositMarker: (_existing: string | null | undefined, notes: string) => notes,
 }));
 
 let leaseRows: unknown[] = [{ id: "lease-1", propertyId: "prop-1" }];
