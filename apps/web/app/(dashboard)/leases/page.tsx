@@ -83,6 +83,7 @@ interface Lease {
   tenantIds?: string[];
   indexationEnabled?: boolean;
   landlordLateNotify?: boolean;
+  priorPaymentsSettled?: boolean;
   paymentMethod?: string;
   gocardlessMandateId?: string;
 }
@@ -136,6 +137,7 @@ export default function LeasesPage() {
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [landlordLateNotify, setLandlordLateNotify] = useState(true);
+  const [priorPaymentsSettled, setPriorPaymentsSettled] = useState(true);
   const [baseRent, setBaseRent] = useState("");
   const [baseIndex, setBaseIndex] = useState("");
   const [baseIndexLoading, setBaseIndexLoading] = useState(false);
@@ -147,6 +149,11 @@ export default function LeasesPage() {
   const [signingDateState, setSigningDateState] = useState("");
   const [startDateState, setStartDateState] = useState("");
   const refMonth = computeRefMonth(regionState, signingDateState, startDateState);
+  // A contract that started before today: ask whether the deposit and earlier
+  // rent were already paid. Today is built from local date parts.
+  const nowLocal = new Date();
+  const todayLocal = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, "0")}-${String(nowLocal.getDate()).padStart(2, "0")}`;
+  const startInPast = !!startDateState && startDateState.slice(0, 10) < todayLocal;
   // Live "possible rent" preview computed by the backend from the form inputs.
   const [preview, setPreview] = useState<{
     newRent: number;
@@ -333,6 +340,7 @@ export default function LeasesPage() {
     setRegionState(editingLease?.region ?? "flanders");
     setSigningDateState(editingLease?.signingDate ?? "");
     setStartDateState(editingLease?.startDate ?? "");
+    setPriorPaymentsSettled(editingLease?.priorPaymentsSettled !== false);
     setBaseIndex(editingLease?.indexationBaseIndex ?? "");
     setLastIndexationDateState(editingLease?.lastIndexationDate ?? "");
     setPaymentDayState(
@@ -493,6 +501,7 @@ export default function LeasesPage() {
       tenantIds: selectedTenants,
       indexationEnabled,
       landlordLateNotify,
+      priorPaymentsSettled,
       baseRent,
       indexationBaseMonth: refMonth,
       indexationBaseIndex: baseIndex,
@@ -1141,6 +1150,31 @@ export default function LeasesPage() {
                 <p className="mt-1 text-xs text-muted-foreground">{t("depositHelp")}</p>
               </div>
             </div>
+            {/* Older contract: deposit and earlier payments already made */}
+            {startInPast && (
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-input px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium">{t("priorPaymentsSettled")}</p>
+                  <p className="text-xs text-muted-foreground">{t("priorPaymentsSettledHelp")}</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={priorPaymentsSettled}
+                  aria-label={t("priorPaymentsSettled")}
+                  onClick={() => setPriorPaymentsSettled(!priorPaymentsSettled)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                    priorPaymentsSettled ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      priorPaymentsSettled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
             {/* Payment Method */}
             <div className="space-y-2">
               <Label>{t("paymentMethod")}</Label>

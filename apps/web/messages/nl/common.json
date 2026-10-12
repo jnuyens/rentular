@@ -291,7 +291,9 @@
     "paymentDayHelp": "Dag van de maand waarop de huur verwacht wordt. Bepaalt het schema van verwachte betalingen.",
     "deposit": "Waarborg",
     "depositHelp": "Huurwaarborg. Standaard 2x de maandhuur; pas aan indien nodig.",
-    "depositTwoMonths": "Zet op 2x de maandhuur"
+    "depositTwoMonths": "Zet op 2x de maandhuur",
+    "priorPaymentsSettled": "Waarborg en eerdere betalingen al voldaan",
+    "priorPaymentsSettledHelp": "Dit contract is gestart voor u het hier toevoegde. Laat dit aan staan als de waarborg en de huur tot nu al betaald zijn, zodat niets van vroeger als openstaand wordt beschouwd."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -1292,6 +1294,15 @@
     "markPaidCash": "Betaald in cash",
     "markPaidTransfer": "Betaald via overschrijving",
     "markPaidOther": "Betaald (andere rekening)",
-    "markedPaid": "Geregistreerd als betaald"
+    "markedPaid": "Geregistreerd als betaald",
+    "addReduction": "Vermindering toevoegen",
+    "reductionAmount": "Bedrag",
+    "reductionReason": "Reden",
+    "reductionPreset": "Vermindering onroerende voorheffing",
+    "reductionLine": "Vermindering: -{amount} ({reason})",
+    "reductionSaved": "Vermindering toegevoegd",
+    "reductionRemoved": "Vermindering verwijderd",
+    "saveReduction": "Opslaan",
+    "rentFree": "Huurvrije periode"
   }
 }

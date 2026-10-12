@@ -291,7 +291,9 @@
     "paymentDayHelp": "Jour du mois ou le loyer est attendu. Determine le calendrier des paiements attendus.",
     "deposit": "Garantie locative",
     "depositHelp": "Garantie locative. Par defaut 2x le loyer mensuel; ajustez si necessaire.",
-    "depositTwoMonths": "Mettre a 2x le loyer mensuel"
+    "depositTwoMonths": "Mettre a 2x le loyer mensuel",
+    "priorPaymentsSettled": "Garantie et paiements antérieurs déjà réglés",
+    "priorPaymentsSettledHelp": "Ce contrat a commencé avant son ajout ici. Laissez cette option activée si la garantie et les loyers jusqu'à présent ont déjà été payés, pour que rien d'antérieur ne soit considéré comme ouvert."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -1292,6 +1294,15 @@
     "markPaidCash": "Paye en especes",
     "markPaidTransfer": "Paye par virement",
     "markPaidOther": "Paye (autre compte)",
-    "markedPaid": "Enregistre comme paye"
+    "markedPaid": "Enregistre comme paye",
+    "addReduction": "Ajouter une réduction",
+    "reductionAmount": "Montant",
+    "reductionReason": "Motif",
+    "reductionPreset": "Réduction du précompte immobilier",
+    "reductionLine": "Réduction : -{amount} ({reason})",
+    "reductionSaved": "Réduction ajoutée",
+    "reductionRemoved": "Réduction supprimée",
+    "saveReduction": "Enregistrer",
+    "rentFree": "Période de gratuité"
   }
 }

@@ -124,9 +124,15 @@ export async function ensureExpectedPayments(
     created++;
   }
 
-  // Deposit / warranty (waarborg): one pending payment due at contract start.
+  // Deposit / warranty (waarborg): one payment due at contract start.
   // Idempotent by the deposit marker. Deposits are excluded from the tenant
   // reminder worker, so a past-due deposit does not trigger dunning emails.
+  // An older contract (start date before the day the lease was added here)
+  // gets its deposit created as already paid, dated at the start, unless the
+  // landlord said the earlier payments were not settled. Contracts starting
+  // today or later always get a pending deposit. Existing pending deposits are
+  // not touched here. The notes stay exactly DEPOSIT_NOTE: the reminder worker
+  // and the payments route compare them by equality.
   const deposit = Number(lease.deposit ?? 0) || 0;
   if (deposit > 0) {
     const existingDeposit = await db
@@ -138,10 +144,14 @@ export async function ensureExpectedPayments(
       .limit(1);
     if (existingDeposit.length === 0) {
       const depositDue = lease.startDate ? String(lease.startDate).slice(0, 10) : todayStr;
+      const createdDay = toYMD(lease.createdAt ? new Date(lease.createdAt) : new Date());
+      const olderContract = depositDue < createdDay;
+      const presumePaid = olderContract && lease.priorPaymentsSettled !== false;
       await db.insert(payments).values({
         id: crypto.randomUUID(),
         leaseId: lease.id,
-        status: "pending",
+        status: presumePaid ? "paid" : "pending",
+        paidDate: presumePaid ? depositDue : null,
         amount: String(deposit),
         dueDate: depositDue,
         method,

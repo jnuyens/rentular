@@ -291,7 +291,9 @@
     "paymentDayHelp": "Tag des Monats, an dem die Miete erwartet wird. Bestimmt den Zeitplan der erwarteten Zahlungen.",
     "deposit": "Kaution",
     "depositHelp": "Mietkaution. Standardmaessig 2x die Monatsmiete; bei Bedarf anpassen.",
-    "depositTwoMonths": "Auf 2x die Monatsmiete setzen"
+    "depositTwoMonths": "Auf 2x die Monatsmiete setzen",
+    "priorPaymentsSettled": "Kaution und frühere Zahlungen bereits geleistet",
+    "priorPaymentsSettledHelp": "Dieser Vertrag begann, bevor er hier angelegt wurde. Lassen Sie dies aktiviert, wenn die Kaution und die Miete bis heute bereits bezahlt wurden, damit nichts aus der Vergangenheit als offen gilt."
   },
   "indexation": {
     "title": "Mietindexierung",
@@ -1292,6 +1294,15 @@
     "markPaidCash": "Bar bezahlt",
     "markPaidTransfer": "Per Ueberweisung bezahlt",
     "markPaidOther": "Bezahlt (anderes Konto)",
-    "markedPaid": "Als bezahlt erfasst"
+    "markedPaid": "Als bezahlt erfasst",
+    "addReduction": "Ermäßigung hinzufügen",
+    "reductionAmount": "Betrag",
+    "reductionReason": "Grund",
+    "reductionPreset": "Ermäßigung Grundsteuer (onroerende voorheffing)",
+    "reductionLine": "Ermäßigung: -{amount} ({reason})",
+    "reductionSaved": "Ermäßigung hinzugefügt",
+    "reductionRemoved": "Ermäßigung entfernt",
+    "saveReduction": "Speichern",
+    "rentFree": "Mietfreie Zeit"
   }
 }

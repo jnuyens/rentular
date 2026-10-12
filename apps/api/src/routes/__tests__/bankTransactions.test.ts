@@ -22,6 +22,8 @@ const leases = { __t: "leases" };
 const leaseTenants = { __t: "lease_tenants" };
 const properties = { __t: "properties" };
 const tenants = { __t: "tenants" };
+const rentDeductions = { __t: "rent_deductions" };
+const rentFreePeriods = { __t: "rent_free_periods" };
 
 interface State {
   statement: Record<string, unknown>;
@@ -112,6 +114,8 @@ vi.mock("@rentular/db", () => ({
   leaseTenants,
   properties,
   tenants,
+  rentDeductions,
+  rentFreePeriods,
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -215,6 +219,27 @@ describe("bankTransactions router — reconciliation actions", () => {
     expect(
       state.statementUpdates.some((u) => u.matchStatus === "matched"),
     ).toBe(true);
+  });
+
+  it("assign: records a separate paid payment when the amount fits no pending payment", async () => {
+    state.statement = freshStatement({ amount: "200.00" });
+    const app = await buildApp("owner-1");
+    const res = await app.request("/bank-transactions/stmt-1/assign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leaseId: "lease-1" }),
+    });
+    expect(res.status).toBe(200);
+    // The pending 500 rent stays open; the 200 transfer becomes its own payment.
+    expect(state.paymentUpdates).toHaveLength(0);
+    expect(state.paymentInserts).toHaveLength(1);
+    expect(state.paymentInserts[0]).toMatchObject({
+      leaseId: "lease-1",
+      status: "paid",
+      amount: "200.00",
+    });
+    expect(String(state.paymentInserts[0].notes)).toContain("the pending rent stays open");
+    expect(state.statement.matchStatus).toBe("matched");
   });
 
   it("undo: reverts a matched statement + payment back to pending/unmatched", async () => {

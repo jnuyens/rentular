@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { ArrowLeft, Wand2, X, Plus, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Wand2, X, Plus, Minus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,11 @@ interface Allocation {
 interface Period {
   month: string;
   dueDate: string;
+  periodEnd: string;
   rentDue: number;
+  grossRentDue: number;
+  deductions: Array<{ id: string; amount: number; reason: string }>;
+  rentFree: boolean;
   allocated: number;
   balance: number;
   status: "paid" | "partial" | "open" | "overpaid";
@@ -83,6 +87,7 @@ export default function LedgerPage() {
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null); // period month
+  const [reducing, setReducing] = useState<string | null>(null); // period month
 
   const load = useCallback(async () => {
     try {
@@ -183,6 +188,56 @@ export default function LedgerPage() {
     }
   };
 
+  const addDeduction = async (period: Period, amount: number, reason: string) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/rent-adjustments/deductions`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leaseId,
+          type: "temporary",
+          amount,
+          startDate: period.dueDate,
+          endDate: period.periodEnd,
+          reason,
+        }),
+      });
+      if (res.status === 201) {
+        toast.success(t("reductionSaved"));
+        setReducing(null);
+        await load();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const err = typeof body.error === "string" ? body.error : t("loadError");
+        toast.error(err);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeDeduction = async (deductionId: string) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/rent-adjustments/deductions/${deductionId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        toast.success(t("reductionRemoved"));
+        await load();
+      } else {
+        const body = await res.json().catch(() => ({}));
+        const err = typeof body.error === "string" ? body.error : t("loadError");
+        toast.error(err);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const availablePayments = (data?.payments ?? []).filter(
     (p) => p.status === "paid" && p.unallocated > 0.005,
   );
@@ -253,6 +308,9 @@ export default function LedgerPage() {
                         <p className="font-medium capitalize">{monthLabel(p.month)}</p>
                         <p className="text-xs text-muted-foreground">
                           {t("due")} {formatDate(p.dueDate)} &middot; {t("rentDue")}{" "}
+                          {Math.abs(p.grossRentDue - p.rentDue) > 0.005 && (
+                            <span className="mr-1 line-through">{eur(p.grossRentDue)}</span>
+                          )}
                           {eur(p.rentDue)}
                         </p>
                       </div>
@@ -298,6 +356,34 @@ export default function LedgerPage() {
                       </div>
                     )}
 
+                    {/* Rent reductions and rent-free period */}
+                    {(p.deductions.length > 0 || p.rentFree) && (
+                      <div className="mt-2 space-y-1">
+                        {p.rentFree && (
+                          <div className="rounded bg-muted/50 px-2 py-1 text-xs text-muted-foreground">
+                            {t("rentFree")}
+                          </div>
+                        )}
+                        {p.deductions.map((d) => (
+                          <div
+                            key={d.id}
+                            className="flex items-center justify-between rounded bg-muted/50 px-2 py-1 text-xs"
+                          >
+                            <span>{t("reductionLine", { amount: eur(d.amount), reason: d.reason })}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeDeduction(d.id)}
+                              disabled={busy}
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label={t("remove")}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Assign control */}
                     {p.balance > 0.005 && (
                       <div className="mt-2">
@@ -332,6 +418,29 @@ export default function LedgerPage() {
                         )}
                       </div>
                     )}
+
+                    {/* Add a rent reduction for this period */}
+                    <div className="mt-2">
+                      {reducing === p.month ? (
+                        <ReductionPanel
+                          busy={busy}
+                          t={t}
+                          onCancel={() => setReducing(null)}
+                          onSave={(amount, reason) => addDeduction(p, amount, reason)}
+                        />
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setReducing(p.month)}
+                          disabled={busy}
+                        >
+                          <Minus className="mr-1 h-3.5 w-3.5" />
+                          {t("addReduction")}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -549,6 +658,60 @@ function AssignPanel({
           {t("cancel")}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ReductionPanel({
+  busy,
+  t,
+  onSave,
+  onCancel,
+}: {
+  busy: boolean;
+  t: ReturnType<typeof useTranslations>;
+  onSave: (amount: number, reason: string) => void;
+  onCancel: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const valid = Number(amount) > 0 && reason.trim().length > 0;
+
+  return (
+    <div className="space-y-2 rounded-lg border bg-muted/30 p-3">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="w-28">
+          <label className="mb-1 block text-xs text-muted-foreground">{t("reductionAmount")}</label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        <div className="min-w-[200px] flex-1">
+          <label className="mb-1 block text-xs text-muted-foreground">{t("reductionReason")}</label>
+          <Input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />
+        </div>
+        <Button
+          size="sm"
+          disabled={busy || !valid}
+          onClick={() => onSave(Number(amount), reason.trim())}
+        >
+          {t("saveReduction")}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
+          {t("cancel")}
+        </Button>
+      </div>
+      <button
+        type="button"
+        onClick={() => setReason(t("reductionPreset"))}
+        className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
+      >
+        {t("reductionPreset")}
+      </button>
     </div>
   );
 }

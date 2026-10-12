@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, inArray, isNotNull } from "drizzle-orm";
-import { getDb, leases, leaseTenants, properties, propertyManagers } from "@rentular/db";
+import { getDb, leases, leaseTenants, payments, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
-import { ensureExpectedPayments } from "../services/expectedPayments";
+import { ensureExpectedPayments, DEPOSIT_NOTE } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -51,6 +51,7 @@ const createLeaseSchema = z.object({
   status: z.enum(["active", "draft", "terminated", "expired"]).optional().default("active"),
   indexationEnabled: z.boolean().optional().default(true),
   landlordLateNotify: z.boolean().optional().default(true),
+  priorPaymentsSettled: z.boolean().optional().default(true),
   paymentDay: z.number().int().min(1).max(28).optional().default(1),
 });
 
@@ -170,6 +171,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     // Student leases are never indexed (see indexation route).
     indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
     landlordLateNotify: data.landlordLateNotify,
+    priorPaymentsSettled: data.priorPaymentsSettled,
     paymentDay: data.paymentDay,
   });
 
@@ -241,6 +243,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.landlordLateNotify !== undefined) updates.landlordLateNotify = data.landlordLateNotify;
+  if (data.priorPaymentsSettled !== undefined) updates.priorPaymentsSettled = data.priorPaymentsSettled;
   if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
 
   // Student leases are never indexed, whatever the request asked for.
@@ -250,6 +253,27 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (Object.keys(updates).length > 0) {
     await db.update(leases).set(updates)
       .where(eq(leases.id, id));
+  }
+
+  // Earlier payments now confirmed as settled on an older contract: close the
+  // still-pending auto-generated deposit, dated at the contract start. The
+  // reverse (true -> false) leaves payments alone; the landlord can edit the
+  // deposit payment by hand.
+  if (data.priorPaymentsSettled === true && existing[0].priorPaymentsSettled === false) {
+    const startDay = String(data.startDate ?? existing[0].startDate ?? "").slice(0, 10);
+    const created = existing[0].createdAt ? new Date(existing[0].createdAt) : new Date();
+    const createdDay = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
+    if (startDay && startDay < createdDay) {
+      await db.update(payments)
+        .set({ status: "paid", paidDate: startDay, updatedAt: new Date() })
+        .where(
+          and(
+            eq(payments.leaseId, id),
+            eq(payments.notes, DEPOSIT_NOTE),
+            eq(payments.status, "pending"),
+          ),
+        );
+    }
   }
 
   // Update tenant associations if provided
