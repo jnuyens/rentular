@@ -5,6 +5,7 @@ import {
   DEPOSIT_NOTE,
   depositNoteLike,
   isDepositNote,
+  keepDepositMarker,
 } from "../expectedPayments";
 
 const APPENDED_DEPOSIT_NOTE = `${DEPOSIT_NOTE}\nAuto-assigned by IBAN match`;
@@ -95,6 +96,30 @@ describe("computeExpectedDueDates", () => {
     // Nov 10 already passed -> next upcoming is Dec 10 2026, then Jan 10 2027.
     const dates = computeExpectedDueDates(10, undefined, today, 2);
     expect(dates).toEqual(["2026-12-10", "2027-01-10"]);
+  });
+});
+
+describe("keepDepositMarker", () => {
+  it("prefixes the marker when a deposit's notes are replaced by free text", () => {
+    expect(keepDepositMarker(DEPOSIT_NOTE, "paid in cash")).toBe(`${DEPOSIT_NOTE}\npaid in cash`);
+    expect(keepDepositMarker(APPENDED_DEPOSIT_NOTE, "paid in cash")).toBe(
+      `${DEPOSIT_NOTE}\npaid in cash`,
+    );
+  });
+
+  it("keeps new notes that already start with the marker", () => {
+    expect(keepDepositMarker(DEPOSIT_NOTE, APPENDED_DEPOSIT_NOTE)).toBe(APPENDED_DEPOSIT_NOTE);
+  });
+
+  it("leaves notes of a non-deposit payment untouched", () => {
+    expect(keepDepositMarker("auto-generated expected payment", "paid in cash")).toBe(
+      "paid in cash",
+    );
+    expect(keepDepositMarker(null, "paid in cash")).toBe("paid in cash");
+  });
+
+  it("never turns a deposit into rent", () => {
+    expect(isDepositNote(keepDepositMarker(DEPOSIT_NOTE, "rent september"))).toBe(true);
   });
 });
 
