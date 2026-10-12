@@ -325,7 +325,7 @@ function generateLatePaymentPdf(
     "--------------------",
     `TOTAL AMOUNT OWED: EUR ${totalOwed.toFixed(2)}`,
     "",
-    "Please settle this amount immediately to avoid further action."
+    "If you have already paid or something is not right, please contact your landlord. Otherwise, please settle this amount as soon as you can."
   );
 
   // TODO: Replace with proper PDF generation (pdfkit, puppeteer, etc.)

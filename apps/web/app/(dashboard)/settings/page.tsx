@@ -95,10 +95,10 @@ Kind regards,
 {{ownerName}}`,
     },
     final: {
-      subject: "Final notice: overdue rent payment",
+      subject: "Third reminder: rent payment for {{propertyName}}",
       body: `Dear {{tenantName}},
 
-Despite previous reminders, we have not received your rent payment for {{propertyName}}.
+This is our third reminder about the rent for {{propertyName}}. We have not seen the payment yet.
 
 Amount due: {{amount}}
 Due date: {{dueDate}}
@@ -107,11 +107,11 @@ Interest charges: {{interestAmount}}
 Administrative fee: {{adminFee}}
 Total amount owed: {{totalOwed}}
 
-Please find attached a detailed overview of the outstanding amount.
+Attached is an overview of the outstanding amount.
 
-We urge you to settle this amount immediately. Failure to do so may result in further legal action.
+If you have already paid, or if something is not right, please get in touch with {{ownerName}} so we can sort it out together. Otherwise, please settle the amount as soon as you can.
 
-Regards,
+Kind regards,
 {{ownerName}}`,
     },
   },
@@ -139,10 +139,10 @@ Met vriendelijke groeten,
 {{ownerName}}`,
     },
     final: {
-      subject: "Laatste aanmaning: achterstallige huurbetaling",
+      subject: "Derde herinnering: huurbetaling voor {{propertyName}}",
       body: `Beste {{tenantName}},
 
-Ondanks eerdere herinneringen hebben wij uw huurbetaling voor {{propertyName}} nog niet ontvangen.
+Dit is onze derde herinnering voor de huur van {{propertyName}}. We hebben de betaling nog niet gezien.
 
 Verschuldigd bedrag: {{amount}}
 Vervaldatum: {{dueDate}}
@@ -151,9 +151,9 @@ Intrestkosten: {{interestAmount}}
 Administratieve kost: {{adminFee}}
 Totaal verschuldigd: {{totalOwed}}
 
-In bijlage vindt u een gedetailleerd overzicht van het openstaande bedrag.
+In bijlage vindt u een overzicht van het openstaande bedrag.
 
-Wij verzoeken u dringend dit bedrag onmiddellijk te voldoen. Bij gebrek aan betaling kunnen verdere juridische stappen ondernomen worden.
+Hebt u al betaald, of klopt er iets niet? Neem dan contact op met {{ownerName}}, dan bekijken we het samen. Anders vragen we u het bedrag zo snel mogelijk te betalen.
 
 Met vriendelijke groeten,
 {{ownerName}}`,
@@ -183,10 +183,10 @@ Cordialement,
 {{ownerName}}`,
     },
     final: {
-      subject: "Dernier avis : loyer impaye",
+      subject: "Troisieme rappel : paiement du loyer pour {{propertyName}}",
       body: `Cher/Chere {{tenantName}},
 
-Malgre nos rappels precedents, nous n'avons pas recu votre paiement de loyer pour {{propertyName}}.
+Ceci est notre troisieme rappel concernant le loyer de {{propertyName}}. Nous n'avons pas encore vu le paiement.
 
 Montant du : {{amount}}
 Date d'echeance : {{dueDate}}
@@ -195,9 +195,9 @@ Interets de retard : {{interestAmount}}
 Frais administratifs : {{adminFee}}
 Montant total du : {{totalOwed}}
 
-Vous trouverez ci-joint un apercu detaille du montant impaye.
+Vous trouverez ci-joint un apercu du montant impaye.
 
-Nous vous prions instamment de regler ce montant immediatement. A defaut, des actions juridiques pourront etre engagees.
+Si vous avez deja paye, ou si quelque chose ne va pas, contactez {{ownerName}} pour que nous puissions regler cela ensemble. Sinon, merci de regler le montant des que possible.
 
 Cordialement,
 {{ownerName}}`,
@@ -227,10 +227,10 @@ Mit freundlichen Gruessen,
 {{ownerName}}`,
     },
     final: {
-      subject: "Letzte Mahnung: ueberfaellige Mietzahlung",
+      subject: "Dritte Erinnerung: Mietzahlung fuer {{propertyName}}",
       body: `Sehr geehrte(r) {{tenantName}},
 
-trotz vorheriger Erinnerungen haben wir Ihre Mietzahlung fuer {{propertyName}} nicht erhalten.
+dies ist unsere dritte Erinnerung zur Miete fuer {{propertyName}}. Die Zahlung ist bei uns noch nicht eingegangen.
 
 Faelliger Betrag: {{amount}}
 Faelligkeitsdatum: {{dueDate}}
@@ -239,9 +239,9 @@ Zinskosten: {{interestAmount}}
 Verwaltungsgebuehr: {{adminFee}}
 Gesamtbetrag faellig: {{totalOwed}}
 
-Im Anhang finden Sie eine detaillierte Uebersicht des ausstehenden Betrags.
+Im Anhang finden Sie eine Uebersicht des ausstehenden Betrags.
 
-Wir fordern Sie dringend auf, diesen Betrag unverzueglich zu begleichen. Andernfalls koennen weitere rechtliche Schritte eingeleitet werden.
+Falls Sie bereits bezahlt haben oder etwas nicht stimmt, melden Sie sich bitte bei {{ownerName}}, dann klaeren wir das gemeinsam. Andernfalls bitten wir Sie, den Betrag so bald wie moeglich zu begleichen.
 
 Mit freundlichen Gruessen,
 {{ownerName}}`,
