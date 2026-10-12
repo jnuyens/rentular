@@ -6,7 +6,7 @@ import {
   findCandidateLeasesByIban,
 } from "./tenantBankAccounts";
 import { assignStatementToLease } from "./reconciliationAssign";
-import { DEPOSIT_NOTE } from "./expectedPayments";
+import { isDepositNote } from "./expectedPayments";
 import type { PendingPayment } from "./paymentPicker";
 import { deductedAmount, loadLeaseDeductions } from "./rentDeductions";
 
@@ -35,7 +35,7 @@ async function expectedAmountsForLease(
     .from(payments)
     .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "pending")))
     .orderBy(asc(payments.dueDate))) as PendingPayment[];
-  const oldestRent = pending.find((p) => p.notes !== DEPOSIT_NOTE);
+  const oldestRent = pending.find((p) => !isDepositNote(p.notes));
   if (!oldestRent) return [Number(monthlyRent)];
   const raw = Number(oldestRent.amount);
   const deductions = await loadLeaseDeductions(db, leaseId);

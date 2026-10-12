@@ -1,10 +1,34 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, like } from "drizzle-orm";
 import { getDb, leases, payments } from "@rentular/db";
 
 type LeaseRow = typeof leases.$inferSelect;
 
 /** Marks an auto-generated deposit (waarborg) payment; excluded from reminders. */
 export const DEPOSIT_NOTE = "auto-generated deposit";
+
+/**
+ * Is this payment a deposit? Matches on the DEPOSIT_NOTE prefix because
+ * reconciliation appends lines to the notes (e.g. "Auto-assigned by ...")
+ * when a bank transfer is assigned to the deposit.
+ */
+export function isDepositNote(notes: string | null | undefined): boolean {
+  return notes != null && notes.startsWith(DEPOSIT_NOTE);
+}
+
+/** SQL `like` / `notLike` pattern matching any deposit note. */
+export const depositNoteLike = `${DEPOSIT_NOTE}%`;
+
+/**
+ * Notes to store when a payment's notes are replaced. A deposit keeps its
+ * DEPOSIT_NOTE prefix, so editing its notes never turns it into rent.
+ */
+export function keepDepositMarker(
+  existingNotes: string | null | undefined,
+  newNotes: string
+): string {
+  if (!isDepositNote(existingNotes) || isDepositNote(newNotes)) return newNotes;
+  return `${DEPOSIT_NOTE}\n${newNotes}`;
+}
 const RENT_NOTE = "auto-generated expected payment";
 
 /**
@@ -131,15 +155,15 @@ export async function ensureExpectedPayments(
   // gets its deposit created as already paid, dated at the start, unless the
   // landlord said the earlier payments were not settled. Contracts starting
   // today or later always get a pending deposit. Existing pending deposits are
-  // not touched here. The notes stay exactly DEPOSIT_NOTE: the reminder worker
-  // and the payments route compare them by equality.
+  // not touched here. The lookup matches the DEPOSIT_NOTE prefix because
+  // reconciliation and manual edits can append lines to a deposit's notes.
   const deposit = Number(lease.deposit ?? 0) || 0;
   if (deposit > 0) {
     const existingDeposit = await db
       .select({ id: payments.id })
       .from(payments)
       .where(
-        and(eq(payments.leaseId, lease.id), eq(payments.notes, DEPOSIT_NOTE))
+        and(eq(payments.leaseId, lease.id), like(payments.notes, depositNoteLike))
       )
       .limit(1);
     if (existingDeposit.length === 0) {
@@ -175,7 +199,7 @@ export function coversMonthRent(
   rent: number
 ): boolean {
   if (p.status !== "paid") return false;
-  if (p.notes === DEPOSIT_NOTE) return false; // a deposit is not the rent
+  if (isDepositNote(p.notes)) return false; // a deposit is not the rent
   const amt = Number(p.amount);
   // At least the rent (partials don't fully cover); allow over-/multi-month
   // payments, but not something as large as a typical 2x+ deposit-sized amount.

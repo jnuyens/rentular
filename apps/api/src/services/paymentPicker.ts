@@ -1,4 +1,4 @@
-import { DEPOSIT_NOTE } from "./expectedPayments";
+import { isDepositNote } from "./expectedPayments";
 import { deductedAmount, type DeductionRow } from "./rentDeductions";
 
 export type PendingPayment = {
@@ -9,7 +9,7 @@ export type PendingPayment = {
 };
 
 function isDeposit(p: PendingPayment): boolean {
-  return p.notes === DEPOSIT_NOTE;
+  return isDepositNote(p.notes);
 }
 
 /**

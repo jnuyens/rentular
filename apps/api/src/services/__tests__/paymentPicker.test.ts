@@ -73,6 +73,17 @@ describe("pickPaymentForTransfer", () => {
     expect(pickPaymentForTransfer(pending, 1200)?.id).toBe("dep");
   });
 
+  it("treats a deposit with an appended note as a deposit, not as rent", () => {
+    const dep: PendingPayment = {
+      id: "dep",
+      amount: "2000.00",
+      dueDate: "2026-03-01",
+      notes: `${DEPOSIT_NOTE}\nAuto-assigned by IBAN match`,
+    };
+    expect(pickPaymentForTransfer([dep], 2500)).toBeNull();
+    expect(pickPaymentForTransfer([dep, rent("oct", 1000, "2026-10-01")], 1200)?.id).toBe("oct");
+  });
+
   it("uses a one cent tolerance", () => {
     expect(pickPaymentForTransfer([rent("oct", 1140, "2026-10-01")], 1139.995)?.id).toBe("oct");
     expect(pickPaymentForTransfer([rent("oct", 1140, "2026-10-01")], 1139.98)).toBeNull();

@@ -1,5 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { computeExpectedDueDates, coversMonthRent, DEPOSIT_NOTE } from "../expectedPayments";
+import {
+  computeExpectedDueDates,
+  coversMonthRent,
+  DEPOSIT_NOTE,
+  depositNoteLike,
+  isDepositNote,
+  keepDepositMarker,
+} from "../expectedPayments";
+
+const APPENDED_DEPOSIT_NOTE = `${DEPOSIT_NOTE}\nAuto-assigned by IBAN match`;
+
+describe("isDepositNote", () => {
+  it("recognises the exact deposit marker", () => {
+    expect(isDepositNote(DEPOSIT_NOTE)).toBe(true);
+  });
+
+  it("recognises a deposit marker with an appended line", () => {
+    expect(isDepositNote(APPENDED_DEPOSIT_NOTE)).toBe(true);
+  });
+
+  it("is false for null or undefined notes", () => {
+    expect(isDepositNote(null)).toBe(false);
+    expect(isDepositNote(undefined)).toBe(false);
+  });
+
+  it("is false for rent notes", () => {
+    expect(isDepositNote("auto-generated expected payment")).toBe(false);
+    expect(isDepositNote("rent september")).toBe(false);
+  });
+
+  it("exposes a SQL like pattern matching the marker prefix", () => {
+    expect(depositNoteLike).toBe(`${DEPOSIT_NOTE}%`);
+  });
+});
 
 describe("computeExpectedDueDates", () => {
   it("returns only the next upcoming due date by default", () => {
@@ -66,6 +99,30 @@ describe("computeExpectedDueDates", () => {
   });
 });
 
+describe("keepDepositMarker", () => {
+  it("prefixes the marker when a deposit's notes are replaced by free text", () => {
+    expect(keepDepositMarker(DEPOSIT_NOTE, "paid in cash")).toBe(`${DEPOSIT_NOTE}\npaid in cash`);
+    expect(keepDepositMarker(APPENDED_DEPOSIT_NOTE, "paid in cash")).toBe(
+      `${DEPOSIT_NOTE}\npaid in cash`,
+    );
+  });
+
+  it("keeps new notes that already start with the marker", () => {
+    expect(keepDepositMarker(DEPOSIT_NOTE, APPENDED_DEPOSIT_NOTE)).toBe(APPENDED_DEPOSIT_NOTE);
+  });
+
+  it("leaves notes of a non-deposit payment untouched", () => {
+    expect(keepDepositMarker("auto-generated expected payment", "paid in cash")).toBe(
+      "paid in cash",
+    );
+    expect(keepDepositMarker(null, "paid in cash")).toBe("paid in cash");
+  });
+
+  it("never turns a deposit into rent", () => {
+    expect(isDepositNote(keepDepositMarker(DEPOSIT_NOTE, "rent september"))).toBe(true);
+  });
+});
+
 describe("coversMonthRent", () => {
   // A pending record marked paid keeps its period's due date (tagged to a month).
   const tagged = (
@@ -122,6 +179,16 @@ describe("coversMonthRent", () => {
   it("does not let a deposit payment cover the rent", () => {
     expect(
       coversMonthRent(tagged(2080, "2026-09-01", "2026-09-01", DEPOSIT_NOTE), "2026-09-01", 1040),
+    ).toBe(false);
+  });
+
+  it("does not let a deposit with an appended note cover the rent", () => {
+    expect(
+      coversMonthRent(
+        tagged(1040, "2026-09-01", "2026-09-01", APPENDED_DEPOSIT_NOTE),
+        "2026-09-01",
+        1040,
+      ),
     ).toBe(false);
   });
 
