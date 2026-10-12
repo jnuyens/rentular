@@ -1,5 +1,37 @@
 import { describe, it, expect } from "vitest";
-import { computeExpectedDueDates, coversMonthRent, DEPOSIT_NOTE } from "../expectedPayments";
+import {
+  computeExpectedDueDates,
+  coversMonthRent,
+  DEPOSIT_NOTE,
+  depositNoteLike,
+  isDepositNote,
+} from "../expectedPayments";
+
+const APPENDED_DEPOSIT_NOTE = `${DEPOSIT_NOTE}\nAuto-assigned by IBAN match`;
+
+describe("isDepositNote", () => {
+  it("recognises the exact deposit marker", () => {
+    expect(isDepositNote(DEPOSIT_NOTE)).toBe(true);
+  });
+
+  it("recognises a deposit marker with an appended line", () => {
+    expect(isDepositNote(APPENDED_DEPOSIT_NOTE)).toBe(true);
+  });
+
+  it("is false for null or undefined notes", () => {
+    expect(isDepositNote(null)).toBe(false);
+    expect(isDepositNote(undefined)).toBe(false);
+  });
+
+  it("is false for rent notes", () => {
+    expect(isDepositNote("auto-generated expected payment")).toBe(false);
+    expect(isDepositNote("rent september")).toBe(false);
+  });
+
+  it("exposes a SQL like pattern matching the marker prefix", () => {
+    expect(depositNoteLike).toBe(`${DEPOSIT_NOTE}%`);
+  });
+});
 
 describe("computeExpectedDueDates", () => {
   it("returns only the next upcoming due date by default", () => {
@@ -122,6 +154,16 @@ describe("coversMonthRent", () => {
   it("does not let a deposit payment cover the rent", () => {
     expect(
       coversMonthRent(tagged(2080, "2026-09-01", "2026-09-01", DEPOSIT_NOTE), "2026-09-01", 1040),
+    ).toBe(false);
+  });
+
+  it("does not let a deposit with an appended note cover the rent", () => {
+    expect(
+      coversMonthRent(
+        tagged(1040, "2026-09-01", "2026-09-01", APPENDED_DEPOSIT_NOTE),
+        "2026-09-01",
+        1040,
+      ),
     ).toBe(false);
   });
 
