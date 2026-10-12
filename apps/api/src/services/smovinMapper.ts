@@ -424,6 +424,7 @@ export function mapSmovinLease(
   monthlyCharges: string;
   paymentDay: number;
   paymentMethod: "bank_transfer";
+  priorPaymentsSettled: boolean;
   notes: string;
   createdAt: Date;
   updatedAt: Date;
@@ -479,6 +480,9 @@ export function mapSmovinLease(
       : "0.00",
     paymentDay: 1,
     paymentMethod: "bank_transfer",
+    // An import is by definition of contracts that predate Rentular, so the
+    // deposit and earlier rent are presumed already paid.
+    priorPaymentsSettled: true,
     notes: "Imported from Smovin",
     createdAt: new Date(),
     updatedAt: new Date(),

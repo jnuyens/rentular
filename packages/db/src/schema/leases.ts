@@ -85,6 +85,12 @@ export const leases = mysqlTable("leases", {
   ]).default("soft").notNull(),
   // Email the landlord (with action links) when rent on this contract is late
   landlordLateNotify: boolean("landlord_late_notify").default(true).notNull(),
+  // Older contract (start before it was added here): deposit and rent up to
+  // then are presumed already paid. Asked on create, default yes. Kept on the
+  // lease rather than applied once, because the deposit row is generated
+  // lazily (on create, on a later edit, when a draft is activated, or by the
+  // daily job) and the answer has to survive until that happens.
+  priorPaymentsSettled: boolean("prior_payments_settled").default(true).notNull(),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

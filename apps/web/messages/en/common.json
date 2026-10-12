@@ -291,7 +291,9 @@
     "paymentDayHelp": "Day of the month the rent is expected. Drives the expected-payment schedule.",
     "deposit": "Deposit (warranty)",
     "depositHelp": "Rental deposit. Defaults to 2x the monthly rent; adjust as needed.",
-    "depositTwoMonths": "Set to 2x the monthly rent"
+    "depositTwoMonths": "Set to 2x the monthly rent",
+    "priorPaymentsSettled": "Deposit and earlier payments already made",
+    "priorPaymentsSettledHelp": "This contract started before you added it here. Leave this on if the deposit and the rent up to now were already paid, so nothing from before is treated as open."
   },
   "indexation": {
     "title": "Rent Indexation",
