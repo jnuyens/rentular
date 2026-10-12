@@ -54,6 +54,9 @@ vi.mock("../../services/expectedPayments", () => ({
   ensureCurrentMonthPayment: vi.fn(),
   coversMonthRent: vi.fn(),
   DEPOSIT_NOTE: "deposit",
+  isDepositNote: (notes: string | null | undefined) =>
+    notes != null && notes.startsWith("deposit"),
+  depositNoteLike: "deposit%",
 }));
 
 let leaseRows: unknown[] = [{ id: "lease-1", propertyId: "prop-1" }];

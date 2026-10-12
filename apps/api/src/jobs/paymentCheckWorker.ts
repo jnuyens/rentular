@@ -1,7 +1,7 @@
 import { Worker, Queue } from "bullmq";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { eq, and, lt, lte, gte, inArray, or, isNull, ne } from "drizzle-orm";
+import { eq, and, lt, lte, gte, inArray, or, isNull, ne, notLike } from "drizzle-orm";
 import {
   getDb,
   payments,
@@ -38,7 +38,7 @@ import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
-import { ensureExpectedPaymentsForAllActive, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, coversMonthRent, depositNoteLike } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
 import { deductedAmount, loadLeaseDeductions } from "../services/rentDeductions";
 
@@ -191,7 +191,7 @@ async function sendDueDateTenantSms(
         eq(payments.dueDate, today),
         eq(payments.status, "pending"),
         eq(payments.isIgnored, false),
-        or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE)),
+        or(isNull(payments.notes), notLike(payments.notes, depositNoteLike)),
       ),
     );
 
@@ -342,7 +342,7 @@ const worker = new Worker(
           inArray(payments.status, ["pending"]),
           eq(payments.isIgnored, false),
           // Deposits (waarborg) are not dunned like rent.
-          or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE))
+          or(isNull(payments.notes), notLike(payments.notes, depositNoteLike))
         )
       );
 
@@ -670,7 +670,7 @@ const worker = new Worker(
           eq(payments.status, "pending"),
           eq(payments.isIgnored, false),
           isNull(payments.landlordDueNotifiedAt),
-          or(isNull(payments.notes), ne(payments.notes, DEPOSIT_NOTE))
+          or(isNull(payments.notes), notLike(payments.notes, depositNoteLike))
         )
       );
 

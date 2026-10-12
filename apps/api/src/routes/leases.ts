@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, like } from "drizzle-orm";
 import { getDb, leases, leaseTenants, payments, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
-import { ensureExpectedPayments, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { ensureExpectedPayments, depositNoteLike } from "../services/expectedPayments";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -269,7 +269,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
         .where(
           and(
             eq(payments.leaseId, id),
-            eq(payments.notes, DEPOSIT_NOTE),
+            like(payments.notes, depositNoteLike),
             eq(payments.status, "pending"),
           ),
         );

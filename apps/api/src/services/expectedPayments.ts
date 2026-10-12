@@ -1,4 +1,4 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, like } from "drizzle-orm";
 import { getDb, leases, payments } from "@rentular/db";
 
 type LeaseRow = typeof leases.$inferSelect;
@@ -143,15 +143,15 @@ export async function ensureExpectedPayments(
   // gets its deposit created as already paid, dated at the start, unless the
   // landlord said the earlier payments were not settled. Contracts starting
   // today or later always get a pending deposit. Existing pending deposits are
-  // not touched here. The notes stay exactly DEPOSIT_NOTE: the reminder worker
-  // and the payments route compare them by equality.
+  // not touched here. The lookup matches the DEPOSIT_NOTE prefix because
+  // reconciliation and manual edits can append lines to a deposit's notes.
   const deposit = Number(lease.deposit ?? 0) || 0;
   if (deposit > 0) {
     const existingDeposit = await db
       .select({ id: payments.id })
       .from(payments)
       .where(
-        and(eq(payments.leaseId, lease.id), eq(payments.notes, DEPOSIT_NOTE))
+        and(eq(payments.leaseId, lease.id), like(payments.notes, depositNoteLike))
       )
       .limit(1);
     if (existingDeposit.length === 0) {

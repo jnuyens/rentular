@@ -11,7 +11,7 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, DEPOSIT_NOTE, isDepositNote } from "../services/expectedPayments";
 import { sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
@@ -493,7 +493,7 @@ paymentsRouter.get("/dashboard", async (c) => {
   let priorOverdue = 0;
   for (const p of rows) {
     if (p.isIgnored) continue;
-    if (p.notes === DEPOSIT_NOTE) continue; // deposits are not rent overdue
+    if (isDepositNote(p.notes)) continue; // deposits are not rent overdue
     const unpaid = p.status === "pending" || p.status === "failed";
     if (!unpaid || String(p.dueDate) >= monthStart) continue;
     const lps = byLease.get(p.leaseId) ?? [];
