@@ -8,6 +8,7 @@
  *   remind -> send a reminder to the tenant (reuses the follow-up sender)
  *             ?channel=sms sends it as an SMS instead of email
  *   off    -> turn off late-payment emails for this contract
+ *   hold   -> keep the automatic third reminder from going out
  *
  * Mounted at /api/v1/landlord-action (public: not behind requireAuth; GET, so
  * the CSRF middleware does not apply).
@@ -35,13 +36,14 @@ import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared"
 
 export const landlordActionsRouter = new Hono();
 
-type MsgKey = "paid" | "wait" | "off" | "invalid" | "notfound";
+type MsgKey = "paid" | "wait" | "off" | "hold" | "invalid" | "notfound";
 
 const MESSAGES: Record<string, Record<MsgKey, string>> = {
   en: {
     paid: "Marked as paid. Thank you.",
     wait: "Okay, we'll keep waiting. No reminder was sent.",
     off: "Late-payment emails are now turned off for this property. You can turn them back on from the contract page.",
+    hold: "Okay, the third reminder will not be sent automatically. You take it from here.",
     invalid: "This link is invalid or has expired.",
     notfound: "This payment could not be found.",
   },
@@ -49,6 +51,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     paid: "Gemarkeerd als betaald. Bedankt.",
     wait: "Oké, we wachten nog even. Er is geen herinnering verstuurd.",
     off: "E-mails over late betalingen zijn nu uitgeschakeld voor dit pand. Je kunt ze weer inschakelen via de contractpagina.",
+    hold: "Oké, de derde herinnering wordt niet automatisch verstuurd. Jij neemt het van hier over.",
     invalid: "Deze link is ongeldig of verlopen.",
     notfound: "Deze betaling kon niet worden gevonden.",
   },
@@ -56,6 +59,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     paid: "Marqué comme payé. Merci.",
     wait: "D'accord, nous attendons encore. Aucun rappel n'a été envoyé.",
     off: "Les e-mails de retard de paiement sont désactivés pour ce bien. Vous pouvez les réactiver depuis la page du contrat.",
+    hold: "D'accord, le troisième rappel ne sera pas envoyé automatiquement. Vous prenez le relais.",
     invalid: "Ce lien est invalide ou a expiré.",
     notfound: "Ce paiement est introuvable.",
   },
@@ -63,6 +67,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     paid: "Als bezahlt markiert. Danke.",
     wait: "In Ordnung, wir warten noch. Es wurde keine Erinnerung gesendet.",
     off: "E-Mails zu Zahlungsverzug sind für diese Immobilie jetzt deaktiviert. Sie können sie auf der Vertragsseite wieder aktivieren.",
+    hold: "In Ordnung, die dritte Erinnerung wird nicht automatisch gesendet. Sie übernehmen ab hier.",
     invalid: "Dieser Link ist ungültig oder abgelaufen.",
     notfound: "Diese Zahlung wurde nicht gefunden.",
   },
@@ -345,6 +350,12 @@ landlordActionsRouter.get("/:token", async (c) => {
         .update(leases)
         .set({ landlordLateNotify: false, updatedAt: new Date() })
         .where(eq(leases.id, rows[0].leaseId));
+    } else if (action === "hold") {
+      // Idempotent: a second click just re-stamps the hold.
+      await db
+        .update(payments)
+        .set({ finalReminderHeldAt: new Date(), updatedAt: new Date() })
+        .where(eq(payments.id, paymentId));
     } else if (action === "remind") {
       const ctx = await loadReminderContext(db, paymentId, rows[0].leaseId, rows[0].ownerId);
       if (!ctx) return renderKey(c, lang, "notfound");

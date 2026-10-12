@@ -172,6 +172,38 @@ export function determineReminderLevel(
   return null;
 }
 
+// How many calendar days the landlord gets to act after the "third reminder
+// pending" email before the automatic third reminder goes to the tenant.
+export const FINAL_REMINDER_HOLD_DAYS = 2;
+
+export type FinalReminderDecision = "notify_landlord" | "wait" | "held" | "send";
+
+/**
+ * Decide what the automatic worker does when a payment reaches the final
+ * reminder level: email the landlord first, wait out the hold period, respect
+ * a landlord "hold", or send the third reminder to the tenant.
+ *
+ * The hold is measured in calendar days (UTC dates), not hours: the worker
+ * runs once per evening, so a strict 48h comparison would slip a whole day
+ * whenever the run starts a minute earlier than the run that emailed the
+ * landlord.
+ */
+export function decideFinalReminder(input: {
+  landlordFinalNotifiedAt: Date | null;
+  finalReminderHeldAt: Date | null;
+  now: Date;
+  holdDays?: number;
+}): FinalReminderDecision {
+  if (input.finalReminderHeldAt) return "held";
+  if (!input.landlordFinalNotifiedAt) return "notify_landlord";
+
+  const dayStart = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const elapsedDays = Math.floor(
+    (dayStart(input.now) - dayStart(input.landlordFinalNotifiedAt)) / 86_400_000,
+  );
+  return elapsedDays >= (input.holdDays ?? FINAL_REMINDER_HOLD_DAYS) ? "send" : "wait";
+}
+
 // TEST PHASE: while this env flag is on, tenant reminders are NOT sent to the
 // tenant. Instead they go to the landlord with "TEST PHASE MAIL" in the subject,
 // so the owner can verify the flow before real reminders go out. SMS is skipped.

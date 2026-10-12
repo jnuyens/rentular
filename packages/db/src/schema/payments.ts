@@ -55,6 +55,11 @@ export const payments = mysqlTable("payments", {
   landlordNotifiedAt: timestamp("landlord_notified_at"),
   // When the landlord was emailed the due-date heads-up (once per payment)
   landlordDueNotifiedAt: timestamp("landlord_due_notified_at"),
+  // When the landlord was emailed that the automatic third reminder is pending
+  // (once per payment); the tenant gets it after the hold period
+  landlordFinalNotifiedAt: timestamp("landlord_final_notified_at"),
+  // Landlord clicked "hold": the automatic third reminder is never sent
+  finalReminderHeldAt: timestamp("final_reminder_held_at"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
