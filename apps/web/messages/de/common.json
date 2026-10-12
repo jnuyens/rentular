@@ -1294,6 +1294,15 @@
     "markPaidCash": "Bar bezahlt",
     "markPaidTransfer": "Per Ueberweisung bezahlt",
     "markPaidOther": "Bezahlt (anderes Konto)",
-    "markedPaid": "Als bezahlt erfasst"
+    "markedPaid": "Als bezahlt erfasst",
+    "addReduction": "Ermäßigung hinzufügen",
+    "reductionAmount": "Betrag",
+    "reductionReason": "Grund",
+    "reductionPreset": "Ermäßigung Grundsteuer (onroerende voorheffing)",
+    "reductionLine": "Ermäßigung: -{amount} ({reason})",
+    "reductionSaved": "Ermäßigung hinzugefügt",
+    "reductionRemoved": "Ermäßigung entfernt",
+    "saveReduction": "Speichern",
+    "rentFree": "Mietfreie Zeit"
   }
 }

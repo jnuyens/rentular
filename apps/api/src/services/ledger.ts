@@ -8,13 +8,23 @@ import {
   leaseTenants,
   tenants,
 } from "@rentular/db";
+import {
+  loadLeaseDeductions,
+  loadLeaseFreePeriods,
+  periodEndFor,
+  periodRentDue,
+} from "./rentDeductions";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export interface LedgerPeriod {
   month: string; // YYYY-MM
   dueDate: string; // YYYY-MM-DD
-  rentDue: number;
+  periodEnd: string; // YYYY-MM-DD, the day before the next due date
+  rentDue: number; // net of rent deductions and rent-free periods
+  grossRentDue: number; // rent plus charges before any reduction
+  deductions: Array<{ id: string; amount: number; reason: string }>;
+  rentFree: boolean;
   allocated: number;
   balance: number; // rentDue - allocated (negative = overpaid)
   status: "paid" | "partial" | "open" | "overpaid";
@@ -120,6 +130,9 @@ export async function computeLedger(
     .from(paymentAllocations)
     .where(eq(paymentAllocations.leaseId, leaseId));
 
+  const deductionRows = await loadLeaseDeductions(db, leaseId);
+  const freePeriodRows = await loadLeaseFreePeriods(db, leaseId);
+
   // Group allocations by period and by payment.
   const allocByMonth = new Map<string, typeof allocRows>();
   const allocatedByPayment = new Map<string, number>();
@@ -173,14 +186,35 @@ export async function computeLedger(
         auto: a.createdBy === null,
       }));
       const allocated = round2(allocs.reduce((s, a) => s + a.amount, 0));
-      const balance = round2(rentDue - allocated);
+      const period = periodRentDue({
+        monthlyRent,
+        charges,
+        dueDate: due,
+        deductions: deductionRows,
+        freePeriods: freePeriodRows,
+      });
+      const periodDue = period.rentDue;
+      const balance = round2(periodDue - allocated);
       let status: LedgerPeriod["status"] = "open";
-      if (allocated <= 0.005) status = "open";
+      // A period reduced to nothing (rent-free, or fully deducted) is settled.
+      if (allocated <= 0.005) status = periodDue <= 0.005 ? "paid" : "open";
       else if (balance > 0.005) status = "partial";
       else if (balance < -0.005) status = "overpaid";
       else status = "paid";
-      periods.push({ month, dueDate: due, rentDue, allocated, balance, status, allocations: allocs });
-      totalCharged = round2(totalCharged + rentDue);
+      periods.push({
+        month,
+        dueDate: due,
+        periodEnd: periodEndFor(due, paymentDay),
+        rentDue: periodDue,
+        grossRentDue: period.grossRentDue,
+        deductions: period.deductions,
+        rentFree: period.rentFree,
+        allocated,
+        balance,
+        status,
+        allocations: allocs,
+      });
+      totalCharged = round2(totalCharged + periodDue);
     }
     im++;
     if (im > 11) {

@@ -1294,6 +1294,15 @@
     "markPaidCash": "Betaald in cash",
     "markPaidTransfer": "Betaald via overschrijving",
     "markPaidOther": "Betaald (andere rekening)",
-    "markedPaid": "Geregistreerd als betaald"
+    "markedPaid": "Geregistreerd als betaald",
+    "addReduction": "Vermindering toevoegen",
+    "reductionAmount": "Bedrag",
+    "reductionReason": "Reden",
+    "reductionPreset": "Vermindering onroerende voorheffing",
+    "reductionLine": "Vermindering: -{amount} ({reason})",
+    "reductionSaved": "Vermindering toegevoegd",
+    "reductionRemoved": "Vermindering verwijderd",
+    "saveReduction": "Opslaan",
+    "rentFree": "Huurvrije periode"
   }
 }

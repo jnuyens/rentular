@@ -1294,6 +1294,15 @@
     "markPaidCash": "Paid in cash",
     "markPaidTransfer": "Paid by transfer",
     "markPaidOther": "Paid (other account)",
-    "markedPaid": "Recorded as paid"
+    "markedPaid": "Recorded as paid",
+    "addReduction": "Add reduction",
+    "reductionAmount": "Amount",
+    "reductionReason": "Reason",
+    "reductionPreset": "Property tax reduction (onroerende voorheffing)",
+    "reductionLine": "Reduction: -{amount} ({reason})",
+    "reductionSaved": "Reduction added",
+    "reductionRemoved": "Reduction removed",
+    "saveReduction": "Save",
+    "rentFree": "Rent-free period"
   }
 }

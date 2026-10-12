@@ -1294,6 +1294,15 @@
     "markPaidCash": "Paye en especes",
     "markPaidTransfer": "Paye par virement",
     "markPaidOther": "Paye (autre compte)",
-    "markedPaid": "Enregistre comme paye"
+    "markedPaid": "Enregistre comme paye",
+    "addReduction": "Ajouter une réduction",
+    "reductionAmount": "Montant",
+    "reductionReason": "Motif",
+    "reductionPreset": "Réduction du précompte immobilier",
+    "reductionLine": "Réduction : -{amount} ({reason})",
+    "reductionSaved": "Réduction ajoutée",
+    "reductionRemoved": "Réduction supprimée",
+    "saveReduction": "Enregistrer",
+    "rentFree": "Période de gratuité"
   }
 }

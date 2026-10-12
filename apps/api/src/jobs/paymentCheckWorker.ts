@@ -40,14 +40,17 @@ import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, coversMonthRent, DEPOSIT_NOTE } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
+import { deductedAmount, loadLeaseDeductions } from "../services/rentDeductions";
 
 const QUEUE_NAME = "payment-check";
 
 /**
  * Is a rent period already settled -- by a payment that covers it, or by manual
- * allocations summing to the rent? Used so the worker never duns or sends a
- * due/overdue notice for rent recorded paid, including via the ledger (which can
- * leave the auto-generated pending record behind).
+ * allocations summing to the rent? What counts is the rent net of the rent
+ * deductions that apply to the period (e.g. a property tax reduction), so a
+ * period paid net of a reduction is settled. Used so the worker never duns or
+ * sends a due/overdue notice for rent recorded paid, including via the ledger
+ * (which can leave the auto-generated pending record behind).
  */
 async function isPeriodSettled(
   db: ReturnType<typeof getDb>,
@@ -56,6 +59,9 @@ async function isPeriodSettled(
   monthlyRent: number,
 ): Promise<boolean> {
   if (!(monthlyRent > 0)) return false;
+  const deductions = await loadLeaseDeductions(db, leaseId);
+  const due = Math.max(0, monthlyRent - deductedAmount(deductions, dueDate));
+  if (due <= 0) return true;
   const month = String(dueDate).slice(0, 7);
   const allocs = await db
     .select({ amount: paymentAllocations.amount })
@@ -64,7 +70,7 @@ async function isPeriodSettled(
       and(eq(paymentAllocations.leaseId, leaseId), eq(paymentAllocations.periodMonth, month)),
     );
   const allocated = allocs.reduce((s, a) => s + Number(a.amount), 0);
-  if (allocated >= monthlyRent - 0.01) return true;
+  if (allocated >= due - 0.01) return true;
   const paid = await db
     .select({
       status: payments.status,
@@ -75,7 +81,7 @@ async function isPeriodSettled(
     })
     .from(payments)
     .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "paid")));
-  return paid.some((p) => coversMonthRent(p, dueDate, monthlyRent));
+  return paid.some((p) => coversMonthRent(p, dueDate, due));
 }
 
 const connection = {

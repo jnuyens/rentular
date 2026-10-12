@@ -55,6 +55,23 @@ export function deductedAmount(rows: DeductionRow[], dueDate: string): number {
   );
 }
 
+/**
+ * Last day of the rent period that starts on `dueDate`: the day before the
+ * next month's due date, with the payment day clamped to that month's length.
+ */
+export function periodEndFor(dueDate: string, paymentDay: number): string {
+  const d = ymd(dueDate);
+  const y = Number(d.slice(0, 4));
+  const m0 = Number(d.slice(5, 7)) - 1;
+  const ny = m0 === 11 ? y + 1 : y;
+  const nm0 = (m0 + 1) % 12;
+  const lastDay = new Date(ny, nm0 + 1, 0).getDate();
+  const day = Math.min(Math.max(1, Math.floor(paymentDay) || 1), lastDay);
+  const end = new Date(ny, nm0, day - 1);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+}
+
 export interface PeriodRentDue {
   /** What the tenant owes for the period after deductions and free periods. */
   rentDue: number;
