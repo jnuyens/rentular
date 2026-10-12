@@ -204,6 +204,7 @@ None yet.
 | 260708-x0r | Fix @rentular/api tsc typecheck errors so pnpm lint passes (59 → 0) | 2026-07-09 | c56743a | [260708-x0r-fix-rentular-api-tsc-typecheck-errors-so](./quick/260708-x0r-fix-rentular-api-tsc-typecheck-errors-so/) |
 | 260810-e8q | Add SEO sitemap.xml + robots.txt (AI crawlers allowed, private paths blocked) | 2026-08-10 | 2e24e8d | [260810-e8q-ensure-sitemap-and-robots-txt-allowing-a](./quick/260810-e8q-ensure-sitemap-and-robots-txt-allowing-a/) |
 | 261012-kpc | Soften third payment reminder wording (en/nl/fr/de) and email landlord 2 days before the automatic third reminder | 2026-10-12 | ab3e276 | [261012-kpc-soften-final-reminder-wording-and-gate-f](./quick/261012-kpc-soften-final-reminder-wording-and-gate-f/) |
+| 261012-mko | Bank matcher prefers exact rent (deduction aware) over deposits, older contracts presume deposit paid, add reduction in rent ledger | 2026-10-12 | e46b8d8 | [261012-mko-fix-bank-matcher-assigning-rent-to-depos](./quick/261012-mko-fix-bank-matcher-assigning-rent-to-depos/) |
 
 ## Session Continuity
 
