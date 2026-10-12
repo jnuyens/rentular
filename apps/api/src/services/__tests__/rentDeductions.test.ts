@@ -3,6 +3,7 @@ import {
   deductionsForDueDate,
   deductedAmount,
   periodRentDue,
+  periodEndFor,
   type DeductionRow,
   type FreePeriodRow,
 } from "../rentDeductions";
@@ -110,5 +111,20 @@ describe("periodRentDue", () => {
     expect(r.rentDue).toBe(1075);
     expect(r.grossRentDue).toBe(1075);
     expect(r.deductions).toEqual([]);
+  });
+});
+
+describe("periodEndFor", () => {
+  it("ends the day before the next due date", () => {
+    expect(periodEndFor("2026-10-08", 8)).toBe("2026-11-07");
+  });
+
+  it("clamps the next due date to the month length", () => {
+    // Next due is Feb 28 2026, so the period ends Feb 27.
+    expect(periodEndFor("2026-01-31", 31)).toBe("2026-02-27");
+  });
+
+  it("crosses the year end", () => {
+    expect(periodEndFor("2026-12-01", 1)).toBe("2026-12-31");
   });
 });
