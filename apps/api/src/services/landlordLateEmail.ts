@@ -1,7 +1,12 @@
 import { sendEmail } from "../lib/email";
-import { signLandlordActionToken } from "../lib/landlordActionToken";
+import { signLandlordActionToken, type LandlordAction } from "../lib/landlordActionToken";
 
-export type LandlordEmailKind = "late" | "due";
+// "late": overdue notice. "due": heads-up on the due date itself.
+// "final_pending": the automatic third reminder is about to go to the tenant;
+// the landlord can still mark paid, record the payment, or hold it.
+export type LandlordEmailKind = "late" | "due" | "final_pending";
+
+type TenantChannel = "email" | "sms" | "whatsapp";
 
 interface LateEmailInput {
   paymentId: string;
@@ -13,93 +18,250 @@ interface LateEmailInput {
   amount: number;
   dueDate: string;
   daysPastDue: number;
-  kind?: LandlordEmailKind; // "late" (overdue) or "due" (heads-up on the due date)
+  kind?: LandlordEmailKind; // defaults to "late"
+  channel?: TenantChannel; // final_pending: channel the third reminder will use
+  sendOn?: string; // final_pending: yyyy-mm-dd the third reminder goes out
 }
 
-interface Links {
-  paid: string;
-  wait: string;
-  remind: string;
-  off: string;
+// A link target: a signed one-click action, or "record" (the web app's
+// payments page, behind normal login, so no token).
+type LinkTarget = LandlordAction | "record";
+
+interface EmailOption {
+  label: string;
+  link?: LinkTarget;
 }
 
-type RenderVars = LateEmailInput &
-  Links & {
-    period: string;
-    periodFrom: string;
-    periodTill: string;
-    dueDateFmt: string;
-    amountFmt: string;
-    kind: LandlordEmailKind;
-    lead: string;
-    daysLine: string;
-  };
+interface CopyVars {
+  propertyName: string;
+  period: string;
+  sendOnFmt: string;
+  channelName: string;
+}
 
-type Template = {
-  subject: (v: RenderVars) => string;
-  body: (v: RenderVars) => string;
+interface KindCopy {
+  subject: (v: CopyVars) => string;
+  lead: (v: CopyVars) => string;
+  options: (v: CopyVars) => EmailOption[];
+}
+
+interface LangCopy {
+  greeting: string;
+  tenant: string;
+  periodLabel: string;
+  amount: string;
+  dueDate: string;
+  daysLabel: string;
+  question: string;
+  channels: Record<TenantChannel, string>;
+  kinds: Record<LandlordEmailKind, KindCopy>;
+}
+
+// Whether the "days late" line is shown for a kind.
+const SHOW_DAYS: Record<LandlordEmailKind, boolean> = {
+  late: true,
+  due: false,
+  final_pending: true,
 };
 
-// Per-language, per-kind: the subject, the lead sentence, and the "days late"
-// line (empty for a due-date heads-up).
-const COPY: Record<
-  string,
-  {
-    subjectLate: (v: RenderVars) => string;
-    subjectDue: (v: RenderVars) => string;
-    leadLate: (v: RenderVars) => string;
-    leadDue: (v: RenderVars) => string;
-    daysLabel: string;
-  }
-> = {
+function standardOptions(labels: [string, string, string, string]): () => EmailOption[] {
+  return () => [
+    { label: labels[0], link: "paid" },
+    { label: labels[1], link: "wait" },
+    { label: labels[2], link: "remind" },
+    { label: labels[3], link: "off" },
+  ];
+}
+
+const EN_STANDARD = standardOptions([
+  "The tenant has paid (mark as paid):",
+  "Not paid yet, just wait:",
+  "Send a reminder to the tenant:",
+  "Turn off these emails for this property:",
+]);
+const NL_STANDARD = standardOptions([
+  "De huurder heeft betaald (markeer als betaald):",
+  "Nog niet betaald, gewoon wachten:",
+  "Stuur een herinnering naar de huurder:",
+  "Schakel deze e-mails uit voor dit pand:",
+]);
+const FR_STANDARD = standardOptions([
+  "Le locataire a paye (marquer comme paye) :",
+  "Pas encore paye, attendre :",
+  "Envoyer un rappel au locataire :",
+  "Desactiver ces e-mails pour ce bien :",
+]);
+const DE_STANDARD = standardOptions([
+  "Der Mieter hat bezahlt (als bezahlt markieren):",
+  "Noch nicht bezahlt, einfach warten:",
+  "Eine Erinnerung an den Mieter senden:",
+  "Diese E-Mails fuer diese Immobilie deaktivieren:",
+]);
+
+const COPY: Record<string, LangCopy> = {
   en: {
-    subjectLate: (v) => `Late rent: ${v.propertyName} -- ${v.period}`,
-    subjectDue: (v) => `Rent due today: ${v.propertyName} -- ${v.period}`,
-    leadLate: (v) => `This is about the rent for the period ${v.period}.`,
-    leadDue: (v) => `This rent is due today. It is for the period ${v.period}.`,
+    greeting: "Hello,",
+    tenant: "tenant",
+    periodLabel: "Rent period",
+    amount: "Amount",
+    dueDate: "Due date",
     daysLabel: "Overdue by",
+    question: "What would you like to do? Click one of the links below:",
+    channels: { email: "e-mail", sms: "SMS", whatsapp: "WhatsApp" },
+    kinds: {
+      late: {
+        subject: (v) => `Late rent: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `This is about the rent for the period ${v.period}.`,
+        options: EN_STANDARD,
+      },
+      due: {
+        subject: (v) => `Rent due today: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `This rent is due today. It is for the period ${v.period}.`,
+        options: EN_STANDARD,
+      },
+      final_pending: {
+        subject: (v) => `Third reminder pending: ${v.propertyName} -- ${v.period}`,
+        lead: (v) =>
+          `The tenant has not paid the rent for the period ${v.period} after two reminders. Unless you act, a third and last reminder goes to the tenant via ${v.channelName} on ${v.sendOnFmt}.`,
+        options: (v) => [
+          { label: "The tenant has already paid (mark as paid):", link: "paid" },
+          { label: "Record the payment details (amount, date) in Rentular:", link: "record" },
+          { label: "Hold the reminder, I will handle it myself:", link: "hold" },
+          { label: `Do nothing: the third reminder is sent automatically on ${v.sendOnFmt}.` },
+        ],
+      },
+    },
   },
   nl: {
-    subjectLate: (v) => `Late huur: ${v.propertyName} -- ${v.period}`,
-    subjectDue: (v) => `Huur vervalt vandaag: ${v.propertyName} -- ${v.period}`,
-    leadLate: (v) => `Dit gaat over de huur voor de periode ${v.period}.`,
-    leadDue: (v) => `Deze huur vervalt vandaag en gaat over de periode ${v.period}.`,
+    greeting: "Hallo,",
+    tenant: "huurder",
+    periodLabel: "Huurperiode",
+    amount: "Bedrag",
+    dueDate: "Vervaldag",
     daysLabel: "Aantal dagen te laat",
+    question: "Wat wil je doen? Klik een van onderstaande links:",
+    channels: { email: "e-mail", sms: "SMS", whatsapp: "WhatsApp" },
+    kinds: {
+      late: {
+        subject: (v) => `Late huur: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Dit gaat over de huur voor de periode ${v.period}.`,
+        options: NL_STANDARD,
+      },
+      due: {
+        subject: (v) => `Huur vervalt vandaag: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Deze huur vervalt vandaag en gaat over de periode ${v.period}.`,
+        options: NL_STANDARD,
+      },
+      final_pending: {
+        subject: (v) => `Derde herinnering staat klaar: ${v.propertyName} -- ${v.period}`,
+        lead: (v) =>
+          `De huurder heeft de huur voor de periode ${v.period} na twee herinneringen nog niet betaald. Als je niets doet, krijgt de huurder op ${v.sendOnFmt} via ${v.channelName} een derde en laatste herinnering.`,
+        options: (v) => [
+          { label: "De huurder heeft al betaald (markeer als betaald):", link: "paid" },
+          { label: "Noteer de betaalgegevens (bedrag, datum) in Rentular:", link: "record" },
+          { label: "Hou de herinnering tegen, ik regel het zelf:", link: "hold" },
+          { label: `Niets doen: de derde herinnering vertrekt automatisch op ${v.sendOnFmt}.` },
+        ],
+      },
+    },
   },
   fr: {
-    subjectLate: (v) => `Loyer en retard: ${v.propertyName} -- ${v.period}`,
-    subjectDue: (v) => `Loyer du aujourd'hui: ${v.propertyName} -- ${v.period}`,
-    leadLate: (v) => `Ceci concerne le loyer pour la periode ${v.period}.`,
-    leadDue: (v) => `Ce loyer est du aujourd'hui. Il concerne la periode ${v.period}.`,
+    greeting: "Bonjour,",
+    tenant: "locataire",
+    periodLabel: "Periode de location",
+    amount: "Montant",
+    dueDate: "Echeance",
     daysLabel: "Retard",
+    question: "Que souhaitez-vous faire ? Cliquez sur l'un des liens ci-dessous :",
+    channels: { email: "e-mail", sms: "SMS", whatsapp: "WhatsApp" },
+    kinds: {
+      late: {
+        subject: (v) => `Loyer en retard: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Ceci concerne le loyer pour la periode ${v.period}.`,
+        options: FR_STANDARD,
+      },
+      due: {
+        subject: (v) => `Loyer du aujourd'hui: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Ce loyer est du aujourd'hui. Il concerne la periode ${v.period}.`,
+        options: FR_STANDARD,
+      },
+      final_pending: {
+        subject: (v) => `Troisieme rappel en attente : ${v.propertyName} -- ${v.period}`,
+        lead: (v) =>
+          `Le locataire n'a pas paye le loyer pour la periode ${v.period} apres deux rappels. Sauf action de votre part, un troisieme et dernier rappel sera envoye au locataire par ${v.channelName} le ${v.sendOnFmt}.`,
+        options: (v) => [
+          { label: "Le locataire a deja paye (marquer comme paye) :", link: "paid" },
+          { label: "Enregistrer les details du paiement (montant, date) dans Rentular :", link: "record" },
+          { label: "Retenir le rappel, je m'en occupe :", link: "hold" },
+          { label: `Ne rien faire : le troisieme rappel part automatiquement le ${v.sendOnFmt}.` },
+        ],
+      },
+    },
   },
   de: {
-    subjectLate: (v) => `Miete ueberfaellig: ${v.propertyName} -- ${v.period}`,
-    subjectDue: (v) => `Miete heute faellig: ${v.propertyName} -- ${v.period}`,
-    leadLate: (v) => `Dies betrifft die Miete fuer den Zeitraum ${v.period}.`,
-    leadDue: (v) => `Diese Miete ist heute faellig. Sie betrifft den Zeitraum ${v.period}.`,
+    greeting: "Hallo,",
+    tenant: "Mieter",
+    periodLabel: "Mietzeitraum",
+    amount: "Betrag",
+    dueDate: "Faelligkeit",
     daysLabel: "Ueberfaellig",
+    question: "Was moechten Sie tun? Klicken Sie auf einen der Links unten:",
+    channels: { email: "E-Mail", sms: "SMS", whatsapp: "WhatsApp" },
+    kinds: {
+      late: {
+        subject: (v) => `Miete ueberfaellig: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Dies betrifft die Miete fuer den Zeitraum ${v.period}.`,
+        options: DE_STANDARD,
+      },
+      due: {
+        subject: (v) => `Miete heute faellig: ${v.propertyName} -- ${v.period}`,
+        lead: (v) => `Diese Miete ist heute faellig. Sie betrifft den Zeitraum ${v.period}.`,
+        options: DE_STANDARD,
+      },
+      final_pending: {
+        subject: (v) => `Dritte Erinnerung steht an: ${v.propertyName} -- ${v.period}`,
+        lead: (v) =>
+          `Der Mieter hat die Miete fuer den Zeitraum ${v.period} nach zwei Erinnerungen noch nicht bezahlt. Wenn Sie nichts tun, erhaelt der Mieter am ${v.sendOnFmt} per ${v.channelName} eine dritte und letzte Erinnerung.`,
+        options: (v) => [
+          { label: "Der Mieter hat bereits bezahlt (als bezahlt markieren):", link: "paid" },
+          { label: "Zahlungsdetails (Betrag, Datum) in Rentular erfassen:", link: "record" },
+          { label: "Erinnerung zurueckhalten, ich kuemmere mich selbst darum:", link: "hold" },
+          { label: `Nichts tun: die dritte Erinnerung geht am ${v.sendOnFmt} automatisch raus.` },
+        ],
+      },
+    },
   },
 };
 
-const BODY: Record<string, (v: RenderVars) => string> = {
-  en: (v) =>
-    `Hello,\n\n${v.lead}\n\n${v.propertyName} (tenant ${v.tenantName})\nRent period: ${v.period}\nAmount: ${v.amountFmt}\nDue date: ${v.dueDateFmt}\n${v.daysLine}\nWhat would you like to do? Click one of the links below:\n\n1) The tenant has paid (mark as paid):\n${v.paid}\n\n2) Not paid yet, just wait:\n${v.wait}\n\n3) Send a reminder to the tenant:\n${v.remind}\n\n4) Turn off these emails for this property:\n${v.off}\n\nRentular\n`,
-  nl: (v) =>
-    `Hallo,\n\n${v.lead}\n\n${v.propertyName} (huurder ${v.tenantName})\nHuurperiode: ${v.period}\nBedrag: ${v.amountFmt}\nVervaldag: ${v.dueDateFmt}\n${v.daysLine}\nWat wil je doen? Klik een van onderstaande links:\n\n1) De huurder heeft betaald (markeer als betaald):\n${v.paid}\n\n2) Nog niet betaald, gewoon wachten:\n${v.wait}\n\n3) Stuur een herinnering naar de huurder:\n${v.remind}\n\n4) Schakel deze e-mails uit voor dit pand:\n${v.off}\n\nRentular\n`,
-  fr: (v) =>
-    `Bonjour,\n\n${v.lead}\n\n${v.propertyName} (locataire ${v.tenantName})\nPeriode de location: ${v.period}\nMontant: ${v.amountFmt}\nEcheance: ${v.dueDateFmt}\n${v.daysLine}\nQue souhaitez-vous faire ? Cliquez sur l'un des liens ci-dessous :\n\n1) Le locataire a paye (marquer comme paye) :\n${v.paid}\n\n2) Pas encore paye, attendre :\n${v.wait}\n\n3) Envoyer un rappel au locataire :\n${v.remind}\n\n4) Desactiver ces e-mails pour ce bien :\n${v.off}\n\nRentular\n`,
-  de: (v) =>
-    `Hallo,\n\n${v.lead}\n\n${v.propertyName} (Mieter ${v.tenantName})\nMietzeitraum: ${v.period}\nBetrag: ${v.amountFmt}\nFaelligkeit: ${v.dueDateFmt}\n${v.daysLine}\nWas moechten Sie tun? Klicken Sie auf einen der Links unten:\n\n1) Der Mieter hat bezahlt (als bezahlt markieren):\n${v.paid}\n\n2) Noch nicht bezahlt, einfach warten:\n${v.wait}\n\n3) Eine Erinnerung an den Mieter senden:\n${v.remind}\n\n4) Diese E-Mails fuer diese Immobilie deaktivieren:\n${v.off}\n\nRentular\n`,
-};
+interface BodyVars {
+  lead: string;
+  propertyName: string;
+  tenantName: string;
+  period: string;
+  amountFmt: string;
+  dueDateFmt: string;
+  daysPastDue: number;
+  showDays: boolean;
+  options: { label: string; url?: string }[];
+}
 
-function buildTemplate(lang: string): Template {
-  const copy = COPY[lang] || COPY.en!;
-  const body = BODY[lang] || BODY.en!;
-  return {
-    subject: (v) => (v.kind === "due" ? copy.subjectDue(v) : copy.subjectLate(v)),
-    body: (v) => body(v),
-  };
+// One body layout for every kind: details block, then numbered options with
+// the link (if any) on the line below each option.
+function renderBody(copy: LangCopy, v: BodyVars): string {
+  const daysLine = v.showDays ? `${copy.daysLabel}: ${v.daysPastDue}\n` : "";
+  const options = v.options
+    .map((o, i) => `${i + 1}) ${o.label}\n${o.url ? `${o.url}\n` : ""}\n`)
+    .join("");
+  return (
+    `${copy.greeting}\n\n${v.lead}\n\n` +
+    `${v.propertyName} (${copy.tenant} ${v.tenantName})\n` +
+    `${copy.periodLabel}: ${v.period}\n` +
+    `${copy.amount}: ${v.amountFmt}\n` +
+    `${copy.dueDate}: ${v.dueDateFmt}\n` +
+    `${daysLine}\n` +
+    `${copy.question}\n\n` +
+    `${options}Rentular\n`
+  );
 }
 
 const RANGE_CONNECTOR: Record<string, (from: string, till: string) => string> = {
@@ -146,51 +308,55 @@ function formatDueDate(dueDate: string): string {
 
 /**
  * Email the landlord (the property's manager(s), with the owner in CC) about a
- * rent payment, with four one-click magic links (mark paid / wait / remind
- * tenant / turn off). `kind` is "late" for an overdue notice or "due" for a
- * heads-up on the due date itself. Localized to the owner's locale.
+ * rent payment, with one-click magic links. `kind` is "late" for an overdue
+ * notice, "due" for a heads-up on the due date (both: mark paid / wait / remind
+ * tenant / turn off), or "final_pending" before the automatic third reminder
+ * (mark paid / record payment / hold / do nothing). Localized to the owner's
+ * locale.
  */
 export async function sendLandlordLateEmail(input: LateEmailInput): Promise<void> {
   if (!input.to) return; // nobody to send to
-  const [paid, wait, remind, off] = await Promise.all([
-    signLandlordActionToken("paid", input.paymentId),
-    signLandlordActionToken("wait", input.paymentId),
-    signLandlordActionToken("remind", input.paymentId),
-    signLandlordActionToken("off", input.paymentId),
-  ]);
-  const base = (process.env.WEB_URL || "https://www.rentular.com").replace(/\/$/, "");
-  const link = (tok: string) => `${base}/api/v1/landlord-action/${tok}`;
   const lang = (input.ownerLocale || "en").slice(0, 2);
   const kind: LandlordEmailKind = input.kind || "late";
-  const tpl = buildTemplate(lang);
   const copy = COPY[lang] || COPY.en!;
+  const kindCopy = copy.kinds[kind];
 
   const range = periodRange(input.dueDate);
   const connector = RANGE_CONNECTOR[lang] || RANGE_CONNECTOR.en!;
   const period = connector(range.from, range.till);
 
-  const vars: RenderVars = {
-    ...input,
-    kind,
-    paid: link(paid),
-    wait: link(wait),
-    remind: link(remind),
-    off: link(off),
+  const copyVars: CopyVars = {
+    propertyName: input.propertyName,
     period,
-    periodFrom: range.from,
-    periodTill: range.till,
-    dueDateFmt: formatDueDate(input.dueDate),
-    amountFmt: `EUR ${input.amount.toFixed(2)}`,
-    lead: "",
-    daysLine: "",
+    sendOnFmt: input.sendOn ? formatDueDate(input.sendOn) : "",
+    channelName: copy.channels[input.channel || "email"],
   };
-  vars.lead = kind === "due" ? copy.leadDue(vars) : copy.leadLate(vars);
-  vars.daysLine = kind === "due" ? "" : `${copy.daysLabel}: ${input.daysPastDue}\n`;
+  const options = kindCopy.options(copyVars);
+
+  // Sign tokens only for the actions this kind actually offers.
+  const base = (process.env.WEB_URL || "https://www.rentular.com").replace(/\/$/, "");
+  const urlFor = async (target: LinkTarget): Promise<string> =>
+    target === "record"
+      ? `${base}/payments`
+      : `${base}/api/v1/landlord-action/${await signLandlordActionToken(target, input.paymentId)}`;
+  const rendered = await Promise.all(
+    options.map(async (o) => ({ label: o.label, url: o.link ? await urlFor(o.link) : undefined })),
+  );
 
   await sendEmail({
     to: input.to,
     cc: input.cc,
-    subject: tpl.subject(vars),
-    body: tpl.body(vars),
+    subject: kindCopy.subject(copyVars),
+    body: renderBody(copy, {
+      lead: kindCopy.lead(copyVars),
+      propertyName: input.propertyName,
+      tenantName: input.tenantName,
+      period,
+      amountFmt: `EUR ${input.amount.toFixed(2)}`,
+      dueDateFmt: formatDueDate(input.dueDate),
+      daysPastDue: input.daysPastDue,
+      showDays: SHOW_DAYS[kind],
+      options: rendered,
+    }),
   });
 }

@@ -35,6 +35,25 @@ export function shortReminderBody(
 }
 
 /**
+ * The channel a tenant reminder will actually use: the preferred phone channel
+ * when it is configured, the tenant has a phone and the test phase is off,
+ * otherwise email.
+ */
+export function resolveReminderChannel(
+  preferredChannel: ReminderChannel | null | undefined,
+  phone: string | null | undefined,
+): ReminderChannel {
+  const pref = preferredChannel || "email";
+  if (pref === "whatsapp" && isWhatsAppConfigured() && phone && !isReminderTestPhase()) {
+    return "whatsapp";
+  }
+  if (pref === "sms" && isSmsConfigured() && phone && !isReminderTestPhase()) {
+    return "sms";
+  }
+  return "email";
+}
+
+/**
  * Route one reminder to the tenant's preferred channel and return the channel
  * actually used. WhatsApp and SMS send the short template in the tenant's
  * language; email is the fallback whenever the preferred channel is
@@ -51,8 +70,8 @@ export async function sendReminderViaPreferredChannel(input: {
   preferredChannel: ReminderChannel | null | undefined;
 }): Promise<ReminderChannel> {
   const { payment, level, settings, ownerId, ownerEmail } = input;
-  const pref = input.preferredChannel || "email";
   const phone = payment.tenantPhone;
+  const channel = resolveReminderChannel(input.preferredChannel, phone);
   const shortVars = {
     tenantName: payment.tenantName,
     amount: `€${payment.amount.toFixed(2)}`,
@@ -62,7 +81,7 @@ export async function sendReminderViaPreferredChannel(input: {
     ownerName: payment.ownerName,
   };
 
-  if (pref === "whatsapp" && isWhatsAppConfigured() && phone && !isReminderTestPhase()) {
+  if (channel === "whatsapp" && phone) {
     await sendWhatsApp({
       to: normalizePhoneNumber(phone),
       body: shortReminderBody(payment.tenantLanguage, level, shortVars),
@@ -70,7 +89,7 @@ export async function sendReminderViaPreferredChannel(input: {
     return "whatsapp";
   }
 
-  if (pref === "sms" && isSmsConfigured() && phone && !isReminderTestPhase()) {
+  if (channel === "sms" && phone) {
     await queueSms(
       { to: normalizePhoneNumber(phone), body: shortReminderBody(payment.tenantLanguage, level, shortVars) },
       undefined,

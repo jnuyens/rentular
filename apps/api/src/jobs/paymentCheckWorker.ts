@@ -18,11 +18,14 @@ import {
 import { BALANCE_CHECK_CRON } from "@rentular/shared";
 import {
   determineReminderLevel,
+  decideFinalReminder,
   DEFAULT_SETTINGS,
+  FINAL_REMINDER_HOLD_DAYS,
 } from "../services/paymentFollowUp";
 import {
   fmtDueDate,
   isReminderTestPhase,
+  resolveReminderChannel,
   sendReminderViaPreferredChannel,
 } from "../services/reminderChannel";
 import { sendLandlordLateEmail } from "../services/landlordLateEmail";
@@ -323,6 +326,8 @@ const worker = new Worker(
         leaseId: payments.leaseId,
         isIgnored: payments.isIgnored,
         landlordNotifiedAt: payments.landlordNotifiedAt,
+        landlordFinalNotifiedAt: payments.landlordFinalNotifiedAt,
+        finalReminderHeldAt: payments.finalReminderHeldAt,
       })
       .from(payments)
       .where(
@@ -528,6 +533,70 @@ const worker = new Worker(
         };
 
         const level = determineReminderLevel(paymentInfo, followUpSettings);
+
+        // The automatic third reminder is gated: the landlord is emailed first
+        // and gets FINAL_REMINDER_HOLD_DAYS calendar days to mark the rent paid,
+        // record the payment, or hold the reminder. The tenant gets nothing
+        // until the hold period is over. Manual reminders are not gated.
+        if (level === "final") {
+          const decision = decideFinalReminder({
+            landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
+            finalReminderHeldAt: payment.finalReminderHeldAt,
+            now: new Date(),
+          });
+
+          if (decision === "notify_landlord") {
+            // Sent regardless of the contract's landlordLateNotify toggle.
+            const recipients = await getLandlordNotificationRecipients(
+              lease.propertyId,
+              ownerData[0]?.email,
+            );
+            if (!recipients.to) {
+              console.log(
+                `[PaymentCheck] no landlord recipient for final_pending on ${payment.paymentId}`,
+              );
+              continue;
+            }
+            const [y, m, d] = today.split("-").map(Number) as [number, number, number];
+            const sendOn = new Date(Date.UTC(y, m - 1, d + FINAL_REMINDER_HOLD_DAYS))
+              .toISOString()
+              .slice(0, 10);
+            const channel = resolveReminderChannel(tenant.preferredChannel, tenant.phone);
+            try {
+              await sendLandlordLateEmail({
+                paymentId: payment.paymentId,
+                to: recipients.to,
+                cc: recipients.cc,
+                ownerLocale: ownerData[0]?.locale || "en",
+                tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+                propertyName,
+                amount: Number(payment.amount),
+                dueDate: payment.dueDate,
+                daysPastDue,
+                kind: "final_pending",
+                channel,
+                sendOn,
+              });
+              await db
+                .update(payments)
+                .set({ landlordFinalNotifiedAt: new Date() })
+                .where(eq(payments.id, payment.paymentId));
+              console.log(
+                `[PaymentCheck] Emailed landlord about pending third reminder for ${payment.paymentId} (sends ${sendOn} via ${channel})`,
+              );
+            } catch (err) {
+              // Not stamped, so the next evening run retries the landlord email.
+              console.error("[PaymentCheck] landlord final_pending email failed:", err);
+            }
+            continue;
+          }
+
+          if (decision === "wait" || decision === "held") {
+            console.log(`[PaymentCheck] final reminder ${decision} for ${payment.paymentId}`);
+            continue;
+          }
+          // "send": fall through to the normal send below.
+        }
 
         if (level) {
           const usedChannel = await sendReminderViaPreferredChannel({
