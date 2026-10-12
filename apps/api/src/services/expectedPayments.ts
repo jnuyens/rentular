@@ -5,6 +5,18 @@ type LeaseRow = typeof leases.$inferSelect;
 
 /** Marks an auto-generated deposit (waarborg) payment; excluded from reminders. */
 export const DEPOSIT_NOTE = "auto-generated deposit";
+
+/**
+ * Is this payment a deposit? Matches on the DEPOSIT_NOTE prefix because
+ * reconciliation appends lines to the notes (e.g. "Auto-assigned by ...")
+ * when a bank transfer is assigned to the deposit.
+ */
+export function isDepositNote(notes: string | null | undefined): boolean {
+  return notes != null && notes.startsWith(DEPOSIT_NOTE);
+}
+
+/** SQL `like` / `notLike` pattern matching any deposit note. */
+export const depositNoteLike = `${DEPOSIT_NOTE}%`;
 const RENT_NOTE = "auto-generated expected payment";
 
 /**
@@ -175,7 +187,7 @@ export function coversMonthRent(
   rent: number
 ): boolean {
   if (p.status !== "paid") return false;
-  if (p.notes === DEPOSIT_NOTE) return false; // a deposit is not the rent
+  if (isDepositNote(p.notes)) return false; // a deposit is not the rent
   const amt = Number(p.amount);
   // At least the rent (partials don't fully cover); allow over-/multi-month
   // payments, but not something as large as a typical 2x+ deposit-sized amount.
