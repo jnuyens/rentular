@@ -55,6 +55,11 @@ export const payments = mysqlTable("payments", {
   landlordNotifiedAt: timestamp("landlord_notified_at"),
   // When the landlord was emailed the due-date heads-up (once per payment)
   landlordDueNotifiedAt: timestamp("landlord_due_notified_at"),
+  // When the landlord was emailed that the automatic third reminder is pending
+  // (once per payment); the tenant gets it after the hold period
+  landlordFinalNotifiedAt: timestamp("landlord_final_notified_at"),
+  // Landlord clicked "hold": the automatic third reminder is never sent
+  finalReminderHeldAt: timestamp("final_reminder_held_at"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -103,7 +108,7 @@ export const paymentFollowUpSettings = mysqlTable("payment_follow_up_settings", 
   friendlyBody: text("friendly_body"),
   formalSubject: varchar("formal_subject", { length: 500 }).default("Payment overdue - action required"),
   formalBody: text("formal_body"),
-  finalSubject: varchar("final_subject", { length: 500 }).default("Final notice: overdue rent payment"),
+  finalSubject: varchar("final_subject", { length: 500 }).default("Third reminder: rent payment"),
   finalBody: text("final_body"),
   // Landlord payment overview report settings
   landlordReportEnabled: boolean("landlord_report_enabled").default(true).notNull(),
