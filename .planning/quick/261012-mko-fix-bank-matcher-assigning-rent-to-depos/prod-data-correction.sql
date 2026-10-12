@@ -143,6 +143,20 @@ WHERE NOT EXISTS (
   SELECT 1 FROM rent_deductions WHERE id = '7b1c9e2a-5d3f-4c8e-9a1b-262301326685'
 );
 
+-- ===================== Block 3b: duplicate deposits =====================
+-- Created 2026-10-05 19:00 because the matcher had appended to the notes of
+-- the original deposit, so the exact DEPOSIT_NOTE lookup missed it. Nothing
+-- references these two rows (checked bank_statements, payment_reminders,
+-- payment_allocations).
+
+DELETE FROM payments
+WHERE id IN (
+  '30386f0c-0f56-4ecb-ad14-ea4a1d43b6c6',
+  '85023522-5280-45f0-b805-606adbb68e08'
+)
+  AND status = 'pending'
+  AND notes = 'auto-generated deposit';
+
 -- ===================== Block 4: older contracts, deposit presumed paid =====================
 
 UPDATE payments p
