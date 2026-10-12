@@ -12,7 +12,7 @@ const findCandidateLeasesByIban = vi.fn<
   (...a: unknown[]) => Promise<Array<{ leaseId: string; monthlyRent: string }>>
 >();
 const assignStatementToLease = vi.fn<
-  (...a: unknown[]) => Promise<{ paymentId: string; created: boolean }>
+  (...a: unknown[]) => Promise<{ paymentId: string; created: boolean } | null>
 >(async () => ({ paymentId: "pay", created: false }));
 
 vi.mock("../tenantBankAccounts", () => ({
@@ -30,6 +30,7 @@ vi.mock("../../lib/bankTransactionView", () => ({
 
 const bankStatements = { __t: "bank_statements" };
 const payments = { __t: "payments" };
+const rentDeductions = { __t: "rent_deductions" };
 
 let statements: Array<Record<string, unknown>> = [];
 
@@ -38,8 +39,9 @@ const fakeDb = {
     from: (t: unknown) => ({
       where: () => {
         if (t === bankStatements) return Promise.resolve(statements);
-        // payments "oldest pending" query: no pending -> falls back to rent.
-        return { orderBy: () => ({ limit: () => Promise.resolve([]) }) };
+        if (t === rentDeductions) return Promise.resolve([]);
+        // payments "pending rows" query: none pending -> falls back to rent.
+        return { orderBy: () => Promise.resolve([]) };
       },
     }),
   }),
@@ -49,6 +51,9 @@ vi.mock("@rentular/db", () => ({
   getDb: () => fakeDb,
   bankStatements,
   payments,
+  rentDeductions,
+  rentFreePeriods: { __t: "rent_free_periods" },
+  leases: { __t: "leases" },
 }));
 
 function stmt(amount: string) {
@@ -109,6 +114,17 @@ describe("autoAssignByIban", () => {
     const n = await run();
     expect(n).toBe(0);
     expect(assignStatementToLease).not.toHaveBeenCalled();
+  });
+
+  it("does not count a transfer that fits no pending payment", async () => {
+    statements = [stmt("250.00")];
+    findCandidateLeasesByIban.mockResolvedValue([
+      { leaseId: "L1", monthlyRent: "500.00" },
+    ]);
+    assignStatementToLease.mockResolvedValueOnce(null);
+    const n = await run();
+    expect(n).toBe(0);
+    expect(assignStatementToLease).toHaveBeenCalledTimes(1);
   });
 
   it("skips debits (outgoing) entirely", async () => {

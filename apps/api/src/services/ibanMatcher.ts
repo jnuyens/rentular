@@ -6,24 +6,46 @@ import {
   findCandidateLeasesByIban,
 } from "./tenantBankAccounts";
 import { assignStatementToLease } from "./reconciliationAssign";
+import { DEPOSIT_NOTE } from "./expectedPayments";
+import type { PendingPayment } from "./paymentPicker";
+import { deductedAmount, loadLeaseDeductions } from "./rentDeductions";
 
 type Db = ReturnType<typeof getDb>;
 
 const AMOUNT_TOLERANCE = 0.01;
 
-/** Expected amount for a lease: its oldest pending payment, else the rent. */
-async function expectedAmountForLease(
+/**
+ * Amounts a transfer for this lease is expected to be: the oldest pending
+ * rent row's amount and that amount net of applicable rent deductions, or the
+ * monthly rent when no rent row is pending. A pending deposit on its own never
+ * defines the expected amount.
+ */
+async function expectedAmountsForLease(
   db: Db,
   leaseId: string,
   monthlyRent: string,
-): Promise<number> {
-  const p = await db
-    .select({ amount: payments.amount })
+): Promise<number[]> {
+  const pending = (await db
+    .select({
+      id: payments.id,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      notes: payments.notes,
+    })
     .from(payments)
     .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "pending")))
-    .orderBy(asc(payments.dueDate))
-    .limit(1);
-  return p[0] ? Number(p[0].amount) : Number(monthlyRent);
+    .orderBy(asc(payments.dueDate))) as PendingPayment[];
+  const oldestRent = pending.find((p) => p.notes !== DEPOSIT_NOTE);
+  if (!oldestRent) return [Number(monthlyRent)];
+  const raw = Number(oldestRent.amount);
+  const deductions = await loadLeaseDeductions(db, leaseId);
+  const net = Math.max(
+    0,
+    Math.round(
+      (raw - deductedAmount(deductions, String(oldestRent.dueDate))) * 100,
+    ) / 100,
+  );
+  return net === raw ? [raw] : [raw, net];
 }
 
 function maskIban(iban: string): string {
@@ -81,12 +103,12 @@ export async function autoAssignByIban(
       const txAmount = Number(statement.amount);
       const matching: string[] = [];
       for (const c of candidates) {
-        const expected = await expectedAmountForLease(
+        const expected = await expectedAmountsForLease(
           db,
           c.leaseId,
           c.monthlyRent,
         );
-        if (Math.abs(txAmount - expected) < AMOUNT_TOLERANCE) {
+        if (expected.some((e) => Math.abs(txAmount - e) < AMOUNT_TOLERANCE)) {
           matching.push(c.leaseId);
         }
       }
@@ -95,12 +117,18 @@ export async function autoAssignByIban(
 
     if (!targetLeaseId) continue;
 
-    await assignStatementToLease(
+    const result = await assignStatementToLease(
       db,
       statement,
       targetLeaseId,
       `Auto-assigned by account number ${maskIban(iban)} from bank transfer ${statement.externalTransactionId}`,
     );
+    if (!result) {
+      console.log(
+        `[IbanMatcher] Statement ${statement.id} fits no pending payment of lease ${targetLeaseId}, left for manual review`,
+      );
+      continue;
+    }
     assigned++;
     console.log(
       `[IbanMatcher] Auto-assigned statement ${statement.id} -> lease ${targetLeaseId} (IBAN ${maskIban(iban)})`,

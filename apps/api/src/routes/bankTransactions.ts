@@ -240,12 +240,19 @@ bankTransactionsRouter.post(
       if (!leaseRows[0]) return c.json({ error: "Lease not found" }, 404);
 
       const note = `Manually assigned from bank transfer ${statement.externalTransactionId}`;
-      const { paymentId } = await assignStatementToLease(
+      // The landlord chose this lease, so the transfer is always linked to it;
+      // a non-fitting amount is recorded as its own paid payment.
+      const assignment = await assignStatementToLease(
         db,
         statement,
         leaseId,
         note,
+        { createWhenUnmatched: true },
       );
+      if (!assignment) {
+        return c.json({ error: "Could not assign the transaction" }, 500);
+      }
+      const { paymentId } = assignment;
 
       // Remember the sender's account on the tenant so future transfers from
       // the same IBAN auto-assign. Best-effort: never fail the assignment.
