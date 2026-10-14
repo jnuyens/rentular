@@ -984,7 +984,32 @@
     "pricingCta": "Commencer",
     "copyright": "Rentular. Tous droits reserves.",
     "privacy": "Politique de confidentialite",
-    "terms": "Conditions generales"
+    "terms": "Conditions generales",
+    "preview": {
+      "appName": "Rentular",
+      "sidebarProperties": "Biens",
+      "sidebarContracts": "Baux",
+      "sidebarPayments": "Paiements",
+      "sidebarIndexation": "Indexation",
+      "title": "Indexation des loyers",
+      "subtitle": "Ajustements automatiques du loyer sur base de l'indice santé",
+      "calculate": "Calculer les nouveaux loyers",
+      "currentIndex": "Indice santé actuel",
+      "sourceStatbel": "Source : Statbel",
+      "readyToApply": "Prêts à appliquer",
+      "leasesReady": "baux prêts",
+      "nextIndexation": "Prochaine indexation",
+      "leasesUpcoming": "baux à venir",
+      "colProperty": "Bien",
+      "colRent": "Loyer",
+      "colBaseIndex": "Indice de base",
+      "colNewIndex": "Nouvel indice",
+      "colAnniversary": "Anniversaire",
+      "colStatus": "Statut",
+      "statusReady": "Prêt à appliquer",
+      "statusApplied": "Appliqué",
+      "statusLetterSent": "Lettre envoyée"
+    }
   },
   "onboarding": {
     "landlordType": {

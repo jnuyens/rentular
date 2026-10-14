@@ -984,7 +984,32 @@
     "pricingCta": "Aan de slag",
     "copyright": "Rentular. Alle rechten voorbehouden.",
     "privacy": "Privacybeleid",
-    "terms": "Algemene voorwaarden"
+    "terms": "Algemene voorwaarden",
+    "preview": {
+      "appName": "Rentular",
+      "sidebarProperties": "Eigendommen",
+      "sidebarContracts": "Huurcontracten",
+      "sidebarPayments": "Betalingen",
+      "sidebarIndexation": "Indexatie",
+      "title": "Huurindexatie",
+      "subtitle": "Automatische huuraanpassingen op basis van de gezondheidsindex",
+      "calculate": "Nieuwe huur berekenen",
+      "currentIndex": "Huidige gezondheidsindex",
+      "sourceStatbel": "Bron: Statbel",
+      "readyToApply": "Klaar om toe te passen",
+      "leasesReady": "contracten klaar",
+      "nextIndexation": "Volgende indexatie",
+      "leasesUpcoming": "contracten binnenkort",
+      "colProperty": "Eigendom",
+      "colRent": "Huur",
+      "colBaseIndex": "Basisindex",
+      "colNewIndex": "Nieuwe index",
+      "colAnniversary": "Verjaardatum",
+      "colStatus": "Status",
+      "statusReady": "Klaar om toe te passen",
+      "statusApplied": "Toegepast",
+      "statusLetterSent": "Brief verstuurd"
+    }
   },
   "onboarding": {
     "landlordType": {

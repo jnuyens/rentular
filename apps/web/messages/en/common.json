@@ -984,7 +984,32 @@
     "pricingCta": "Get Started",
     "copyright": "Rentular. All rights reserved.",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "preview": {
+      "appName": "Rentular",
+      "sidebarProperties": "Properties",
+      "sidebarContracts": "Contracts",
+      "sidebarPayments": "Payments",
+      "sidebarIndexation": "Indexation",
+      "title": "Rent Indexation",
+      "subtitle": "Automatic rent adjustments based on the health index",
+      "calculate": "Calculate new rents",
+      "currentIndex": "Current health index",
+      "sourceStatbel": "Source: Statbel",
+      "readyToApply": "Ready to apply",
+      "leasesReady": "leases ready",
+      "nextIndexation": "Next indexation",
+      "leasesUpcoming": "leases upcoming",
+      "colProperty": "Property",
+      "colRent": "Rent",
+      "colBaseIndex": "Base index",
+      "colNewIndex": "New index",
+      "colAnniversary": "Anniversary",
+      "colStatus": "Status",
+      "statusReady": "Ready to apply",
+      "statusApplied": "Applied",
+      "statusLetterSent": "Letter sent"
+    }
   },
   "onboarding": {
     "landlordType": {
