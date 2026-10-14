@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: milestone_complete
-stopped_at: Milestone complete (Phase 11 was final phase)
-last_updated: 2026-10-05T17:54:12.479Z
+stopped_at: Phase 11.1 context gathered
+last_updated: "2026-10-14T07:36:48.001Z"
 progress:
-  total_phases: 11
+  total_phases: 13
   completed_phases: 11
   total_plans: 51
   completed_plans: 51
-  percent: 100
+  percent: 85
 ---
 
 # Project State
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-22)
 
 ## Current Position
 
-Phase: 11
-Next: /bm:execute-phase 11
+Phase: 11.1
+Next: /bm:discuss-phase 11.1
 Plan: Not started
 
 ## Performance Metrics
@@ -92,6 +92,7 @@ Plan: Not started
 - Phase 8 added: GoCardless Settings UI & SEPA Mandate Management
 - Phase 9 added: PSD2 bank connection flow — API routes + UI for landlords to connect their bank account so the existing polling worker can auto-import statements and match incoming rent transfers
 - Phase 10 added: Deploy to Hetzner (m1) — production deployment (Docker web+api, nginx reverse proxy + LE TLS, env/secrets, atomic-release deploy; folds in Stripe-boot and API-env bug fixes). Depends on Phase 9 incl. 09-05.
+- Phase 11.1 inserted after Phase 11: Launch blockers from v1.0 re-audit: NTF-05 settings save, ONB-03 onboarding JWT refresh, PAY-04 SEPA collection (per-lease button + automatic on due date), indexation re-schedules expected payments, BANK-MATCHER matchedPaymentId (URGENT)
 
 ### Decisions
 
@@ -209,6 +210,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T04:32:52.902Z
-Stopped at: Completed 11-04-PLAN.md
-Resume file: None
+Last session: 2026-10-14T07:36:47.991Z
+Stopped at: Phase 11.1 context gathered
+Resume file: .planning/phases/11.1-launch-blockers-settings-save-onboarding-jwt-sepa-collect-tr/11.1-CONTEXT.md
