@@ -984,7 +984,28 @@
     "pricingCta": "Aan de slag",
     "copyright": "Rentular. Alle rechten voorbehouden.",
     "privacy": "Privacybeleid",
-    "terms": "Algemene voorwaarden"
+    "terms": "Algemene voorwaarden",
+    "preview": {
+      "appName": "Rentular",
+      "overview": "Overzicht",
+      "sidebarProperties": "Eigendommen",
+      "sidebarContracts": "Huurcontracten",
+      "sidebarPayments": "Betalingen",
+      "sidebarIndexation": "Indexatie",
+      "statCollected": "Huur ontvangen deze maand",
+      "statPending": "Betalingen in afwachting",
+      "statLate": "Achterstallige betalingen",
+      "statContracts": "Actieve contracten",
+      "recentPayments": "Recente betalingen",
+      "colProperty": "Eigendom",
+      "colTenant": "Huurder",
+      "colAmount": "Bedrag",
+      "colDate": "Datum",
+      "colStatus": "Status",
+      "statusPaid": "Betaald",
+      "statusPending": "In afwachting",
+      "statusLate": "Achterstallig"
+    }
   },
   "onboarding": {
     "landlordType": {

@@ -984,7 +984,28 @@
     "pricingCta": "Loslegen",
     "copyright": "Rentular. Alle Rechte vorbehalten.",
     "privacy": "Datenschutzrichtlinie",
-    "terms": "Nutzungsbedingungen"
+    "terms": "Nutzungsbedingungen",
+    "preview": {
+      "appName": "Rentular",
+      "overview": "Übersicht",
+      "sidebarProperties": "Immobilien",
+      "sidebarContracts": "Mietverträge",
+      "sidebarPayments": "Zahlungen",
+      "sidebarIndexation": "Indexierung",
+      "statCollected": "Miete diesen Monat erhalten",
+      "statPending": "Ausstehende Zahlungen",
+      "statLate": "Überfällige Zahlungen",
+      "statContracts": "Aktive Verträge",
+      "recentPayments": "Letzte Zahlungen",
+      "colProperty": "Immobilie",
+      "colTenant": "Mieter",
+      "colAmount": "Betrag",
+      "colDate": "Datum",
+      "colStatus": "Status",
+      "statusPaid": "Bezahlt",
+      "statusPending": "Ausstehend",
+      "statusLate": "Überfällig"
+    }
   },
   "onboarding": {
     "landlordType": {

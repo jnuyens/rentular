@@ -984,7 +984,28 @@
     "pricingCta": "Commencer",
     "copyright": "Rentular. Tous droits reserves.",
     "privacy": "Politique de confidentialite",
-    "terms": "Conditions generales"
+    "terms": "Conditions generales",
+    "preview": {
+      "appName": "Rentular",
+      "overview": "Aperçu",
+      "sidebarProperties": "Biens",
+      "sidebarContracts": "Baux",
+      "sidebarPayments": "Paiements",
+      "sidebarIndexation": "Indexation",
+      "statCollected": "Loyers perçus ce mois",
+      "statPending": "Paiements en attente",
+      "statLate": "Paiements en retard",
+      "statContracts": "Baux actifs",
+      "recentPayments": "Paiements récents",
+      "colProperty": "Bien",
+      "colTenant": "Locataire",
+      "colAmount": "Montant",
+      "colDate": "Date",
+      "colStatus": "Statut",
+      "statusPaid": "Payé",
+      "statusPending": "En attente",
+      "statusLate": "En retard"
+    }
   },
   "onboarding": {
     "landlordType": {

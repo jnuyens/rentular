@@ -984,7 +984,28 @@
     "pricingCta": "Get Started",
     "copyright": "Rentular. All rights reserved.",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "preview": {
+      "appName": "Rentular",
+      "overview": "Overview",
+      "sidebarProperties": "Properties",
+      "sidebarContracts": "Contracts",
+      "sidebarPayments": "Payments",
+      "sidebarIndexation": "Indexation",
+      "statCollected": "Rent collected this month",
+      "statPending": "Payments pending",
+      "statLate": "Late payments",
+      "statContracts": "Active contracts",
+      "recentPayments": "Recent payments",
+      "colProperty": "Property",
+      "colTenant": "Tenant",
+      "colAmount": "Amount",
+      "colDate": "Date",
+      "colStatus": "Status",
+      "statusPaid": "Paid",
+      "statusPending": "Pending",
+      "statusLate": "Late"
+    }
   },
   "onboarding": {
     "landlordType": {
