@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { DashboardPreview } from "@/components/marketing/DashboardPreview";
 
 interface Plan {
   id: string;
@@ -160,11 +161,7 @@ export default function MarketingPage() {
                 <div className="h-3 w-3 rounded-full bg-yellow-400" />
                 <div className="h-3 w-3 rounded-full bg-green-400" />
               </div>
-              <div className="flex h-64 items-center justify-center bg-muted/30">
-                <p className="text-sm text-muted-foreground">
-                  Dashboard Preview
-                </p>
-              </div>
+              <DashboardPreview />
             </div>
           </div>
         </div>
