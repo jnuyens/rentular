@@ -551,7 +551,16 @@
     "tokenRevokeFailed": "Could not revoke the token.",
     "noApiTokens": "No tokens yet",
     "noApiTokensDescription": "Create a token above to let the MCP server or your scripts reach the API.",
-    "apiTokensMcpHint": "Use a token as RENTULAR_PAT for the Rentular MCP server, or send it as an Authorization: Bearer header."
+    "apiTokensMcpHint": "Use a token as RENTULAR_PAT for the Rentular MCP server, or send it as an Authorization: Bearer header.",
+    "indexationAlerts": {
+      "title": "Indexation alerts",
+      "description": "Get a message on the day a rent indexation becomes due, with a link to review it.",
+      "whatsappNumber": "WhatsApp number",
+      "whatsappNumberHint": "Leave empty to receive these alerts by email instead.",
+      "enabled": "Send me indexation alerts",
+      "enabledDescription": "Owners and managers of a property each get their own alert.",
+      "invalidNumber": "That does not look like a valid phone number. Use the international format, for example +32 470 12 34 56."
+    }
   },
   "landing": {
     "navFeatures": "Features",

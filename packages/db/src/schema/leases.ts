@@ -76,6 +76,9 @@ export const leases = mysqlTable("leases", {
     scale: 2,
   }),
   lastIndexationDate: date("last_indexation_date", { mode: "string" }),
+  // The applicableFrom date (YYYY-MM-DD) for which the landlord "indexation
+  // due" digest was already sent. One alert per lease per anniversary year.
+  indexationAlertSentFor: date("indexation_alert_sent_for", { mode: "string" }),
   // Late payment administrative fee (per contract)
   latePaymentFeeEnabled: boolean("late_payment_fee_enabled").default(false).notNull(),
   latePaymentFeeAmount: decimal("late_payment_fee_amount", { precision: 10, scale: 2 }).default("15.00"),

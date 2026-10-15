@@ -307,3 +307,14 @@ export function normalizePhoneNumber(phone: string): string {
   }
   return cleaned;
 }
+
+/**
+ * Normalise a user-entered phone number to E.164 (+32470123456).
+ * Returns null when the input is empty or not a plausible E.164 number.
+ */
+export function toE164(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const normalized = normalizePhoneNumber(trimmed);
+  return /^\+[1-9]\d{6,14}$/.test(normalized) ? normalized : null;
+}

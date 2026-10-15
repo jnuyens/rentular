@@ -22,6 +22,18 @@ export default function LoginPage() {
   const [isApp, setIsApp] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const resetToken = searchParams.get("resetToken");
+  // Return to the page that sent the user here (e.g. a deep link from an alert).
+  // Only same-origin relative paths are honoured, so the parameter cannot
+  // bounce a user to another site. Browsers read "/\" like "//", so that is
+  // rejected too.
+  const callbackUrl = searchParams.get("callbackUrl");
+  const redirectTo =
+    callbackUrl &&
+    callbackUrl.startsWith("/") &&
+    !callbackUrl.startsWith("//") &&
+    !callbackUrl.startsWith("/\\")
+      ? callbackUrl
+      : "/properties";
 
   useEffect(() => {
     if (typeof navigator !== "undefined") {
@@ -110,7 +122,7 @@ export default function LoginPage() {
     if (result?.error) {
       setError(t("invalidCredentials"));
     } else {
-      window.location.href = "/properties";
+      window.location.href = redirectTo;
     }
   };
 
@@ -252,21 +264,21 @@ export default function LoginPage() {
 
             <div className="space-y-3">
               <button
-                onClick={() => signIn("google", { callbackUrl: "/properties" })}
+                onClick={() => signIn("google", { callbackUrl: redirectTo })}
                 className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
               >
                 <GoogleIcon />
                 {t("continueWithGoogle")}
               </button>
               <button
-                onClick={() => signIn("facebook", { callbackUrl: "/properties" })}
+                onClick={() => signIn("facebook", { callbackUrl: redirectTo })}
                 className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
               >
                 <FacebookIcon />
                 {t("continueWithFacebook")}
               </button>
               <button
-                onClick={() => signIn("twitter", { callbackUrl: "/properties" })}
+                onClick={() => signIn("twitter", { callbackUrl: redirectTo })}
                 className="flex w-full items-center justify-center gap-3 rounded-lg border border-[hsl(var(--border))] px-4 py-3 text-sm font-medium transition-colors hover:bg-[hsl(var(--muted))]"
               >
                 <TwitterIcon />

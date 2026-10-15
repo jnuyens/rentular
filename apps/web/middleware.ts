@@ -33,7 +33,7 @@ export default async function middleware(req: NextRequest) {
   // 2. If not authenticated and not on public page, redirect to login
   if (!token && !isPublicPage(pathname)) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    loginUrl.searchParams.set("callbackUrl", pathname + req.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

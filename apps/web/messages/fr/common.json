@@ -551,7 +551,16 @@
     "tokenRevokeFailed": "Impossible de révoquer le jeton.",
     "noApiTokens": "Aucun jeton pour le moment",
     "noApiTokensDescription": "Créez un jeton ci-dessus pour que le serveur MCP ou vos scripts accèdent à l'API.",
-    "apiTokensMcpHint": "Utilisez un jeton comme RENTULAR_PAT pour le serveur MCP de Rentular, ou envoyez-le dans un en-tête Authorization: Bearer."
+    "apiTokensMcpHint": "Utilisez un jeton comme RENTULAR_PAT pour le serveur MCP de Rentular, ou envoyez-le dans un en-tête Authorization: Bearer.",
+    "indexationAlerts": {
+      "title": "Alertes d'indexation",
+      "description": "Recevez un message le jour où une indexation de loyer devient possible, avec un lien pour la vérifier.",
+      "whatsappNumber": "Numéro WhatsApp",
+      "whatsappNumberHint": "Laissez vide pour recevoir ces alertes par e-mail.",
+      "enabled": "M'envoyer les alertes d'indexation",
+      "enabledDescription": "Chaque propriétaire et gestionnaire d'un bien reçoit sa propre alerte.",
+      "invalidNumber": "Ce numéro de téléphone ne semble pas valide. Utilisez le format international, par exemple +32 470 12 34 56."
+    }
   },
   "landing": {
     "navFeatures": "Fonctionnalites",
