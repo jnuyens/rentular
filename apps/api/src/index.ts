@@ -36,6 +36,7 @@ import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
 import { setupBankStatementRetentionSchedule } from "./jobs/bankStatementRetentionWorker";
 import { setupHealthIndexSchedule } from "./jobs/healthIndexWorker";
+import { setupIndexationAlertSchedule } from "./jobs/indexationAlertWorker";
 import { emailQueue } from "./jobs/emailQueueWorker";
 import { smsQueue } from "./jobs/smsQueueWorker";
 import { importDiscoveryQueue } from "./jobs/importDiscoveryWorker";
@@ -206,6 +207,9 @@ setupBankStatementRetentionSchedule().catch((err) =>
 );
 setupHealthIndexSchedule().catch((err) =>
   console.error("Failed to setup health index schedule:", err)
+);
+setupIndexationAlertSchedule().catch((err) =>
+  console.error("Failed to setup indexation alert schedule:", err)
 );
 
 // Email queue is auto-started by importing the worker module
