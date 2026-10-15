@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { TrendingUp, Calculator, AlertTriangle, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -116,9 +117,15 @@ function getIndexationStatus(startDate: string): "overdue" | "due_soon" | "ok" {
   return "ok";
 }
 
+const ROW_HIGHLIGHT = " bg-[hsl(var(--primary))]/10 ring-2 ring-inset ring-[hsl(var(--primary))]";
+const CARD_HIGHLIGHT = " ring-2 ring-[hsl(var(--primary))]";
+
 export default function IndexationPage() {
   const t = useTranslations("indexation");
   const tc = useTranslations("dashboard");
+  // Deep link from the indexation alert digest: /indexation?lease=<id>
+  const searchParams = useSearchParams();
+  const highlightLeaseId = searchParams.get("lease");
   const [leases, setLeases] = useState<Lease[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -179,6 +186,14 @@ export default function IndexationPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Bring the deep-linked lease into view once the list has rendered.
+  useEffect(() => {
+    if (loading || !highlightLeaseId) return;
+    document
+      .getElementById(`lease-${highlightLeaseId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [loading, highlightLeaseId]);
 
   // Fetch the calculated (possible) rent whenever a lease preview is opened.
   useEffect(() => {
@@ -463,7 +478,8 @@ export default function IndexationPage() {
                     return (
                       <TableRow
                         key={lease.id}
-                        className={`cursor-pointer ${status === "overdue" ? "bg-red-50/30" : ""}`}
+                        id={`lease-${lease.id}`}
+                        className={`cursor-pointer ${status === "overdue" ? "bg-red-50/30" : ""}${lease.id === highlightLeaseId ? ROW_HIGHLIGHT : ""}`}
                         onClick={() => setPreviewLease(lease)}
                       >
                         <TableCell>
@@ -525,7 +541,11 @@ export default function IndexationPage() {
                   {disabledLeases.map((lease) => {
                     const prop = getProp(lease.propertyId);
                     return (
-                      <TableRow key={lease.id} className="opacity-60">
+                      <TableRow
+                        key={lease.id}
+                        id={`lease-${lease.id}`}
+                        className={`opacity-60${lease.id === highlightLeaseId ? ROW_HIGHLIGHT : ""}`}
+                      >
                         <TableCell>
                           <span className="font-medium">{prop?.name || lease.propertyId}</span>
                         </TableCell>
@@ -556,7 +576,8 @@ export default function IndexationPage() {
               return (
                 <Card
                   key={lease.id}
-                  className={`cursor-pointer ${status === "overdue" ? "border-red-300 bg-red-50/30" : ""}`}
+                  id={`lease-${lease.id}`}
+                  className={`cursor-pointer ${status === "overdue" ? "border-red-300 bg-red-50/30" : ""}${lease.id === highlightLeaseId ? CARD_HIGHLIGHT : ""}`}
                   onClick={() => setPreviewLease(lease)}
                 >
                   <CardContent className="p-5">
@@ -625,7 +646,11 @@ export default function IndexationPage() {
                 {disabledLeases.map((lease) => {
                   const prop = getProp(lease.propertyId);
                   return (
-                    <Card key={lease.id} className="opacity-60">
+                    <Card
+                      key={lease.id}
+                      id={`lease-${lease.id}`}
+                      className={`opacity-60${lease.id === highlightLeaseId ? CARD_HIGHLIGHT : ""}`}
+                    >
                       <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                           <div>
