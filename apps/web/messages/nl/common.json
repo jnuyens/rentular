@@ -551,7 +551,16 @@
     "tokenRevokeFailed": "Token kon niet worden ingetrokken.",
     "noApiTokens": "Nog geen tokens",
     "noApiTokensDescription": "Maak hierboven een token aan zodat de MCP-server of je scripts de API kunnen bereiken.",
-    "apiTokensMcpHint": "Gebruik een token als RENTULAR_PAT voor de Rentular MCP-server, of stuur het mee als Authorization: Bearer header."
+    "apiTokensMcpHint": "Gebruik een token als RENTULAR_PAT voor de Rentular MCP-server, of stuur het mee als Authorization: Bearer header.",
+    "indexationAlerts": {
+      "title": "Meldingen voor indexering",
+      "description": "Krijg een bericht op de dag dat een huurindexering kan worden toegepast, met een link om ze na te kijken.",
+      "whatsappNumber": "WhatsApp-nummer",
+      "whatsappNumberHint": "Laat leeg als je deze meldingen liever per e-mail ontvangt.",
+      "enabled": "Stuur mij meldingen voor indexering",
+      "enabledDescription": "Eigenaars en beheerders van een pand krijgen elk hun eigen melding.",
+      "invalidNumber": "Dit lijkt geen geldig telefoonnummer. Gebruik het internationale formaat, bijvoorbeeld +32 470 12 34 56."
+    }
   },
   "landing": {
     "navFeatures": "Functies",

@@ -115,3 +115,21 @@ describe("smsgateway provider", () => {
     );
   });
 });
+
+describe("toE164", () => {
+  it("normalises Belgian and international numbers", async () => {
+    const { toE164 } = await import("../sms");
+    expect(toE164("0470 12 34 56")).toBe("+32470123456");
+    expect(toE164("+32 470 12 34 56")).toBe("+32470123456");
+    expect(toE164("0032470123456")).toBe("+32470123456");
+  });
+
+  it("returns null for input that is not a phone number", async () => {
+    const { toE164 } = await import("../sms");
+    expect(toE164("abc")).toBeNull();
+    expect(toE164("12")).toBeNull();
+    expect(toE164("")).toBeNull();
+    expect(toE164("   ")).toBeNull();
+    expect(toE164("+0123")).toBeNull();
+  });
+});

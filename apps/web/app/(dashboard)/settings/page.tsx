@@ -454,6 +454,8 @@ function ProfileTab({ apiUrl }: { apiUrl: string }) {
     "individual"
   );
   const [vatNumber, setVatNumber] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [indexationAlertsEnabled, setIndexationAlertsEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -464,6 +466,8 @@ function ProfileTab({ apiUrl }: { apiUrl: string }) {
           setLandlordType(d.landlordType);
         }
         setVatNumber(d.vatNumber || "");
+        setWhatsappNumber(d.whatsappNumber || "");
+        setIndexationAlertsEnabled(d.indexationAlertsEnabled !== false);
       })
       .catch(() => {});
   }, [apiUrl]);
@@ -478,10 +482,19 @@ function ProfileTab({ apiUrl }: { apiUrl: string }) {
         body: JSON.stringify({
           landlordType,
           vatNumber: landlordType === "company" ? vatNumber : "",
+          whatsappNumber,
+          indexationAlertsEnabled,
         }),
       });
-      if (res.ok) toast.success(t("settingsSaved"));
-      else toast.error(t("settingsSaveError"));
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setWhatsappNumber(data.whatsappNumber || "");
+        toast.success(t("settingsSaved"));
+      } else if (data.error === "invalid_phone") {
+        toast.error(t("indexationAlerts.invalidNumber"));
+      } else {
+        toast.error(t("settingsSaveError"));
+      }
     } catch {
       toast.error(t("settingsSaveError"));
     } finally {
@@ -529,14 +542,60 @@ function ProfileTab({ apiUrl }: { apiUrl: string }) {
               />
             </div>
           )}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? t("saving") : t("saveSettings")}
-            </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("indexationAlerts.title")}</CardTitle>
+          <CardDescription>{t("indexationAlerts.description")}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="whatsapp-number" className="mb-2 block">
+              {t("indexationAlerts.whatsappNumber")}
+            </Label>
+            <Input
+              id="whatsapp-number"
+              type="tel"
+              value={whatsappNumber}
+              onChange={(e) => setWhatsappNumber(e.target.value)}
+              placeholder="+32 470 12 34 56"
+              className="max-w-sm"
+            />
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("indexationAlerts.whatsappNumberHint")}
+            </p>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="indexation-alerts">
+                {t("indexationAlerts.enabled")}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t("indexationAlerts.enabledDescription")}
+              </p>
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                id="indexation-alerts"
+                type="checkbox"
+                checked={indexationAlertsEnabled}
+                onChange={(e) => setIndexationAlertsEnabled(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all peer-checked:bg-primary peer-checked:after:translate-x-full" />
+            </label>
           </div>
         </CardContent>
       </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving}>
+          <Save className="mr-2 h-4 w-4" />
+          {saving ? t("saving") : t("saveSettings")}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -551,7 +551,16 @@
     "tokenRevokeFailed": "Token konnte nicht widerrufen werden.",
     "noApiTokens": "Noch keine Tokens",
     "noApiTokensDescription": "Erstelle oben ein Token, damit der MCP-Server oder deine Skripte die API erreichen.",
-    "apiTokensMcpHint": "Verwende ein Token als RENTULAR_PAT für den Rentular-MCP-Server oder sende es als Authorization: Bearer Header."
+    "apiTokensMcpHint": "Verwende ein Token als RENTULAR_PAT für den Rentular-MCP-Server oder sende es als Authorization: Bearer Header.",
+    "indexationAlerts": {
+      "title": "Hinweise zur Indexierung",
+      "description": "Erhalten Sie am Tag, an dem eine Mietindexierung fällig wird, eine Nachricht mit einem Link zur Prüfung.",
+      "whatsappNumber": "WhatsApp-Nummer",
+      "whatsappNumberHint": "Leer lassen, um diese Hinweise stattdessen per E-Mail zu erhalten.",
+      "enabled": "Hinweise zur Indexierung senden",
+      "enabledDescription": "Eigentümer und Verwalter einer Immobilie erhalten jeweils einen eigenen Hinweis.",
+      "invalidNumber": "Das sieht nicht nach einer gültigen Telefonnummer aus. Bitte im internationalen Format eingeben, zum Beispiel +32 470 12 34 56."
+    }
   },
   "landing": {
     "navFeatures": "Funktionen",

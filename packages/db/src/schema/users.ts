@@ -21,6 +21,10 @@ export const users = mysqlTable("users", {
   // Password auth (bcrypt hash, null for OAuth-only users)
   passwordHash: varchar("password_hash", { length: 255 }),
   locale: varchar("locale", { length: 5 }).default("en"),
+  // Personal WhatsApp number (E.164) for landlord/manager alerts. Null means
+  // alerts go by email.
+  whatsappNumber: varchar("whatsapp_number", { length: 32 }),
+  indexationAlertsEnabled: boolean("indexation_alerts_enabled").default(true).notNull(),
   // Landlord classification: selects the Ponto application (individual -> PPM,
   // company -> CPM). Null is treated as individual. VAT is optional (companies).
   landlordType: mysqlEnum("landlord_type", ["individual", "company"]),

@@ -29,6 +29,7 @@ vi.mock("../../lib/email", () => ({
 vi.mock("../../lib/sms", () => ({
   sendSms: vi.fn(),
   normalizePhoneNumber: vi.fn((p: string) => p),
+  toE164: vi.fn((p: string) => p),
 }));
 
 describe("SMS template fields in follow-up settings (NTF-05)", () => {

@@ -33,7 +33,7 @@ export const emailQueue = new Queue(QUEUE_NAME, {
 export interface CommunicationMeta {
   ownerId: string;
   leaseId?: string;
-  type: "payment_reminder_friendly" | "payment_reminder_formal" | "payment_reminder_final" | "indexation_notification" | "landlord_report" | "custom" | "welcome" | "lease_renewal" | "lease_termination" | "other";
+  type: "payment_reminder_friendly" | "payment_reminder_formal" | "payment_reminder_final" | "indexation_notification" | "landlord_report" | "custom" | "welcome" | "lease_renewal" | "lease_termination" | "other" | "indexation_alert";
   recipientName: string;
 }
 

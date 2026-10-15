@@ -8,6 +8,7 @@ import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_SMS_TEMPLATES, REMINDER_DEFAULTS, DEFA
 import { encrypt } from "../lib/encryption";
 import { createTransport } from "nodemailer";
 import { clearTransportCache } from "../lib/email";
+import { toE164 } from "../lib/sms";
 
 const db = getDb();
 
@@ -40,29 +41,62 @@ settingsRouter.put(
     z.object({
       landlordType: z.enum(["individual", "company"]),
       vatNumber: z.string().max(32).optional(),
+      whatsappNumber: z.string().max(40).optional(),
+      indexationAlertsEnabled: z.boolean().optional(),
     })
   ),
   async (c) => {
-    const { landlordType, vatNumber } = c.req.valid("json");
+    const { landlordType, vatNumber, whatsappNumber, indexationAlertsEnabled } =
+      c.req.valid("json");
     const ownerId = getRequiredUserId(c);
-    await db
-      .update(users)
-      .set({ landlordType, vatNumber: vatNumber?.trim() || null })
-      .where(eq(users.id, ownerId));
-    return c.json({ landlordType, vatNumber: vatNumber ?? null });
+
+    const set: {
+      landlordType: "individual" | "company";
+      vatNumber: string | null;
+      whatsappNumber?: string | null;
+      indexationAlertsEnabled?: boolean;
+    } = { landlordType, vatNumber: vatNumber?.trim() || null };
+
+    if (whatsappNumber !== undefined) {
+      if (!whatsappNumber.trim()) {
+        set.whatsappNumber = null;
+      } else {
+        const normalized = toE164(whatsappNumber);
+        if (!normalized) return c.json({ error: "invalid_phone" }, 400);
+        set.whatsappNumber = normalized;
+      }
+    }
+    if (indexationAlertsEnabled !== undefined) {
+      set.indexationAlertsEnabled = indexationAlertsEnabled;
+    }
+
+    await db.update(users).set(set).where(eq(users.id, ownerId));
+    return c.json({
+      landlordType,
+      vatNumber: vatNumber ?? null,
+      whatsappNumber: set.whatsappNumber ?? null,
+      indexationAlertsEnabled: set.indexationAlertsEnabled ?? true,
+    });
   }
 );
 
 settingsRouter.get("/profile", async (c) => {
   const ownerId = getRequiredUserId(c);
   const rows = await db
-    .select({ landlordType: users.landlordType, vatNumber: users.vatNumber })
+    .select({
+      landlordType: users.landlordType,
+      vatNumber: users.vatNumber,
+      whatsappNumber: users.whatsappNumber,
+      indexationAlertsEnabled: users.indexationAlertsEnabled,
+    })
     .from(users)
     .where(eq(users.id, ownerId))
     .limit(1);
   return c.json({
     landlordType: rows[0]?.landlordType ?? "individual",
     vatNumber: rows[0]?.vatNumber ?? "",
+    whatsappNumber: rows[0]?.whatsappNumber ?? "",
+    indexationAlertsEnabled: rows[0]?.indexationAlertsEnabled ?? true,
   });
 });
 
