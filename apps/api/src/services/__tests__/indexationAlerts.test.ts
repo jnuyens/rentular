@@ -32,6 +32,7 @@ vi.mock("../../jobs/emailQueueWorker", () => ({ queueEmail: vi.fn() }));
 vi.mock("../indexationCalc", () => ({ computeIndexationCore: vi.fn() }));
 
 import {
+  alertCycleDate,
   isAlertDue,
   resolveAlertRecipients,
   resolveAlertChannel,
@@ -41,6 +42,7 @@ import {
 } from "../indexationAlerts";
 
 const baseLease = {
+  startDate: "2025-10-15",
   indexationEnabled: true,
   status: "active",
   type: "residential",
@@ -48,18 +50,50 @@ const baseLease = {
   indexationAlertSentFor: null as string | null,
 };
 const dueCore = { canApply: true, applicableFrom: "2026-10-15", currentIndexPublished: true };
+const today = new Date("2026-10-20T08:00:00Z");
+
+describe("alertCycleDate", () => {
+  it("is applicableFrom for a lease indexed on time", () => {
+    expect(alertCycleDate("2025-10-15", "2026-10-15", today)).toBe("2026-10-15");
+  });
+
+  it("moves to the latest anniversary for a lease that was never indexed", () => {
+    expect(alertCycleDate("2015-10-15", "2016-10-15", today)).toBe("2026-10-15");
+  });
+
+  it("uses last year's anniversary when this year's has not come yet", () => {
+    expect(alertCycleDate("2020-02-01", "2021-02-01", today)).toBe("2026-02-01");
+    expect(alertCycleDate("2019-12-01", "2020-12-01", today)).toBe("2025-12-01");
+  });
+});
+
+describe("isAlertDue for an unapplied lease", () => {
+  const old = { ...baseLease, startDate: "2015-10-15" };
+  const oldCore = { ...dueCore, applicableFrom: "2016-10-15" };
+
+  it("is not due twice in the same anniversary year", () => {
+    expect(isAlertDue({ ...old, indexationAlertSentFor: "2026-10-15" }, oldCore, today)).toBe(false);
+  });
+
+  it("is due again at the next anniversary when nothing was applied", () => {
+    expect(isAlertDue({ ...old, indexationAlertSentFor: "2025-10-15" }, oldCore, today)).toBe(true);
+    expect(
+      isAlertDue({ ...old, indexationAlertSentFor: "2026-10-15" }, oldCore, new Date("2027-10-16T08:00:00Z"))
+    ).toBe(true);
+  });
+});
 
 describe("isAlertDue", () => {
   it("is due for an active, set-up lease whose indexation just became applicable", () => {
-    expect(isAlertDue(baseLease, dueCore)).toBe(true);
+    expect(isAlertDue(baseLease, dueCore, today)).toBe(true);
   });
 
   it("is not due again for the same applicableFrom", () => {
-    expect(isAlertDue({ ...baseLease, indexationAlertSentFor: "2026-10-15" }, dueCore)).toBe(false);
+    expect(isAlertDue({ ...baseLease, indexationAlertSentFor: "2026-10-15" }, dueCore, today)).toBe(false);
   });
 
   it("is due again when the last alert was for last year's anniversary", () => {
-    expect(isAlertDue({ ...baseLease, indexationAlertSentFor: "2025-10-15" }, dueCore)).toBe(true);
+    expect(isAlertDue({ ...baseLease, indexationAlertSentFor: "2025-10-15" }, dueCore, today)).toBe(true);
   });
 
   it("is not due when the indexation cannot be applied yet or the index is missing", () => {

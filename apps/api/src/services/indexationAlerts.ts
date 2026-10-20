@@ -42,22 +42,24 @@ export type AlertChannel = "whatsapp" | "email";
 /**
  * Whether a lease should be included in today's digest.
  *
- * The dedup key is applicableFrom: once an indexation is applied,
- * lastIndexationDate moves applicableFrom a year ahead, so next year's alert
- * goes out by itself. A lease is alerted once per applicableFrom, also when the
- * daily job missed the exact day. On the first run after deployment every lease
- * that is already past its applicable date gets one alert; those are exactly the
+ * The dedup key is the alert cycle date (see alertCycleDate): one alert per
+ * lease per anniversary. A lease that stays unapplied is reminded again at its
+ * next anniversary instead of never again. The daily job missing the exact day
+ * does not matter. On the first run after deployment every lease that is
+ * already past its applicable date gets one alert; those are exactly the
  * indexations a landlord has been forgetting.
  */
 export function isAlertDue(
   lease: {
+    startDate: string;
     indexationEnabled: boolean;
     status: string;
     type: string;
     indexationBaseIndex: string | null;
     indexationAlertSentFor: string | null;
   },
-  core: { canApply: boolean; applicableFrom: string; currentIndexPublished: boolean }
+  core: { canApply: boolean; applicableFrom: string; currentIndexPublished: boolean },
+  today: Date = new Date()
 ): boolean {
   if (!lease.indexationEnabled) return false;
   if (lease.status !== "active") return false;
@@ -65,10 +67,35 @@ export function isAlertDue(
   if (!lease.indexationBaseIndex) return false;
   if (!core.canApply || !core.currentIndexPublished) return false;
   // YYYY-MM-DD strings compare correctly as text.
-  if (lease.indexationAlertSentFor && lease.indexationAlertSentFor >= core.applicableFrom) {
+  const cycle = alertCycleDate(lease.startDate, core.applicableFrom, today);
+  if (lease.indexationAlertSentFor && lease.indexationAlertSentFor >= cycle) {
     return false;
   }
   return true;
+}
+
+/**
+ * The anniversary an alert belongs to: the later of applicableFrom and the most
+ * recent contract anniversary on or before today. For a lease indexed on time
+ * the two are the same day. For a lease left unapplied, applicableFrom stays in
+ * the past while the anniversary moves on every year, so it is alerted again.
+ */
+export function alertCycleDate(
+  startDate: string,
+  applicableFrom: string,
+  today: Date = new Date()
+): string {
+  const [y, m, d] = startDate.split("-").map(Number) as [number, number, number];
+  const todayStr = today.toISOString().split("T")[0]!;
+  let year = Number(todayStr.slice(0, 4));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  let anniversary = `${year}-${pad(m)}-${pad(d)}`;
+  if (anniversary > todayStr) {
+    year -= 1;
+    anniversary = `${year}-${pad(m)}-${pad(d)}`;
+  }
+  if (year <= y) return applicableFrom;
+  return anniversary > applicableFrom ? anniversary : applicableFrom;
 }
 
 /**
@@ -297,6 +324,7 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
         lastIndexationDate: lease.lastIndexationDate,
       });
       if (!isAlertDue(lease, core)) continue;
+      const cycle = alertCycleDate(lease.startDate, core.applicableFrom);
       const currentRent = Number(lease.monthlyRent);
       const newRent =
         Number.isFinite(core.newRent) && core.newRent !== currentRent ? core.newRent : null;
@@ -313,7 +341,7 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
         }),
         currentRent,
         newRent,
-        applicableFrom: core.applicableFrom,
+        applicableFrom: cycle,
       });
       ownerByProperty.set(lease.propertyId, row.propertyOwnerId);
     } catch (err) {
