@@ -215,3 +215,4 @@ None yet.
 Last session: 2026-10-14T07:36:47.991Z
 Stopped at: Phase 11.1 context gathered
 Resume file: .planning/phases/11.1-launch-blockers-settings-save-onboarding-jwt-sepa-collect-tr/11.1-CONTEXT.md
+| 2026-10-20 | fast | Belgian amount notation (€ 1.150,00) in indexation alert digest | ✅ |
