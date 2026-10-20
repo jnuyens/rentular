@@ -192,8 +192,10 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
   },
 };
 
+// Belgian notation in every language: "€ 1.150,00"
 function eur(amount: number): string {
-  return `EUR ${amount.toFixed(2)}`;
+  const [whole, cents] = amount.toFixed(2).split(".");
+  return `€ ${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${cents}`;
 }
 
 /**

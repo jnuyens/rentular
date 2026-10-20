@@ -151,8 +151,8 @@ describe("renderDigest", () => {
     }
     expect(subject).toContain("3");
     expect(body).toContain("3");
-    expect(body).toContain("EUR 850.00");
-    expect(body).toContain("EUR 872.40");
+    expect(body).toContain("€ 850,00");
+    expect(body).toContain("€ 872,40");
     expect(body).toContain("Nieuwe huur kan nog niet berekend worden");
   });
 
