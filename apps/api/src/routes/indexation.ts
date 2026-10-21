@@ -85,6 +85,10 @@ interface CalculationResult {
   correctionMonth: number | null;
   formulaNote: string | undefined;
   effectiveDate: string;
+  // Legal anniversary date of this indexation.
+  indexationDate: string;
+  // Rent due dates the landlord may pick as the start of the new rent, default first.
+  effectiveDateOptions: string[];
   latestIndex: number;
   latestIndexMonth: string;
   newRentAtLatest: number;
@@ -92,6 +96,30 @@ interface CalculationResult {
   applicableFrom: string;
   nextAnniversary: string;
 }
+
+/**
+ * Use the start date the landlord picked, if any. Only the due dates offered
+ * by computeIndexationCore are accepted, so a client cannot backdate further
+ * than Belgian law allows.
+ */
+function withChosenEffectiveDate(
+  calc: CalculationResult,
+  requested: string | undefined
+): CalculationResult {
+  if (requested === undefined) return calc;
+  if (!calc.effectiveDateOptions.includes(requested)) {
+    throw {
+      status: 400,
+      message: `effectiveDate must be one of the offered rent due dates: ${calc.effectiveDateOptions.join(", ")}`,
+    };
+  }
+  return { ...calc, effectiveDate: requested };
+}
+
+const effectiveDateField = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "effectiveDate must be YYYY-MM-DD")
+  .optional();
 
 /**
  * Shared internal helper that fetches the lease, property, and health indices,
@@ -209,6 +237,8 @@ async function calculateLeaseIndexation(
     correctionMonth,
     formulaNote,
     effectiveDate: effectiveDateStr,
+    indexationDate,
+    effectiveDateOptions,
     latestIndex,
     latestIndexMonth,
     newRentAtLatest,
@@ -250,6 +280,8 @@ async function calculateLeaseIndexation(
     correctionMonth,
     formulaNote,
     effectiveDate: effectiveDateStr,
+    indexationDate,
+    effectiveDateOptions,
     latestIndex,
     latestIndexMonth,
     newRentAtLatest,
@@ -435,6 +467,8 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       unrestrictedNewRent: calc.unrestrictedNewRent,
       difference: Number((calc.newRent - calc.baseRent).toFixed(2)),
       effectiveDate: calc.effectiveDate,
+      indexationDate: calc.indexationDate,
+      effectiveDateOptions: calc.effectiveDateOptions,
       region: calc.lease.region,
       epcLabel: calc.property.epcLabel,
       epcIndexationFactor: calc.epcIndexationFactor,
@@ -530,6 +564,8 @@ indexationRouter.get("/preview", async (c) => {
       newRent: core.newRent,
       difference: Number((core.newRent - baseRent).toFixed(2)),
       effectiveDate: core.effectiveDate,
+      indexationDate: core.indexationDate,
+      effectiveDateOptions: core.effectiveDateOptions,
       region,
       epcLabel,
       epcRestricted: core.epcRestricted,
@@ -807,15 +843,19 @@ indexationRouter.post(
       overrideNewRent: z.number().positive().optional(),
       subject: z.string().optional(),
       body: z.string().optional(),
+      effectiveDate: effectiveDateField,
     })
   ),
   async (c) => {
     try {
       const leaseId = c.req.param("leaseId");
       const userId = getRequiredUserId(c);
-      const { overrideNewRent, subject, body } = c.req.valid("json");
+      const { overrideNewRent, subject, body, effectiveDate } = c.req.valid("json");
 
-      const calc = await calculateLeaseIndexation(leaseId, userId);
+      const calc = withChosenEffectiveDate(
+        await calculateLeaseIndexation(leaseId, userId),
+        effectiveDate
+      );
       const calculatedNewRent = calc.newRent;
 
       // D-08: override cannot exceed the indexed rent (EPC hard cap)
@@ -886,6 +926,7 @@ indexationRouter.post(
         calculatedNewRent,
         finalNewRent,
         isOverride: finalNewRent < calculatedNewRent,
+        effectiveDate: calc.effectiveDate,
         subject: emailSubject,
         body: emailBody,
         rawSubject,
@@ -917,31 +958,34 @@ indexationRouter.post(
       subject: z.string().min(1),
       body: z.string().min(1),
       sendNotification: z.boolean().default(true),
+      effectiveDate: effectiveDateField,
     })
   ),
   async (c) => {
     try {
       const leaseId = c.req.param("leaseId");
       const userId = getRequiredUserId(c);
-      const { newRent, subject, body, sendNotification } = c.req.valid("json");
+      const { newRent, subject, body, sendNotification, effectiveDate } = c.req.valid("json");
 
-      const calc = await calculateLeaseIndexation(leaseId, userId);
+      const computed = await calculateLeaseIndexation(leaseId, userId);
 
       // Apply requires manager+ role (write operation)
-      const applyRole = await getUserPropertyRole(userId, calc.lease.propertyId);
+      const applyRole = await getUserPropertyRole(userId, computed.lease.propertyId);
       if (!applyRole || !hasMinimumRole(applyRole, "manager")) {
         return c.json({ error: "Insufficient permissions" }, 403);
       }
 
       // Indexation may only be applied once a year, from the anniversary.
-      if (!calc.canApply) {
+      if (!computed.canApply) {
         return c.json(
           {
-            error: `Indexation cannot be applied before ${calc.applicableFrom} (it may be applied once a year, from the contract anniversary)`,
+            error: `Indexation cannot be applied before ${computed.applicableFrom} (it may be applied once a year, from the contract anniversary)`,
           },
           400
         );
       }
+
+      const calc = withChosenEffectiveDate(computed, effectiveDate);
 
       const calculatedNewRent = calc.newRent;
 
@@ -982,7 +1026,10 @@ indexationRouter.post(
         .set({
           monthlyRent: String(newRent),
           currentMonthlyRent: String(newRent),
-          lastIndexationDate: calc.effectiveDate,
+          // The applicability gate and the alert cycle count a year from the
+          // legal anniversary, not from the date the landlord let the new rent
+          // start (see getIndexationApplicability and alertCycleDate).
+          lastIndexationDate: calc.indexationDate,
           updatedAt: new Date(),
         })
         .where(eq(leases.id, leaseId));
@@ -1043,6 +1090,7 @@ indexationRouter.post(
         newRent,
         previousRent,
         effectiveDate: calc.effectiveDate,
+        indexationDate: calc.indexationDate,
         notificationSent,
         indexationRecordId,
       });

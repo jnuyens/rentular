@@ -9,10 +9,12 @@ import { BRUSSELS_EPC_INDEXATION_FACTOR } from "@rentular/shared/constants";
 import { getHealthIndexValue, getLatestHealthIndex } from "../healthIndex";
 import {
   firstDueOnOrAfter,
+  computeEffectiveDateOptions,
   computeIndexationCore,
   getFlandersCorrectionFactor,
   getIndexationApplicability,
 } from "../indexationCalc";
+import { alertCycleDate } from "../indexationAlerts";
 
 describe("getIndexationApplicability", () => {
   it("is applicable on the first anniversary of the contract start", () => {
@@ -206,5 +208,161 @@ describe("firstDueOnOrAfter", () => {
 
   it("rolls over the year end", () => {
     expect(ymd(firstDueOnOrAfter(new Date(2026, 11, 15), 1))).toBe("2027-01-01");
+  });
+});
+
+describe("computeEffectiveDateOptions", () => {
+  const today = new Date(2026, 9, 21);
+
+  it("limits residential back-indexation to 3 months before today", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-05-01",
+      paymentDay: 1,
+      leaseType: "residential_long",
+      today,
+      applicable: true,
+    });
+    expect(r.effectiveDate).toBe("2026-11-01");
+    expect(r.options).toEqual(["2026-11-01", "2026-10-01", "2026-09-01", "2026-08-01"]);
+    expect(r.options[0]).toBe(r.effectiveDate);
+  });
+
+  it("never goes back past the due date on or after the anniversary", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-09-01",
+      paymentDay: 1,
+      leaseType: "residential_long",
+      today,
+      applicable: true,
+    });
+    expect(r.options).toEqual(["2026-11-01", "2026-10-01", "2026-09-01"]);
+  });
+
+  it("lets a commercial lease go back to the anniversary", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-01-01",
+      paymentDay: 1,
+      leaseType: "commercial",
+      today,
+      applicable: true,
+    });
+    expect(r.options).toHaveLength(11);
+    expect(r.options[0]).toBe("2026-11-01");
+    expect(r.options[10]).toBe("2026-01-01");
+    const sorted = [...r.options].sort().reverse();
+    expect(r.options).toEqual(sorted);
+  });
+
+  it("follows a payment day other than the 1st", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-05-15",
+      paymentDay: 15,
+      leaseType: "residential_long",
+      today,
+      applicable: true,
+    });
+    expect(r.options).toEqual(["2026-11-15", "2026-10-15", "2026-09-15", "2026-08-15"]);
+  });
+
+  it("caps the payment day in short months", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-01-31",
+      paymentDay: 31,
+      leaseType: "residential_long",
+      today: new Date(2026, 3, 15),
+      applicable: true,
+    });
+    expect(r.options).toEqual(["2026-04-30", "2026-03-31", "2026-02-28", "2026-01-31"]);
+  });
+
+  it("offers only the default date when the anniversary is still ahead", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-12-01",
+      paymentDay: 1,
+      leaseType: "residential_long",
+      today,
+      applicable: true,
+    });
+    expect(r.effectiveDate).toBe("2026-12-01");
+    expect(r.options).toEqual(["2026-12-01"]);
+  });
+
+  it("offers only the default date when indexation cannot be applied", () => {
+    const r = computeEffectiveDateOptions({
+      indexationDate: "2026-05-01",
+      paymentDay: 1,
+      leaseType: "residential_long",
+      today,
+      applicable: false,
+    });
+    expect(r.options).toEqual([r.effectiveDate]);
+    expect(r.effectiveDate).toBe("2026-11-01");
+  });
+});
+
+describe("computeIndexationCore: effective date options", () => {
+  beforeEach(() => {
+    mockIndices({ "2026-04": 139.33 });
+  });
+  afterEach(() => {
+    vi.mocked(getHealthIndexValue).mockReset();
+    vi.mocked(getLatestHealthIndex).mockReset();
+  });
+
+  const today = new Date(2026, 9, 21);
+
+  it("gives a residential lease up to 3 months of back-indexation", async () => {
+    const r = await computeIndexationCore({ ...realLease, paymentDay: 1, today });
+    expect(r.indexationDate).toBe("2026-05-01");
+    expect(r.effectiveDate).toBe("2026-11-01");
+    expect(r.effectiveDateOptions[0]).toBe(r.effectiveDate);
+    expect(r.effectiveDateOptions).toHaveLength(4);
+    expect(r.effectiveDateOptions[3]).toBe("2026-08-01");
+  });
+
+  it("gives a commercial lease every due date back to the anniversary", async () => {
+    const r = await computeIndexationCore({
+      ...realLease,
+      leaseType: "commercial",
+      paymentDay: 1,
+      today,
+    });
+    expect(r.effectiveDateOptions).toHaveLength(7);
+    expect(r.effectiveDateOptions[0]).toBe("2026-11-01");
+    expect(r.effectiveDateOptions[6]).toBe("2026-05-01");
+  });
+
+  it("offers only the first anniversary for a first-year lease", async () => {
+    const r = await computeIndexationCore({
+      ...realLease,
+      startDate: "2026-03-01",
+      paymentDay: 1,
+      today,
+    });
+    expect(r.effectiveDate).toBe("2027-03-01");
+    expect(r.indexationDate).toBe(r.effectiveDate);
+    expect(r.effectiveDateOptions).toEqual([r.effectiveDate]);
+  });
+});
+
+describe("applicability after an anniversary-based last indexation", () => {
+  it("waits a full year from the anniversary, not from the chosen start", () => {
+    const before = getIndexationApplicability({
+      startDate: "2019-05-01",
+      lastIndexationDate: "2026-05-01",
+      today: new Date(2026, 10, 15),
+    });
+    expect(before).toEqual({ canApply: false, applicableFrom: "2027-05-01" });
+
+    const on = getIndexationApplicability({
+      startDate: "2019-05-01",
+      lastIndexationDate: "2026-05-01",
+      today: new Date(2027, 4, 1),
+    });
+    expect(on.canApply).toBe(true);
+  });
+
+  it("keys the alert cycle on the anniversary", () => {
+    expect(alertCycleDate("2019-05-01", "2027-05-01", new Date(2027, 5, 1))).toBe("2027-05-01");
   });
 });

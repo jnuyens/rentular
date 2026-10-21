@@ -357,7 +357,9 @@
     "applyAndSend": "Toepassen en versturen",
     "applyOnly": "Toepassen zonder e-mail",
     "emailPrepareFailed": "Kon de e-mail niet voorbereiden",
-    "overrideNoteLabel": "Geindexeerde huur {indexed}, toegepast {applied}"
+    "overrideNoteLabel": "Geindexeerde huur {indexed}, toegepast {applied}",
+    "newRentFromLabel": "Nieuwe huur vanaf",
+    "backdatedNote": "Huur die al betaald is voor voorbije maanden wordt nog niet automatisch aangepast."
   },
   "communications": {
     "title": "Communicatie",

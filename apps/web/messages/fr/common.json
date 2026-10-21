@@ -357,7 +357,9 @@
     "applyAndSend": "Appliquer et envoyer",
     "applyOnly": "Appliquer sans e-mail",
     "emailPrepareFailed": "Impossible de preparer le-mail",
-    "overrideNoteLabel": "Loyer indexe {indexed}, applique {applied}"
+    "overrideNoteLabel": "Loyer indexe {indexed}, applique {applied}",
+    "newRentFromLabel": "Nouveau loyer à partir du",
+    "backdatedNote": "Le loyer déjà payé pour les mois passés n'est pas encore ajusté automatiquement."
   },
   "communications": {
     "title": "Communications",
