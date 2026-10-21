@@ -224,7 +224,6 @@ async function calculateLeaseIndexation(
     epcLabel: property.epcLabel,
     leaseType: lease.type,
     lastIndexationDate: lease.lastIndexationDate,
-    paymentDay: lease.paymentDay,
   });
   const {
     currentIndex,
@@ -529,7 +528,6 @@ indexationRouter.get("/preview", async (c) => {
       epcLabel,
       leaseType,
       lastIndexationDate,
-      paymentDay: Number(c.req.query("paymentDay")) || 1,
     });
 
     // Estimate when the rent was last indexed by back-solving the health index
@@ -671,7 +669,6 @@ indexationRouter.get("/raise-summary", async (c) => {
           epcLabel: epcById.get(lease.propertyId) ?? null,
           leaseType: lease.type,
           lastIndexationDate: lease.lastIndexationDate,
-          paymentDay: lease.paymentDay,
         });
         const currentRent = Number(lease.monthlyRent);
         const shownRent = core.canApply ? core.newRent : core.newRentAtLatest;

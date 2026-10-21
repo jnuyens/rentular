@@ -312,7 +312,7 @@ describe("computeIndexationCore: effective date options", () => {
   const today = new Date(2026, 9, 21);
 
   it("gives a residential lease up to 3 months of back-indexation", async () => {
-    const r = await computeIndexationCore({ ...realLease, paymentDay: 1, today });
+    const r = await computeIndexationCore({ ...realLease, today });
     expect(r.indexationDate).toBe("2026-05-01");
     expect(r.effectiveDate).toBe("2026-11-01");
     expect(r.effectiveDateOptions[0]).toBe(r.effectiveDate);
@@ -324,7 +324,6 @@ describe("computeIndexationCore: effective date options", () => {
     const r = await computeIndexationCore({
       ...realLease,
       leaseType: "commercial",
-      paymentDay: 1,
       today,
     });
     expect(r.effectiveDateOptions).toHaveLength(7);
@@ -332,11 +331,17 @@ describe("computeIndexationCore: effective date options", () => {
     expect(r.effectiveDateOptions[6]).toBe("2026-05-01");
   });
 
+  it("starts on the 1st of the month whatever day the lease started", async () => {
+    const r = await computeIndexationCore({ ...realLease, startDate: "2019-10-15", today });
+    expect(r.indexationDate).toBe("2026-10-15");
+    expect(r.effectiveDate).toBe("2026-11-01");
+    expect(r.effectiveDateOptions).toEqual(["2026-11-01"]);
+  });
+
   it("offers only the first anniversary for a first-year lease", async () => {
     const r = await computeIndexationCore({
       ...realLease,
       startDate: "2026-03-01",
-      paymentDay: 1,
       today,
     });
     expect(r.effectiveDate).toBe("2027-03-01");

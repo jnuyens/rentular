@@ -39,6 +39,10 @@ function parseLocalDate(value: string): Date {
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
+// An indexed rent starts with a rent period, and rent periods run per calendar
+// month. The lease payment day (when the tenant pays) does not move that start.
+const RENT_PERIOD_START_DAY = 1;
+
 /** YYYY-MM-DD of a local-time date. toISOString() would shift local midnight back a day east of UTC. */
 function localYmd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -131,8 +135,6 @@ export async function computeIndexationCore(input: {
   epcLabel: string | null;
   leaseType: string;
   lastIndexationDate?: string | null;
-  // Day of the month rent is due (leases.payment_day). Defaults to the 1st.
-  paymentDay?: number | null;
   // Reference date for "today". Defaults to the current time.
   today?: Date;
 }): Promise<{
@@ -207,7 +209,7 @@ export async function computeIndexationCore(input: {
     const anniv = new Date(anniversaryYear, startMonth, startDay);
     indexationDateStr = localYmd(anniv);
     const from = anniv > today ? anniv : addDays(today, 1);
-    effectiveDateStr = localYmd(firstDueOnOrAfter(from, input.paymentDay ?? 1));
+    effectiveDateStr = localYmd(firstDueOnOrAfter(from, RENT_PERIOD_START_DAY));
   } else {
     // Before the first anniversary there is nothing to apply: the legal "current"
     // index equals the base (0 change) and we avoid looking up a future month.
@@ -259,7 +261,7 @@ export async function computeIndexationCore(input: {
   if (anniversaryHasPassed) {
     const opts = computeEffectiveDateOptions({
       indexationDate: indexationDateStr,
-      paymentDay: input.paymentDay ?? 1,
+      paymentDay: RENT_PERIOD_START_DAY,
       leaseType: input.leaseType,
       today,
       applicable: canApply,
