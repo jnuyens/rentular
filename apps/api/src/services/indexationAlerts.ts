@@ -252,7 +252,21 @@ export function renderDigest(
   return { subject: copy.subject(n), body };
 }
 
-function formatPropertyLabel(p: {
+function normaliseLabelPart(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Human label for a property in the alert digest. When the property name
+ * already holds the street and number (e.g. "Tervuursestraat 97 leuven"), the
+ * address is not repeated: a trailing city in the name is dropped and only
+ * "postalCode City" is appended.
+ */
+export function formatPropertyLabel(p: {
   name: string | null;
   street: string | null;
   streetNumber: string | null;
@@ -261,7 +275,24 @@ function formatPropertyLabel(p: {
 }): string {
   const streetLine = [p.street, p.streetNumber].filter(Boolean).join(" ");
   const cityLine = [p.postalCode, p.city].filter(Boolean).join(" ");
-  return [p.name, streetLine, cityLine].filter((s) => s && s.trim()).join(", ");
+  const name = (p.name ?? "").replace(/\s+/g, " ").trim();
+
+  if (
+    name &&
+    streetLine.trim() &&
+    normaliseLabelPart(name).includes(normaliseLabelPart(streetLine))
+  ) {
+    let base = name;
+    const city = (p.city ?? "").replace(/\s+/g, " ").trim();
+    if (city) {
+      const trailingCity = new RegExp(`(^|[\\s,])${escapeRegExp(city)}$`, "i");
+      const stripped = base.replace(trailingCity, "$1").replace(/[\s,]+$/, "");
+      if (stripped) base = stripped;
+    }
+    return [base, cityLine].filter((s) => s && s.trim()).join(", ");
+  }
+
+  return [name, streetLine, cityLine].filter((s) => s && s.trim()).join(", ");
 }
 
 export interface IndexationAlertSummary {
