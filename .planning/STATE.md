@@ -212,6 +212,8 @@ None yet.
 | 261021-euc | Health index from Statbel open-data zip with overdue/failure admin alert, Rentular sender display name, deduped property label in indexation digest | 2026-10-21 | cbbc31d | [261021-euc-health-index-opendata-email-sender-name-](./quick/261021-euc-health-index-opendata-email-sender-name-/) |
 | 261021-ez7 | Flemish EPC correction after the 2022-2023 freeze uses the official anniversary-month factor table instead of subtracting Sep 2022 to Sep 2023 index growth; shared reference-month helper for API and web | 2026-10-21 | 7e9190c | [261021-ez7-fix-flemish-epc-correction-factor-after-](./quick/261021-ez7-fix-flemish-epc-correction-factor-after-/) |
 | 261021-nj9 | Email all lease tenants (cc co-tenants) and new four-language indexation letter | 2026-10-21 | 7dada57 | [261021-nj9-email-all-lease-tenants-and-new-indexati](./quick/261021-nj9-email-all-lease-tenants-and-new-indexati/) |
+| fast | Late indexation starts on the next rent due date; local date formatting fix | 2026-10-21 | 277c784 | n/a |
+| 261021-pd2 | Landlord picks the indexation start date (next due date default, up to 3 months back residential) | 2026-10-21 | b0bce90 | [261021-pd2-landlord-picks-indexation-start-date](./quick/261021-pd2-landlord-picks-indexation-start-date/) |
 
 ## Session Continuity
 
