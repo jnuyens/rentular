@@ -34,7 +34,8 @@ worker.on("completed", (job) => {
 });
 
 /**
- * Schedule daily health index refresh at 06:00 UTC.
+ * Schedule daily health index refresh at 06:00 in the schedule timezone
+ * (getScheduleTimezone(), Europe/Brussels by default).
  * Statbel publishes on the penultimate business day of the month.
  * Running daily ensures we pick up new values promptly.
  */
@@ -44,18 +45,20 @@ export async function setupHealthIndexSchedule(): Promise<void> {
     await healthIndexQueue.removeRepeatableByKey(job.key);
   }
 
-  // Daily at 06:00 UTC
+  const tz = getScheduleTimezone();
+
+  // Daily at 06:00 local time in the schedule timezone
   await healthIndexQueue.add(
     "refresh-health-index",
     {},
     {
-      repeat: { pattern: "0 6 * * *", tz: getScheduleTimezone() },
+      repeat: { pattern: "0 6 * * *", tz },
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 50 },
     }
   );
 
-  console.log("[HealthIndex] Daily refresh scheduled at 06:00 UTC");
+  console.log(`[HealthIndex] Daily refresh scheduled at 06:00 (${tz})`);
 }
 
 export { healthIndexQueue, worker };

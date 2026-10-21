@@ -1,41 +1,87 @@
 import { eq, and, desc } from "drizzle-orm";
+import { unzipSync, strFromU8 } from "fflate";
 import { getDb, healthIndexValues } from "@rentular/db";
 
-const STATBEL_API_URL =
-  "https://bestat.statbel.fgov.be/bestat/api/views/208b69bd-05c5-4947-b7f9-2d2300f517b8/result/JSON";
+// Statbel open-data dump with every CPI and health index value for all base
+// years. Updated by Statbel each month, unlike the fixed-range beSTAT views.
+const STATBEL_OPENDATA_URL =
+  "https://statbel.fgov.be/sites/default/files/files/opendata/Consumptieprijsindex%20en%20gezondheidsindex/CPI%20All%20base%20years.zip";
 
-// Month name to two-digit string mapping (English names from Statbel beSTAT API)
-const months: Record<string, string> = {
-  January: "01",
-  February: "02",
-  March: "03",
-  April: "04",
-  May: "05",
-  June: "06",
-  July: "07",
-  August: "08",
-  September: "09",
-  October: "10",
-  November: "11",
-  December: "12",
-};
+const STATBEL_TXT_NAME = "CPI All base years.txt";
 
-/**
- * Parse Statbel month string (e.g. "January 2025") into year and month components.
- */
-function parseStatbelMonth(monthStr: string): { year: string; month: string } {
-  const parts = monthStr.split(" ");
-  return { year: parts[1]!, month: months[parts[0]!] || "01" };
+// Belgian residential leases are indexed against the health index with base 2013 = 100.
+const HEALTH_INDEX_BASE_YEAR = "2013";
+
+export interface StatbelHealthIndexRow {
+  year: string;
+  month: string;
+  value: string;
 }
 
 /**
- * Fetch health index values from Statbel beSTAT API and cache in the database.
- * Upserts: skips rows that already exist (health index values never change once published).
- * On API failure, logs error and returns silently (retry next day per D-03).
+ * Parse the pipe-separated "CPI All base years.txt" file from Statbel.
+ * Keeps only base-2013 rows that have a published health index value
+ * (older months use "." as a placeholder). Columns are looked up by header
+ * name so a reordered file still parses.
+ */
+export function parseStatbelCpiFile(text: string): StatbelHealthIndexRow[] {
+  const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const lines = clean.split(/\r?\n/);
+  const header = (lines[0] ?? "").split("|").map((h) => h.trim());
+
+  const yearCol = header.indexOf("NM_YR");
+  const monthCol = header.indexOf("NM_MTH");
+  const healthCol = header.indexOf("MS_HLTH_IDX");
+  const baseCol = header.indexOf("NM_BASE_YR");
+  if (yearCol < 0 || monthCol < 0 || healthCol < 0 || baseCol < 0) {
+    throw new Error("unexpected Statbel CPI file header");
+  }
+
+  const rows: StatbelHealthIndexRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i]!.trim();
+    if (!line) continue;
+    const cols = line.split("|");
+    if ((cols[baseCol] ?? "").trim() !== HEALTH_INDEX_BASE_YEAR) continue;
+
+    const raw = (cols[healthCol] ?? "").trim();
+    if (raw === "" || raw === ".") continue;
+    const num = Number(raw);
+    if (!Number.isFinite(num)) continue;
+
+    const year = (cols[yearCol] ?? "").trim();
+    const month = (cols[monthCol] ?? "").trim().padStart(2, "0");
+    if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) continue;
+
+    rows.push({ year, month, value: Number(num.toFixed(2)).toString() });
+  }
+  return rows;
+}
+
+/**
+ * Extract the CPI text file from the Statbel zip archive.
+ * Prefers the known file name, else the first .txt entry.
+ */
+export function extractStatbelCpiText(zip: Uint8Array): string {
+  const entries = unzipSync(zip);
+  const names = Object.keys(entries);
+  const name =
+    names.find((n) => n === STATBEL_TXT_NAME || n.endsWith(`/${STATBEL_TXT_NAME}`)) ??
+    names.find((n) => n.toLowerCase().endsWith(".txt"));
+  if (!name) {
+    throw new Error("no .txt file found in Statbel zip");
+  }
+  return strFromU8(entries[name]!);
+}
+
+/**
+ * Fetch health index values from the Statbel open-data zip and cache them in
+ * the database. Only inserts months that are not cached yet: published health
+ * index values never change. On failure, logs and returns (retried next day).
  */
 export async function fetchAndCacheHealthIndex(): Promise<void> {
   try {
-    const response = await fetch(STATBEL_API_URL);
+    const response = await fetch(STATBEL_OPENDATA_URL);
     if (!response.ok) {
       console.error(
         `[HealthIndex] Failed to fetch from Statbel: HTTP ${response.status} ${response.statusText}`
@@ -43,56 +89,34 @@ export async function fetchAndCacheHealthIndex(): Promise<void> {
       return;
     }
 
-    const data = (await response.json()) as {
-      facts: Array<{
-        Year: string;
-        Month: string;
-        "Health index": number;
-      }>;
-    };
-
-    if (!data.facts || !Array.isArray(data.facts)) {
-      console.error("[HealthIndex] Failed to fetch from Statbel: unexpected response format (no facts array)");
-      return;
-    }
+    const zip = new Uint8Array(await response.arrayBuffer());
+    const rows = parseStatbelCpiFile(extractStatbelCpiText(zip));
 
     const db = getDb();
+    const existing = await db
+      .select({ year: healthIndexValues.year, month: healthIndexValues.month })
+      .from(healthIndexValues);
+    const known = new Set(existing.map((r) => `${r.year}-${r.month}`));
+
     let inserted = 0;
-
-    for (const fact of data.facts) {
-      const { year, month } = parseStatbelMonth(fact.Month);
-      const healthIndex = fact["Health index"];
-
-      // Check if this year+month combination already exists
-      const existing = await db
-        .select({ id: healthIndexValues.id })
-        .from(healthIndexValues)
-        .where(
-          and(
-            eq(healthIndexValues.year, year),
-            eq(healthIndexValues.month, month)
-          )
-        )
-        .limit(1);
-
-      if (existing.length > 0) {
-        continue; // Health index values never change once published
-      }
+    for (const row of rows) {
+      const key = `${row.year}-${row.month}`;
+      if (known.has(key)) continue;
 
       await db.insert(healthIndexValues).values({
         id: crypto.randomUUID(),
-        year,
-        month,
-        value: Number(healthIndex.toFixed(2)).toString(),
-        source: "statbel",
+        year: row.year,
+        month: row.month,
+        value: row.value,
+        source: "statbel-opendata",
         fetchedAt: new Date(),
       });
-
+      known.add(key);
       inserted++;
     }
 
     console.log(
-      `[HealthIndex] Fetched ${data.facts.length} index values from Statbel, ${inserted} new`
+      `[HealthIndex] Fetched ${rows.length} index values from Statbel, ${inserted} new`
     );
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
