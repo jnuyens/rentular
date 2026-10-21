@@ -29,8 +29,11 @@ import {
 import { computeIndexationCore } from "../services/indexationCalc";
 import {
   generateDefaultIndexationEmail,
-  LEGAL_REFERENCES,
+  buildIndexationTemplateVars,
+  type IndexationEmailParams,
 } from "../services/indexationEmail";
+import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import { formatCountry } from "../lib/belgianFormat";
 import { queueEmail } from "../jobs/emailQueueWorker";
 import { renderTemplate } from "../lib/email";
 
@@ -48,6 +51,9 @@ interface CalculationResult {
     type: string;
     region: string;
     startDate: string;
+    signingDate: string | null;
+    paymentMethod: string | null;
+    baseRent: string | null;
     monthlyRent: string;
     indexationBaseMonth: string | null;
     indexationBaseIndex: string | null;
@@ -59,10 +65,17 @@ interface CalculationResult {
     id: string;
     name: string;
     epcLabel: string | null;
+    street: string;
+    streetNumber: string;
+    box: string | null;
+    postalCode: string;
+    city: string;
+    country: string;
   };
   baseRent: number;
   baseIndex: number;
   currentIndex: number;
+  currentIndexMonth: string;
   currentIndexValue: string;
   unrestrictedNewRent: number;
   newRent: number;
@@ -129,6 +142,12 @@ async function calculateLeaseIndexation(
       id: properties.id,
       name: properties.name,
       epcLabel: properties.epcLabel,
+      street: properties.street,
+      streetNumber: properties.streetNumber,
+      box: properties.box,
+      postalCode: properties.postalCode,
+      city: properties.city,
+      country: properties.country,
     })
     .from(properties)
     .where(eq(properties.id, lease.propertyId))
@@ -180,6 +199,7 @@ async function calculateLeaseIndexation(
   });
   const {
     currentIndex,
+    currentIndexMonth,
     unrestrictedNewRent,
     newRent,
     epcIndexationFactor,
@@ -205,6 +225,9 @@ async function calculateLeaseIndexation(
       type: lease.type,
       region: lease.region,
       startDate: lease.startDate,
+      signingDate: lease.signingDate || null,
+      paymentMethod: lease.paymentMethod || null,
+      baseRent: lease.baseRent ?? null,
       monthlyRent: lease.monthlyRent,
       indexationBaseMonth: lease.indexationBaseMonth,
       indexationBaseIndex: lease.indexationBaseIndex,
@@ -216,6 +239,7 @@ async function calculateLeaseIndexation(
     baseRent,
     baseIndex,
     currentIndex,
+    currentIndexMonth,
     currentIndexValue,
     unrestrictedNewRent,
     newRent,
@@ -231,6 +255,52 @@ async function calculateLeaseIndexation(
     canApply,
     applicableFrom,
     nextAnniversary,
+  };
+}
+
+/**
+ * Map a calculation, the addressed tenant and the owner onto the parameters
+ * of the indexation letter.
+ */
+function buildIndexationEmailParams(input: {
+  calc: CalculationResult;
+  tenantLanguage: string;
+  tenantName: string;
+  calculatedNewRent: number;
+  finalNewRent: number;
+  owner: { name: string | null; email: string | null; whatsappNumber: string | null };
+}): IndexationEmailParams {
+  const { calc, owner } = input;
+  const p = calc.property;
+  const propertyAddress = `${p.street} ${p.streetNumber}${p.box ? " " + p.box : ""}, ${p.postalCode} ${p.city}, ${formatCountry(p.country, input.tenantLanguage)}`;
+  return {
+    tenantLanguage: input.tenantLanguage,
+    region: calc.lease.region,
+    tenantName: input.tenantName,
+    propertyName: p.name,
+    propertyAddress,
+    signingDate: calc.lease.signingDate || null,
+    startDate: calc.lease.startDate,
+    baseRent: calc.baseRent,
+    baseIndex: calc.baseIndex,
+    // calculateLeaseIndexation rejects leases without a base month.
+    baseIndexMonth: calc.lease.indexationBaseMonth!,
+    currentIndex: calc.currentIndex,
+    currentIndexMonth: calc.currentIndexMonth,
+    unrestrictedNewRent: calc.unrestrictedNewRent,
+    calculatedNewRent: input.calculatedNewRent,
+    appliedNewRent: input.finalNewRent,
+    effectiveDate: calc.effectiveDate,
+    epcLabel: p.epcLabel,
+    epcRestricted: calc.epcRestricted,
+    correctionApplied: calc.correctionApplied,
+    correctionMonth: calc.correctionMonth,
+    epcIndexationFactor: calc.epcIndexationFactor,
+    paymentMethod: calc.lease.paymentMethod,
+    ownerName: owner.name || owner.email || "Your landlord",
+    ownerEmail: owner.email,
+    // users has no separate phone column; the WhatsApp number is the only one stored.
+    ownerPhone: owner.whatsappNumber,
   };
 }
 
@@ -765,37 +835,27 @@ indexationRouter.post(
 
       const db = getDb();
 
-      // Fetch primary tenant for language and name
-      const tenantRows = await db
-        .select({
-          firstName: tenants.firstName,
-          lastName: tenants.lastName,
-          email: tenants.email,
-          language: tenants.language,
-        })
-        .from(leaseTenants)
-        .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
-        .where(
-          and(
-            eq(leaseTenants.leaseId, leaseId),
-            eq(leaseTenants.isPrimary, true)
-          )
-        )
-        .limit(1);
-
-      const tenant = tenantRows[0];
-      const tenantLanguage = tenant?.language || "en";
-      const tenantName = tenant
-        ? `${tenant.firstName} ${tenant.lastName}`
+      // Primary tenant gives name and language; co-tenants are copied.
+      const rec = await getLeaseEmailRecipients(leaseId);
+      const tenantLanguage = rec.primary?.language || "en";
+      const tenantName = rec.primary
+        ? `${rec.primary.firstName} ${rec.primary.lastName}`.trim()
         : "Tenant";
 
-      // Fetch owner name
       const ownerRows = await db
-        .select({ name: users.name })
+        .select({ name: users.name, email: users.email, whatsappNumber: users.whatsappNumber })
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      const ownerName = ownerRows[0]?.name || "Your landlord";
+
+      const params = buildIndexationEmailParams({
+        calc,
+        tenantLanguage,
+        tenantName,
+        calculatedNewRent,
+        finalNewRent,
+        owner: ownerRows[0] ?? { name: null, email: null, whatsappNumber: null },
+      });
 
       // D-13: if no custom subject/body provided, generate defaults
       let emailSubject: string;
@@ -804,19 +864,7 @@ indexationRouter.post(
       let rawBody: string;
 
       if (!subject && !body) {
-        const defaults = generateDefaultIndexationEmail({
-          tenantLanguage,
-          region: calc.lease.region,
-          tenantName,
-          propertyName: calc.property.name,
-          currentRent: String(calc.lease.currentMonthlyRent || calc.lease.monthlyRent),
-          calculatedNewRent: String(calculatedNewRent),
-          appliedNewRent: String(finalNewRent),
-          baseIndex: String(calc.baseIndex),
-          currentIndex: String(calc.currentIndex),
-          effectiveDate: calc.effectiveDate,
-          ownerName,
-        });
+        const defaults = generateDefaultIndexationEmail(params);
         rawSubject = defaults.subject;
         rawBody = defaults.body;
       } else {
@@ -824,23 +872,8 @@ indexationRouter.post(
         rawBody = body || "";
       }
 
-      // Render the template with real values for the preview
-      const templateVars: Record<string, string> = {
-        tenantName,
-        propertyName: calc.property.name,
-        currentRent: String(calc.lease.currentMonthlyRent || calc.lease.monthlyRent),
-        newRent: String(finalNewRent),
-        calculatedNewRent: String(calculatedNewRent),
-        baseIndex: String(calc.baseIndex),
-        currentIndex: String(calc.currentIndex),
-        effectiveDate: calc.effectiveDate,
-        ownerName,
-        legalReference:
-          LEGAL_REFERENCES[calc.lease.region]?.[tenantLanguage] ||
-          LEGAL_REFERENCES[calc.lease.region]?.en ||
-          "",
-        overrideNote: "",
-      };
+      // Resolves placeholders in custom templates; the default is already rendered.
+      const templateVars = buildIndexationTemplateVars(params);
 
       emailSubject = renderTemplate(rawSubject, templateVars);
       emailBody = renderTemplate(rawBody, templateVars);
@@ -854,6 +887,7 @@ indexationRouter.post(
         body: emailBody,
         rawSubject,
         rawBody,
+        recipients: { to: rec.to, cc: rec.ccEmails },
       });
     } catch (error: unknown) {
       if (error && typeof error === "object" && "status" in error && "message" in error) {
@@ -953,60 +987,36 @@ indexationRouter.post(
       // D-14: send notification immediately if requested
       let notificationSent = false;
       if (sendNotification) {
-        // Fetch primary tenant email and language
-        const tenantRows = await db
-          .select({
-            firstName: tenants.firstName,
-            lastName: tenants.lastName,
-            email: tenants.email,
-            language: tenants.language,
-          })
-          .from(leaseTenants)
-          .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
-          .where(
-            and(
-              eq(leaseTenants.leaseId, leaseId),
-              eq(leaseTenants.isPrimary, true)
-            )
-          )
-          .limit(1);
+        // Primary tenant addressed, co-tenants copied.
+        const rec = await getLeaseEmailRecipients(leaseId);
 
-        const tenant = tenantRows[0];
+        if (rec.to) {
+          const tenantName = rec.primary
+            ? `${rec.primary.firstName} ${rec.primary.lastName}`.trim()
+            : "Tenant";
 
-        if (tenant?.email) {
-          const tenantName = `${tenant.firstName} ${tenant.lastName}`;
-
-          // Fetch owner name
           const ownerRows = await db
-            .select({ name: users.name })
+            .select({ name: users.name, email: users.email, whatsappNumber: users.whatsappNumber })
             .from(users)
             .where(eq(users.id, userId))
             .limit(1);
-          const ownerName = ownerRows[0]?.name || "Your landlord";
 
-          // Render the provided subject and body with all variables
-          const templateVars: Record<string, string> = {
+          const params = buildIndexationEmailParams({
+            calc,
+            tenantLanguage: rec.primary?.language || "en",
             tenantName,
-            propertyName: calc.property.name,
-            currentRent: previousRent,
-            newRent: String(newRent),
-            calculatedNewRent: String(calculatedNewRent),
-            baseIndex: String(calc.baseIndex),
-            currentIndex: String(calc.currentIndex),
-            effectiveDate: calc.effectiveDate,
-            ownerName,
-            legalReference:
-              LEGAL_REFERENCES[calc.lease.region]?.[tenant.language] ||
-              LEGAL_REFERENCES[calc.lease.region]?.en ||
-              "",
-            overrideNote: "",
-          };
+            calculatedNewRent,
+            finalNewRent: newRent,
+            owner: ownerRows[0] ?? { name: null, email: null, whatsappNumber: null },
+          });
+          const templateVars = buildIndexationTemplateVars(params);
 
           const renderedSubject = renderTemplate(subject, templateVars);
           const renderedBody = renderTemplate(body, templateVars);
 
           await queueEmail({
-            to: tenant.email,
+            to: rec.to,
+            cc: rec.cc,
             subject: renderedSubject,
             body: renderedBody,
           }, undefined, {

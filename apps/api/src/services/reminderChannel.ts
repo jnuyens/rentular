@@ -68,6 +68,8 @@ export async function sendReminderViaPreferredChannel(input: {
   ownerId: string;
   ownerEmail?: string;
   preferredChannel: ReminderChannel | null | undefined;
+  /** Co-tenant addresses to copy on the email; SMS and WhatsApp ignore it. */
+  cc?: string;
 }): Promise<ReminderChannel> {
   const { payment, level, settings, ownerId, ownerEmail } = input;
   const phone = payment.tenantPhone;
@@ -103,6 +105,6 @@ export async function sendReminderViaPreferredChannel(input: {
     return "sms";
   }
 
-  await sendReminder(payment, level, settings, ownerId, ownerEmail);
+  await sendReminder(payment, level, settings, ownerId, ownerEmail, input.cc);
   return "email";
 }

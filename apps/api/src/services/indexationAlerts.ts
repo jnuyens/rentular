@@ -13,6 +13,7 @@ import { hasMinimumRole } from "../lib/propertyAccess";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueEmail } from "../jobs/emailQueueWorker";
 import { computeIndexationCore } from "./indexationCalc";
+import { formatEur } from "../lib/belgianFormat";
 
 // Daily "indexation due" digest for landlords and property managers.
 // The decision functions below are pure so they can be unit tested without a
@@ -219,12 +220,6 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
   },
 };
 
-// Belgian notation in every language: "€ 1.150,00"
-function eur(amount: number): string {
-  const [whole, cents] = amount.toFixed(2).split(".");
-  return `€ ${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${cents}`;
-}
-
 /**
  * Plain-text digest used for both WhatsApp and email. sendWhatsApp appends
  * WHATSAPP_SIGNATURE itself, so it is not added here.
@@ -240,9 +235,9 @@ export function renderDigest(
   const n = items.length;
 
   const blocks = items.map((item) => {
-    const lines = [item.propertyLabel, `${copy.currentRent}: ${eur(item.currentRent)}`];
+    const lines = [item.propertyLabel, `${copy.currentRent}: ${formatEur(item.currentRent)}`];
     lines.push(
-      item.newRent !== null ? `${copy.newRent}: ${eur(item.newRent)}` : copy.newRentUnknown
+      item.newRent !== null ? `${copy.newRent}: ${formatEur(item.newRent)}` : copy.newRentUnknown
     );
     lines.push(`${webUrl}/indexation?lease=${item.leaseId}`);
     return lines.join("\n");

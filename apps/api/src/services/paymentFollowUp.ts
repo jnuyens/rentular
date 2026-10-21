@@ -260,6 +260,8 @@ export async function sendReminder(
       return;
     }
     emailOptions.to = ownerEmail;
+    // Test mail must not reach co-tenants either.
+    emailOptions.cc = undefined;
     emailOptions.subject = `TEST PHASE MAIL: ${emailOptions.subject} (would go to ${payment.tenantName} <${payment.tenantEmail}>)`;
   }
 

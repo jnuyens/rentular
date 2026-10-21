@@ -70,6 +70,42 @@ describe("queueEmail with CommunicationMeta (NTF-06)", () => {
     );
   });
 
+  it("records the cc addresses in the communications metadata", async () => {
+    const { queueEmail } = await import("../emailQueueWorker");
+
+    await queueEmail(
+      { to: "a@x.be", cc: " r@law.be ", subject: "Reminder", body: "Pay up" },
+      undefined,
+      { ownerId: "owner-1", leaseId: "lease-1", type: "payment_reminder_friendly", recipientName: "Akpinar" },
+    );
+
+    expect(mockValues).toHaveBeenCalledTimes(1);
+    expect(mockValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientEmail: "a@x.be",
+        metadata: expect.objectContaining({ cc: ["r@law.be"] }),
+      }),
+    );
+    expect(mockAdd).toHaveBeenCalledWith(
+      "send-email",
+      expect.objectContaining({ to: "a@x.be", cc: " r@law.be " }),
+      expect.any(Object),
+    );
+  });
+
+  it("leaves metadata out when there is no cc", async () => {
+    const { queueEmail } = await import("../emailQueueWorker");
+
+    await queueEmail(
+      { to: "a@x.be", subject: "Reminder", body: "Pay up" },
+      undefined,
+      { ownerId: "owner-1", type: "custom", recipientName: "Akpinar" },
+    );
+
+    const row = mockValues.mock.calls[0]![0] as Record<string, unknown>;
+    expect(row.metadata).toBeUndefined();
+  });
+
   it("should add job to BullMQ queue", async () => {
     const { queueEmail } = await import("../emailQueueWorker");
 

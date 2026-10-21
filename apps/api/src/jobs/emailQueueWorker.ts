@@ -41,10 +41,10 @@ export interface CommunicationMeta {
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    const { to, subject, body, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
-    console.log(`[EmailQueue] Sending email to ${to}: "${subject}"`);
+    const { to, cc, subject, body, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
+    console.log(`[EmailQueue] Sending email to ${to}${cc ? ` (cc: ${cc})` : ""}: "${subject}"`);
     try {
-      await sendEmail({ to, subject, body, attachments, ownerId });
+      await sendEmail({ to, cc, subject, body, attachments, ownerId });
       console.log(`[EmailQueue] Sent successfully to ${to}`);
 
       // Update communications record on success
@@ -93,6 +93,13 @@ worker.on("completed", (job) => {
   console.log(`[EmailQueue] Job ${job.id} completed`);
 });
 
+/** Split a comma-separated cc value into trimmed addresses, or undefined when empty. */
+function ccList(cc: string | undefined): string[] | undefined {
+  if (!cc) return undefined;
+  const list = cc.split(",").map((s) => s.trim()).filter(Boolean);
+  return list.length ? list : undefined;
+}
+
 /**
  * Queue an email for delivery. Emails are sent one at a time with rate limiting
  * to avoid overwhelming the mail server.
@@ -113,6 +120,7 @@ export async function queueEmail(
   // Insert communications record if metadata is provided
   if (meta) {
     communicationId = crypto.randomUUID();
+    const cc = ccList(options.cc);
     try {
       const db = getDb();
       await db.insert(communications).values({
@@ -126,6 +134,8 @@ export async function queueEmail(
         subject: options.subject,
         body: options.body,
         status: "queued",
+        // One row per email; copied co-recipients are kept in metadata.
+        metadata: cc ? { cc } : undefined,
       });
     } catch (dbErr) {
       console.error(`[EmailQueue] Failed to insert communications record:`, dbErr);
