@@ -12,6 +12,7 @@ import {
   hasMinimumRole,
 } from "../lib/propertyAccess";
 import type { PropertyManagerRole } from "@rentular/shared";
+import { computeIndexReferenceMonth } from "@rentular/shared/validation";
 
 const db = getDb();
 
@@ -56,35 +57,6 @@ const createLeaseSchema = z.object({
 });
 
 export const leasesRouter = new Hono();
-
-// Belgian indexation base index (aanvangsindex) reference month, per region:
-//   - Flanders & Brussels: contracts signed from 2019-01-01 use the month
-//     before the START date; earlier contracts use the month before SIGNING.
-//   - Wallonia (Décret 15/03/2018, art. 26): always the month before SIGNING.
-// Returns YYYY-MM.
-const INDEX_RULE_CUTOFF = new Date("2019-01-01");
-function computeReferenceMonth(
-  region?: string | null,
-  signingDate?: string | null,
-  startDate?: string | null,
-): string | null {
-  const signing = signingDate ? new Date(signingDate) : null;
-  const start = startDate ? new Date(startDate) : null;
-  const validSigning = signing && !isNaN(signing.getTime()) ? signing : null;
-  const validStart = start && !isNaN(start.getTime()) ? start : null;
-  const useStart =
-    (region === "flanders" || region === "brussels") &&
-    validSigning !== null &&
-    validSigning >= INDEX_RULE_CUTOFF;
-  const anchor = useStart
-    ? validStart ?? validSigning
-    : validSigning ?? validStart;
-  if (!anchor) return null;
-  const prev = new Date(
-    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
-  );
-  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
-}
 
 // List all leases for accessible properties (filtered by role)
 leasesRouter.get("/", async (c) => {
@@ -162,7 +134,7 @@ leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
     baseRent: data.baseRent !== undefined ? String(data.baseRent) : null,
     indexationBaseMonth:
       data.indexationBaseMonth ||
-      computeReferenceMonth(data.region, data.signingDate, data.startDate),
+      computeIndexReferenceMonth(data.region, data.signingDate, data.startDate),
     indexationBaseIndex:
       data.indexationBaseIndex !== undefined ? String(data.indexationBaseIndex) : null,
     lastIndexationDate: data.lastIndexationDate || null,
@@ -231,7 +203,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.indexationBaseMonth !== undefined) {
     updates.indexationBaseMonth =
       data.indexationBaseMonth ||
-      computeReferenceMonth(
+      computeIndexReferenceMonth(
         data.region ?? existing[0].region,
         data.signingDate ?? existing[0].signingDate,
         data.startDate ?? existing[0].startDate,

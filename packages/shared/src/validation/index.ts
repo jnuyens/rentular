@@ -60,3 +60,32 @@ export const phoneSchema = z.string().min(8).max(20);
 export const postalCodeBESchema = z
   .string()
   .regex(/^\d{4}$/, "Belgian postal code must be 4 digits");
+
+// Belgian indexation base index (aanvangsindex) reference month, per region:
+//   - Flanders & Brussels: contracts signed from 2019-01-01 use the month
+//     before the START date; earlier contracts use the month before SIGNING.
+//   - Wallonia (Décret 15/03/2018, art. 26): always the month before SIGNING.
+// Returns YYYY-MM.
+const INDEX_RULE_CUTOFF = new Date("2019-01-01");
+export function computeIndexReferenceMonth(
+  region?: string | null,
+  signingDate?: string | null,
+  startDate?: string | null,
+): string | null {
+  const signing = signingDate ? new Date(signingDate) : null;
+  const start = startDate ? new Date(startDate) : null;
+  const validSigning = signing && !isNaN(signing.getTime()) ? signing : null;
+  const validStart = start && !isNaN(start.getTime()) ? start : null;
+  const useStart =
+    (region === "flanders" || region === "brussels") &&
+    validSigning !== null &&
+    validSigning >= INDEX_RULE_CUTOFF;
+  const anchor = useStart
+    ? validStart ?? validSigning
+    : validSigning ?? validStart;
+  if (!anchor) return null;
+  const prev = new Date(
+    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
+  );
+  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+}
