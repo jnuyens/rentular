@@ -3,7 +3,7 @@ import { unzipSync, strFromU8 } from "fflate";
 import { getDb, healthIndexValues } from "@rentular/db";
 
 // Statbel open-data dump with every CPI and health index value for all base
-// years. Updated by Statbel each month, unlike the fixed-range beSTAT views.
+// years. Statbel refreshes this file every month.
 const STATBEL_OPENDATA_URL =
   "https://statbel.fgov.be/sites/default/files/files/opendata/Consumptieprijsindex%20en%20gezondheidsindex/CPI%20All%20base%20years.zip";
 
@@ -74,23 +74,35 @@ export function extractStatbelCpiText(zip: Uint8Array): string {
   return strFromU8(entries[name]!);
 }
 
+export interface HealthIndexFetchResult {
+  ok: boolean;
+  error?: string;
+  fetched: number;
+  inserted: number;
+}
+
 /**
  * Fetch health index values from the Statbel open-data zip and cache them in
  * the database. Only inserts months that are not cached yet: published health
- * index values never change. On failure, logs and returns (retried next day).
+ * index values never change. Never throws: failures are logged and reported in
+ * the result (the daily job retries the next day).
  */
-export async function fetchAndCacheHealthIndex(): Promise<void> {
+export async function fetchAndCacheHealthIndex(): Promise<HealthIndexFetchResult> {
   try {
     const response = await fetch(STATBEL_OPENDATA_URL);
     if (!response.ok) {
-      console.error(
-        `[HealthIndex] Failed to fetch from Statbel: HTTP ${response.status} ${response.statusText}`
-      );
-      return;
+      const error = `HTTP ${response.status} ${response.statusText}`;
+      console.error(`[HealthIndex] Failed to fetch from Statbel: ${error}`);
+      return { ok: false, error, fetched: 0, inserted: 0 };
     }
 
     const zip = new Uint8Array(await response.arrayBuffer());
     const rows = parseStatbelCpiFile(extractStatbelCpiText(zip));
+    if (rows.length === 0) {
+      const error = "no parseable health index rows in Statbel file";
+      console.error(`[HealthIndex] Failed to fetch from Statbel: ${error}`);
+      return { ok: false, error, fetched: 0, inserted: 0 };
+    }
 
     const db = getDb();
     const existing = await db
@@ -118,10 +130,137 @@ export async function fetchAndCacheHealthIndex(): Promise<void> {
     console.log(
       `[HealthIndex] Fetched ${rows.length} index values from Statbel, ${inserted} new`
     );
+    return { ok: true, fetched: rows.length, inserted };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[HealthIndex] Failed to fetch from Statbel: ${message}`);
+    return { ok: false, error: message, fetched: 0, inserted: 0 };
   }
+}
+
+// From this day of the month on, the previous month's index must be cached.
+// Statbel publishes near the end of the month itself, so day 5 leaves margin.
+export const HEALTH_INDEX_DUE_DAY = 5;
+
+function localDateParts(now: Date, tz: string): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(now);
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value);
+  return { year: get("year"), month: get("month"), day: get("day") };
+}
+
+/**
+ * The month whose health index must already be cached at `now`, judged in the
+ * given timezone. From the 5th, that is the previous month (January asks for
+ * December of the year before). Before the 5th there is no requirement yet.
+ */
+export function expectedLatestMonth(
+  now: Date,
+  tz: string
+): { year: string; month: string } | null {
+  const { year, month, day } = localDateParts(now, tz);
+  if (day < HEALTH_INDEX_DUE_DAY) return null;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+  return { year: String(prevYear), month: String(prevMonth).padStart(2, "0") };
+}
+
+export type HealthIndexAlertKind = "fetch-failed" | "stale";
+
+/**
+ * Decide whether the admin must be warned after a refresh run: always when the
+ * fetch failed, and when it succeeded but the expected month is still missing
+ * (Statbel returned nothing new while we are overdue).
+ */
+export function decideHealthIndexAlert(
+  result: HealthIndexFetchResult,
+  expected: { year: string; month: string } | null,
+  expectedPresent: boolean
+): HealthIndexAlertKind | null {
+  if (!result.ok) return "fetch-failed";
+  if (expected && !expectedPresent) return "stale";
+  return null;
+}
+
+export interface HealthIndexCheckDeps {
+  now: Date;
+  tz: string;
+  adminEmail: string | undefined;
+  hasMonth(year: string, month: string): Promise<boolean>;
+  latestMonth(): Promise<string | null>;
+  /** SET key NX EX ttl. Resolves true when this caller claimed the key. */
+  claimOnce(key: string, ttlSeconds: number): Promise<boolean>;
+  /** Drop a claimed key again, used when sending the alert failed. */
+  release?(key: string): Promise<void>;
+  sendEmail(to: string, subject: string, body: string): Promise<void>;
+}
+
+// Slightly under a day so the next daily run can alert again if still broken.
+const ALERT_DEDUPE_TTL_SECONDS = 82800;
+
+/**
+ * After a refresh run, warn the admin by email when the fetch failed or the
+ * index is overdue. Sends at most once per problem per day (Redis dedupe key).
+ * If Redis is unavailable the alert is still sent: a duplicate mail is better
+ * than a silent stale index.
+ */
+export async function checkHealthIndexAndAlert(
+  result: HealthIndexFetchResult,
+  deps: HealthIndexCheckDeps
+): Promise<{ kind: HealthIndexAlertKind | null; sent: boolean }> {
+  const expected = expectedLatestMonth(deps.now, deps.tz);
+  const present = expected ? await deps.hasMonth(expected.year, expected.month) : true;
+  const kind = decideHealthIndexAlert(result, expected, present);
+  if (!kind) return { kind: null, sent: false };
+
+  const expectedKey = expected ? `${expected.year}-${expected.month}` : "none";
+  if (kind === "stale") {
+    console.warn(`[HealthIndex] Index for ${expectedKey} is still missing after refresh`);
+  }
+
+  if (!deps.adminEmail) {
+    console.warn(`[HealthIndex] ADMIN_EMAIL not set, skipping ${kind} alert`);
+    return { kind, sent: false };
+  }
+
+  const key = `healthindex:alert:${kind}:${expectedKey}`;
+  try {
+    const claimed = await deps.claimOnce(key, ALERT_DEDUPE_TTL_SECONDS);
+    if (!claimed) {
+      console.log(`[HealthIndex] ${kind} alert already sent today (${key})`);
+      return { kind, sent: false };
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[HealthIndex] Alert dedupe unavailable, sending anyway: ${message}`);
+  }
+
+  const latest = await deps.latestMonth();
+  const body = [
+    kind === "fetch-failed"
+      ? "The daily health index refresh from Statbel failed."
+      : "The daily health index refresh ran, but the expected month is still missing.",
+    "",
+    `Error: ${result.error ?? "none"}`,
+    `Expected month: ${expected ? expectedKey : "not required yet"}`,
+    `Latest month in database: ${latest ?? "none"}`,
+    `Rows fetched: ${result.fetched}, new: ${result.inserted}`,
+    `Checked at: ${deps.now.toISOString()} (${deps.tz})`,
+  ].join("\n");
+
+  try {
+    await deps.sendEmail(deps.adminEmail, "[Rentular] Health index not updated", body);
+  } catch (err: unknown) {
+    // Free the dedupe key so the next run can try again.
+    if (deps.release) await deps.release(key).catch(() => undefined);
+    throw err;
+  }
+  console.log(`[HealthIndex] Sent ${kind} alert to admin`);
+  return { kind, sent: true };
 }
 
 /**
