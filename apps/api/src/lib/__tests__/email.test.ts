@@ -45,6 +45,7 @@ describe("email module (NTF-07)", () => {
     process.env.SMTP_HOST = "mail.test.com";
     process.env.SMTP_PORT = "587";
     process.env.EMAIL_FROM = "platform@rentular.com";
+    delete process.env.EMAIL_FROM_NAME;
   });
 
   afterEach(() => {
@@ -85,7 +86,7 @@ describe("email module (NTF-07)", () => {
       expect(result.fromAddress).toBe("platform@rentular.com");
       // Transport is the default nodemailer transport (exists)
       expect(result.transport).toBeDefined();
-      expect(result.fromName).toBeUndefined();
+      expect(result.fromName).toBe("Rentular");
     });
 
     it("should fall back to default when ownerId has no custom SMTP settings", async () => {
@@ -94,6 +95,73 @@ describe("email module (NTF-07)", () => {
       clearTransportCache("owner-no-smtp");
       const result = await getTransportForOwner("owner-no-smtp");
       expect(result.fromAddress).toBe("platform@rentular.com");
+    });
+  });
+
+  describe("sender display name", () => {
+    async function lastFrom(): Promise<unknown> {
+      const nodemailer = await import("nodemailer");
+      const transport = (nodemailer.createTransport as unknown as () => {
+        sendMail: ReturnType<typeof vi.fn>;
+      })();
+      const calls = transport.sendMail.mock.calls;
+      return (calls[calls.length - 1]![0] as { from: unknown }).from;
+    }
+
+    it("defaults to Rentular <noreply@rentular.com> on the platform transport", async () => {
+      delete process.env.EMAIL_FROM;
+      const { sendEmail } = await import("../email");
+      await sendEmail({ to: "t@example.com", subject: "s", body: "b" });
+      expect(await lastFrom()).toEqual({ name: "Rentular", address: "noreply@rentular.com" });
+    });
+
+    it("uses the platform sender name when the owner has no custom SMTP", async () => {
+      delete process.env.EMAIL_FROM;
+      const { sendEmail, clearTransportCache } = await import("../email");
+      clearTransportCache("owner-no-smtp-2");
+      await sendEmail({ to: "t@example.com", subject: "s", body: "b", ownerId: "owner-no-smtp-2" });
+      expect(await lastFrom()).toEqual({ name: "Rentular", address: "noreply@rentular.com" });
+    });
+
+    it("honours EMAIL_FROM_NAME", async () => {
+      process.env.EMAIL_FROM_NAME = "Rentular Belgium";
+      const { getPlatformSender, sendEmail } = await import("../email");
+      expect(getPlatformSender()).toEqual({
+        fromAddress: "platform@rentular.com",
+        fromName: "Rentular Belgium",
+      });
+      await sendEmail({ to: "t@example.com", subject: "s", body: "b" });
+      expect(await lastFrom()).toEqual({ name: "Rentular Belgium", address: "platform@rentular.com" });
+    });
+
+    it("passes an EMAIL_FROM that already has a display name through unchanged", async () => {
+      process.env.EMAIL_FROM = "Rentular Ops <ops@rentular.com>";
+      const { getPlatformSender, sendEmail } = await import("../email");
+      expect(getPlatformSender()).toEqual({ fromAddress: "Rentular Ops <ops@rentular.com>" });
+      await sendEmail({ to: "t@example.com", subject: "s", body: "b" });
+      expect(await lastFrom()).toBe("Rentular Ops <ops@rentular.com>");
+    });
+
+    it("keeps the owner's own from name and address for custom SMTP", async () => {
+      const db = (await import("@rentular/db")) as unknown as {
+        __mockLimit: ReturnType<typeof vi.fn>;
+      };
+      db.__mockLimit.mockResolvedValueOnce([
+        {
+          host: "smtp.owner.be",
+          port: 587,
+          username: "u",
+          passwordEncrypted: "x",
+          passwordIv: "y",
+          passwordTag: "z",
+          fromAddress: "verhuur@owner.be",
+          fromName: "Verhuur Janssens",
+        },
+      ]);
+      const { sendEmail, clearTransportCache } = await import("../email");
+      clearTransportCache("owner-with-smtp");
+      await sendEmail({ to: "t@example.com", subject: "s", body: "b", ownerId: "owner-with-smtp" });
+      expect(await lastFrom()).toEqual({ name: "Verhuur Janssens", address: "verhuur@owner.be" });
     });
   });
 
