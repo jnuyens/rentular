@@ -59,6 +59,7 @@ async function dispatch(input: {
   payment?: Record<string, unknown>;
   level?: "friendly" | "formal" | "final";
   preferredChannel: "email" | "sms" | "whatsapp" | null | undefined;
+  cc?: string;
 }) {
   const mod: any = await import(reminderChannelSpec);
   const { DEFAULT_SETTINGS }: any = await import("../paymentFollowUp");
@@ -69,6 +70,7 @@ async function dispatch(input: {
     ownerId: "owner-A",
     ownerEmail: "owner@example.com",
     preferredChannel: input.preferredChannel,
+    cc: input.cc,
   });
 }
 
@@ -124,9 +126,30 @@ describe("sendReminderViaPreferredChannel (MCP-03, T-11-22)", () => {
       expect.anything(),
       "owner-A",
       "owner@example.com",
+      undefined,
     );
     expect(queueSms).not.toHaveBeenCalled();
     expect(channel).toBe("email");
+  });
+
+  it("email -> forwards the co-tenant cc to sendReminder", async () => {
+    const channel = await dispatch({ preferredChannel: "email", cc: "r@law.be" });
+    expect(sendReminder).toHaveBeenCalledWith(
+      expect.anything(),
+      "friendly",
+      expect.anything(),
+      "owner-A",
+      "owner@example.com",
+      "r@law.be",
+    );
+    expect(channel).toBe("email");
+  });
+
+  it("sms + configured -> never passes the cc to the SMS", async () => {
+    isSmsConfigured.mockReturnValue(true);
+    await dispatch({ preferredChannel: "sms", cc: "r@law.be" });
+    expect(sendReminder).not.toHaveBeenCalled();
+    expect(JSON.stringify(queueSms.mock.calls)).not.toContain("r@law.be");
   });
 
   it("whatsapp + not configured -> falls back to email", async () => {

@@ -24,6 +24,9 @@ vi.mock("../reminderChannel", () => ({ sendReminderViaPreferredChannel }));
 vi.mock("../../jobs/emailQueueWorker", () => ({ queueEmail: vi.fn(async () => "e-1") }));
 vi.mock("../../jobs/smsQueueWorker", () => ({ queueSms: vi.fn(async () => "s-1") }));
 
+const getLeaseEmailRecipients = vi.fn();
+vi.mock("../../lib/leaseRecipients", () => ({ getLeaseEmailRecipients }));
+
 let reads: unknown[][] = [];
 const inserted: Array<Record<string, unknown>> = [];
 
@@ -86,13 +89,22 @@ const TENANT = {
   language: "nl",
   preferredChannel: "sms",
 };
+const CO_TENANT_CC = "co@example.com";
+function recipientsFor(t: typeof TENANT | (Omit<typeof TENANT, "email"> & { email: string | null })) {
+  return {
+    primary: { tenantId: "t-1", isPrimary: true, ...t },
+    to: t.email,
+    ccEmails: t.email ? [CO_TENANT_CC] : [],
+    cc: t.email ? CO_TENANT_CC : undefined,
+  };
+}
 const PROPERTY = { name: "Apartment 2B" };
 const OWNER = { name: "Owner A", email: "owner@example.com" };
 const PAYMENT = { id: "pay-1", amount: "850.00", dueDate: "2026-03-01", isIgnored: false };
 
-/** Six sequential reads: lease, tenant, property, owner, payments, settings. */
+/** Five sequential reads: lease, property, owner, payments, settings (tenants come from the recipient helper). */
 function fullReads() {
-  return [[LEASE], [TENANT], [PROPERTY], [OWNER], [PAYMENT], []];
+  return [[LEASE], [PROPERTY], [OWNER], [PAYMENT], []];
 }
 
 async function run(periodMonth = "2026-03") {
@@ -103,6 +115,7 @@ async function run(periodMonth = "2026-03") {
 beforeEach(() => {
   vi.resetModules();
   sendReminderViaPreferredChannel.mockReset().mockResolvedValue("email");
+  getLeaseEmailRecipients.mockReset().mockResolvedValue(recipientsFor(TENANT));
   inserted.length = 0;
   reads = [];
   delete process.env.PAYMENT_EMAIL_TEST_PHASE;
@@ -121,7 +134,8 @@ describe("sendManualReminder preferred-channel routing (MCP-03, T-11-22)", () =>
         level: "friendly",
         ownerId: "owner-A",
         ownerEmail: "owner@example.com",
-        payment: expect.objectContaining({ tenantPhone: "0471000000" }),
+        cc: CO_TENANT_CC,
+        payment: expect.objectContaining({ tenantPhone: "0471000000", tenantEmail: "jan@example.com" }),
       }),
     );
 
@@ -148,7 +162,8 @@ describe("sendManualReminder preferred-channel routing (MCP-03, T-11-22)", () =>
 
   it("refuses a tenant with no email (email is the fallback guarantee)", async () => {
     const noEmail = { ...TENANT, email: null };
-    reads = [[LEASE], [noEmail], [noEmail]]; // primary has no email -> fallback query
+    getLeaseEmailRecipients.mockResolvedValue(recipientsFor(noEmail));
+    reads = [[LEASE]];
     const result = await run();
     expect(result.ok).toBe(false);
     expect(result.error).toBe("This tenant has no email address");

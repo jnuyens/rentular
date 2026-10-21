@@ -30,6 +30,7 @@ import {
 } from "../services/reminderChannel";
 import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
+import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
 import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
@@ -129,7 +130,7 @@ function loadRenewalEmailTemplate(locale: string): RenewalEmailTemplate {
 }
 
 // Composes the localized renewal-warning email. days controls 7-day vs 1-day copy.
-// No tokens or secrets are interpolated — only the recipient name, institution
+// No tokens or secrets are interpolated, only the recipient name, institution
 // label, days, connection id (deep link), and web origin (T-09-05-02).
 function buildRenewalEmail(
   locale: string,
@@ -374,28 +375,10 @@ const worker = new Worker(
           continue;
         }
 
-        // Get the primary tenant
-        const tenantData = await db
-          .select({
-            firstName: tenants.firstName,
-            lastName: tenants.lastName,
-            email: tenants.email,
-            phone: tenants.phone,
-            language: tenants.language,
-            preferredChannel: tenants.preferredChannel,
-          })
-          .from(leaseTenants)
-          .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
-          .where(
-            and(
-              eq(leaseTenants.leaseId, payment.leaseId),
-              eq(leaseTenants.isPrimary, true)
-            )
-          )
-          .limit(1);
-
-        if (tenantData.length === 0 || !tenantData[0]!.email) continue;
-        const tenant = tenantData[0]!;
+        // Primary tenant addressed, co-tenants copied on the reminder email.
+        const tenantRec = await getLeaseEmailRecipients(payment.leaseId);
+        if (!tenantRec.primary || !tenantRec.to) continue;
+        const tenant = tenantRec.primary;
 
         // Get property name
         const propertyData = await db
@@ -524,7 +507,7 @@ const worker = new Worker(
           dueDate: payment.dueDate,
           daysPastDue,
           tenantName: `${tenant.firstName} ${tenant.lastName}`,
-          tenantEmail: tenant.email!,
+          tenantEmail: tenantRec.to,
           tenantPhone: tenant.phone,
           tenantLanguage: (tenant.language || "en") as SupportedLanguage,
           propertyName,
@@ -612,6 +595,7 @@ const worker = new Worker(
             ownerId: lease.ownerId,
             ownerEmail: ownerData[0]?.email,
             preferredChannel: tenant.preferredChannel,
+            cc: tenantRec.cc,
           });
 
           // Record the reminder in paymentReminders table
@@ -769,7 +753,7 @@ const worker = new Worker(
       for (const conn of activeConnections) {
         try {
           // Phase 09-03: Delegate to the shared syncBankConnection service
-          // (single source of truth — also called by POST /:id/sync). The
+          // (single source of truth, also called by POST /:id/sync). The
           // 90-day first-sync backfill is computed inside the service per
           // RESEARCH Pitfall 8; the previous inline 3-day window is removed.
           const result = await syncBankConnection(conn.id);

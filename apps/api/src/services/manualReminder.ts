@@ -4,8 +4,6 @@ import {
   leases,
   properties,
   users,
-  tenants,
-  leaseTenants,
   payments,
   paymentFollowUpSettings,
   paymentReminders,
@@ -13,6 +11,7 @@ import {
 import type { SupportedLanguage } from "@rentular/shared";
 import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
 import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
+import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
 
 export type ManualReminderResult =
   | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel; channel: ReminderChannel }
@@ -41,37 +40,11 @@ export async function sendManualReminder(input: {
   const lease = leaseRows[0];
   if (!lease) return { ok: false, error: "Lease not found" };
 
-  // Primary tenant, else any tenant with an email.
-  let tenantRows = await db
-    .select({
-      firstName: tenants.firstName,
-      lastName: tenants.lastName,
-      email: tenants.email,
-      phone: tenants.phone,
-      language: tenants.language,
-      preferredChannel: tenants.preferredChannel,
-    })
-    .from(leaseTenants)
-    .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
-    .where(and(eq(leaseTenants.leaseId, input.leaseId), eq(leaseTenants.isPrimary, true)))
-    .limit(1);
-  if (tenantRows.length === 0 || !tenantRows[0]!.email) {
-    tenantRows = await db
-      .select({
-        firstName: tenants.firstName,
-        lastName: tenants.lastName,
-        email: tenants.email,
-        phone: tenants.phone,
-        language: tenants.language,
-        preferredChannel: tenants.preferredChannel,
-      })
-      .from(leaseTenants)
-      .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
-      .where(eq(leaseTenants.leaseId, input.leaseId))
-      .limit(1);
-  }
-  const tenant = tenantRows[0];
-  if (!tenant || !tenant.email) return { ok: false, error: "This tenant has no email address" };
+  // Primary tenant addressed, co-tenants copied (any tenant email as fallback "to").
+  const rec = await getLeaseEmailRecipients(input.leaseId);
+  const tenant = rec.primary;
+  const tenantEmail = rec.to;
+  if (!tenant || !tenantEmail) return { ok: false, error: "This tenant has no email address" };
 
   const propRow = await db
     .select({ name: properties.name })
@@ -168,7 +141,7 @@ export async function sendManualReminder(input: {
     dueDate: dueForTemplate,
     daysPastDue,
     tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
-    tenantEmail: tenant.email,
+    tenantEmail,
     tenantPhone: tenant.phone,
     tenantLanguage: (tenant.language || "en") as SupportedLanguage,
     propertyName,
@@ -190,6 +163,7 @@ export async function sendManualReminder(input: {
     ownerId: lease.ownerId,
     ownerEmail: ownerRow[0]?.email,
     preferredChannel: tenant.preferredChannel,
+    cc: rec.cc,
   });
 
   await db.insert(paymentReminders).values({
@@ -206,10 +180,10 @@ export async function sendManualReminder(input: {
   // so report the phone there; email (and test-phase) report the email address.
   const sentTo =
     usedChannel === "sms" || usedChannel === "whatsapp"
-      ? tenant.phone || tenant.email
+      ? tenant.phone || tenantEmail
       : isTest
         ? ownerRow[0]?.email || ""
-        : tenant.email;
+        : tenantEmail;
   return {
     ok: true,
     sentTo,

@@ -1,7 +1,7 @@
 /**
  * Public one-click endpoints for the late-payment landlord email. Each link in
  * that email carries a signed token (see lib/landlordActionToken). No login is
- * required — the token is the authentication. Actions are idempotent.
+ * required: the token is the authentication. Actions are idempotent.
  *
  *   paid   -> mark the payment paid
  *   wait   -> acknowledge, do nothing (no reminder)
@@ -15,19 +15,18 @@
  */
 
 import { Hono, type Context } from "hono";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   getDb,
   payments,
   leases,
-  tenants,
-  leaseTenants,
   properties,
   users,
 } from "@rentular/db";
 import { verifyLandlordActionToken } from "../lib/landlordActionToken";
 import { sendReminder, DEFAULT_SETTINGS } from "../services/paymentFollowUp";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
+import { getLeaseEmailRecipients, mergeCc } from "../lib/leaseRecipients";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueSms } from "../jobs/smsQueueWorker";
@@ -127,19 +126,10 @@ async function loadReminderContext(
     .from(leases)
     .where(eq(leases.id, leaseId))
     .limit(1);
-  const tenant = await db
-    .select({
-      firstName: tenants.firstName,
-      lastName: tenants.lastName,
-      email: tenants.email,
-      phone: tenants.phone,
-      language: tenants.language,
-    })
-    .from(leaseTenants)
-    .innerJoin(tenants, eq(tenants.id, leaseTenants.tenantId))
-    .where(and(eq(leaseTenants.leaseId, leaseId), eq(leaseTenants.isPrimary, true)))
-    .limit(1);
-  if (!p[0] || !lease[0] || !tenant[0]?.email) return null;
+  // Primary tenant addressed; co-tenants are copied alongside the landlord people.
+  const tenantRec = await getLeaseEmailRecipients(leaseId);
+  const tenant = tenantRec.primary;
+  if (!p[0] || !lease[0] || !tenant || !tenantRec.to) return null;
 
   const prop = await db
     .select({ name: properties.name })
@@ -157,14 +147,13 @@ async function loadReminderContext(
 
   // CC the landlord people (managers + owner) on the reminder.
   const rec = await getLandlordNotificationRecipients(lease[0].propertyId, owner[0]?.email);
-  const ccParts = [rec.to, rec.cc].filter(Boolean) as string[];
-  const cc = Array.from(new Set(ccParts.join(", ").split(",").map((s) => s.trim()).filter(Boolean))).join(", ");
+  const cc = mergeCc(rec.to, rec.cc, tenantRec.cc) ?? "";
 
   return {
-    tenantName: `${tenant[0].firstName} ${tenant[0].lastName}`.trim(),
-    tenantEmail: tenant[0].email,
-    tenantPhone: tenant[0].phone,
-    tenantLanguage: (tenant[0].language || "nl") as SupportedLanguage,
+    tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+    tenantEmail: tenantRec.to,
+    tenantPhone: tenant.phone,
+    tenantLanguage: (tenant.language || "nl") as SupportedLanguage,
     propertyName: prop[0]?.name || "",
     amount: Number(p[0].amount),
     dueDate: p[0].dueDate,

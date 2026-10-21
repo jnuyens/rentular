@@ -2,10 +2,11 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc, inArray, or } from "drizzle-orm";
-import { getDb, communications, leases, leaseTenants, tenants } from "@rentular/db";
+import { getDb, communications, leases, leaseTenants } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import { queueEmail, type CommunicationMeta } from "../jobs/emailQueueWorker";
 import { queueSms } from "../jobs/smsQueueWorker";
+import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -223,44 +224,40 @@ communicationsRouter.post(
       return c.json({ error: "Insufficient permissions" }, 403);
     }
 
-    // Get primary tenant for this lease
-    const tenantLink = await db.select().from(leaseTenants)
-      .where(and(eq(leaseTenants.leaseId, data.leaseId), eq(leaseTenants.isPrimary, true))).limit(1);
-    if (!tenantLink[0]) return c.json({ error: "No primary tenant found for this lease" }, 404);
+    // Primary tenant addressed; other tenants on the lease are copied on email.
+    const rec = await getLeaseEmailRecipients(data.leaseId);
+    const tenant = rec.primary;
+    if (!tenant) return c.json({ error: "No primary tenant found for this lease" }, 404);
 
-    const tenant = await db.select().from(tenants)
-      .where(eq(tenants.id, tenantLink[0].tenantId)).limit(1);
-    if (!tenant[0]) return c.json({ error: "Tenant not found" }, 404);
-
-    const tenantName = `${tenant[0].firstName} ${tenant[0].lastName}`.trim();
+    const tenantName = `${tenant.firstName} ${tenant.lastName}`.trim();
     const ownerId = lease[0].ownerId;
 
     if (data.channel === "email") {
-      if (!tenant[0].email) {
+      if (!rec.to) {
         return c.json({ error: "Tenant has no email address" }, 400);
       }
       await queueEmail(
-        { to: tenant[0].email, subject: data.subject!, body: data.body },
+        { to: rec.to, cc: rec.cc, subject: data.subject!, body: data.body },
         undefined,
         {
           ownerId,
           leaseId: data.leaseId,
           type: "custom",
-          recipientName: tenantName || tenant[0].email,
+          recipientName: tenantName || rec.to,
         },
       );
     } else if (data.channel === "sms") {
-      if (!tenant[0].phone) {
+      if (!tenant.phone) {
         return c.json({ error: "Tenant has no phone number" }, 400);
       }
       await queueSms(
-        { to: tenant[0].phone, body: data.body },
+        { to: tenant.phone, body: data.body },
         undefined,
         {
           ownerId,
           leaseId: data.leaseId,
           type: "custom",
-          recipientName: tenantName || tenant[0].phone,
+          recipientName: tenantName || tenant.phone,
         },
       );
     }
