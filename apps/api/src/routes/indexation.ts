@@ -69,6 +69,7 @@ interface CalculationResult {
   epcIndexationFactor: number;
   epcRestricted: boolean;
   correctionApplied: boolean;
+  correctionMonth: number | null;
   formulaNote: string | undefined;
   effectiveDate: string;
   latestIndex: number;
@@ -184,6 +185,7 @@ async function calculateLeaseIndexation(
     epcIndexationFactor,
     epcRestricted,
     correctionApplied,
+    correctionMonth,
     formulaNote,
     effectiveDate: effectiveDateStr,
     latestIndex,
@@ -220,6 +222,7 @@ async function calculateLeaseIndexation(
     epcIndexationFactor,
     epcRestricted,
     correctionApplied,
+    correctionMonth,
     formulaNote,
     effectiveDate: effectiveDateStr,
     latestIndex,
@@ -366,6 +369,7 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       epcIndexationFactor: calc.epcIndexationFactor,
       epcRestricted: calc.epcRestricted,
       correctionApplied: calc.correctionApplied,
+      correctionMonth: calc.correctionMonth,
       latestIndex: calc.latestIndex,
       latestIndexMonth: calc.latestIndexMonth,
       newRentAtLatest: calc.newRentAtLatest,
@@ -457,7 +461,9 @@ indexationRouter.get("/preview", async (c) => {
       region,
       epcLabel,
       epcRestricted: core.epcRestricted,
+      epcIndexationFactor: core.epcIndexationFactor,
       correctionApplied: core.correctionApplied,
+      correctionMonth: core.correctionMonth,
       formulaNote: core.formulaNote,
       currentRent:
         Number.isFinite(currentRent) && currentRent > 0 ? currentRent : null,

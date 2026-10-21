@@ -329,6 +329,7 @@
     "epcNeededDesc": "Diese Immobilie hat kein EPC-Label. In Flandern und Brüssel begrenzt das EPC-Label die Indexierung, daher ist der angezeigte Betrag eine Worst-Case-Schätzung. Tragen Sie das EPC-Label bei der Immobilie ein, um den korrekten Betrag zu erhalten.",
     "epcRestrictedTitle": "Durch EPC begrenzte Indexierung",
     "epcRestrictedDesc": "Die Indexierung ist aufgrund des EPC-Labels der Immobilie begrenzt. Der angezeigte Betrag berücksichtigt dies bereits.",
+    "flandersCorrectionApplied": "Flämischer Korrekturfaktor für den Jahrestagsmonat {month} angewendet: Die indexierte Miete wird mit {factor} multipliziert. Dies gilt, weil der Mietvertrag vor dem 1. Oktober 2022 begann und die Wohnung EPC D, E, F oder keinen EPC hat.",
     "calcErrorTitle": "Noch nicht berechenbar",
     "calcErrorHint": "Öffnen Sie den Vertrag und vervollständigen Sie die Indexierungseinstellungen (ursprüngliche Miete, Referenzmonat und Basisindex), und speichern Sie.",
     "property": "Immobilie",

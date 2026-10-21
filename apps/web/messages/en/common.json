@@ -329,6 +329,7 @@
     "epcNeededDesc": "This property has no EPC label. In Flanders and Brussels the EPC label caps indexation, so the amount shown is a worst-case estimate. Add the EPC label to the property for the correct figure.",
     "epcRestrictedTitle": "EPC-restricted indexation",
     "epcRestrictedDesc": "Indexation is capped because of the property's EPC label. The amount shown already reflects that cap.",
+    "flandersCorrectionApplied": "Flemish correction factor applied for the anniversary month {month}: the indexed rent is multiplied by {factor}. This applies because the lease started before 1 October 2022 and the home has EPC D, E, F or no EPC.",
     "calcErrorTitle": "Cannot calculate yet",
     "calcErrorHint": "Open the contract and complete the indexation setup (original rent, reference month and base index), then save.",
     "property": "Property",
