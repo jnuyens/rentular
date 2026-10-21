@@ -4,6 +4,7 @@ import {
   FLANDERS_EPC_FREEZE_END,
   FLANDERS_EPC_FREEZE_FACTOR,
   FLANDERS_EPC_NEEDS_CORRECTION,
+  FLANDERS_EPC_CORRECTION_FACTORS,
   FLANDERS_FUTURE_RESTRICTIONS,
 } from "@rentular/shared/constants";
 import { calculateIndexedRent } from "@rentular/shared/validation";
@@ -52,6 +53,8 @@ export async function computeIndexationCore(input: {
   epcIndexationFactor: number;
   epcRestricted: boolean;
   correctionApplied: boolean;
+  // Anniversary month (1..12) whose Flemish correction factor was applied, else null.
+  correctionMonth: number | null;
   formulaNote: string | undefined;
   effectiveDate: string;
   // Informational "risen so far" figure, using the latest published index.
@@ -117,22 +120,12 @@ export async function computeIndexationCore(input: {
     effectiveDateStr = firstAnniversary.toISOString().split("T")[0]!;
   }
 
-  // Freeze-period boundary indices (Flanders EPC correction), fetched once.
-  let freezeStart = 0;
-  let freezeEnd = 0;
-  if (input.region === "flanders") {
-    const fs = await getHealthIndexValue("2022", "09");
-    const fe = await getHealthIndexValue("2023", "09");
-    freezeStart = fs ? Number(fs) : 0;
-    freezeEnd = fe ? Number(fe) : 0;
-  }
-
   // Apply EPC restrictions for a given "current" index value.
   const applyEpc = (atIndex: number) => {
     const unrestricted = calculateIndexedRent(input.baseRent, input.baseIndex, atIndex);
     if (input.region === "brussels") {
       const r = applyBrusselsEpcRestriction(input.baseRent, unrestricted, input.epcLabel);
-      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: false, note: r.note };
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: false, correctionMonth: null as number | null, note: r.note };
     }
     if (input.region === "flanders") {
       const r = applyFlandersEpcRestriction(
@@ -141,16 +134,12 @@ export async function computeIndexationCore(input: {
         input.epcLabel,
         input.startDate,
         effectiveDateStr,
-        input.leaseType,
-        input.baseIndex,
-        atIndex,
-        freezeStart,
-        freezeEnd
+        input.leaseType
       );
-      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, note: r.note };
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, correctionMonth: r.correctionMonth, note: r.note };
     }
     // Wallonia: no EPC restrictions.
-    return { unrestricted, newRent: unrestricted, factor: 1.0, epcRestricted: false, correctionApplied: false, note: undefined as string | undefined };
+    return { unrestricted, newRent: unrestricted, factor: 1.0, epcRestricted: false, correctionApplied: false, correctionMonth: null as number | null, note: undefined as string | undefined };
   };
 
   const legal = applyEpc(currentIndex);
@@ -179,6 +168,7 @@ export async function computeIndexationCore(input: {
     epcIndexationFactor: legal.factor,
     epcRestricted: legal.epcRestricted,
     correctionApplied: legal.correctionApplied,
+    correctionMonth: legal.correctionMonth,
     formulaNote: legal.note,
     effectiveDate: effectiveDateStr,
     latestIndex,
@@ -221,6 +211,33 @@ function applyBrusselsEpcRestriction(
   };
 }
 
+type FlandersEpcResult = {
+  newRent: number;
+  factor: number;
+  restricted: boolean;
+  correctionApplied: boolean;
+  correctionMonth: number | null;
+  note: string | undefined;
+};
+
+const MONTH_NAMES_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/**
+ * Official Flemish correction factor for indexations after the 2022-2023 freeze.
+ * Returns 1 for labels that need no correction (A++ to C), column d for EPC D
+ * and column efNone for E, F, G, no EPC or any unknown label.
+ */
+export function getFlandersCorrectionFactor(epcLabel: string | null, anniversaryMonth: number): number {
+  const label = epcLabel || "none";
+  if (FLANDERS_EPC_NEEDS_CORRECTION[label] === false) return 1;
+  const row = FLANDERS_EPC_CORRECTION_FACTORS[anniversaryMonth];
+  if (!row) return 1;
+  return label === "D" ? row.d : row.efNone;
+}
+
 /**
  * Apply EPC-based indexation restrictions for Flanders.
  *
@@ -229,8 +246,10 @@ function applyBrusselsEpcRestriction(
  * 2. During freeze period (Oct 1, 2022 to Sep 30, 2023):
  *    - A+/A/B/C: 100%, D: 50%, E/F/G/none: 0%
  * 3. After freeze (from Oct 1, 2023):
- *    - All labels can index again, BUT D/E/F/G/none contracts must apply a
- *      correction factor that excludes the index growth during the freeze period.
+ *    - All labels can index again, BUT D/E/F/G/none contracts multiply the
+ *      standard indexed rent by the official correction factor for the lease's
+ *      anniversary month (FLANDERS_EPC_CORRECTION_FACTORS, column d for EPC D,
+ *      efNone for E/F/G/none).
  *    - This correction is permanent for the contract's lifetime unless a better EPC is obtained.
  * 4. Future: from 2028 E/F banned, from 2030 D/E/F banned.
  */
@@ -241,11 +260,7 @@ function applyFlandersEpcRestriction(
   leaseStartDate: string,
   indexationDate: string,
   leaseType: string,
-  baseIndex: number,
-  currentIndex: number,
-  freezePeriodIndexStart: number, // Health index at Sep 2022 (before freeze)
-  freezePeriodIndexEnd: number,   // Health index at Sep 2023 (end of freeze)
-): { newRent: number; factor: number; restricted: boolean; correctionApplied: boolean; note: string | undefined } {
+): FlandersEpcResult {
   const label = epcLabel || "none";
   const leaseStart = new Date(leaseStartDate);
   const indexDate = new Date(indexationDate);
@@ -254,12 +269,12 @@ function applyFlandersEpcRestriction(
 
   // Rule: does not apply to student leases
   if (leaseType === "student") {
-    return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, note: undefined };
+    return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, correctionMonth: null, note: undefined };
   }
 
   // Rule: only applies to contracts started BEFORE Oct 1, 2022
   if (leaseStart >= freezeStart) {
-    return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, note: undefined };
+    return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, correctionMonth: null, note: undefined };
   }
 
   // Check future bans (2028+)
@@ -272,6 +287,7 @@ function applyFlandersEpcRestriction(
         factor: 0.0,
         restricted: true,
         correctionApplied: false,
+        correctionMonth: null,
         note: `Flanders: EPC label ${label} is banned from indexation from ${year} onwards`,
       };
     }
@@ -281,7 +297,7 @@ function applyFlandersEpcRestriction(
   if (indexDate >= freezeStart && indexDate <= freezeEnd) {
     const factor = FLANDERS_EPC_FREEZE_FACTOR[label] ?? 0.0;
     if (factor >= 1.0) {
-      return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, note: undefined };
+      return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, correctionMonth: null, note: undefined };
     }
     const increase = unrestrictedNewRent - baseRent;
     const newRent = Number((baseRent + increase * factor).toFixed(2));
@@ -290,30 +306,32 @@ function applyFlandersEpcRestriction(
       factor,
       restricted: true,
       correctionApplied: false,
+      correctionMonth: null,
       note: `Flanders freeze period: ${factor === 0 ? "no" : `only ${factor * 100}% of`} indexation allowed for EPC label ${label}`,
     };
   }
 
-  // After the freeze: apply correction factor if needed
+  // After the freeze: multiply the standard indexed rent by the official
+  // correction factor for the anniversary month.
   if (indexDate > freezeEnd && FLANDERS_EPC_NEEDS_CORRECTION[label]) {
-    // The correction factor excludes the health index growth during the freeze period.
-    // Corrected formula: newRent = baseRent * (currentIndex - frozenGrowth) / baseIndex
-    // Where frozenGrowth = freezePeriodIndexEnd - freezePeriodIndexStart
-    if (baseIndex > 0 && freezePeriodIndexEnd > 0 && freezePeriodIndexStart > 0) {
-      const frozenGrowth = freezePeriodIndexEnd - freezePeriodIndexStart;
-      const correctedIndex = currentIndex - frozenGrowth;
-      const newRent = Number(((baseRent * correctedIndex) / baseIndex).toFixed(2));
-      return {
-        newRent: Math.max(newRent, baseRent), // Cannot go below base rent
-        factor: correctedIndex / currentIndex,
-        restricted: true,
-        correctionApplied: true,
-        note: `Flanders correction factor applied: index growth during freeze period (${frozenGrowth.toFixed(2)} points) excluded for EPC label ${label}`,
-      };
-    }
+    // Start dates are YYYY-MM-DD and parse as UTC; read the month in UTC so the
+    // local timezone cannot shift it.
+    const anniversaryMonth = leaseStart.getUTCMonth() + 1;
+    const factor = getFlandersCorrectionFactor(epcLabel, anniversaryMonth);
+    const corrected = Math.round(unrestrictedNewRent * factor * 100) / 100;
+    return {
+      // Indexation never takes the rent below the base rent (a falling index
+      // combined with the factor could otherwise do so).
+      newRent: Math.max(corrected, baseRent),
+      factor,
+      restricted: true,
+      correctionApplied: true,
+      correctionMonth: anniversaryMonth,
+      note: `Flanders correction factor for anniversary month ${MONTH_NAMES_EN[anniversaryMonth - 1]} applied (EPC ${label}): x ${factor}`,
+    };
   }
 
-  return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, note: undefined };
+  return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, correctionApplied: false, correctionMonth: null, note: undefined };
 }
 
 export type IndexationCore = Awaited<ReturnType<typeof computeIndexationCore>>;
