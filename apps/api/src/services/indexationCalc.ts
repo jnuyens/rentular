@@ -20,15 +20,23 @@ export function getIndexationApplicability(input: {
   today?: Date;
 }): { canApply: boolean; applicableFrom: string } {
   const today = input.today ?? new Date();
-  const gateBase = input.lastIndexationDate
-    ? new Date(input.lastIndexationDate)
-    : new Date(input.startDate);
+  const gateBase = parseLocalDate(input.lastIndexationDate || input.startDate);
   const applicableFrom = new Date(gateBase);
   applicableFrom.setFullYear(applicableFrom.getFullYear() + 1);
   return {
     canApply: today >= applicableFrom,
-    applicableFrom: applicableFrom.toISOString().split("T")[0]!,
+    applicableFrom: localYmd(applicableFrom),
   };
+}
+
+/**
+ * Local midnight of a YYYY-MM-DD date. new Date("YYYY-MM-DD") would give UTC
+ * midnight, which in Brussels is still the previous evening for a few hours.
+ */
+function parseLocalDate(value: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!m) return new Date(value);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
 
 /** YYYY-MM-DD of a local-time date. toISOString() would shift local midnight back a day east of UTC. */
@@ -45,12 +53,68 @@ function addDays(d: Date, days: number): Date {
  * month. In short months the due day is capped at the last day of the month.
  */
 export function firstDueOnOrAfter(from: Date, paymentDay: number): Date {
-  const day = Math.min(Math.max(Math.trunc(paymentDay) || 1, 1), 31);
-  const dueIn = (year: number, month: number) =>
-    new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()));
+  const day = normalizePaymentDay(paymentDay);
   const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-  const sameMonth = dueIn(start.getFullYear(), start.getMonth());
-  return sameMonth >= start ? sameMonth : dueIn(start.getFullYear(), start.getMonth() + 1);
+  const sameMonth = dueIn(start.getFullYear(), start.getMonth(), day);
+  return sameMonth >= start ? sameMonth : dueIn(start.getFullYear(), start.getMonth() + 1, day);
+}
+
+function normalizePaymentDay(paymentDay: number): number {
+  return Math.min(Math.max(Math.trunc(paymentDay) || 1, 1), 31);
+}
+
+/** Rent due date in a given month, with the due day capped at the month's last day. */
+function dueIn(year: number, month: number, day: number): Date {
+  return new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()));
+}
+
+/**
+ * Rent due dates the landlord may pick as the start of the new rent, newest
+ * first. The default (index 0) is the first due date on or after the
+ * anniversary, or the next one after today when the landlord applies late.
+ *
+ * Belgian rule: for residential leases the indexation may be claimed for at
+ * most 3 months before the request; for commercial leases it may go back all
+ * the way to the anniversary. It never starts before the anniversary itself.
+ */
+export function computeEffectiveDateOptions(input: {
+  indexationDate: string;
+  paymentDay: number;
+  leaseType: string;
+  today: Date;
+  applicable: boolean;
+}): { effectiveDate: string; options: string[] } {
+  const { today } = input;
+  const day = normalizePaymentDay(input.paymentDay);
+  const anniv = parseLocalDate(input.indexationDate);
+  const from = anniv > today ? anniv : addDays(today, 1);
+  const defaultDue = firstDueOnOrAfter(from, day);
+  const effectiveDate = localYmd(defaultDue);
+  if (!input.applicable || anniv > today) return { effectiveDate, options: [effectiveDate] };
+
+  let floor = firstDueOnOrAfter(anniv, day);
+  if (input.leaseType !== "commercial") {
+    const capDue = firstDueOnOrAfter(
+      new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
+      day
+    );
+    if (capDue > floor) floor = capDue;
+  }
+
+  const options: string[] = [];
+  let year = defaultDue.getFullYear();
+  let month = defaultDue.getMonth();
+  for (let i = 0; i < 14; i++) {
+    const due = dueIn(year, month, day);
+    if (due < floor) break;
+    options.push(localYmd(due));
+    month -= 1;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    }
+  }
+  return { effectiveDate, options: options.length > 0 ? options : [effectiveDate] };
 }
 
 /**
@@ -69,6 +133,8 @@ export async function computeIndexationCore(input: {
   lastIndexationDate?: string | null;
   // Day of the month rent is due (leases.payment_day). Defaults to the 1st.
   paymentDay?: number | null;
+  // Reference date for "today". Defaults to the current time.
+  today?: Date;
 }): Promise<{
   currentIndex: number;
   currentIndexMonth: string;
@@ -81,6 +147,10 @@ export async function computeIndexationCore(input: {
   correctionMonth: number | null;
   formulaNote: string | undefined;
   effectiveDate: string;
+  // Legal anniversary date: drives the EPC rules and next year's applicability.
+  indexationDate: string;
+  // Rent due dates the landlord may pick as the start of the new rent, newest first, default first.
+  effectiveDateOptions: string[];
   // Informational "risen so far" figure, using the latest published index.
   latestIndex: number;
   latestIndexMonth: string;
@@ -98,7 +168,7 @@ export async function computeIndexationCore(input: {
   const startDate = new Date(input.startDate);
   const startMonth = startDate.getMonth();
   const startDay = startDate.getDate();
-  const today = new Date();
+  const today = input.today ?? new Date();
 
   // Latest published index -- how much the rent has already risen, even before
   // this lease's anniversary comes round again.
@@ -132,7 +202,8 @@ export async function computeIndexationCore(input: {
     currentIndexPublished = Boolean(v);
     // The new rent starts with the first rent due on or after the anniversary.
     // A late application takes effect going forward, from the next rent due
-    // after today, never retroactively and never in the middle of a period.
+    // after today, never in the middle of a period. The landlord may pick an
+    // earlier due date from effectiveDateOptions, within the legal limits.
     const anniv = new Date(anniversaryYear, startMonth, startDay);
     indexationDateStr = localYmd(anniv);
     const from = anniv > today ? anniv : addDays(today, 1);
@@ -184,6 +255,19 @@ export async function computeIndexationCore(input: {
     today,
   });
 
+  let effectiveDateOptions = [effectiveDateStr];
+  if (anniversaryHasPassed) {
+    const opts = computeEffectiveDateOptions({
+      indexationDate: indexationDateStr,
+      paymentDay: input.paymentDay ?? 1,
+      leaseType: input.leaseType,
+      today,
+      applicable: canApply,
+    });
+    effectiveDateStr = opts.effectiveDate;
+    effectiveDateOptions = opts.options;
+  }
+
   // Next upcoming anniversary (strictly after today).
   let nextAnnivYear = today.getFullYear();
   if (new Date(nextAnnivYear, startMonth, startDay) <= today) nextAnnivYear += 1;
@@ -200,6 +284,8 @@ export async function computeIndexationCore(input: {
     correctionMonth: legal.correctionMonth,
     formulaNote: legal.note,
     effectiveDate: effectiveDateStr,
+    indexationDate: indexationDateStr,
+    effectiveDateOptions,
     latestIndex,
     latestIndexMonth,
     newRentAtLatest: atLatest.newRent,
