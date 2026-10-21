@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { computeIndexReferenceMonth } from "@rentular/shared/validation";
 import { FileText, Plus, Search, Users, Pencil, Trash2, ChevronUp, ChevronDown, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -94,32 +95,6 @@ interface BankAccountOption {
   iban: string;
 }
 
-// Belgian indexation reference month (YYYY-MM):
-//   Flanders & Brussels: month before the START date for contracts signed from
-//   2019-01-01, else month before the SIGNING date.
-//   Wallonia: always month before the SIGNING date.
-function computeRefMonth(
-  region?: string | null,
-  signing?: string | null,
-  start?: string | null,
-): string {
-  const cutoff = new Date("2019-01-01");
-  const s = signing ? new Date(signing) : null;
-  const st = start ? new Date(start) : null;
-  const validS = s && !isNaN(s.getTime()) ? s : null;
-  const validSt = st && !isNaN(st.getTime()) ? st : null;
-  const useStart =
-    (region === "flanders" || region === "brussels") &&
-    validS !== null &&
-    validS >= cutoff;
-  const anchor = useStart ? validSt ?? validS : validS ?? validSt;
-  if (!anchor) return "";
-  const prev = new Date(
-    Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1),
-  );
-  return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
 export default function LeasesPage() {
   const t = useTranslations("leases");
   const td = useTranslations("dashboard");
@@ -148,7 +123,7 @@ export default function LeasesPage() {
   const [regionState, setRegionState] = useState("flanders");
   const [signingDateState, setSigningDateState] = useState("");
   const [startDateState, setStartDateState] = useState("");
-  const refMonth = computeRefMonth(regionState, signingDateState, startDateState);
+  const refMonth = computeIndexReferenceMonth(regionState, signingDateState, startDateState) ?? "";
   // A contract that started before today: ask whether the deposit and earlier
   // rent were already paid. Today is built from local date parts.
   const nowLocal = new Date();

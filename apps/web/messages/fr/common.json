@@ -329,6 +329,7 @@
     "epcNeededDesc": "Ce bien n'a pas de label PEB. En Flandre et à Bruxelles, le label PEB plafonne l'indexation, le montant affiché est donc une estimation la plus défavorable. Ajoutez le label PEB au bien pour obtenir le montant exact.",
     "epcRestrictedTitle": "Indexation limitée par le PEB",
     "epcRestrictedDesc": "L'indexation est plafonnée en raison du label PEB du bien. Le montant affiché en tient déjà compte.",
+    "flandersCorrectionApplied": "Facteur de correction flamand appliqué pour le mois anniversaire {month} : le loyer indexé est multiplié par {factor}. Cela s'applique car le bail a commencé avant le 1er octobre 2022 et le logement a un PEB D, E, F ou aucun PEB.",
     "calcErrorTitle": "Calcul impossible pour l'instant",
     "calcErrorHint": "Ouvrez le contrat et complétez les paramètres d'indexation (loyer d'origine, mois de référence et indice de base), puis enregistrez.",
     "property": "Bien",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { TrendingUp, Calculator, AlertTriangle, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,8 @@ interface CalcResult {
   epcLabel?: string | null;
   epcRestricted?: boolean;
   correctionApplied?: boolean;
+  epcIndexationFactor?: number;
+  correctionMonth?: number | null;
   formulaNote?: string;
   latestIndex: number;
   latestIndexMonth: string;
@@ -123,6 +125,7 @@ const CARD_HIGHLIGHT = " ring-2 ring-[hsl(var(--primary))]";
 export default function IndexationPage() {
   const t = useTranslations("indexation");
   const tc = useTranslations("dashboard");
+  const locale = useLocale();
   // Deep link from the indexation alert digest: /indexation?lease=<id>
   const searchParams = useSearchParams();
   const highlightLeaseId = searchParams.get("lease");
@@ -780,14 +783,25 @@ export default function IndexationPage() {
                     </div>
                   )}
 
-                  {calc.epcLabel && calc.epcRestricted && (
+                  {(calc.epcLabel || calc.correctionApplied) && calc.epcRestricted && (
                     <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900 dark:bg-orange-950">
                       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
                       <div>
                         <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                          {t("epcRestrictedTitle")} (EPC {calc.epcLabel})
+                          {t("epcRestrictedTitle")}
+                          {calc.epcLabel ? ` (EPC ${calc.epcLabel})` : ""}
                         </p>
                         <p className="mt-1 text-sm text-orange-700 dark:text-orange-300">{t("epcRestrictedDesc")}</p>
+                        {calc.correctionApplied && calc.epcIndexationFactor && calc.correctionMonth ? (
+                          <p className="mt-1 text-sm text-orange-700 dark:text-orange-300">
+                            {t("flandersCorrectionApplied", {
+                              month: new Intl.DateTimeFormat(locale, { month: "long" }).format(
+                                new Date(Date.UTC(2000, calc.correctionMonth - 1, 1))
+                              ),
+                              factor: calc.epcIndexationFactor.toFixed(9),
+                            })}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   )}

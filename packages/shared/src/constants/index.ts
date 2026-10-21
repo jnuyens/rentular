@@ -315,11 +315,11 @@ export const BRUSSELS_EPC_INDEXATION_FACTOR: Record<string, number> = {
 // Flanders: temporary freeze + permanent correction factor
 // Only applies to residential leases (NOT student leases) started BEFORE Oct 1, 2022
 
-// Freeze period: Oct 1, 2022 – Sep 30, 2023
+// Freeze period: Oct 1, 2022 to Sep 30, 2023
 export const FLANDERS_EPC_FREEZE_START = "2022-10-01";
 export const FLANDERS_EPC_FREEZE_END = "2023-09-30";
 
-// During the freeze period (Oct 2022 – Sep 2023):
+// During the freeze period (Oct 2022 to Sep 2023):
 export const FLANDERS_EPC_FREEZE_FACTOR: Record<string, number> = {
   "A++": 1.0,
   "A+": 1.0,
@@ -334,10 +334,10 @@ export const FLANDERS_EPC_FREEZE_FACTOR: Record<string, number> = {
 };
 
 // After the freeze (from Oct 1, 2023): indexation allowed again for all labels,
-// BUT a correction factor must be applied that excludes the index growth during
-// the freeze period. This correction factor is permanent for the contract's lifetime,
-// unless a better EPC is obtained or a new contract is signed.
-// Labels A+/A/B/C: no correction needed (they were never restricted)
+// BUT leases with these labels must multiply the indexed rent by the official
+// correction factor in FLANDERS_EPC_CORRECTION_FACTORS. The correction lasts for
+// the contract's lifetime, unless a better EPC is obtained or a new contract is signed.
+// Labels A++/A+/A/B/C: no correction needed (they were never restricted)
 // Labels D/E/F/G/none: correction factor must be applied
 export const FLANDERS_EPC_NEEDS_CORRECTION: Record<string, boolean> = {
   "A++": false,
@@ -350,6 +350,30 @@ export const FLANDERS_EPC_NEEDS_CORRECTION: Record<string, boolean> = {
   F: true,
   G: true,
   none: true,
+};
+
+// Official simplified correction factors for Flemish leases, source:
+// https://www.vlaanderen.be/bouwen-wonen-en-energie/huren-en-verhuren/huurprijs-en-huurwaarborg/huurprijsindexatie-met-correctiefactoren
+// Applies to Flemish leases started before 2022-10-01 with EPC D, E, F or no
+// EPC, for every indexation dated after 2023-09-30. The key is the anniversary
+// month (the month of the lease start date). New rent = round2(standard indexed
+// rent x factor). Column d is for EPC D, efNone for E, F or no EPC (G is not on
+// the official page; being worse than F it uses efNone too). The factor no longer
+// applies once a better EPC is registered (A++ to C: none, D: column d) or a new
+// lease starts.
+export const FLANDERS_EPC_CORRECTION_FACTORS: Record<number, { d: number; efNone: number }> = {
+  1: { d: 0.951950895, efNone: 0.903901791 },
+  2: { d: 0.961757813, efNone: 0.923515625 },
+  3: { d: 0.967996216, efNone: 0.935992433 },
+  4: { d: 0.965766823, efNone: 0.931533646 },
+  5: { d: 0.971941594, efNone: 0.943883189 },
+  6: { d: 0.972124068, efNone: 0.944248135 },
+  7: { d: 0.976119286, efNone: 0.952238571 },
+  8: { d: 0.977109655, efNone: 0.954219311 },
+  9: { d: 0.980049682, efNone: 0.960099363 },
+  10: { d: 0.949447646, efNone: 0.898895293 },
+  11: { d: 0.945356473, efNone: 0.890712946 },
+  12: { d: 0.951977401, efNone: 0.903954802 },
 };
 
 // Future Flanders restrictions:
