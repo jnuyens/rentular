@@ -210,6 +210,7 @@ None yet.
 | 261014-d9e | Replace the empty homepage "Dashboard Preview" with a static mock of the rent indexation page (en, nl, fr, de) | 2026-10-14 | 3779d20 | [261014-d9e-replace-empty-dashboard-preview-placehol](./quick/261014-d9e-replace-empty-dashboard-preview-placehol/) |
 | 261015-e1u | Indexation due alerts: daily WhatsApp/email digest to owners and managers with deep link to the lease | 2026-10-15 | 1b23dca | [261015-e1u-indexation-due-whatsapp-alerts](./quick/261015-e1u-indexation-due-whatsapp-alerts/) |
 | 261021-euc | Health index from Statbel open-data zip with overdue/failure admin alert, Rentular sender display name, deduped property label in indexation digest | 2026-10-21 | cbbc31d | [261021-euc-health-index-opendata-email-sender-name-](./quick/261021-euc-health-index-opendata-email-sender-name-/) |
+| 261021-ez7 | Flemish EPC correction after the 2022-2023 freeze uses the official anniversary-month factor table instead of subtracting Sep 2022 to Sep 2023 index growth; shared reference-month helper for API and web | 2026-10-21 | 7e9190c | [261021-ez7-fix-flemish-epc-correction-factor-after-](./quick/261021-ez7-fix-flemish-epc-correction-factor-after-/) |
 
 ## Session Continuity
 
