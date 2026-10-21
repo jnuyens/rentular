@@ -31,6 +31,28 @@ export function getIndexationApplicability(input: {
   };
 }
 
+/** YYYY-MM-DD of a local-time date. toISOString() would shift local midnight back a day east of UTC. */
+function localYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+}
+
+/**
+ * First rent due date on or after `from`, for rent due on `paymentDay` of each
+ * month. In short months the due day is capped at the last day of the month.
+ */
+export function firstDueOnOrAfter(from: Date, paymentDay: number): Date {
+  const day = Math.min(Math.max(Math.trunc(paymentDay) || 1, 1), 31);
+  const dueIn = (year: number, month: number) =>
+    new Date(year, month, Math.min(day, new Date(year, month + 1, 0).getDate()));
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const sameMonth = dueIn(start.getFullYear(), start.getMonth());
+  return sameMonth >= start ? sameMonth : dueIn(start.getFullYear(), start.getMonth() + 1);
+}
+
 /**
  * Pure indexation math: given the base rent/index, region, start date, EPC label
  * and lease type, compute the current index, the (EPC-restricted) new rent and the
@@ -45,6 +67,8 @@ export async function computeIndexationCore(input: {
   epcLabel: string | null;
   leaseType: string;
   lastIndexationDate?: string | null;
+  // Day of the month rent is due (leases.payment_day). Defaults to the 1st.
+  paymentDay?: number | null;
 }): Promise<{
   currentIndex: number;
   currentIndexMonth: string;
@@ -95,6 +119,9 @@ export async function computeIndexationCore(input: {
   let currentIndexYearStr: string;
   let currentIndexMonthStr: string;
   let effectiveDateStr: string;
+  // Legal indexation date (the anniversary). Drives the Flemish EPC rules, which
+  // depend on when the indexation is due, not on when the new rent starts.
+  let indexationDateStr: string;
   if (anniversaryHasPassed) {
     const idxDate = new Date(anniversaryYear, startMonth - 1, 1); // month before the anniversary
     currentIndexYearStr = String(idxDate.getFullYear());
@@ -103,10 +130,13 @@ export async function computeIndexationCore(input: {
     // If that month isn't published yet, fall back to the latest available index.
     currentIndex = v ? Number(v) : latestIndex;
     currentIndexPublished = Boolean(v);
-    // Effective date = the anniversary, but a late application takes effect going
-    // forward (from today), not retroactively -- so never show a past date.
+    // The new rent starts with the first rent due on or after the anniversary.
+    // A late application takes effect going forward, from the next rent due
+    // after today, never retroactively and never in the middle of a period.
     const anniv = new Date(anniversaryYear, startMonth, startDay);
-    effectiveDateStr = (anniv > today ? anniv : today).toISOString().split("T")[0]!;
+    indexationDateStr = localYmd(anniv);
+    const from = anniv > today ? anniv : addDays(today, 1);
+    effectiveDateStr = localYmd(firstDueOnOrAfter(from, input.paymentDay ?? 1));
   } else {
     // Before the first anniversary there is nothing to apply: the legal "current"
     // index equals the base (0 change) and we avoid looking up a future month.
@@ -118,6 +148,7 @@ export async function computeIndexationCore(input: {
     const firstAnniversary = new Date(startDate);
     firstAnniversary.setFullYear(startDate.getFullYear() + 1);
     effectiveDateStr = firstAnniversary.toISOString().split("T")[0]!;
+    indexationDateStr = effectiveDateStr;
   }
 
   // Apply EPC restrictions for a given "current" index value.
@@ -133,7 +164,7 @@ export async function computeIndexationCore(input: {
         unrestricted,
         input.epcLabel,
         input.startDate,
-        effectiveDateStr,
+        indexationDateStr,
         input.leaseType
       );
       return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, correctionMonth: r.correctionMonth, note: r.note };
@@ -156,9 +187,7 @@ export async function computeIndexationCore(input: {
   // Next upcoming anniversary (strictly after today).
   let nextAnnivYear = today.getFullYear();
   if (new Date(nextAnnivYear, startMonth, startDay) <= today) nextAnnivYear += 1;
-  const nextAnniversaryStr = new Date(nextAnnivYear, startMonth, startDay)
-    .toISOString()
-    .split("T")[0]!;
+  const nextAnniversaryStr = localYmd(new Date(nextAnnivYear, startMonth, startDay));
 
   return {
     currentIndex,

@@ -8,6 +8,7 @@ vi.mock("../healthIndex", () => ({
 import { BRUSSELS_EPC_INDEXATION_FACTOR } from "@rentular/shared/constants";
 import { getHealthIndexValue, getLatestHealthIndex } from "../healthIndex";
 import {
+  firstDueOnOrAfter,
   computeIndexationCore,
   getFlandersCorrectionFactor,
   getIndexationApplicability,
@@ -180,5 +181,30 @@ describe("computeIndexationCore: Flemish EPC correction after the freeze", () =>
     const r = await computeIndexationCore({ ...realLease, epcLabel: "D" });
     expect(r.newRent).toBe(round2(675 + (r.unrestrictedNewRent - 675) * 0.5));
     expect(r.correctionApplied).toBe(false);
+  });
+});
+
+describe("firstDueOnOrAfter", () => {
+  const ymd = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  it("moves a late indexation to the first of next month", () => {
+    expect(ymd(firstDueOnOrAfter(new Date(2026, 9, 22), 1))).toBe("2026-11-01");
+  });
+
+  it("keeps a due date that falls on the start day", () => {
+    expect(ymd(firstDueOnOrAfter(new Date(2026, 4, 1), 1))).toBe("2026-05-01");
+  });
+
+  it("uses a later payment day in the same month when it is still ahead", () => {
+    expect(ymd(firstDueOnOrAfter(new Date(2026, 9, 22), 25))).toBe("2026-10-25");
+  });
+
+  it("caps the payment day in short months", () => {
+    expect(ymd(firstDueOnOrAfter(new Date(2027, 1, 2), 31))).toBe("2027-02-28");
+  });
+
+  it("rolls over the year end", () => {
+    expect(ymd(firstDueOnOrAfter(new Date(2026, 11, 15), 1))).toBe("2027-01-01");
   });
 });
