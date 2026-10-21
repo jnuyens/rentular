@@ -205,7 +205,7 @@ describe("generateDefaultIndexationEmail (EN, FR, DE)", () => {
 });
 
 describe("no dash characters", () => {
-  const dash = /[–—]/;
+  const dash = /[\u2013\u2014]/;
   it("templates, legal references and rendered letters are dash-free", () => {
     for (const t of Object.values(DEFAULT_INDEXATION_TEMPLATES)) {
       expect(t.subject).not.toMatch(dash);
