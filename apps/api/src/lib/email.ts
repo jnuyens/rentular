@@ -32,6 +32,32 @@ const transportCache = new Map<string, { transport: Transporter; createdAt: numb
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
+ * Sender used for mail sent through the platform transport.
+ * Defaults to "Rentular <noreply@rentular.com>". EMAIL_FROM_NAME overrides the
+ * display name. If EMAIL_FROM already holds a full "Name <address>" value it is
+ * used verbatim, without adding a second name.
+ */
+export function getPlatformSender(): { fromAddress: string; fromName?: string } {
+  const fromAddress = process.env.EMAIL_FROM || "noreply@rentular.com";
+  if (fromAddress.includes("<")) {
+    return { fromAddress };
+  }
+  return { fromAddress, fromName: process.env.EMAIL_FROM_NAME || "Rentular" };
+}
+
+/**
+ * Build the nodemailer "from" value. With a display name this is an address
+ * object, so nodemailer quotes the name correctly and still uses the bare
+ * address as the envelope sender.
+ */
+export function buildFromHeader(
+  fromAddress: string,
+  fromName?: string
+): string | { name: string; address: string } {
+  return fromName ? { name: fromName, address: fromAddress } : fromAddress;
+}
+
+/**
  * Get an SMTP transport for a specific owner. If the owner has custom SMTP settings,
  * returns a cached transport configured with their credentials. Otherwise falls back
  * to the platform default SMTP transport.
@@ -42,10 +68,7 @@ export async function getTransportForOwner(ownerId?: string): Promise<{
   fromName?: string;
 }> {
   if (!ownerId) {
-    return {
-      transport: defaultTransporter,
-      fromAddress: process.env.EMAIL_FROM || "noreply@rentular.com",
-    };
+    return { transport: defaultTransporter, ...getPlatformSender() };
   }
 
   // Check cache (transport + fromAddress/fromName stored together)
@@ -63,10 +86,7 @@ export async function getTransportForOwner(ownerId?: string): Promise<{
   const settings = await db.select().from(smtpSettings).where(eq(smtpSettings.ownerId, ownerId)).limit(1);
 
   if (!settings[0]) {
-    return {
-      transport: defaultTransporter,
-      fromAddress: process.env.EMAIL_FROM || "noreply@rentular.com",
-    };
+    return { transport: defaultTransporter, ...getPlatformSender() };
   }
 
   // Decrypt password and create transport
@@ -98,7 +118,7 @@ export function clearTransportCache(ownerId: string): void {
 
 export async function sendEmail(options: EmailOptions): Promise<void> {
   const { transport, fromAddress, fromName } = await getTransportForOwner(options.ownerId);
-  const from = fromName ? `"${fromName}" <${fromAddress}>` : fromAddress;
+  const from = buildFromHeader(fromAddress, fromName);
   await transport.sendMail({
     from,
     to: options.to,

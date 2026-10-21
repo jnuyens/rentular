@@ -38,6 +38,7 @@ import {
   resolveAlertChannel,
   buildDigests,
   renderDigest,
+  formatPropertyLabel,
   type AlertLease,
 } from "../indexationAlerts";
 
@@ -212,5 +213,67 @@ describe("renderDigest", () => {
         expect(subject + body).not.toMatch(/[\u2013\u2014]/);
       }
     }
+  });
+});
+
+describe("formatPropertyLabel", () => {
+  it("does not repeat the address when the name already holds it", () => {
+    expect(
+      formatPropertyLabel({
+        name: "Tervuursestraat 97 leuven",
+        street: "Tervuursestraat",
+        streetNumber: "97",
+        postalCode: "3000",
+        city: "Leuven",
+      })
+    ).toBe("Tervuursestraat 97, 3000 Leuven");
+  });
+
+  it("keeps a box number from the name and drops the trailing city", () => {
+    expect(
+      formatPropertyLabel({
+        name: "Carnotstraat 65 b102 Antwerpen",
+        street: "Carnotstraat",
+        streetNumber: "65",
+        postalCode: "2018",
+        city: "Antwerpen",
+      })
+    ).toBe("Carnotstraat 65 b102, 2018 Antwerpen");
+  });
+
+  it("appends postal code and city when the name has the street but no city", () => {
+    expect(
+      formatPropertyLabel({
+        name: "Carnotstraat  65 b102",
+        street: "carnotstraat",
+        streetNumber: "65",
+        postalCode: "2018",
+        city: "Antwerpen",
+      })
+    ).toBe("Carnotstraat 65 b102, 2018 Antwerpen");
+  });
+
+  it("keeps name, street and city for a descriptive name", () => {
+    expect(
+      formatPropertyLabel({
+        name: "Residentie Zuid",
+        street: "Kerkstraat",
+        streetNumber: "1",
+        postalCode: "9000",
+        city: "Gent",
+      })
+    ).toBe("Residentie Zuid, Kerkstraat 1, 9000 Gent");
+  });
+
+  it("falls back to the address when there is no name", () => {
+    expect(
+      formatPropertyLabel({
+        name: null,
+        street: "Kerkstraat",
+        streetNumber: "1",
+        postalCode: "9000",
+        city: "Gent",
+      })
+    ).toBe("Kerkstraat 1, 9000 Gent");
   });
 });
