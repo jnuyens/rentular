@@ -357,7 +357,9 @@
     "applyAndSend": "Apply and send",
     "applyOnly": "Apply without email",
     "emailPrepareFailed": "Could not prepare the email",
-    "overrideNoteLabel": "Indexed rent {indexed}, applied {applied}"
+    "overrideNoteLabel": "Indexed rent {indexed}, applied {applied}",
+    "newRentFromLabel": "New rent from",
+    "backdatedNote": "Rent already paid for past months is not adjusted automatically yet."
   },
   "communications": {
     "title": "Communications",

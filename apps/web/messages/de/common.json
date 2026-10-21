@@ -357,7 +357,9 @@
     "applyAndSend": "Anwenden und senden",
     "applyOnly": "Ohne E-Mail anwenden",
     "emailPrepareFailed": "E-Mail konnte nicht vorbereitet werden",
-    "overrideNoteLabel": "Indexierte Miete {indexed}, angewendet {applied}"
+    "overrideNoteLabel": "Indexierte Miete {indexed}, angewendet {applied}",
+    "newRentFromLabel": "Neue Miete ab",
+    "backdatedNote": "Bereits gezahlte Miete für vergangene Monate wird noch nicht automatisch angepasst."
   },
   "communications": {
     "title": "Kommunikation",

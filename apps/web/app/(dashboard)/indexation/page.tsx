@@ -28,6 +28,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 interface Property {
   id: string;
@@ -62,6 +69,10 @@ interface CalcResult {
   unrestrictedNewRent: number;
   difference: number;
   effectiveDate: string;
+  // Legal anniversary date of this indexation.
+  indexationDate: string;
+  // Rent due dates the new rent may start from, newest first, default first.
+  effectiveDateOptions: string[];
   region: string;
   epcLabel?: string | null;
   epcRestricted?: boolean;
@@ -140,6 +151,8 @@ export default function IndexationPage() {
   // Apply flow: step 1 = calculation + custom rent, step 2 = editable email.
   const [step, setStep] = useState<"preview" | "email">("preview");
   const [customRent, setCustomRent] = useState<string>("");
+  // Rent due date the new rent starts from (one of calc.effectiveDateOptions).
+  const [effectiveDate, setEffectiveDate] = useState<string>("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
@@ -210,6 +223,7 @@ export default function IndexationPage() {
     setCalcError(null);
     setCalcLoading(true);
     setStep("preview");
+    setEffectiveDate("");
     setEmailSubject("");
     setEmailBody("");
     setSendNotification(true);
@@ -222,6 +236,7 @@ export default function IndexationPage() {
         if (res.ok) {
           const c = json as CalcResult;
           setCalc(c);
+          setEffectiveDate(c.effectiveDate);
           // Default the editable rent to the official indexed amount.
           setCustomRent((c.canApply ? c.newRent : c.newRentAtLatest).toFixed(2));
         } else setCalcError(json?.error || "Failed to calculate");
@@ -299,7 +314,10 @@ export default function IndexationPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(isOverride ? { overrideNewRent: customRentNum } : {}),
+        body: JSON.stringify({
+          ...(isOverride ? { overrideNewRent: customRentNum } : {}),
+          ...(effectiveDate ? { effectiveDate } : {}),
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -331,6 +349,7 @@ export default function IndexationPage() {
           subject: emailSubject,
           body: emailBody,
           sendNotification,
+          ...(effectiveDate ? { effectiveDate } : {}),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -741,7 +760,7 @@ export default function IndexationPage() {
                     </div>
                     <div className="mt-1 flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">{t("effectiveDateLabel")}</span>
-                      <span className="font-medium">{formatDate(calc.effectiveDate)}</span>
+                      <span className="font-medium">{formatDate(effectiveDate || calc.effectiveDate)}</span>
                     </div>
                     {!calc.canApply && (
                       <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
@@ -809,7 +828,27 @@ export default function IndexationPage() {
                   {/* Step 1: the landlord can round the new rent down manually. */}
                   {calc.canApply && step === "preview" && (
                     <div className="space-y-2 rounded-lg border p-4">
-                      <label className="text-sm font-medium">{t("customRentLabel")}</label>
+                      <label className="text-sm font-medium">{t("newRentFromLabel")}</label>
+                      <Select value={effectiveDate} onValueChange={setEffectiveDate}>
+                        <SelectTrigger
+                          className="w-48"
+                          disabled={(calc.effectiveDateOptions ?? [calc.effectiveDate]).length <= 1}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(calc.effectiveDateOptions ?? [calc.effectiveDate]).map((d) => (
+                            <SelectItem key={d} value={d}>
+                              {formatDate(d)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {/* YYYY-MM-DD strings compare correctly as text. */}
+                      {effectiveDate && effectiveDate < calc.effectiveDate && (
+                        <p className="text-xs text-muted-foreground">{t("backdatedNote")}</p>
+                      )}
+                      <label className="block pt-2 text-sm font-medium">{t("customRentLabel")}</label>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">&euro;</span>
                         <Input
