@@ -44,7 +44,7 @@ function parseLocalDate(value: string): Date {
 const RENT_PERIOD_START_DAY = 1;
 
 /** YYYY-MM-DD of a local-time date. toISOString() would shift local midnight back a day east of UTC. */
-function localYmd(d: Date): string {
+export function localYmd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 

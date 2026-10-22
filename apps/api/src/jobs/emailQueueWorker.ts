@@ -41,10 +41,10 @@ export interface CommunicationMeta {
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    const { to, cc, subject, body, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
+    const { to, cc, subject, body, html, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
     console.log(`[EmailQueue] Sending email to ${to}${cc ? ` (cc: ${cc})` : ""}: "${subject}"`);
     try {
-      await sendEmail({ to, cc, subject, body, attachments, ownerId });
+      await sendEmail({ to, cc, subject, body, html, attachments, ownerId });
       console.log(`[EmailQueue] Sent successfully to ${to}`);
 
       // Update communications record on success

@@ -10,6 +10,14 @@
  *   off    -> turn off late-payment emails for this contract
  *   hold   -> keep the automatic third reminder from going out
  *
+ * The daily indexation digest uses the same public mount for its snooze
+ * buttons (see lib/indexationSnoozeToken):
+ *
+ *   GET /indexation/:token -> snooze the indexation alert for one lease by a
+ *                             month, three months, or until the next yearly
+ *                             indexation, then show when the next reminder
+ *                             comes
+ *
  * Mounted at /api/v1/landlord-action (public: not behind requireAuth; GET, so
  * the CSRF middleware does not apply).
  */
@@ -32,6 +40,10 @@ import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueSms } from "../jobs/smsQueueWorker";
 import { renderTemplate } from "../lib/email";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
+import { verifyIndexationSnoozeToken, type SnoozeLang } from "../lib/indexationSnoozeToken";
+import { snoozeUntil, nextAnniversaryAfter } from "../services/indexationAlerts";
+import { localYmd } from "../services/indexationCalc";
+import { formatLongDate } from "../lib/belgianFormat";
 
 export const landlordActionsRouter = new Hono();
 
@@ -298,6 +310,80 @@ async function sendSmsReminder(ctx: ReminderContext, leaseId: string): Promise<"
   );
   return "sent";
 }
+
+const SNOOZE_MESSAGES: Record<
+  SnoozeLang,
+  { until: (date: string) => string; yearly: (date: string) => string; invalid: string; notfound: string }
+> = {
+  en: {
+    until: (date) => `Okay, we'll remind you again on ${date}.`,
+    yearly: (date) => `Okay, we'll remind you again at the next yearly indexation, around ${date}.`,
+    invalid: "This link is invalid or has expired.",
+    notfound: "This lease could not be found.",
+  },
+  nl: {
+    until: (date) => `Oké, we herinneren je er opnieuw aan op ${date}.`,
+    yearly: (date) =>
+      `Oké, we herinneren je er opnieuw aan bij de volgende jaarlijkse indexering, rond ${date}.`,
+    invalid: "Deze link is ongeldig of verlopen.",
+    notfound: "Dit huurcontract kon niet worden gevonden.",
+  },
+  fr: {
+    until: (date) => `D'accord, nous vous le rappellerons le ${date}.`,
+    yearly: (date) =>
+      `D'accord, nous vous le rappellerons à la prochaine indexation annuelle, vers le ${date}.`,
+    invalid: "Ce lien est invalide ou a expiré.",
+    notfound: "Ce bail est introuvable.",
+  },
+  de: {
+    until: (date) => `In Ordnung, wir erinnern Sie am ${date} erneut.`,
+    yearly: (date) =>
+      `In Ordnung, wir erinnern Sie bei der nächsten jährlichen Indexierung erneut, etwa am ${date}.`,
+    invalid: "Dieser Link ist ungültig oder abgelaufen.",
+    notfound: "Dieser Mietvertrag wurde nicht gefunden.",
+  },
+};
+
+// Snooze button from the indexation digest. Registered before the payment
+// route below so the two link families never get mixed up; keep it there.
+// The lease comes only from the signed token. Clicking the same link twice
+// stamps the same date again, which is harmless.
+landlordActionsRouter.get("/indexation/:token", async (c) => {
+  let payload: Awaited<ReturnType<typeof verifyIndexationSnoozeToken>>;
+  try {
+    payload = await verifyIndexationSnoozeToken(c.req.param("token"));
+  } catch {
+    return renderHtml(c, "en", `<p>${esc(SNOOZE_MESSAGES.en.invalid)}</p>`);
+  }
+  const lang = payload.lang;
+  const copy = SNOOZE_MESSAGES[lang];
+
+  try {
+    const db = getDb();
+    const rows = await db
+      .select({ id: leases.id, startDate: leases.startDate })
+      .from(leases)
+      .where(eq(leases.id, payload.leaseId))
+      .limit(1);
+    const lease = rows[0];
+    if (!lease) return renderHtml(c, lang, `<p>${esc(copy.notfound)}</p>`);
+
+    const todayYmd = localYmd(new Date());
+    const until = snoozeUntil(todayYmd, payload.snooze);
+    await db
+      .update(leases)
+      .set({ indexationSnoozedUntil: until, updatedAt: new Date() })
+      .where(eq(leases.id, lease.id));
+
+    const message = until
+      ? copy.until(formatLongDate(until, lang))
+      : copy.yearly(formatLongDate(nextAnniversaryAfter(lease.startDate, todayYmd), lang));
+    return renderHtml(c, lang, `<p>${esc(message)}</p>`);
+  } catch (err) {
+    console.error("[LandlordActions] snooze failed:", err);
+    return renderHtml(c, lang, `<p>${esc(copy.invalid)}</p>`);
+  }
+});
 
 landlordActionsRouter.get("/:token", async (c) => {
   const token = c.req.param("token");

@@ -30,4 +30,15 @@ describe("landlordActionToken", () => {
       expect(decoded.action).toBe(action);
     }
   });
+
+  it("rejects a token from another link family that carries a kind", async () => {
+    const { verifyLandlordActionToken } = await import("../landlordActionToken");
+    const { SignJWT } = await import("jose");
+    const token = await new SignJWT({ kind: "indexation-snooze", action: "paid", paymentId: "p" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("1d")
+      .sign(new TextEncoder().encode("test-secret-please-change-0123456789"));
+    await expect(verifyLandlordActionToken(token)).rejects.toThrow();
+  });
 });

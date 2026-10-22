@@ -19,6 +19,9 @@ export interface EmailOptions {
   cc?: string;
   subject: string;
   body: string;
+  // Optional HTML alternative. `body` stays the plain-text part and is what
+  // gets logged to communications.
+  html?: string;
   ownerId?: string;
   attachments?: Array<{
     filename: string;
@@ -125,6 +128,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     cc: options.cc || undefined,
     subject: options.subject,
     text: options.body,
+    html: options.html || undefined,
     attachments: options.attachments,
   });
 }

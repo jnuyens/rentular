@@ -29,11 +29,17 @@ vi.mock("../../lib/whatsapp", () => ({
 
 vi.mock("../../jobs/emailQueueWorker", () => ({ queueEmail: vi.fn() }));
 
-vi.mock("../indexationCalc", () => ({ computeIndexationCore: vi.fn() }));
+vi.mock("../indexationCalc", () => ({
+  computeIndexationCore: vi.fn(),
+  localYmd: (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+}));
 
 import {
   alertCycleDate,
   isAlertDue,
+  snoozeUntil,
+  nextAnniversaryAfter,
   resolveAlertRecipients,
   resolveAlertChannel,
   buildDigests,
@@ -49,6 +55,7 @@ const baseLease = {
   type: "residential",
   indexationBaseIndex: "125.50",
   indexationAlertSentFor: null as string | null,
+  indexationSnoozedUntil: null as string | null,
 };
 const dueCore = { canApply: true, applicableFrom: "2026-10-15", currentIndexPublished: true };
 const today = new Date("2026-10-20T08:00:00Z");
@@ -107,6 +114,67 @@ describe("isAlertDue", () => {
     expect(isAlertDue({ ...baseLease, status: "terminated" }, dueCore)).toBe(false);
     expect(isAlertDue({ ...baseLease, type: "student" }, dueCore)).toBe(false);
     expect(isAlertDue({ ...baseLease, indexationBaseIndex: null }, dueCore)).toBe(false);
+  });
+});
+
+function localYmdOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function shiftDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, d.getHours());
+}
+
+describe("snoozeUntil", () => {
+  it("adds calendar months and clamps to the end of a shorter month", () => {
+    expect(snoozeUntil("2026-01-31", "1m")).toBe("2026-02-28");
+    expect(snoozeUntil("2024-01-31", "1m")).toBe("2024-02-29");
+    expect(snoozeUntil("2026-11-30", "3m")).toBe("2027-02-28");
+    expect(snoozeUntil("2026-10-22", "1m")).toBe("2026-11-22");
+    expect(snoozeUntil("2026-10-22", "3m")).toBe("2027-01-22");
+  });
+
+  it("returns null for the yearly option", () => {
+    expect(snoozeUntil("2026-10-22", "yearly")).toBeNull();
+    expect(snoozeUntil("2024-02-29", "yearly")).toBeNull();
+  });
+});
+
+describe("nextAnniversaryAfter", () => {
+  it("returns the first anniversary strictly after today", () => {
+    expect(nextAnniversaryAfter("2019-05-01", "2026-10-22")).toBe("2027-05-01");
+    expect(nextAnniversaryAfter("2019-05-01", "2026-04-30")).toBe("2026-05-01");
+    expect(nextAnniversaryAfter("2019-05-01", "2026-05-01")).toBe("2027-05-01");
+  });
+
+  it("moves a 29 February start to 28 February in a non-leap year", () => {
+    expect(nextAnniversaryAfter("2020-02-29", "2026-01-10")).toBe("2026-02-28");
+    expect(nextAnniversaryAfter("2020-02-29", "2027-03-01")).toBe("2028-02-29");
+  });
+});
+
+describe("isAlertDue with a snooze", () => {
+  const alerted = { ...baseLease, indexationAlertSentFor: "2026-10-15" };
+  const tomorrow = localYmdOf(shiftDays(today, 1));
+  const todayYmd = localYmdOf(today);
+  const yesterday = localYmdOf(shiftDays(today, -1));
+
+  it("is not due while the snooze runs", () => {
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: tomorrow }, dueCore, today)).toBe(false);
+  });
+
+  it("is due again on and after the snooze date, even if this anniversary was alerted", () => {
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: todayYmd }, dueCore, today)).toBe(true);
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday }, dueCore, today)).toBe(true);
+  });
+
+  it("still respects the other guards after the snooze ended", () => {
+    expect(
+      isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday }, { ...dueCore, canApply: false }, today)
+    ).toBe(false);
+    expect(
+      isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday, indexationEnabled: false }, dueCore, today)
+    ).toBe(false);
   });
 });
 
@@ -213,6 +281,93 @@ describe("renderDigest", () => {
         expect(subject + body).not.toMatch(/[\u2013\u2014]/);
       }
     }
+  });
+
+  const snoozeBase = `${web}/api/v1/landlord-action/indexation`;
+  const D = lease("lease-d", "p3", "Flat <b>1</b> & co", 700, 720);
+  function snoozeMap(items: AlertLease[]): Map<string, { m1: string; m3: string; yearly: string }> {
+    return new Map(
+      items.map((i) => [
+        i.leaseId,
+        {
+          m1: `${snoozeBase}/tok-${i.leaseId}-1m`,
+          m3: `${snoozeBase}/tok-${i.leaseId}-3m`,
+          yearly: `${snoozeBase}/tok-${i.leaseId}-yearly`,
+        },
+      ])
+    );
+  }
+
+  const BUTTONS: Record<string, string[]> = {
+    en: ["Open indexation", "Remind me next month", "Remind me in 3 months", "Remind me at the next yearly indexation"],
+    nl: [
+      "Indexering openen",
+      "Herinner me volgende maand",
+      "Herinner me binnen 3 maanden",
+      "Herinner me bij de volgende jaarlijkse indexering",
+    ],
+    fr: [
+      "Ouvrir l&#39;indexation",
+      "Me le rappeler le mois prochain",
+      "Me le rappeler dans 3 mois",
+      "Me le rappeler \u00e0 la prochaine indexation annuelle",
+    ],
+    de: [
+      "Indexierung \u00f6ffnen",
+      "N\u00e4chsten Monat erinnern",
+      "In 3 Monaten erinnern",
+      "Bei der n\u00e4chsten j\u00e4hrlichen Indexierung erinnern",
+    ],
+  };
+
+  it("returns html with the open link even without snooze links", () => {
+    const { html } = renderDigest("nl", [A, B, C], web);
+    for (const item of [A, B, C]) {
+      expect(html).toContain(`href="${web}/indexation?lease=${item.leaseId}"`);
+    }
+    expect(html).not.toContain("landlord-action/indexation");
+  });
+
+  it("lists the snooze links once per lease in the text and as buttons in the html", () => {
+    const items = [A, B, D];
+    const map = snoozeMap(items);
+    const { body, html } = renderDigest("nl", items, web, "Jan", map);
+    for (const item of items) {
+      const urls = map.get(item.leaseId)!;
+      expect(body.split(`${web}/indexation?lease=${item.leaseId}`).length - 1).toBe(1);
+      for (const url of [urls.m1, urls.m3, urls.yearly]) {
+        expect(body.split(url).length - 1).toBe(1);
+        expect(html).toContain(`href="${url}"`);
+      }
+      const openAt = body.indexOf(`${web}/indexation?lease=${item.leaseId}`);
+      expect(body.indexOf(urls.m1)).toBeGreaterThan(openAt);
+      expect(html).toContain(`href="${web}/indexation?lease=${item.leaseId}"`);
+    }
+    expect(body).toContain(`Herinner me volgende maand: ${map.get("lease-a")!.m1}`);
+  });
+
+  it("escapes the property label in the html", () => {
+    const { html } = renderDigest("en", [D], web, null, snoozeMap([D]));
+    expect(html).toContain("Flat &lt;b&gt;1&lt;/b&gt; &amp; co");
+    expect(html).not.toContain("<b>1</b>");
+  });
+
+  it("uses each language's button texts, falls back to en, and has no dashes", () => {
+    for (const lang of ["en", "nl", "fr", "de"]) {
+      const { subject, body, html } = renderDigest(lang, [A, C], web, "Jan", snoozeMap([A, C]));
+      for (const text of BUTTONS[lang]!) expect(html).toContain(text);
+      expect(subject + body + html).not.toMatch(/[\u2013\u2014]/);
+    }
+    expect(renderDigest("xx", [A], web, null, snoozeMap([A]))).toEqual(
+      renderDigest("en", [A], web, null, snoozeMap([A]))
+    );
+  });
+
+  it("builds an inline-styled table layout without scripts", () => {
+    const { html } = renderDigest("en", [A], web, null, snoozeMap([A]));
+    expect(html).toContain("<table");
+    expect(html).toContain("style=");
+    expect(html).not.toContain("<script");
   });
 });
 
