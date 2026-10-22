@@ -1027,6 +1027,8 @@ indexationRouter.post(
           // legal anniversary, not from the date the landlord let the new rent
           // start (see getIndexationApplicability and alertCycleDate).
           lastIndexationDate: calc.indexationDate,
+          // An applied indexation ends any snooze from the digest.
+          indexationSnoozedUntil: null,
           updatedAt: new Date(),
         })
         .where(eq(leases.id, leaseId));

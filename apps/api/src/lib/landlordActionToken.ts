@@ -37,6 +37,9 @@ export async function verifyLandlordActionToken(
   token: string,
 ): Promise<{ action: LandlordAction; paymentId: string }> {
   const { payload } = await jwtVerify(token, getSecret(), { algorithms: [ALG] });
+  // Tokens from other link families (indexation snooze) carry a kind and must
+  // never be accepted here.
+  if (payload.kind !== undefined) throw new Error("Invalid action");
   const action = payload.action as LandlordAction;
   if (!ACTIONS.includes(action)) {
     throw new Error("Invalid action");

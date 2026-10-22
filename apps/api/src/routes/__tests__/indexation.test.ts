@@ -222,7 +222,7 @@ describe("POST /indexation/apply/:leaseId effectiveDate", () => {
     expect(insertValues).toHaveLength(1);
     expect(insertValues[0]).toMatchObject({ effectiveDate: "2026-09-01" });
     expect(updateSets).toHaveLength(1);
-    expect(updateSets[0]).toMatchObject({ lastIndexationDate: "2026-05-01" });
+    expect(updateSets[0]).toMatchObject({ lastIndexationDate: "2026-05-01", indexationSnoozedUntil: null });
     const json = (await res.json()) as { effectiveDate: string; indexationDate: string };
     expect(json.effectiveDate).toBe("2026-09-01");
     expect(json.indexationDate).toBe("2026-05-01");

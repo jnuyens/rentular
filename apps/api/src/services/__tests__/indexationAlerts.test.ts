@@ -29,11 +29,17 @@ vi.mock("../../lib/whatsapp", () => ({
 
 vi.mock("../../jobs/emailQueueWorker", () => ({ queueEmail: vi.fn() }));
 
-vi.mock("../indexationCalc", () => ({ computeIndexationCore: vi.fn() }));
+vi.mock("../indexationCalc", () => ({
+  computeIndexationCore: vi.fn(),
+  localYmd: (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+}));
 
 import {
   alertCycleDate,
   isAlertDue,
+  snoozeUntil,
+  nextAnniversaryAfter,
   resolveAlertRecipients,
   resolveAlertChannel,
   buildDigests,
@@ -49,6 +55,7 @@ const baseLease = {
   type: "residential",
   indexationBaseIndex: "125.50",
   indexationAlertSentFor: null as string | null,
+  indexationSnoozedUntil: null as string | null,
 };
 const dueCore = { canApply: true, applicableFrom: "2026-10-15", currentIndexPublished: true };
 const today = new Date("2026-10-20T08:00:00Z");
@@ -107,6 +114,67 @@ describe("isAlertDue", () => {
     expect(isAlertDue({ ...baseLease, status: "terminated" }, dueCore)).toBe(false);
     expect(isAlertDue({ ...baseLease, type: "student" }, dueCore)).toBe(false);
     expect(isAlertDue({ ...baseLease, indexationBaseIndex: null }, dueCore)).toBe(false);
+  });
+});
+
+function localYmdOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function shiftDays(d: Date, days: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, d.getHours());
+}
+
+describe("snoozeUntil", () => {
+  it("adds calendar months and clamps to the end of a shorter month", () => {
+    expect(snoozeUntil("2026-01-31", "1m")).toBe("2026-02-28");
+    expect(snoozeUntil("2024-01-31", "1m")).toBe("2024-02-29");
+    expect(snoozeUntil("2026-11-30", "3m")).toBe("2027-02-28");
+    expect(snoozeUntil("2026-10-22", "1m")).toBe("2026-11-22");
+    expect(snoozeUntil("2026-10-22", "3m")).toBe("2027-01-22");
+  });
+
+  it("returns null for the yearly option", () => {
+    expect(snoozeUntil("2026-10-22", "yearly")).toBeNull();
+    expect(snoozeUntil("2024-02-29", "yearly")).toBeNull();
+  });
+});
+
+describe("nextAnniversaryAfter", () => {
+  it("returns the first anniversary strictly after today", () => {
+    expect(nextAnniversaryAfter("2019-05-01", "2026-10-22")).toBe("2027-05-01");
+    expect(nextAnniversaryAfter("2019-05-01", "2026-04-30")).toBe("2026-05-01");
+    expect(nextAnniversaryAfter("2019-05-01", "2026-05-01")).toBe("2027-05-01");
+  });
+
+  it("moves a 29 February start to 28 February in a non-leap year", () => {
+    expect(nextAnniversaryAfter("2020-02-29", "2026-01-10")).toBe("2026-02-28");
+    expect(nextAnniversaryAfter("2020-02-29", "2027-03-01")).toBe("2028-02-29");
+  });
+});
+
+describe("isAlertDue with a snooze", () => {
+  const alerted = { ...baseLease, indexationAlertSentFor: "2026-10-15" };
+  const tomorrow = localYmdOf(shiftDays(today, 1));
+  const todayYmd = localYmdOf(today);
+  const yesterday = localYmdOf(shiftDays(today, -1));
+
+  it("is not due while the snooze runs", () => {
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: tomorrow }, dueCore, today)).toBe(false);
+  });
+
+  it("is due again on and after the snooze date, even if this anniversary was alerted", () => {
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: todayYmd }, dueCore, today)).toBe(true);
+    expect(isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday }, dueCore, today)).toBe(true);
+  });
+
+  it("still respects the other guards after the snooze ended", () => {
+    expect(
+      isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday }, { ...dueCore, canApply: false }, today)
+    ).toBe(false);
+    expect(
+      isAlertDue({ ...alerted, indexationSnoozedUntil: yesterday, indexationEnabled: false }, dueCore, today)
+    ).toBe(false);
   });
 });
 
