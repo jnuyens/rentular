@@ -282,6 +282,93 @@ describe("renderDigest", () => {
       }
     }
   });
+
+  const snoozeBase = `${web}/api/v1/landlord-action/indexation`;
+  const D = lease("lease-d", "p3", "Flat <b>1</b> & co", 700, 720);
+  function snoozeMap(items: AlertLease[]): Map<string, { m1: string; m3: string; yearly: string }> {
+    return new Map(
+      items.map((i) => [
+        i.leaseId,
+        {
+          m1: `${snoozeBase}/tok-${i.leaseId}-1m`,
+          m3: `${snoozeBase}/tok-${i.leaseId}-3m`,
+          yearly: `${snoozeBase}/tok-${i.leaseId}-yearly`,
+        },
+      ])
+    );
+  }
+
+  const BUTTONS: Record<string, string[]> = {
+    en: ["Open indexation", "Remind me next month", "Remind me in 3 months", "Remind me at the next yearly indexation"],
+    nl: [
+      "Indexering openen",
+      "Herinner me volgende maand",
+      "Herinner me binnen 3 maanden",
+      "Herinner me bij de volgende jaarlijkse indexering",
+    ],
+    fr: [
+      "Ouvrir l&#39;indexation",
+      "Me le rappeler le mois prochain",
+      "Me le rappeler dans 3 mois",
+      "Me le rappeler \u00e0 la prochaine indexation annuelle",
+    ],
+    de: [
+      "Indexierung \u00f6ffnen",
+      "N\u00e4chsten Monat erinnern",
+      "In 3 Monaten erinnern",
+      "Bei der n\u00e4chsten j\u00e4hrlichen Indexierung erinnern",
+    ],
+  };
+
+  it("returns html with the open link even without snooze links", () => {
+    const { html } = renderDigest("nl", [A, B, C], web);
+    for (const item of [A, B, C]) {
+      expect(html).toContain(`href="${web}/indexation?lease=${item.leaseId}"`);
+    }
+    expect(html).not.toContain("landlord-action/indexation");
+  });
+
+  it("lists the snooze links once per lease in the text and as buttons in the html", () => {
+    const items = [A, B, D];
+    const map = snoozeMap(items);
+    const { body, html } = renderDigest("nl", items, web, "Jan", map);
+    for (const item of items) {
+      const urls = map.get(item.leaseId)!;
+      expect(body.split(`${web}/indexation?lease=${item.leaseId}`).length - 1).toBe(1);
+      for (const url of [urls.m1, urls.m3, urls.yearly]) {
+        expect(body.split(url).length - 1).toBe(1);
+        expect(html).toContain(`href="${url}"`);
+      }
+      const openAt = body.indexOf(`${web}/indexation?lease=${item.leaseId}`);
+      expect(body.indexOf(urls.m1)).toBeGreaterThan(openAt);
+      expect(html).toContain(`href="${web}/indexation?lease=${item.leaseId}"`);
+    }
+    expect(body).toContain(`Herinner me volgende maand: ${map.get("lease-a")!.m1}`);
+  });
+
+  it("escapes the property label in the html", () => {
+    const { html } = renderDigest("en", [D], web, null, snoozeMap([D]));
+    expect(html).toContain("Flat &lt;b&gt;1&lt;/b&gt; &amp; co");
+    expect(html).not.toContain("<b>1</b>");
+  });
+
+  it("uses each language's button texts, falls back to en, and has no dashes", () => {
+    for (const lang of ["en", "nl", "fr", "de"]) {
+      const { subject, body, html } = renderDigest(lang, [A, C], web, "Jan", snoozeMap([A, C]));
+      for (const text of BUTTONS[lang]!) expect(html).toContain(text);
+      expect(subject + body + html).not.toMatch(/[\u2013\u2014]/);
+    }
+    expect(renderDigest("xx", [A], web, null, snoozeMap([A]))).toEqual(
+      renderDigest("en", [A], web, null, snoozeMap([A]))
+    );
+  });
+
+  it("builds an inline-styled table layout without scripts", () => {
+    const { html } = renderDigest("en", [A], web, null, snoozeMap([A]));
+    expect(html).toContain("<table");
+    expect(html).toContain("style=");
+    expect(html).not.toContain("<script");
+  });
 });
 
 describe("formatPropertyLabel", () => {

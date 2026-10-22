@@ -14,7 +14,11 @@ import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueEmail } from "../jobs/emailQueueWorker";
 import { computeIndexationCore, localYmd } from "./indexationCalc";
 import { formatEur } from "../lib/belgianFormat";
-import type { SnoozeOption } from "../lib/indexationSnoozeToken";
+import {
+  normaliseSnoozeLang,
+  signIndexationSnoozeToken,
+  type SnoozeOption,
+} from "../lib/indexationSnoozeToken";
 
 // Daily "indexation due" digest for landlords and property managers.
 // The decision functions below are pure so they can be unit tested without a
@@ -194,6 +198,18 @@ interface DigestCopy {
   newRent: string;
   newRentUnknown: string;
   closing: (count: number) => string;
+  open: string;
+  snooze1m: string;
+  snooze3m: string;
+  snoozeYearly: string;
+  snoozeHint: string;
+}
+
+/** Pre-signed snooze links for one lease, built by the caller. */
+export interface SnoozeUrls {
+  m1: string;
+  m3: string;
+  yearly: string;
 }
 
 const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
@@ -212,6 +228,11 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
       n === 1
         ? "Open the link to review and apply it."
         : "Open each link to review and apply the indexation.",
+    open: "Open indexation",
+    snooze1m: "Remind me next month",
+    snooze3m: "Remind me in 3 months",
+    snoozeYearly: "Remind me at the next yearly indexation",
+    snoozeHint: "Not now? Pick when we should remind you again:",
   },
   nl: {
     subject: (n) =>
@@ -230,6 +251,11 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
       n === 1
         ? "Open de link om de indexering na te kijken en toe te passen."
         : "Open elke link om de indexering na te kijken en toe te passen.",
+    open: "Indexering openen",
+    snooze1m: "Herinner me volgende maand",
+    snooze3m: "Herinner me binnen 3 maanden",
+    snoozeYearly: "Herinner me bij de volgende jaarlijkse indexering",
+    snoozeHint: "Nu niet? Kies wanneer we je er opnieuw aan herinneren:",
   },
   fr: {
     subject: (n) =>
@@ -246,6 +272,11 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
       n === 1
         ? "Ouvrez le lien pour vérifier et appliquer l'indexation."
         : "Ouvrez chaque lien pour vérifier et appliquer l'indexation.",
+    open: "Ouvrir l'indexation",
+    snooze1m: "Me le rappeler le mois prochain",
+    snooze3m: "Me le rappeler dans 3 mois",
+    snoozeYearly: "Me le rappeler à la prochaine indexation annuelle",
+    snoozeHint: "Pas maintenant ? Choisissez quand nous devons vous le rappeler :",
   },
   de: {
     subject: (n) =>
@@ -262,21 +293,49 @@ const COPY: Record<"en" | "nl" | "fr" | "de", DigestCopy> = {
       n === 1
         ? "Öffnen Sie den Link, um die Indexierung zu prüfen und anzuwenden."
         : "Öffnen Sie jeweils den Link, um die Indexierung zu prüfen und anzuwenden.",
+    open: "Indexierung öffnen",
+    snooze1m: "Nächsten Monat erinnern",
+    snooze3m: "In 3 Monaten erinnern",
+    snoozeYearly: "Bei der nächsten jährlichen Indexierung erinnern",
+    snoozeHint: "Jetzt nicht? Wählen Sie, wann wir Sie wieder erinnern sollen:",
   },
 };
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const BUTTON_BASE =
+  "display:inline-block;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px";
+const PRIMARY_BUTTON = `${BUTTON_BASE};background:#111;color:#fff`;
+const SNOOZE_BUTTON = `${BUTTON_BASE};background:#fff;color:#111;border:1px solid #ccc;margin:4px 4px 0 0`;
+
+function button(href: string, label: string, style: string): string {
+  return `<a href="${escapeHtml(href)}" style="${style}">${escapeHtml(label)}</a>`;
+}
+
 /**
- * Plain-text digest used for both WhatsApp and email. sendWhatsApp appends
+ * The digest in plain text (used for WhatsApp and as the email text part) and
+ * as an email-safe HTML document with an open button per lease. When the
+ * caller passes pre-signed snooze links, each lease also gets three snooze
+ * buttons, and the plain text lists the same links. sendWhatsApp appends
  * WHATSAPP_SIGNATURE itself, so it is not added here.
  */
 export function renderDigest(
   lang: string,
   items: AlertLease[],
   webUrl: string,
-  recipientName: string | null = null
-): { subject: string; body: string } {
-  const key = (lang || "en").slice(0, 2).toLowerCase();
-  const copy = COPY[key as keyof typeof COPY] ?? COPY.en;
+  recipientName: string | null = null,
+  snoozeUrls?: Map<string, SnoozeUrls>
+): { subject: string; body: string; html: string } {
+  const raw = (lang || "en").slice(0, 2).toLowerCase();
+  const key: keyof typeof COPY = Object.hasOwn(COPY, raw) ? (raw as keyof typeof COPY) : "en";
+  const copy = COPY[key];
   const n = items.length;
 
   const blocks = items.map((item) => {
@@ -285,11 +344,65 @@ export function renderDigest(
       item.newRent !== null ? `${copy.newRent}: ${formatEur(item.newRent)}` : copy.newRentUnknown
     );
     lines.push(`${webUrl}/indexation?lease=${item.leaseId}`);
+    const snooze = snoozeUrls?.get(item.leaseId);
+    if (snooze) {
+      lines.push(
+        `${copy.snooze1m}: ${snooze.m1}`,
+        `${copy.snooze3m}: ${snooze.m3}`,
+        `${copy.snoozeYearly}: ${snooze.yearly}`
+      );
+    }
     return lines.join("\n");
   });
 
   const body = [copy.greeting(recipientName), copy.intro(n), ...blocks, copy.closing(n)].join("\n\n");
-  return { subject: copy.subject(n), body };
+
+  const p = (text: string, style = "margin:0 0 16px 0"): string =>
+    `<p style="${style}">${escapeHtml(text)}</p>`;
+  const cell = "padding:2px 0;font-size:14px;color:#333";
+
+  const leaseTables = items.map((item) => {
+    const openUrl = `${webUrl}/indexation?lease=${encodeURIComponent(item.leaseId)}`;
+    const newRentRow =
+      item.newRent !== null
+        ? `<tr><td style="${cell}">${escapeHtml(copy.newRent)}: <strong>${escapeHtml(formatEur(item.newRent))}</strong></td></tr>`
+        : `<tr><td style="${cell}">${escapeHtml(copy.newRentUnknown)}</td></tr>`;
+    const snooze = snoozeUrls?.get(item.leaseId);
+    const snoozeRows = snooze
+      ? `<tr><td style="padding:14px 0 0 0;font-size:13px;color:#666">${escapeHtml(copy.snoozeHint)}</td></tr>` +
+        `<tr><td style="padding:2px 0 0 0">` +
+        button(snooze.m1, copy.snooze1m, SNOOZE_BUTTON) +
+        button(snooze.m3, copy.snooze3m, SNOOZE_BUTTON) +
+        button(snooze.yearly, copy.snoozeYearly, SNOOZE_BUTTON) +
+        `</td></tr>`
+      : "";
+    return (
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;padding:16px;border:1px solid #e5e5e5;border-radius:10px">` +
+      `<tr><td style="padding:0 0 6px 0;font-size:15px;color:#111"><strong>${escapeHtml(item.propertyLabel)}</strong></td></tr>` +
+      `<tr><td style="${cell}">${escapeHtml(copy.currentRent)}: ${escapeHtml(formatEur(item.currentRent))}</td></tr>` +
+      newRentRow +
+      `<tr><td style="padding:12px 0 0 0">${button(openUrl, copy.open, PRIMARY_BUTTON)}</td></tr>` +
+      snoozeRows +
+      `</table>`
+    );
+  });
+
+  const html =
+    `<!doctype html><html lang="${key}"><head><meta charset="utf-8"><title>${escapeHtml(copy.subject(n))}</title></head>` +
+    `<body style="margin:0;padding:0;background:#f5f5f7;font-family:Arial,Helvetica,sans-serif">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7">` +
+    `<tr><td align="center" style="padding:24px 12px">` +
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:12px">` +
+    `<tr><td style="padding:28px 28px 12px 28px;font-size:15px;line-height:1.5;color:#111">` +
+    p(copy.greeting(recipientName)) +
+    p(copy.intro(n)) +
+    leaseTables.join("") +
+    p(copy.closing(n), "margin:0") +
+    `</td></tr>` +
+    `<tr><td style="padding:12px 28px 24px 28px;font-size:12px;color:#999">Rentular</td></tr>` +
+    `</table></td></tr></table></body></html>`;
+
+  return { subject: copy.subject(n), body, html };
 }
 
 function normaliseLabelPart(s: string): string {
@@ -489,7 +602,28 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
     if (!channel) continue;
 
     summary.digests++;
-    const { subject, body } = renderDigest(user.locale || "en", items, webUrl, user.name);
+    // One signed link per lease per snooze option, in the recipient's language
+    // so the confirmation page matches the email. A signing failure only drops
+    // the snooze buttons for this person; the digest still goes out.
+    const lang = normaliseSnoozeLang(user.locale);
+    let snoozeUrls: Map<string, SnoozeUrls> | undefined;
+    try {
+      const urls = new Map<string, SnoozeUrls>();
+      const linkFor = async (leaseId: string, snooze: SnoozeOption): Promise<string> =>
+        `${webUrl}/api/v1/landlord-action/indexation/${await signIndexationSnoozeToken({ leaseId, snooze, lang })}`;
+      for (const item of items) {
+        urls.set(item.leaseId, {
+          m1: await linkFor(item.leaseId, "1m"),
+          m3: await linkFor(item.leaseId, "3m"),
+          yearly: await linkFor(item.leaseId, "yearly"),
+        });
+      }
+      snoozeUrls = urls;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[IndexationAlert] Could not sign snooze links for user ${user.id}:`, message);
+    }
+    const { subject, body, html } = renderDigest(lang, items, webUrl, user.name, snoozeUrls);
     const leaseIds = items.map((i) => i.leaseId);
     const singleLeaseId = items.length === 1 ? items[0]!.leaseId : null;
     const recipientName = user.name || user.email;
@@ -533,7 +667,7 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
 
     if (sendEmail) {
       try {
-        await queueEmail({ to: user.email, subject, body }, undefined, {
+        await queueEmail({ to: user.email, subject, body, html }, undefined, {
           ownerId: user.id,
           leaseId: singleLeaseId ?? undefined,
           type: "indexation_alert",
