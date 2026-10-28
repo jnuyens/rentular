@@ -215,6 +215,7 @@ None yet.
 | fast | Late indexation starts on the next rent due date; local date formatting fix | 2026-10-21 | 277c784 | n/a |
 | 261021-pd2 | Landlord picks the indexation start date (next due date default, up to 3 months back residential) | 2026-10-21 | b0bce90 | [261021-pd2-landlord-picks-indexation-start-date](./quick/261021-pd2-landlord-picks-indexation-start-date/) |
 | 261022-g4j | Snooze buttons in the indexation alert email (next month, 3 months, next yearly indexation) via one-click links | 2026-10-22 | 8edc6bf | [261022-g4j-indexation-alert-snooze-buttons](./quick/261022-g4j-indexation-alert-snooze-buttons/) |
+| 261028-t58 | Third bank matching pass: assign unmatched transfers by unique amount and learn the sender IBAN on the tenant | 2026-10-28 | 71a8673 | [261028-t58-amount-matcher-for-bank-transfers](./quick/261028-t58-amount-matcher-for-bank-transfers/) |
 
 ## Session Continuity
 
