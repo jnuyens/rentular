@@ -20,7 +20,7 @@ const AMOUNT_TOLERANCE = 0.01;
  * monthly rent when no rent row is pending. A pending deposit on its own never
  * defines the expected amount.
  */
-async function expectedAmountsForLease(
+export async function expectedAmountsForLease(
   db: Db,
   leaseId: string,
   monthlyRent: string,
