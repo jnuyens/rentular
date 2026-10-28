@@ -5,9 +5,18 @@
 //   WHATSAPP_SIGNATURE     appended to each message (e.g. "Eliza Berger")
 //   WHATSAPP_TIMEOUT_MS    request timeout (default 20000)
 
+export interface WhatsAppMedia {
+  type: "image" | "video" | "document";
+  url?: string; // http(s) URL the bridge downloads
+  base64?: string; // or the file itself
+  mimetype?: string;
+  filename?: string; // shown for documents
+}
+
 export interface WhatsAppOptions {
   to: string; // international number; the bridge strips non-digits
-  body: string;
+  body: string; // the caption when media is set
+  media?: WhatsAppMedia;
 }
 
 /** Whether a WhatsApp bridge is configured. */
@@ -20,9 +29,14 @@ export async function sendWhatsApp(options: WhatsAppOptions): Promise<{ id: stri
   const token = process.env.WHATSAPP_BRIDGE_TOKEN;
   if (!url || !token) throw new Error("WhatsApp bridge is not configured");
 
+  if (options.media && !options.media.url && !options.media.base64) {
+    throw new Error("WhatsApp media needs a url or base64 content");
+  }
+
   const signature = process.env.WHATSAPP_SIGNATURE || "";
+  // A bare picture or video is sent without a caption, so no signature either.
   const body =
-    signature && !options.body.includes(signature)
+    signature && options.body && !options.body.includes(signature)
       ? `${options.body}\n\n${signature}`
       : options.body;
 
@@ -36,7 +50,11 @@ export async function sendWhatsApp(options: WhatsAppOptions): Promise<{ id: stri
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ to: options.to, message: body }),
+      body: JSON.stringify({
+        to: options.to,
+        message: body,
+        ...(options.media ? { media: options.media } : {}),
+      }),
       signal: controller.signal,
     });
   } catch (err) {
