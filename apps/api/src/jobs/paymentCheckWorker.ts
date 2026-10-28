@@ -760,7 +760,7 @@ const worker = new Worker(
           totalMatched += result.matched;
           totalMismatched += result.mismatched;
           console.log(
-            `[PaymentCheck] Bank ${conn.iban || conn.id}: fetched=${result.fetched} matched=${result.matched} mismatched=${result.mismatched} unmatched=${result.unmatched} skippedDuplicates=${result.skippedDuplicates}`
+            `[PaymentCheck] Bank ${conn.iban || conn.id}: fetched=${result.fetched} matched=${result.matched} mismatched=${result.mismatched} unmatched=${result.unmatched} skippedDuplicates=${result.skippedDuplicates} byAmount=${result.amountAssigned}`
           );
         } catch (err) {
           console.error(
