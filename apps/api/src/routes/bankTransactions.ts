@@ -43,6 +43,7 @@ import {
   getOwnerTenantIbans,
 } from "../services/tenantBankAccounts";
 import { autoAssignByIban } from "../services/ibanMatcher";
+import { autoAssignByAmount } from "../services/amountMatcher";
 
 export const bankTransactionsRouter = new Hono();
 
@@ -184,9 +185,9 @@ bankTransactionsRouter.get(
 );
 
 // ===========================================================================
-// POST /rematch — re-run the IBAN auto-matcher over already-imported,
-// still-unmatched credits (e.g. after adding tenant accounts). Returns how
-// many were assigned.
+// POST /rematch: re-run the IBAN matcher and then the unique-amount matcher
+// over already-imported, still-unmatched credits (e.g. after adding tenant
+// accounts). Returns how many were assigned in total and per matcher.
 // ===========================================================================
 bankTransactionsRouter.post("/rematch", async (c) => {
   try {
@@ -197,11 +198,13 @@ bankTransactionsRouter.post("/rematch", async (c) => {
       .from(bankConnections)
       .where(eq(bankConnections.ownerId, userId));
 
-    let assigned = 0;
+    let byIban = 0;
+    let byAmount = 0;
     for (const conn of conns) {
-      assigned += await autoAssignByIban(db, userId, conn.id);
+      byIban += await autoAssignByIban(db, userId, conn.id);
+      byAmount += await autoAssignByAmount(db, userId, conn.id);
     }
-    return c.json({ data: { assigned } });
+    return c.json({ data: { assigned: byIban + byAmount, byIban, byAmount } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[BankTransactions] POST /rematch error:", err);

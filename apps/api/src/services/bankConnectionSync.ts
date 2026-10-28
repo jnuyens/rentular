@@ -35,6 +35,7 @@ import { decrypt, encrypt } from "../lib/encryption";
 import { importBankStatements } from "./bankStatementImporter";
 import { processIncomingTransactions } from "./transactionMatcher";
 import { autoAssignByIban } from "./ibanMatcher";
+import { autoAssignByAmount } from "./amountMatcher";
 import type { IncomingTransaction } from "../lib/bankAccountData";
 
 export interface SyncResult {
@@ -43,6 +44,7 @@ export interface SyncResult {
   mismatched: number;
   unmatched: number;
   skippedDuplicates: number;
+  amountAssigned: number;
 }
 
 // 90-day backfill on first sync (RESEARCH Pitfall 8). The literal multiplication
@@ -113,6 +115,7 @@ async function runSync(
       mismatched: 0,
       unmatched: 0,
       skippedDuplicates: 0,
+      amountAssigned: 0,
     };
   }
 
@@ -126,6 +129,7 @@ async function runSync(
       mismatched: 0,
       unmatched: 0,
       skippedDuplicates: 0,
+      amountAssigned: 0,
     };
   }
 
@@ -304,6 +308,17 @@ async function runSync(
     );
   }
 
+  // Third matching pass: assign by unique amount and learn the sender IBAN.
+  let amountAssigned = 0;
+  try {
+    amountAssigned = await autoAssignByAmount(db, conn.ownerId, connectionId);
+  } catch (err) {
+    console.warn(
+      `[BankSync] Connection ${connectionId}: amount auto-assign pass failed`,
+      err,
+    );
+  }
+
   // Update lastSyncAt + clear errorMessage
   await db
     .update(bankConnections)
@@ -316,9 +331,13 @@ async function runSync(
 
   return {
     fetched: transactions.length,
-    matched: matchResult.matched + ibanAssigned,
+    matched: matchResult.matched + ibanAssigned + amountAssigned,
     mismatched: matchResult.mismatched,
-    unmatched: Math.max(0, matchResult.unmatched - ibanAssigned),
+    unmatched: Math.max(
+      0,
+      matchResult.unmatched - ibanAssigned - amountAssigned,
+    ),
     skippedDuplicates,
+    amountAssigned,
   };
 }
