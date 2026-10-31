@@ -325,9 +325,105 @@ export default function OverviewPage() {
               hint={t("totalWarrantyHint")}
             />
           </div>
+
+          <IndexationTodayCard apiUrl={apiUrl} t={t} />
         </>
       )}
     </div>
+  );
+}
+
+interface IndexationRaiseItem {
+  leaseId: string;
+  canApply: boolean;
+  raiseAmount: number;
+  newRent: number;
+  currentRent: number;
+  propertyName: string;
+  tenantNames: string;
+}
+
+// Contracts that can be indexed right now. Always reflects today, so it does
+// not follow the month navigator. Best effort: hidden when empty or on error.
+function IndexationTodayCard({
+  apiUrl,
+  t,
+}: {
+  apiUrl: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const [items, setItems] = useState<IndexationRaiseItem[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/indexation/raise-summary`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { data?: IndexationRaiseItem[] };
+        const list = (json.data ?? [])
+          .filter((i) => i.canApply && i.raiseAmount > 0.005)
+          .sort((a, b) => b.raiseAmount - a.raiseAmount);
+        if (!cancelled) setItems(list);
+      } catch {
+        // Optional card: leave it hidden.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl]);
+
+  if (items.length === 0) return null;
+
+  const total = Number(items.reduce((sum, i) => sum + i.raiseAmount, 0).toFixed(2));
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <p className="text-sm font-medium">{t("indexationToday")}</p>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{t("indexationTodayHint")}</p>
+          </div>
+          <p className="text-2xl font-bold text-green-600">
+            +{eur(total)}
+            {t("perMonth")}
+          </p>
+        </div>
+        <ul className="mt-4 divide-y">
+          {items.map((item) => (
+            <li key={item.leaseId}>
+              <Link
+                href={`/indexation?lease=${item.leaseId}`}
+                className="-mx-2 flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted/50"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{item.propertyName}</p>
+                  {item.tenantNames && (
+                    <p className="truncate text-xs text-muted-foreground">{item.tenantNames}</p>
+                  )}
+                </div>
+                <div className="shrink-0 text-right text-sm">
+                  <p className="text-muted-foreground">
+                    {eur(item.currentRent)} → {eur(item.newRent)}
+                  </p>
+                  <p className="font-semibold text-green-600">
+                    +{eur(item.raiseAmount)}
+                    {t("perMonthShort")}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 

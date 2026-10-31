@@ -643,16 +643,40 @@ indexationRouter.get("/raise-summary", async (c) => {
       );
 
     const propRows = await db
-      .select({ id: properties.id, epcLabel: properties.epcLabel })
+      .select({ id: properties.id, epcLabel: properties.epcLabel, name: properties.name })
       .from(properties)
       .where(inArray(properties.id, allowedIds));
     const epcById = new Map(propRows.map((p) => [p.id, p.epcLabel]));
+    const nameById = new Map(propRows.map((p) => [p.id, p.name]));
+
+    // Tenant names per lease, only for leases already filtered by access above.
+    const tenantNamesByLease = new Map<string, string[]>();
+    const activeLeaseIds = activeLeases.map((l) => l.id);
+    if (activeLeaseIds.length > 0) {
+      const tenantRows = await db
+        .select({
+          leaseId: leaseTenants.leaseId,
+          first: tenants.firstName,
+          last: tenants.lastName,
+        })
+        .from(leaseTenants)
+        .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
+        .where(inArray(leaseTenants.leaseId, activeLeaseIds));
+      for (const r of tenantRows) {
+        const list = tenantNamesByLease.get(r.leaseId) ?? [];
+        list.push(`${r.first ?? ""} ${r.last ?? ""}`.trim());
+        tenantNamesByLease.set(r.leaseId, list);
+      }
+    }
 
     const data: Array<{
       leaseId: string;
       canApply: boolean;
       raiseAmount: number;
       newRent: number;
+      propertyName: string;
+      tenantNames: string;
+      currentRent: number;
     }> = [];
 
     for (const lease of activeLeases) {
@@ -677,6 +701,9 @@ indexationRouter.get("/raise-summary", async (c) => {
           canApply: core.canApply,
           raiseAmount: Number((shownRent - currentRent).toFixed(2)),
           newRent: shownRent,
+          propertyName: nameById.get(lease.propertyId) ?? "",
+          tenantNames: (tenantNamesByLease.get(lease.id) ?? []).filter(Boolean).join(", "),
+          currentRent,
         });
       } catch {
         // Skip leases that can't be computed (e.g. missing index data).
