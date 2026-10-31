@@ -43,13 +43,13 @@ export default function MarketingPage() {
               href="#features"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {t("featuresTitle").split(" ")[0]}
+              {t("navFeatures")}
             </a>
             <a
               href="#pricing"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {t("pricingTitle").split(" ")[0]}
+              {t("navPricing")}
             </a>
             <Link
               href="/download"

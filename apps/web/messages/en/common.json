@@ -991,6 +991,8 @@
     "feature6Title": "Easy Migration",
     "feature6Desc": "Import your existing data from Smovin with one click. No manual re-entry needed.",
     "pricingTitle": "Simple, transparent pricing",
+    "navFeatures": "Features",
+    "navPricing": "Pricing",
     "pricingSubtitle": "The automatic rent indexation alone usually pays for Rentular several times over. And it's open source.",
     "pricingFreeName": "Free",
     "pricingFreeSub": "hosted by us",
