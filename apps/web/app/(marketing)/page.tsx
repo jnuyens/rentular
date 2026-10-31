@@ -134,7 +134,7 @@ export default function MarketingPage() {
           <p className="mt-2 text-center text-muted-foreground">
             {t("pricingSubtitle")}
           </p>
-          <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-8 md:grid-cols-2">
             <Card className="flex flex-col p-6">
               <CardTitle>{t("pricingFreeName")}</CardTitle>
               <div className="mt-4 text-4xl font-semibold">€0</div>
@@ -181,36 +181,21 @@ export default function MarketingPage() {
                 <Link href="/login">{t("pricingUnlimitedCta")}</Link>
               </Button>
             </Card>
-
-            <Card className="flex flex-col p-6">
-              <CardTitle>{t("pricingSelfHostName")}</CardTitle>
-              <div className="mt-4 text-4xl font-semibold">€0</div>
-              <p className="text-sm text-muted-foreground">
-                {t("pricingSelfHostSub")}
-              </p>
-              <ul className="mt-6 flex-1 space-y-2">
-                {[
-                  t("pricingSelfHostFeature1"),
-                  t("pricingSelfHostFeature2"),
-                  t("pricingSelfHostFeature3"),
-                ].map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Button variant="outline" className="mt-6 w-full" asChild>
+          </div>
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            {t.rich("pricingSelfHostNote", {
+              link: (chunks) => (
                 <a
                   href="https://github.com/jnuyens/rentular"
                   target="_blank"
                   rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
                 >
-                  {t("pricingSelfHostCta")}
+                  {chunks}
                 </a>
-              </Button>
-            </Card>
-          </div>
+              ),
+            })}
+          </p>
         </div>
       </section>
 
