@@ -217,6 +217,7 @@ None yet.
 | 261022-g4j | Snooze buttons in the indexation alert email (next month, 3 months, next yearly indexation) via one-click links | 2026-10-22 | 8edc6bf | [261022-g4j-indexation-alert-snooze-buttons](./quick/261022-g4j-indexation-alert-snooze-buttons/) |
 | 261028-t58 | Third bank matching pass: assign unmatched transfers by unique amount and learn the sender IBAN on the tenant | 2026-10-28 | 71a8673 | [261028-t58-amount-matcher-for-bank-transfers](./quick/261028-t58-amount-matcher-for-bank-transfers/) |
 | 261031-mm5 | Overview card: possible indexation today, per contract with total | 2026-10-31 | 5e5a35a | [261031-mm5-overview-card-possible-indexation-today-](./quick/261031-mm5-overview-card-possible-indexation-today-/) |
+| 261031-o1j | Pricing section: free hosted up to 3 properties, EUR 19/month excl. VAT unlimited hosted, self-host (AGPL) | 2026-10-31 | d9372c4 | [261031-o1j-pricing-section-free-hosted-up-to-3-prop](./quick/261031-o1j-pricing-section-free-hosted-up-to-3-prop/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
