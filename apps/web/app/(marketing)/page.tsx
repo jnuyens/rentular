@@ -170,6 +170,7 @@ export default function MarketingPage() {
                   t("pricingUnlimitedFeature2"),
                   t("pricingUnlimitedFeature3"),
                   t("pricingUnlimitedFeature4"),
+                  t("pricingUnlimitedFeature5"),
                 ].map((feature) => (
                   <li key={feature} className="flex items-start gap-2 text-sm">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -181,6 +182,10 @@ export default function MarketingPage() {
                 <Link href="/login">{t("pricingUnlimitedCta")}</Link>
               </Button>
             </Card>
+          </div>
+          <div className="mx-auto mt-6 max-w-3xl space-y-1 text-xs text-muted-foreground">
+            <p>{t("pricingBankNote")}</p>
+            <p>{t("pricingSmsNote")}</p>
           </div>
           <p className="mt-8 text-center text-sm text-muted-foreground">
             {t.rich("pricingSelfHostNote", {
