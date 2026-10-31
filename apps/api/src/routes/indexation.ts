@@ -33,7 +33,7 @@ import {
   type IndexationEmailParams,
 } from "../services/indexationEmail";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
-import { formatCountry } from "../lib/belgianFormat";
+import { formatCountry, formatHouseNumber } from "../lib/belgianFormat";
 import { queueEmail } from "../jobs/emailQueueWorker";
 import { renderTemplate } from "../lib/email";
 
@@ -304,7 +304,7 @@ function buildIndexationEmailParams(input: {
 }): IndexationEmailParams {
   const { calc, owner } = input;
   const p = calc.property;
-  const propertyAddress = `${p.street} ${p.streetNumber}${p.box ? " " + p.box : ""}, ${p.postalCode} ${p.city}, ${formatCountry(p.country, input.tenantLanguage)}`;
+  const propertyAddress = `${p.street} ${formatHouseNumber(p.streetNumber, p.box, input.tenantLanguage)}, ${p.postalCode} ${p.city}, ${formatCountry(p.country, input.tenantLanguage)}`;
   return {
     tenantLanguage: input.tenantLanguage,
     region: calc.lease.region,

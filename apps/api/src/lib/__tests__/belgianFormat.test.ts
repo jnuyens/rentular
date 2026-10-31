@@ -6,6 +6,7 @@ import {
   formatLongDate,
   formatMonthYear,
   formatCountry,
+  formatHouseNumber,
   MONTH_NAMES,
 } from "../belgianFormat";
 
@@ -84,5 +85,27 @@ describe("formatCountry", () => {
 
   it("passes unknown codes through", () => {
     expect(formatCountry("ES", "nl")).toBe("ES");
+  });
+});
+
+describe("formatHouseNumber", () => {
+  it("adds the box word in the reader's language", () => {
+    expect(formatHouseNumber("65", "102", "nl")).toBe("65 bus 102");
+    expect(formatHouseNumber("65", "102", "fr")).toBe("65 boîte 102");
+    expect(formatHouseNumber("65", "102", "de")).toBe("65 Bus 102");
+    expect(formatHouseNumber("65", "102", "en")).toBe("65 box 102");
+  });
+  it("leaves the number alone without a box", () => {
+    expect(formatHouseNumber("97", null, "nl")).toBe("97");
+    expect(formatHouseNumber("97", "  ", "fr")).toBe("97");
+  });
+  it("does not double a prefix the landlord already typed", () => {
+    expect(formatHouseNumber("65", "b102", "fr")).toBe("65 boîte 102");
+    expect(formatHouseNumber("65", "bus 3", "nl")).toBe("65 bus 3");
+    expect(formatHouseNumber("65", "bte. 4", "fr")).toBe("65 boîte 4");
+  });
+  it("keeps boxes that only look like a prefix", () => {
+    expect(formatHouseNumber("12", "A0.1", "nl")).toBe("12 bus A0.1");
+    expect(formatHouseNumber("12", "B", "nl")).toBe("12 bus B");
   });
 });

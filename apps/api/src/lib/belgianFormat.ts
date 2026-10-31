@@ -77,3 +77,17 @@ export function formatCountry(code: string, lang: string): string {
   const names = COUNTRY_NAMES[(code || "").trim().toUpperCase()];
   return names ? names[letterLanguage(lang)] : code;
 }
+
+const BOX_WORDS: Record<LetterLanguage, string> = { nl: "bus", fr: "boîte", de: "Bus", en: "box" };
+
+/**
+ * House number plus box the way Belgian letters write it: "65 bus 102" in
+ * Dutch, "65 boîte 102" in French. A box already typed with a prefix
+ * ("b102", "bus 3", "bte 4") loses that prefix first, so it is never doubled.
+ */
+export function formatHouseNumber(streetNumber: string, box: string | null | undefined, lang: string): string {
+  const raw = (box || "").trim();
+  if (!raw) return streetNumber;
+  const value = raw.replace(/^(bus|boîte|boite|bte|box|bk|b)\.?\s*(?=\S)/i, "").trim() || raw;
+  return `${streetNumber} ${BOX_WORDS[letterLanguage(lang)]} ${value}`;
+}
