@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,76 +17,10 @@ import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { DashboardPreview } from "@/components/marketing/DashboardPreview";
 
-interface Plan {
-  id: string;
-  name: string;
-  price: number;
-  currency: string;
-  interval: string;
-  features: string[];
-}
-
 const FEATURE_ICONS = [CreditCard, TrendingUp, Globe, Bell, Users, Download];
 
 export default function MarketingPage() {
   const t = useTranslations("marketing");
-  const [plans, setPlans] = useState<Plan[]>([]);
-
-  useEffect(() => {
-    const apiUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-    fetch(`${apiUrl}/api/v1/stripe/plans`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.plans) setPlans(data.plans);
-      })
-      .catch(() => {
-        // Use fallback static prices if API is unreachable
-        setPlans([
-          {
-            id: "starter",
-            name: "Starter",
-            price: 400,
-            currency: "eur",
-            interval: "month",
-            features: [
-              "Up to 5 leases",
-              "SEPA direct debit",
-              "Email reminders",
-            ],
-          },
-          {
-            id: "standard",
-            name: "Standard",
-            price: 1000,
-            currency: "eur",
-            interval: "month",
-            features: [
-              "Up to 20 leases",
-              "SEPA direct debit",
-              "Email + SMS reminders",
-              "Rent indexation",
-            ],
-          },
-          {
-            id: "professional",
-            name: "Professional",
-            price: 1900,
-            currency: "eur",
-            interval: "month",
-            features: [
-              "Unlimited leases",
-              "SEPA direct debit",
-              "Email + SMS reminders",
-              "Rent indexation",
-              "Property managers",
-              "Priority support",
-            ],
-          },
-        ]);
-      });
-  }, []);
-
   const featureKeys = [1, 2, 3, 4, 5, 6] as const;
 
   return (
@@ -202,31 +135,81 @@ export default function MarketingPage() {
             {t("pricingSubtitle")}
           </p>
           <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="flex flex-col p-6">
-                <CardTitle>{plan.name}</CardTitle>
-                <div className="mt-4 text-4xl font-semibold">
-                  EUR {(plan.price / 100).toFixed(2)}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {t("pricingPerLease")}
-                </p>
-                <ul className="mt-6 flex-1 space-y-2">
-                  {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button className="mt-6 w-full" asChild>
-                  <Link href="/login">{t("pricingCta")}</Link>
-                </Button>
-              </Card>
-            ))}
+            <Card className="flex flex-col p-6">
+              <CardTitle>{t("pricingFreeName")}</CardTitle>
+              <div className="mt-4 text-4xl font-semibold">€0</div>
+              <p className="text-sm text-muted-foreground">
+                {t("pricingFreeSub")}
+              </p>
+              <ul className="mt-6 flex-1 space-y-2">
+                {[
+                  t("pricingFreeFeature1"),
+                  t("pricingFreeFeature2"),
+                  t("pricingFreeFeature3"),
+                ].map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button className="mt-6 w-full" asChild>
+                <Link href="/login">{t("pricingFreeCta")}</Link>
+              </Button>
+            </Card>
+
+            <Card className="flex flex-col border-2 border-primary p-6">
+              <CardTitle>{t("pricingUnlimitedName")}</CardTitle>
+              <div className="mt-4 text-4xl font-semibold">€19</div>
+              <p className="text-sm text-muted-foreground">
+                {t("pricingUnlimitedSub")}
+              </p>
+              <ul className="mt-6 flex-1 space-y-2">
+                {[
+                  t("pricingUnlimitedFeature1"),
+                  t("pricingUnlimitedFeature2"),
+                  t("pricingUnlimitedFeature3"),
+                  t("pricingUnlimitedFeature4"),
+                ].map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button className="mt-6 w-full" asChild>
+                <Link href="/login">{t("pricingUnlimitedCta")}</Link>
+              </Button>
+            </Card>
+
+            <Card className="flex flex-col p-6">
+              <CardTitle>{t("pricingSelfHostName")}</CardTitle>
+              <div className="mt-4 text-4xl font-semibold">€0</div>
+              <p className="text-sm text-muted-foreground">
+                {t("pricingSelfHostSub")}
+              </p>
+              <ul className="mt-6 flex-1 space-y-2">
+                {[
+                  t("pricingSelfHostFeature1"),
+                  t("pricingSelfHostFeature2"),
+                  t("pricingSelfHostFeature3"),
+                ].map((feature) => (
+                  <li key={feature} className="flex items-start gap-2 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button variant="outline" className="mt-6 w-full" asChild>
+                <a
+                  href="https://github.com/jnuyens/rentular"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("pricingSelfHostCta")}
+                </a>
+              </Button>
+            </Card>
           </div>
         </div>
       </section>
