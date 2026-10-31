@@ -278,7 +278,9 @@ export default function OverviewPage() {
               hint={
                 (data?.overdueThisMonth ?? 0) > 0
                   ? t("overdueThisMonth", { amount: eur(data?.overdueThisMonth ?? 0) })
-                  : t("overdueHint")
+                  : (data?.overdueTotal ?? 0) > 0
+                    ? undefined
+                    : t("overdueHint")
               }
             />
           </div>

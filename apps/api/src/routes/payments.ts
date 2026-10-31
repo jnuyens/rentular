@@ -490,12 +490,16 @@ paymentsRouter.get("/dashboard", async (c) => {
   // past-due records from previous months. A past-due pending record whose period
   // is actually covered by a (possibly late) paid payment does not count -- this
   // prevents stale auto-generated rows from inflating the overdue figure.
+  // Only rent that is really past due counts: when looking at a future month,
+  // the rows between today and that month are not due yet, so the cutoff is
+  // the earlier of the month start and today.
+  const priorCutoff = monthStart < todayStr ? monthStart : todayStr;
   let priorOverdue = 0;
   for (const p of rows) {
     if (p.isIgnored) continue;
     if (isDepositNote(p.notes)) continue; // deposits are not rent overdue
     const unpaid = p.status === "pending" || p.status === "failed";
-    if (!unpaid || String(p.dueDate) >= monthStart) continue;
+    if (!unpaid || String(p.dueDate).slice(0, 10) >= priorCutoff) continue;
     const lps = byLease.get(p.leaseId) ?? [];
     const covered = lps.some((q) =>
       coversMonthRent(q, String(p.dueDate), Number(p.amount)),
