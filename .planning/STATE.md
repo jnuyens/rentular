@@ -233,3 +233,4 @@ Resume file: .planning/phases/11.1-launch-blockers-settings-save-onboarding-jwt-
 | 2026-10-31 | fast | Bigger logo in mobile menu header | ✅ |
 | 2026-10-31 | fast | Pricing: self-host card turned into a footnote with GitHub link | ✅ |
 | 2026-10-31 | fast | Pricing copy: indexation pitch, bank tracking extra, SMS only in unlimited | ✅ |
+| 2026-10-31 | fast | Website header: proper Functies/Prijzen menu labels | ✅ |
