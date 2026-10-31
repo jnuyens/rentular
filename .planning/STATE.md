@@ -227,3 +227,4 @@ Resume file: .planning/phases/11.1-launch-blockers-settings-save-onboarding-jwt-
 | 2026-10-20 | fast | Indexation alert dedup keyed on latest anniversary, unapplied leases re-alerted yearly | ✅ |
 | 2026-10-31 | fast | Wider indexation apply dialog, NL/FR accent fixes | ✅ |
 | 2026-10-31 | fast | Box number in indexation letter address (65 bus 102 / 65 boîte 102) | ✅ |
+| 2026-10-31 | fast | Overview: future months no longer show not-yet-due rent as overdue | ✅ |
