@@ -73,12 +73,19 @@ export default function MobileNav({
 
             {/* Sheet sidebar content */}
             <div className="flex h-full flex-col">
-              <div className="flex h-16 items-center gap-2 px-6 border-b border-border">
-                <Image src="/rentular.png" alt="Rentular" width={36} height={36} />
-                <span className="text-lg font-bold">Rentular</span>
+              {/* Big logo that hangs over the header line on purpose. */}
+              <div className="relative flex h-16 items-center border-b border-border pl-[6.75rem] pr-6">
+                <Image
+                  src="/rentular.png"
+                  alt="Rentular"
+                  width={82}
+                  height={90}
+                  className="absolute left-4 top-3 z-10 h-[90px] w-[82px]"
+                />
+                <span className="text-2xl font-bold">Rentular</span>
               </div>
 
-              <nav className="flex-1 space-y-1 px-3 py-4">
+              <nav className="flex-1 space-y-1 px-3 pb-4 pt-12">
                 {items.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
