@@ -225,3 +225,4 @@ Stopped at: Phase 11.1 context gathered
 Resume file: .planning/phases/11.1-launch-blockers-settings-save-onboarding-jwt-sepa-collect-tr/11.1-CONTEXT.md
 | 2026-10-20 | fast | Belgian amount notation (€ 1.150,00) in indexation alert digest | ✅ |
 | 2026-10-20 | fast | Indexation alert dedup keyed on latest anniversary, unapplied leases re-alerted yearly | ✅ |
+| 2026-10-31 | fast | Wider indexation apply dialog, NL/FR accent fixes | ✅ |
