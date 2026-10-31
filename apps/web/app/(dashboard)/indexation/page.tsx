@@ -701,7 +701,7 @@ export default function IndexationPage() {
       {/* Indexation preview dialog */}
       <Dialog open={!!previewLease} onOpenChange={(open) => !open && setPreviewLease(null)}>
         {previewLease && (
-          <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+          <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl">
             <DialogHeader>
               <DialogTitle>{t("previewTitle") || "Indexation Preview"}</DialogTitle>
             </DialogHeader>
