@@ -66,3 +66,15 @@ Out of scope: changing the marketing page layout (already done), GoCardless SEPA
 - `apps/api/src/routes/stripe.ts`
 - `apps/web/app/(marketing)/page.tsx` and `apps/web/messages/{en,nl,fr,de}/common.json` (marketing.pricing*, bankConnectionsClause, pricingDisclosure)
 </canonical_refs>
+
+<decisions_round2>
+## Additional decisions (owner, 2026-11-04, after research)
+
+- **VAT:** one fixed 21% Belgian VAT tax rate applied to every Rentular invoice (no Stripe Tax for now; revisit when customers outside Belgium appear).
+- **Cancelling Onbeperkt:** stops at the end of the paid period (cancel_at_period_end), then the account drops to Gratis. No prorated refunds.
+- **SMS fallback:** when SMS is not allowed (free plan or the 50/month limit is reached), the reminder goes out by WhatsApp; if the tenant has no WhatsApp number or the bridge is unavailable, by email. Never fail silently.
+- **Stripe key:** the first plan starts with a checkpoint where the owner verifies the existing m1 STRIPE_SECRET_KEY ("mk_" prefix) in the Stripe dashboard (valid? live or test?) before anything is created in Stripe. Billing only switches on when the key AND both new price ids are configured.
+- **Existing data (checked on prod 2026-11-04):** only the owner's account has more than 3 properties (12) and the only bank connection (1 active). Other accounts have 0 or 1 property. Nothing to grandfather; the owner is exempt via users.billing_exempt.
+- **Translations:** the bankConnections namespace is still English in nl/fr/de for most keys; translating the keys touched by this phase (pricingDisclosure and the new billing strings) is in scope, the rest of that namespace may be translated in the same pass since all UI must exist in EN/NL/FR/DE.
+- **Public SMS footnote:** may mention the number: NL "(**) Tot 50 sms per maand." (and EN/FR/DE).
+</decisions_round2>
