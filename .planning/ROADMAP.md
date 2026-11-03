@@ -257,6 +257,22 @@ Plans:
 
 ## Backlog
 
+### Phase 11.1: Launch blockers: settings save, onboarding JWT, SEPA collect trigger (per-lease button + automatic collection on due date), indexation re-schedule, bank matcher matchedPaymentId (INSERTED)
+
+**Goal:** Close the v1.0 audit gaps (see `.planning/v1.0-MILESTONE-AUDIT.md`) so a new landlord can sign up, finish onboarding, configure reminders and actually collect rent by SEPA.
+**Requirements**: PAY-04, NTF-05, ONB-03, BANK-MATCHER, IDX-07
+**Success criteria:**
+1. Saving payment follow-up settings (days, interest, per-language templates) succeeds and the saved values load back into the Settings page (NTF-05).
+2. After finishing or skipping onboarding, the user lands on /properties without signing out and in again (ONB-03).
+3. Landlord can trigger a SEPA collection per lease from the UI, and pending rent with an active mandate is collected automatically on the due date; no duplicate payment rows result (PAY-04).
+4. Applying an indexation updates future pending expected payments to the new rent (IDX-07).
+5. The OGM matching pass records matchedPaymentId per bank statement row and only marks rows that actually matched (BANK-MATCHER).
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 11.1 to break down)
+
 ### Phase 999.1: Smovin import scraper hardening (Beta follow-on) (BACKLOG)
 
 **Goal:** Fix the three deferred data-quality issues from the resolved `smovin-import-write-failure` debug session so Smovin import produces accurate, complete data.
@@ -272,3 +288,20 @@ Issues 1 and 5 are regex-over-page-text heuristics that do not match Smovin's re
 
 Plans:
 - [ ] TBD (promote with /bm:review-backlog when ready)
+
+### Phase 12: Billing and plan limits aligned with the public pricing
+
+**Goal:** The hosted product charges and limits exactly what rentular.com promises: Gratis (up to 3 properties, no SMS), Onbeperkt (EUR 19/month excl. VAT, unlimited properties, SMS within a fair-use limit), and bank tracking as a paid extra of 5 euro per monitored account per month. Self-hosted installs keep working without limits. Source: `.planning/todos/pending/2026-10-31-align-billing-and-limits-with-new-pricing.md`.
+**Requirements**: BILL-01 (one Onbeperkt Stripe plan), BILL-02 (3-property limit on free), BILL-03 (SMS only on Onbeperkt, fair-use limit), BILL-04 (bank tracking billed per account), BILL-05 (terms and bank notice rewritten), BILL-06 (self-hosted unlimited)
+**Success criteria:**
+1. A landlord can subscribe to Onbeperkt (EUR 19/month excl. VAT) through Stripe checkout and manage or cancel it; the old Starter/Standard/Professional plans are no longer offered.
+2. A free hosted account cannot add a 4th property and sees a clear message with an upgrade link; existing data is never deleted or hidden.
+3. SMS can only be sent from Onbeperkt accounts and stops at the fair-use limit with a clear message; free accounts do not see SMS as a usable channel.
+4. Connecting a bank account for automatic tracking adds 5 euro per monitored account per month to the landlord's Stripe billing, and disconnecting removes it.
+5. The terms and the Bank Connections notice describe the new bank tracking charge correctly in EN/NL/FR/DE, with wording approved by the owner.
+6. With billing not configured (self-hosted), none of these limits apply.
+**Depends on:** Phase 11
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 12 to break down)

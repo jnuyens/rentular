@@ -93,6 +93,7 @@ Plan: Not started
 - Phase 9 added: PSD2 bank connection flow — API routes + UI for landlords to connect their bank account so the existing polling worker can auto-import statements and match incoming rent transfers
 - Phase 10 added: Deploy to Hetzner (m1) — production deployment (Docker web+api, nginx reverse proxy + LE TLS, env/secrets, atomic-release deploy; folds in Stripe-boot and API-env bug fixes). Depends on Phase 9 incl. 09-05.
 - Phase 11.1 inserted after Phase 11: Launch blockers from v1.0 re-audit: NTF-05 settings save, ONB-03 onboarding JWT refresh, PAY-04 SEPA collection (per-lease button + automatic on due date), indexation re-schedules expected payments, BANK-MATCHER matchedPaymentId (URGENT)
+- Phase 12 added: Billing and plan limits aligned with the public pricing (Onbeperkt EUR 19/month excl. VAT, 3-property free limit, SMS on Onbeperkt only, bank tracking 5 euro per account)
 
 ### Decisions
 
