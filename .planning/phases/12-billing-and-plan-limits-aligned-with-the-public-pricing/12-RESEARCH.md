@@ -443,7 +443,7 @@ This phase replaces the old plans, so the rename/migration inventory applies.
 
 ### Pitfall 8: Untranslated legal copy
 **What goes wrong:** Only EN gets updated; nl/fr/de `pricingDisclosure` is already English today.
-**How to avoid:** i18n test asserting the four values differ from each other and contain "5" and the excl. VAT phrase (`excl. VAT`, `excl. btw`, `HTVA` or `hors TVA`, `zzgl. MwSt.`), and no `–`/`—` characters.
+**How to avoid:** i18n test asserting the four values differ from each other and contain "5" and the excl. VAT phrase (`excl. VAT`, `excl. btw`, `HTVA` or `hors TVA`, `zzgl. MwSt.`), and no U+2013 or U+2014 characters.
 
 ### Pitfall 9: New billing routes not behind auth
 **What goes wrong:** `/stripe` is not in `protectedPrefixes`; a new `/stripe/portal` would be public.
