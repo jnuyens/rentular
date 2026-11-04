@@ -17,6 +17,7 @@ import {
   loadIndexRecords,
   loadMonthStatus,
   monthSettlement,
+  receivedHistory,
   type MonthSettlement,
 } from "../services/monthReceived";
 import type { DeductionRow } from "../services/rentDeductions";
@@ -325,6 +326,8 @@ paymentsRouter.get("/dashboard", async (c) => {
     overdueThisMonth: 0,
     totalWarranty: 0,
     currency: "EUR",
+    history: [] as Array<{ month: string; received: number }>,
+    portfolio: { properties: 0, tenants: 0, activeLeases: 0 },
   };
 
   const accessibleIds = await getAccessiblePropertyIds(userId);
@@ -464,13 +467,20 @@ paymentsRouter.get("/dashboard", async (c) => {
   const propName = new Map(propRows.map((p) => [p.id, p.name]));
   const leaseIds = activeLeaseRows.map((l) => l.id);
   const tenantName = new Map<string, string[]>();
+  const activeTenantIds = new Set<string>();
   if (leaseIds.length > 0) {
     const ltRows = await db
-      .select({ leaseId: leaseTenants.leaseId, first: tenants.firstName, last: tenants.lastName })
+      .select({
+        leaseId: leaseTenants.leaseId,
+        tenantId: tenants.id,
+        first: tenants.firstName,
+        last: tenants.lastName,
+      })
       .from(leaseTenants)
       .innerJoin(tenants, eq(leaseTenants.tenantId, tenants.id))
       .where(inArray(leaseTenants.leaseId, leaseIds));
     for (const r of ltRows) {
+      activeTenantIds.add(r.tenantId);
       const arr = tenantName.get(r.leaseId) ?? [];
       arr.push(`${r.first} ${r.last}`.trim());
       tenantName.set(r.leaseId, arr);
@@ -658,6 +668,31 @@ paymentsRouter.get("/dashboard", async (c) => {
   }
   const overdueTotal = overdueThisMonth + priorOverdue;
 
+  // Rent received in each of the last 12 months up to the selected month, with
+  // the same settlement rules as the figures above. Ended leases count too:
+  // the rent they brought in was real income.
+  const paymentDayByLease = new Map<string, number | null>();
+  for (const r of rows) if (!paymentDayByLease.has(r.leaseId)) paymentDayByLease.set(r.leaseId, r.paymentDay);
+  for (const l of activeLeaseRows) paymentDayByLease.set(l.id, l.paymentDay);
+  const allocByLease = new Map<string, Map<string, number>>();
+  for (const [key, amount] of allocByLeaseMonth) {
+    const sep = key.lastIndexOf("|");
+    const leaseId = key.slice(0, sep);
+    const perMonth = allocByLease.get(leaseId) ?? new Map<string, number>();
+    perMonth.set(key.slice(sep + 1), amount);
+    allocByLease.set(leaseId, perMonth);
+  }
+  const historyLeaseIds = new Set([...leaseIdsInView, ...allocByLease.keys()]);
+  const history = receivedHistory({
+    leases: [...historyLeaseIds].map((id) => ({
+      rows: byLease.get(id) ?? [],
+      paymentDay: paymentDayByLease.get(id) ?? null,
+      allocations: allocByLease.get(id) ?? new Map<string, number>(),
+    })),
+    endMonth: month,
+    months: 12,
+  });
+
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return c.json({
     data: {
@@ -673,6 +708,12 @@ paymentsRouter.get("/dashboard", async (c) => {
       toComeItems: toComeItems.sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
       paidItems: paidItems.sort((a, b) => b.rentDue - a.rentDue),
       currency: "EUR",
+      history,
+      portfolio: {
+        properties: accessibleIds.length,
+        tenants: activeTenantIds.size,
+        activeLeases: activeLeaseRows.length,
+      },
     },
   });
 });

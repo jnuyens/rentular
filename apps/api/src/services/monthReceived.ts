@@ -132,6 +132,34 @@ export function receivedForMonth(
   return round2(unroundedReceived(rows, month, paymentDay, allocationSum));
 }
 
+/**
+ * Rent received per month for the `months` months ending at `endMonth`
+ * (oldest first). Each month is the sum over leases of receivedForMonth with
+ * that lease's ledger allocations for the month, so it follows exactly the
+ * same settlement rules as the rest of the dashboard.
+ */
+export function receivedHistory(input: {
+  leases: Array<{
+    rows: PaidRowLike[];
+    paymentDay: number | null | undefined;
+    /** Allocated amount per month, keyed by YYYY-MM. */
+    allocations: Map<string, number>;
+  }>;
+  endMonth: string;
+  months: number;
+}): Array<{ month: string; received: number }> {
+  const out: Array<{ month: string; received: number }> = [];
+  for (let i = input.months - 1; i >= 0; i--) {
+    const month = shiftMonth(input.endMonth, -i);
+    let total = 0;
+    for (const lease of input.leases) {
+      total += receivedForMonth(lease.rows, month, lease.paymentDay, lease.allocations.get(month) ?? 0);
+    }
+    out.push({ month, received: round2(total) });
+  }
+  return out;
+}
+
 function unroundedReceived(
   rows: PaidRowLike[],
   month: string,
