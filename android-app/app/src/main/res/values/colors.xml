@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="rentular_primary">#2563EB</color>
-    <color name="ic_launcher_background">#2563EB</color>
+    <!-- Brand palette, same values as the web app tokens in apps/web/app/globals.css. -->
+    <color name="brand_navy">#0B2A5B</color>
+    <color name="brand_navy_mid">#173E82</color>
+    <color name="brand_royal">#1D5BD7</color>
+    <color name="brand_green">#40AC2A</color>
+    <color name="brand_green_dark">#2A741B</color>
+    <color name="brand_lime">#7CC945</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="on_primary">@color/brand_navy</color>
+    <color name="button_disabled">#9CA3AF</color>
+
+    <!-- System bars and backgrounds behind the edge-to-edge insets are navy. -->
+    <color name="rentular_primary">@color/brand_navy</color>
+    <color name="ic_launcher_background">@color/brand_navy</color>
 
     <!-- Semantic colors for the native screens (server setup, version gate). -->
-    <color name="rentular_on_primary">#FFFFFF</color>
-    <color name="rentular_surface">#FFFFFF</color>
-    <color name="rentular_text_primary">#111827</color>
+    <color name="rentular_on_primary">@color/on_primary</color>
+    <color name="rentular_surface">@color/surface</color>
+    <color name="rentular_text_primary">@color/brand_navy</color>
     <color name="rentular_text_secondary">#4B5563</color>
     <color name="rentular_error">#B91C1C</color>
 </resources>
