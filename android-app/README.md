@@ -75,14 +75,19 @@ Version numbers live in two places and move together:
 Building:
 
 1. Once: `./create-upload-key.sh` creates `~/.rentular/rentular-upload.keystore`
-   and prints four lines (`RENTULAR_UPLOAD_STORE_FILE`,
-   `RENTULAR_UPLOAD_STORE_PASSWORD`, `RENTULAR_UPLOAD_KEY_ALIAS`,
-   `RENTULAR_UPLOAD_KEY_PASSWORD`) for `~/.gradle/gradle.properties`. The key and
-   passwords never go into this repository. Without them a release build stops
-   with a message saying what is missing.
-2. `./build-play-release.sh` builds the signed bundle into
-   `dist/rentular-<versionName>-<versionCode>.aab` and refuses to continue when
-   `versionCode` and `REQUIRED_APP_VERSION` differ.
+   and generates a random password into `/etc/rentular/android-upload-key.pass`,
+   a file only root can read (sudo asks for your Mac password). The password is
+   never printed and never goes into this repository or into
+   `~/.gradle/gradle.properties`. Back up the keystore and the password (read it
+   with `sudo cat /etc/rentular/android-upload-key.pass`) off this machine.
+2. `./build-play-release.sh` reads the password with sudo at build time, builds
+   the signed bundle into `dist/rentular-<versionName>-<versionCode>.aab` and
+   refuses to continue when `versionCode` and `REQUIRED_APP_VERSION` differ.
+   To use another key, set `RENTULAR_UPLOAD_STORE_FILE`,
+   `RENTULAR_UPLOAD_STORE_PASSWORD`, `RENTULAR_UPLOAD_KEY_ALIAS` and
+   `RENTULAR_UPLOAD_KEY_PASSWORD` in the environment or in
+   `~/.gradle/gradle.properties`; those win over the root-only file. Without a
+   key a release build stops with a message saying what is missing.
 3. Upload the bundle in the Play Console.
 
 Deploy order: deploy the server only after the Play release is live. A server
