@@ -555,10 +555,12 @@ paymentsRouter.get("/dashboard", async (c) => {
     } else if (s.received > 0.01) {
       // Partly paid: the received part is paid, the rest is overdue or to come.
       // The paid list shows the received amount, flagged as partial.
+      // The tenant has already paid for this month, so from the due date on
+      // (the due day itself included) the missing part is overdue, not "to come".
       paidThisMonth += s.received;
       const partial: BucketItem = { ...item, ...shortfallFields(s) };
       paidItems.push({ ...partial, rentDue: s.received });
-      if (due < todayStr) {
+      if (due <= todayStr) {
         overdueThisMonth += s.shortfall;
         overdueItems.push(partial);
       } else {
