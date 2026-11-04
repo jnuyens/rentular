@@ -222,7 +222,7 @@ None yet.
 | 261104-pvu | Exact rent settlement: partial payments and pre-indexation rent shown as shortfall, no 90% rule | 2026-11-04 | e3c551b | [261104-pvu-rent-shortfall-visible-after-indexation](./quick/261104-pvu-rent-shortfall-visible-after-indexation/) |
 | 261104-qk9 | Automatic reminders for the shortfall of partly paid months; reminder texts in Belgian formats with remaining-amount context | 2026-11-04 | f01cca4 | [261104-qk9-automatic-reminders-for-the-shortfall-of](./quick/261104-qk9-automatic-reminders-for-the-shortfall-of/) |
 | 261104-qfd | Android app for Google Play: server choice (rentular.com or self-hosted), strict version gate, API 36, release signing scripts, store listing drafts | 2026-11-05 | 39e2a7f | [261104-qfd-android-app-for-google-play-with-self-ho](./quick/261104-qfd-android-app-for-google-play-with-self-ho/) |
-| 261104-qhe | Visual redesign (tasks 1-3): navy/green design tokens, sidebar, overview with 12-month chart, portfolio, to-do, quick actions; new marketing homepage. Task 4 Android theme pending | 2026-11-05 | 5e9feb7 | [261104-qhe-redesign-look-and-feel-of-website-app-an](./quick/261104-qhe-redesign-look-and-feel-of-website-app-an/) |
+| 261104-qhe | Visual redesign (tasks 1-3): navy/green design tokens, sidebar, overview with 12-month chart, portfolio, to-do, quick actions; new marketing homepage; Android navy/green theme | 2026-11-05 | 5e9feb7 | [261104-qhe-redesign-look-and-feel-of-website-app-an](./quick/261104-qhe-redesign-look-and-feel-of-website-app-an/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
