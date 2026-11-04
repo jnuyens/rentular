@@ -301,7 +301,18 @@ Plans:
 5. The terms and the Bank Connections notice describe the new bank tracking charge correctly in EN/NL/FR/DE, with wording approved by the owner.
 6. With billing not configured (self-hosted), none of these limits apply.
 **Depends on:** Phase 11
-**Plans:** 0 plans
+**Plans:** 12 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 12 to break down)
+- [ ] 12-01-PLAN.md : Stripe key checkpoint, requirements entries, billing schema and DDL, shared limits, lib/billing.ts plan-check helper
+- [ ] 12-02-PLAN.md : Legal and pricing copy rewritten in EN/NL/FR/DE, bankConnections namespace translated, owner wording approval
+- [ ] 12-03-PLAN.md : Stripe layer (customer, checkout, portal, cancel, bank quantity sync, subscription mirror), reconcile worker, setup script
+- [ ] 12-04-PLAN.md : /billing routes (status, checkout, portal, cancel, resume), webhook persistence, legacy plans removed
+- [ ] 12-05-PLAN.md : 3-property limit on POST /properties and in the Smovin import
+- [ ] 12-06-PLAN.md : SMS gate in queueSms and worker, 402 on test SMS and custom send/resend
+- [ ] 12-07-PLAN.md : SMS fallback to WhatsApp then email in reminders, follow-up, due-date nudge and landlord magic link
+- [ ] 12-08-PLAN.md : Bank tracking paywall on first connection and quantity sync on callback, delete, expiry
+- [ ] 12-09-PLAN.md : Settings Abonnement tab (BillingCard), useBillingStatus hook, billing.* i18n namespace
+- [ ] 12-10-PLAN.md : Upgrade hints: property limit notice, disabled SMS channel, bank paywall flow, import skipped count
+- [ ] 12-11-PLAN.md : Prod backup and DDL checkpoint, Stripe test-mode object creation checkpoint
+- [ ] 12-12-PLAN.md : Two-step deploy, end-to-end UAT in Stripe test mode, go-live or hold decision
