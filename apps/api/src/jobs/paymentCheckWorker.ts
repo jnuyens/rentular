@@ -5,7 +5,6 @@ import { eq, and, lt, lte, gte, inArray, or, isNull, ne, notLike } from "drizzle
 import {
   getDb,
   payments,
-  paymentAllocations,
   leases,
   leaseTenants,
   tenants,
@@ -39,50 +38,43 @@ import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
-import { ensureExpectedPaymentsForAllActive, coversMonthRent, depositNoteLike } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
-import { deductedAmount, loadLeaseDeductions } from "../services/rentDeductions";
+import { loadMonthStatus } from "../services/monthReceived";
 
 const QUEUE_NAME = "payment-check";
 
 /**
- * Is a rent period already settled -- by a payment that covers it, or by manual
- * allocations summing to the rent? What counts is the rent net of the rent
- * deductions that apply to the period (e.g. a property tax reduction), so a
- * period paid net of a reduction is settled. Used so the worker never duns or
- * sends a due/overdue notice for rent recorded paid, including via the ledger
- * (which can leave the auto-generated pending record behind).
+ * How far a rent period is settled, using the exact rule from monthReceived:
+ * the rent in force on the due date plus charges minus deductions, fully
+ * received to the cent by paid rows or ledger allocations. Used so the worker
+ * never duns or sends a due/overdue notice for rent recorded paid (the ledger
+ * can leave the auto-generated pending record behind), and so a partially paid
+ * period asks only for what is still missing.
  */
-async function isPeriodSettled(
+async function periodSettlement(
   db: ReturnType<typeof getDb>,
-  leaseId: string,
+  lease: {
+    id: string;
+    monthlyRent: string | null;
+    monthlyCharges: string | null;
+    paymentDay: number | null;
+  },
   dueDate: string,
-  monthlyRent: number,
-): Promise<boolean> {
-  if (!(monthlyRent > 0)) return false;
-  const deductions = await loadLeaseDeductions(db, leaseId);
-  const due = Math.max(0, monthlyRent - deductedAmount(deductions, dueDate));
-  if (due <= 0) return true;
-  const month = String(dueDate).slice(0, 7);
-  const allocs = await db
-    .select({ amount: paymentAllocations.amount })
-    .from(paymentAllocations)
-    .where(
-      and(eq(paymentAllocations.leaseId, leaseId), eq(paymentAllocations.periodMonth, month)),
-    );
-  const allocated = allocs.reduce((s, a) => s + Number(a.amount), 0);
-  if (allocated >= due - 0.01) return true;
-  const paid = await db
-    .select({
-      status: payments.status,
-      amount: payments.amount,
-      dueDate: payments.dueDate,
-      paidDate: payments.paidDate,
-      notes: payments.notes,
-    })
-    .from(payments)
-    .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "paid")));
-  return paid.some((p) => coversMonthRent(p, dueDate, due));
+): Promise<{ settled: boolean; received: number; shortfall: number }> {
+  if (!(Number(lease.monthlyRent || 0) > 0)) {
+    return { settled: false, received: 0, shortfall: 0 };
+  }
+  const s = await loadMonthStatus(db, lease, String(dueDate).slice(0, 7));
+  return { settled: s.settled, received: s.received, shortfall: s.shortfall };
+}
+
+/** What a reminder asks for: the shortfall when part was paid, else the row amount. */
+function amountDueFor(
+  s: { settled: boolean; received: number; shortfall: number },
+  rowAmount: string | number,
+): number {
+  return s.received > 0.01 && !s.settled ? s.shortfall : Number(rowAmount);
 }
 
 const connection = {
@@ -202,16 +194,21 @@ async function sendDueDateTenantSms(
       const lease = (
         await db
           .select({
+            id: leases.id,
             ownerId: leases.ownerId,
             propertyId: leases.propertyId,
             monthlyRent: leases.monthlyRent,
+            monthlyCharges: leases.monthlyCharges,
+            paymentDay: leases.paymentDay,
           })
           .from(leases)
           .where(eq(leases.id, p.leaseId))
           .limit(1)
       )[0];
       if (!lease) continue;
-      if (await isPeriodSettled(db, p.leaseId, p.dueDate, Number(lease.monthlyRent || 0))) continue;
+      const settlement = await periodSettlement(db, lease, p.dueDate);
+      if (settlement.settled) continue;
+      const amountDue = amountDueFor(settlement, p.amount);
 
       const settings = (
         await db
@@ -262,7 +259,7 @@ async function sendDueDateTenantSms(
       const tenantName = `${tenant.firstName} ${tenant.lastName}`.trim();
       const body = renderTemplate(tpl, {
         tenantName,
-        amount: `€${Number(p.amount).toFixed(2)}`,
+        amount: `€${amountDue.toFixed(2)}`,
         dueDate: fmtDueDate(p.dueDate),
         propertyName: prop?.name || "",
         daysPastDue: "0",
@@ -354,9 +351,12 @@ const worker = new Worker(
         // Get the lease (for ownerId, propertyId, late fee settings)
         const leaseData = await db
           .select({
+            id: leases.id,
             ownerId: leases.ownerId,
             propertyId: leases.propertyId,
             monthlyRent: leases.monthlyRent,
+            monthlyCharges: leases.monthlyCharges,
+            paymentDay: leases.paymentDay,
             latePaymentFeeEnabled: leases.latePaymentFeeEnabled,
             latePaymentFeeAmount: leases.latePaymentFeeAmount,
             latePaymentFeeEnforcement: leases.latePaymentFeeEnforcement,
@@ -370,10 +370,11 @@ const worker = new Worker(
         const lease = leaseData[0]!;
 
         // Skip rent that has been recorded paid (a payment or ledger allocation
-        // covers it), even if this pending record was left behind.
-        if (await isPeriodSettled(db, payment.leaseId, payment.dueDate, Number(lease.monthlyRent || 0))) {
-          continue;
-        }
+        // covers it), even if this pending record was left behind. When part of
+        // the rent came in, only the rest is asked for.
+        const settlement = await periodSettlement(db, lease, payment.dueDate);
+        if (settlement.settled) continue;
+        const amountDue = amountDueFor(settlement, payment.amount);
 
         // Primary tenant addressed, co-tenants copied on the reminder email.
         const tenantRec = await getLeaseEmailRecipients(payment.leaseId);
@@ -420,7 +421,7 @@ const worker = new Worker(
                 ownerLocale: ownerData[0]?.locale || "en",
                 tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
                 propertyName,
-                amount: Number(payment.amount),
+                amount: amountDue,
                 dueDate: payment.dueDate,
                 daysPastDue: daysLate,
                 kind: "late",
@@ -503,7 +504,7 @@ const worker = new Worker(
         const paymentInfo = {
           paymentId: payment.paymentId,
           leaseId: payment.leaseId,
-          amount: Number(payment.amount),
+          amount: amountDue,
           dueDate: payment.dueDate,
           daysPastDue,
           tenantName: `${tenant.firstName} ${tenant.lastName}`,
@@ -559,7 +560,7 @@ const worker = new Worker(
                 ownerLocale: ownerData[0]?.locale || "en",
                 tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
                 propertyName,
-                amount: Number(payment.amount),
+                amount: amountDue,
                 dueDate: payment.dueDate,
                 daysPastDue,
                 kind: "final_pending",
@@ -663,9 +664,12 @@ const worker = new Worker(
       try {
         const leaseData = await db
           .select({
+            id: leases.id,
             ownerId: leases.ownerId,
             propertyId: leases.propertyId,
             monthlyRent: leases.monthlyRent,
+            monthlyCharges: leases.monthlyCharges,
+            paymentDay: leases.paymentDay,
             landlordLateNotify: leases.landlordLateNotify,
           })
           .from(leases)
@@ -676,9 +680,9 @@ const worker = new Worker(
         if (!lease.landlordLateNotify) continue;
 
         // Already recorded paid (payment or ledger allocation)? Do not notify.
-        if (await isPeriodSettled(db, payment.leaseId, payment.dueDate, Number(lease.monthlyRent || 0))) {
-          continue;
-        }
+        const settlement = await periodSettlement(db, lease, payment.dueDate);
+        if (settlement.settled) continue;
+        const amountDue = amountDueFor(settlement, payment.amount);
 
         const tenantData = await db
           .select({ firstName: tenants.firstName, lastName: tenants.lastName })
@@ -716,7 +720,7 @@ const worker = new Worker(
           ownerLocale: ownerData[0]?.locale || "en",
           tenantName,
           propertyName,
-          amount: Number(payment.amount),
+          amount: amountDue,
           dueDate: payment.dueDate,
           daysPastDue: 0,
           kind: "due",

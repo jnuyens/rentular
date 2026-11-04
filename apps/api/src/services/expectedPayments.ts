@@ -1,5 +1,7 @@
 import { eq, and, gte, like } from "drizzle-orm";
-import { getDb, leases, payments } from "@rentular/db";
+import { getDb, leases, paymentAllocations, payments } from "@rentular/db";
+import { loadIndexRecords, monthSettlement } from "./monthReceived";
+import { loadLeaseDeductions } from "./rentDeductions";
 
 type LeaseRow = typeof leases.$inferSelect;
 
@@ -269,13 +271,29 @@ export async function ensureCurrentMonthPayment(lease: LeaseRow): Promise<number
       dueDate: payments.dueDate,
       paidDate: payments.paidDate,
       notes: payments.notes,
+      isIgnored: payments.isIgnored,
     })
     .from(payments)
     .where(eq(payments.leaseId, lease.id));
 
-  // Rent already covered by a paid payment (including one paid early last month)?
-  const covered = existing.some((p) => coversMonthRent(p, due, rent));
-  if (covered) {
+  // Rent fully received for this month (including rent paid early last month)?
+  const allocs = await db
+    .select({ amount: paymentAllocations.amount })
+    .from(paymentAllocations)
+    .where(
+      and(eq(paymentAllocations.leaseId, lease.id), eq(paymentAllocations.periodMonth, monthPrefix))
+    );
+  const settlement = monthSettlement({
+    rows: existing,
+    allocationSum: allocs.reduce((s, a) => s + (Number(a.amount) || 0), 0),
+    records: (await loadIndexRecords(db, [lease.id])).get(lease.id) ?? [],
+    monthlyRent: rent,
+    monthlyCharges: Number(lease.monthlyCharges ?? 0) || 0,
+    deductions: await loadLeaseDeductions(db, lease.id),
+    month: monthPrefix,
+    paymentDay: lease.paymentDay,
+  });
+  if (settlement.settled) {
     // Drop any stale auto-generated pending record for this month (false overdue).
     const stale = existing.filter(
       (p) =>
