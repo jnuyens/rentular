@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { cookies } from "next/headers";
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -6,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import SupportChat from "@/components/SupportChat";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import MobileNav from "@/components/MobileNav";
+import { DashboardUserProvider } from "@/components/DashboardUserContext";
 
 const navigationItems = [
   { key: "overview" as const, href: "/overview", iconName: "LayoutDashboard" as const },
@@ -117,11 +117,10 @@ export default async function DashboardLayout({
       />
 
       {/* Main content */}
-      <main className="relative flex-1 overflow-auto bg-muted pt-14 md:pt-0 p-4 md:p-8">
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.02]">
-          <Image src="/rentular.png" alt="" width={400} height={400} className="select-none" />
-        </div>
-        <div className="relative">{children}</div>
+      <main className="relative flex-1 overflow-auto bg-transparent pt-14 md:pt-0 p-4 md:p-8">
+        <DashboardUserProvider userName={session.user?.name}>
+          <div className="relative">{children}</div>
+        </DashboardUserProvider>
       </main>
 
       <SupportChat />

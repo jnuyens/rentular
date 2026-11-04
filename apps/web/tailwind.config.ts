@@ -42,6 +42,28 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        navy: "hsl(var(--brand-navy))",
+        royal: "hsl(var(--brand-royal))",
+        // Merged into the default palettes, so green-600, lime-400 etc. keep working.
+        green: {
+          DEFAULT: "hsl(var(--brand-green))",
+          dark: "hsl(var(--brand-green-dark))",
+        },
+        lime: {
+          DEFAULT: "hsl(var(--brand-lime))",
+        },
+        tint: {
+          blue: "hsl(var(--tint-blue))",
+          green: "hsl(var(--tint-green))",
+          peach: "hsl(var(--tint-peach))",
+          lavender: "hsl(var(--tint-lavender))",
+        },
+        icon: {
+          blue: "hsl(var(--icon-blue))",
+          green: "hsl(var(--icon-green))",
+          orange: "hsl(var(--icon-orange))",
+          purple: "hsl(var(--icon-purple))",
+        },
         brand: {
           50: "#f0f7ff",
           100: "#e0effe",
@@ -57,9 +79,14 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        "2xl": "calc(var(--radius) + 0.25rem)",
+        xl: "var(--radius)",
+        lg: "calc(var(--radius) - 0.25rem)",
+        md: "calc(var(--radius) - 0.375rem)",
+        sm: "calc(var(--radius) - 0.5rem)",
+      },
+      boxShadow: {
+        soft: "0 10px 30px -12px rgba(11, 42, 91, 0.18), 0 2px 6px -2px rgba(11, 42, 91, 0.06)",
       },
     },
   },
