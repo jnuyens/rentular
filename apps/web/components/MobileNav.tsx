@@ -76,13 +76,13 @@ export default function MobileNav({
             {/* Sheet sidebar content */}
             <div className="flex h-full flex-col">
               {/* Big logo that hangs over the header line on purpose. */}
-              <div className="relative flex h-16 items-center border-b border-white/10 pl-[6.75rem] pr-6">
+              <div className="relative flex h-16 items-center border-b border-white/10 pl-[7.25rem] pr-6">
                 <Image
-                  src="/rentular.png"
+                  src="/brand/logo-mark.png"
                   alt="Rentular"
-                  width={82}
-                  height={90}
-                  className="absolute left-4 top-3 z-10 h-[90px] w-[82px]"
+                  width={94}
+                  height={72}
+                  className="absolute left-4 top-3 z-10 h-[72px] w-[94px]"
                 />
                 <span className="text-2xl font-bold text-white">Rentular</span>
               </div>
@@ -135,7 +135,7 @@ export default function MobileNav({
           </SheetContent>
         </Sheet>
 
-        <Image src="/rentular.png" alt="Rentular" width={28} height={28} />
+        <Image src="/brand/logo-mark.png" alt="Rentular" width={37} height={28} className="h-7 w-auto" />
         <span className="font-semibold text-white">Rentular</span>
 
         {currentItem && (

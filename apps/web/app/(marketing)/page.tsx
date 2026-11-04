@@ -55,7 +55,7 @@ export default function MarketingPage() {
       <nav className="fixed left-0 right-0 top-0 z-50 h-16 border-b border-border/60 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/rentular.png" alt="Rentular" width={36} height={36} />
+            <Image src="/brand/logo-mark.png" alt="Rentular" width={63} height={48} priority className="h-12 w-auto" />
             <span className="text-xl font-bold text-navy">Rentular</span>
           </Link>
 
@@ -331,7 +331,7 @@ export default function MarketingPage() {
       <footer className="bg-navy px-4 py-10 text-white/80">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2">
-            <Image src="/rentular.png" alt="Rentular" width={28} height={28} />
+            <Image src="/brand/logo-mark.png" alt="Rentular" width={47} height={36} className="h-9 w-auto" />
             <span className="font-semibold text-white">Rentular</span>
           </div>
           <div className="flex items-center gap-6 text-sm">
