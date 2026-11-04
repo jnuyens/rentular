@@ -1,0 +1,1 @@
+Suivi des loyers et indexation automatique pour bailleurs belges.

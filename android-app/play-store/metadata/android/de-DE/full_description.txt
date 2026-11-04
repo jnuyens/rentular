@@ -1,0 +1,19 @@
+Mit Rentular behalten Vermieter und Hausverwalter in Belgien ihre Mietobjekte im Griff, ganz ohne Tabellen.
+
+Die Mietindexierung geht im Alltag leicht unter. Rentular verfolgt den Gesundheitsindex und berechnet für jeden Mietvertrag die neue Miete, auch mit den EPB-Regeln in Flandern und Brüssel. Bei vielen Vermietern bezahlt schon diese Indexierung das Abonnement.
+
+Das können Sie in der App:
+* Auf einen Blick sehen, welche Miete eingegangen ist und welche noch offen ist
+* Mieter per E-Mail oder SMS erinnern, wenn eine Zahlung zu spät ist
+* Die Miete per SEPA-Lastschrift einziehen, wenn Sie möchten
+* Wohnungs- und Gewerbemietverträge nach belgischem Mietrecht verwalten
+* Objekte, Mieter, Verträge und Kosten an einem Ort führen
+* Ein Objekt mit einem Miteigentümer oder einer Verwaltung teilen
+
+Rentular gibt es auf Deutsch, Niederländisch, Französisch und Englisch. Mieter bekommen ihre Erinnerungen in ihrer eigenen Sprache.
+
+Bis zu 3 Objekte ist Rentular kostenlos. Darüber zahlen Sie einen festen Preis, nicht pro Objekt.
+
+Ihr Konto legen Sie in der App oder auf rentular.com an. Sie melden sich einmal an und bleiben auf Ihrem Telefon angemeldet.
+
+Rentular ist Open Source. Wenn Ihre Organisation einen eigenen Rentular-Server betreibt, kann sich die App statt mit rentular.com mit diesem Server verbinden. Das wählen Sie beim ersten Start, und Sie können es später ändern, indem Sie lange auf das App-Symbol drücken.

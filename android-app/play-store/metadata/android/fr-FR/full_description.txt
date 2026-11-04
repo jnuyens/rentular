@@ -1,0 +1,19 @@
+Rentular aide les propriétaires bailleurs et les gestionnaires belges à suivre leurs locations, sans tableur.
+
+L'indexation du loyer est souvent oubliée. Rentular suit l'indice santé et calcule le nouveau loyer de chaque bail, en tenant compte des règles PEB en Flandre et à Bruxelles. Pour beaucoup de bailleurs, cette indexation suffit à rembourser l'abonnement.
+
+Dans l'application, vous pouvez :
+* Voir d'un coup d'oeil quels loyers sont payés et lesquels restent ouverts
+* Envoyer un rappel par e-mail ou par SMS quand un paiement est en retard
+* Encaisser le loyer par domiciliation SEPA, si vous le souhaitez
+* Gérer des baux d'habitation et des baux commerciaux selon le droit belge
+* Garder biens, locataires, contrats et frais au même endroit
+* Partager un bien avec un copropriétaire ou un gestionnaire
+
+Rentular fonctionne en français, en néerlandais, en allemand et en anglais. Chaque locataire reçoit ses rappels dans sa langue.
+
+Jusqu'à 3 biens, Rentular est gratuit. Au-delà, vous payez un prix fixe, pas un montant par bien.
+
+Vous créez votre compte dans l'application ou sur rentular.com. Une seule connexion suffit, ensuite vous restez connecté sur votre téléphone.
+
+Rentular est open source. Si votre organisation héberge son propre serveur Rentular, l'application peut s'y connecter à la place de rentular.com. Vous le choisissez au premier lancement, et vous pouvez le modifier plus tard par un appui long sur l'icône de l'application.
