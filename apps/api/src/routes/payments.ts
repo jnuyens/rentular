@@ -490,10 +490,15 @@ paymentsRouter.get("/dashboard", async (c) => {
     rentDue: number;
     dueDate: string;
     recentPayments: Array<{ amount: number; date: string; status: string }>;
-    /** Set when part of the rent came in: rentDue is then what is still missing. */
+    /**
+     * Set when only part of the rent came in. In the overdue and to-come lists
+     * rentDue is what is still missing; in the paid list it is what was received.
+     */
     shortfall?: boolean;
     expected?: number;
     received?: number;
+    /** What is still missing for the month. */
+    remaining?: number;
     /** The rent from before the indexation, when that is exactly what was paid. */
     oldRent?: number;
   };
@@ -514,6 +519,7 @@ paymentsRouter.get("/dashboard", async (c) => {
     shortfall: true as const,
     expected: s.expected,
     received: s.received,
+    remaining: s.shortfall,
     ...(s.oldRent != null ? { oldRent: s.oldRent } : {}),
   });
   const overdueItems: BucketItem[] = [];
@@ -543,12 +549,15 @@ paymentsRouter.get("/dashboard", async (c) => {
     };
     const s = settle(l, month);
     if (s.settled) {
+      // The paid list shows what was due and received, so it adds up to paidThisMonth.
       paidThisMonth += s.expected;
-      paidItems.push(item);
+      paidItems.push({ ...item, rentDue: s.expected });
     } else if (s.received > 0.01) {
       // Partly paid: the received part is paid, the rest is overdue or to come.
+      // The paid list shows the received amount, flagged as partial.
       paidThisMonth += s.received;
       const partial: BucketItem = { ...item, ...shortfallFields(s) };
+      paidItems.push({ ...partial, rentDue: s.received });
       if (due < todayStr) {
         overdueThisMonth += s.shortfall;
         overdueItems.push(partial);
