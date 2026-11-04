@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -9,16 +10,32 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  ShieldCheck,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Bell,
+  Check,
+  Coins,
+  MoreHorizontal,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/dateLocale";
+import { useDashboardUser } from "@/components/DashboardUserContext";
+import KpiCard from "@/components/overview/KpiCard";
+import ProgressRing from "@/components/overview/ProgressRing";
+import RentHistoryChart, { type HistoryEntry } from "@/components/overview/RentHistoryChart";
+import PortfolioCard, { type Portfolio } from "@/components/overview/PortfolioCard";
+import TodoCard from "@/components/overview/TodoCard";
+import QuickActions from "@/components/overview/QuickActions";
+import BelgiumInfoCard from "@/components/overview/BelgiumInfoCard";
+import { eur, pctOf } from "@/components/overview/format";
 
 type ReminderLevel = "friendly" | "formal" | "final";
 
@@ -54,12 +71,14 @@ interface Overview {
   toComeItems?: BucketItem[];
   paidItems?: BucketItem[];
   currency: string;
+  history?: HistoryEntry[];
+  portfolio?: Portfolio;
 }
 
 type Bucket = "paid" | "to-come" | "overdue";
 
-const eur = (n: number) =>
-  `€${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** How many still-to-come rows the collection card lists before linking to the breakdown. */
+const COLLECTION_ROWS = 3;
 
 /** Colour of an item's amount: partly paid rent is never shown as fully paid green. */
 function amountColorFor(bucket: Bucket, item: BucketItem): string {
@@ -73,9 +92,62 @@ function amountColorFor(bucket: Bucket, item: BucketItem): string {
     : "text-blue-700 dark:text-blue-400";
 }
 
+interface IndexationRaiseItem {
+  leaseId: string;
+  canApply: boolean;
+  raiseAmount: number;
+  newRent: number;
+  currentRent: number;
+  propertyName: string;
+  tenantNames: string;
+}
+
+/**
+ * Contracts that can be indexed right now, fetched once for the page. Always
+ * reflects today, so it does not follow the month navigator. Best effort:
+ * empty on error.
+ */
+function useIndexationRaises(apiUrl: string): IndexationRaiseItem[] {
+  const [items, setItems] = useState<IndexationRaiseItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/indexation/raise-summary`, {
+          credentials: "include",
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { data?: IndexationRaiseItem[] };
+        const list = (json.data ?? [])
+          .filter((i) => i.canApply && i.raiseAmount > 0.005)
+          .sort((a, b) => b.raiseAmount - a.raiseAmount);
+        if (!cancelled) setItems(list);
+      } catch {
+        // Optional data: leave it empty.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl]);
+  return items;
+}
+
+/** Morning before 12:00, afternoon until 18:00, evening after. Null until mounted. */
+function useDayPart(): "morning" | "afternoon" | "evening" | null {
+  const [part, setPart] = useState<"morning" | "afternoon" | "evening" | null>(null);
+  useEffect(() => {
+    const h = new Date().getHours();
+    setPart(h < 12 ? "morning" : h < 18 ? "afternoon" : "evening");
+  }, []);
+  return part;
+}
+
 export default function OverviewPage() {
   const t = useTranslations("overview");
   const tc = useTranslations("dashboard");
+  const { firstName } = useDashboardUser();
+  const dayPart = useDayPart();
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [openBucket, setOpenBucket] = useState<Bucket | null>(null);
@@ -84,6 +156,7 @@ export default function OverviewPage() {
   const breakdownRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  const raises = useIndexationRaises(apiUrl);
 
   const load = useCallback(async () => {
     try {
@@ -194,9 +267,38 @@ export default function OverviewPage() {
 
   const expected = data?.expectedThisMonth ?? 0;
   const paid = data?.paidThisMonth ?? 0;
-  const paidPct = expected > 0 ? Math.min(100, Math.round((paid / expected) * 100)) : 0;
+  const toCome = data?.toComeThisMonth ?? 0;
+  const overdueTotal = data?.overdueTotal ?? 0;
+  const overdueThisMonth = data?.overdueThisMonth ?? 0;
+  const paidPct = pctOf(paid, expected);
+  const toComePct = pctOf(toCome, expected);
 
   const toggle = (b: Bucket) => setOpenBucket((cur) => (cur === b ? null : b));
+  const openToCome = () => setOpenBucket("to-come");
+
+  const greeting = (() => {
+    if (!dayPart) return firstName ?? t("title");
+    const key = { morning: "greetingMorning", afternoon: "greetingAfternoon", evening: "greetingEvening" }[dayPart];
+    return firstName ? t(key, { name: firstName }) : t(`${key}Plain`);
+  })();
+
+  // Overdue status badge: green check when nothing is overdue, amber when only
+  // this month's rent is late, red when older months are still open too.
+  const overdueOnlyThisMonth = overdueTotal > 0.005 && Math.abs(overdueTotal - overdueThisMonth) < 0.01;
+  const overdueBadge =
+    overdueTotal <= 0.005 ? (
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-pill text-white shadow-md">
+        <Check className="h-6 w-6" strokeWidth={3} />
+      </span>
+    ) : (
+      <span
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-md ${
+          overdueOnlyThisMonth ? "bg-amber-500" : "bg-red-600"
+        }`}
+      >
+        <AlertTriangle className="h-5 w-5" />
+      </span>
+    );
 
   const bucketConfig: Record<
     Bucket,
@@ -222,92 +324,123 @@ export default function OverviewPage() {
     },
   };
 
+  const raiseTotal = Number(raises.reduce((sum, i) => sum + i.raiseAmount, 0).toFixed(2));
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => shiftMonth(-1)}
-            aria-label={t("prevMonth")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[9rem] text-center text-sm font-medium capitalize">
-            {monthLabel}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => shiftMonth(1)}
-            aria-label={t("nextMonth")}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          {month && (
-            <Button variant="ghost" size="sm" className="h-8" onClick={() => { setMonth(null); setOpenBucket(null); }}>
-              {t("thisMonth")}
-            </Button>
-          )}
+      {/* Header: greeting, tagline and the month switcher over a skyline banner */}
+      <div className="relative">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-4 -top-8 hidden h-44 w-[58%] select-none md:block lg:-right-8"
+          style={{ maskImage: "linear-gradient(to right, transparent 0%, black 40%)", WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 40%)" }}
+        >
+          <Image
+            src="/brand/skyline-banner.webp"
+            alt=""
+            fill
+            priority
+            sizes="60vw"
+            className="object-cover object-right"
+            style={{ maskImage: "linear-gradient(to bottom, black 55%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, black 55%, transparent 100%)" }}
+          />
+        </div>
+        <div className="relative flex flex-wrap items-end justify-between gap-4 pt-2">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-navy sm:text-3xl">{greeting}</h1>
+            <p className="mt-1 text-sm text-navy/75 sm:text-base">{t("tagline")}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {month && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 bg-white/90"
+                onClick={() => {
+                  setMonth(null);
+                  setOpenBucket(null);
+                }}
+              >
+                {t("thisMonth")}
+              </Button>
+            )}
+            <div className="flex items-center rounded-full bg-navy p-1 text-white shadow-lg">
+              <button
+                type="button"
+                onClick={() => shiftMonth(-1)}
+                aria-label={t("prevMonth")}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-[9.5rem] px-2 text-center text-sm font-semibold capitalize">
+                {monthLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => shiftMonth(1)}
+                aria-label={t("nextMonth")}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/15"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      <p className="-mt-4 text-muted-foreground">
-        {t("subtitle")} {monthLabel && <span className="capitalize">{monthLabel}</span>}
-      </p>
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
           ))}
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
-              label={t("expectedThisMonth")}
+          <div className="relative grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <KpiCard
+              kind="expected"
+              icon={Coins}
+              title={t("expectedThisMonth")}
               value={eur(expected)}
-              hint={t("expectedHint")}
+              subline={t("expectedHint")}
             />
-            <MetricCard
+            <KpiCard
+              kind="received"
+              icon={CheckCircle2}
+              title={t("paidThisMonth")}
+              value={eur(paid)}
+              subline={`${paidPct}% ${t("ofExpected")}`}
+              aside={<ProgressRing pct={paidPct} color="#3FAE2A" />}
               onClick={() => toggle("paid")}
               expanded={openBucket === "paid"}
-              icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
-              label={t("paidThisMonth")}
-              value={eur(paid)}
-              valueClass="text-green-700 dark:text-green-400"
-              hint={`${paidPct}% ${t("ofExpected")}`}
             />
-            <MetricCard
+            <KpiCard
+              kind="toCome"
+              icon={Clock}
+              title={t("toCome")}
+              value={eur(toCome)}
+              subline={t("toComeHint")}
+              aside={<ProgressRing pct={toComePct} color="#F97316" />}
               onClick={() => toggle("to-come")}
               expanded={openBucket === "to-come"}
-              icon={<Clock className="h-5 w-5 text-blue-600" />}
-              label={t("toCome")}
-              value={eur(data?.toComeThisMonth ?? 0)}
-              valueClass="text-blue-700 dark:text-blue-400"
-              hint={t("toComeHint")}
             />
-            <MetricCard
-              onClick={() => toggle("overdue")}
-              expanded={openBucket === "overdue"}
-              icon={<AlertTriangle className="h-5 w-5 text-red-600" />}
-              label={t("overdue")}
-              value={eur(data?.overdueTotal ?? 0)}
-              valueClass={
-                (data?.overdueTotal ?? 0) > 0 ? "text-red-700 dark:text-red-400" : ""
-              }
-              hint={
-                (data?.overdueThisMonth ?? 0) > 0
-                  ? t("overdueThisMonth", { amount: eur(data?.overdueThisMonth ?? 0) })
-                  : (data?.overdueTotal ?? 0) > 0
+            <KpiCard
+              kind="overdue"
+              icon={AlertTriangle}
+              title={t("overdue")}
+              value={eur(overdueTotal)}
+              valueClass={overdueTotal > 0 ? "!text-red-700" : ""}
+              subline={
+                overdueThisMonth > 0
+                  ? t("overdueThisMonth", { amount: eur(overdueThisMonth) })
+                  : overdueTotal > 0
                     ? undefined
                     : t("overdueHint")
               }
+              aside={overdueBadge}
+              onClick={() => toggle("overdue")}
+              expanded={openBucket === "overdue"}
             />
           </div>
 
@@ -325,112 +458,206 @@ export default function OverviewPage() {
           )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* Collection progress for the month */}
-            <Card className="lg:col-span-2">
-              <CardContent className="p-6">
-                <div className="mb-2 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("collected")}</span>
-                  <span className="font-medium">
-                    {eur(paid)} / {eur(expected)} ({paidPct}%)
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-green-600 transition-all"
-                    style={{ width: `${paidPct}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="lg:col-span-2">
+              <CollectionCard
+                t={t}
+                paid={paid}
+                expected={expected}
+                paidPct={paidPct}
+                items={data?.toComeItems ?? []}
+                onOpenBreakdown={openToCome}
+                onRemind={sendReminder}
+                onMarkPaid={markPaid}
+              />
+            </div>
+            <RentHistoryChart history={data?.history ?? []} selectedMonth={data?.month ?? ""} />
+          </div>
 
-            {/* Total warranty / deposits held */}
-            <MetricCard
-              icon={<ShieldCheck className="h-5 w-5 text-muted-foreground" />}
-              label={t("totalWarranty")}
-              value={eur(data?.totalWarranty ?? 0)}
-              hint={t("totalWarrantyHint")}
+          <div className={`grid grid-cols-1 gap-4 ${raises.length > 0 ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+            {raises.length > 0 && <IndexationTodayCard items={raises} total={raiseTotal} t={t} />}
+            <PortfolioCard
+              portfolio={data?.portfolio ?? { properties: 0, tenants: 0, activeLeases: 0 }}
+              totalWarranty={data?.totalWarranty ?? 0}
+            />
+            <TodoCard
+              toComeCount={data?.toComeItems?.length ?? 0}
+              toComeAmount={toCome}
+              onOpenToCome={openToCome}
+              indexCount={raises.length}
+              indexGainPerMonth={raiseTotal}
+              overdueCount={data?.overdueItems?.length ?? 0}
+              overdueAmount={overdueTotal}
             />
           </div>
 
-          <IndexationTodayCard apiUrl={apiUrl} t={t} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <QuickActions />
+            </div>
+            <BelgiumInfoCard />
+          </div>
         </>
       )}
     </div>
   );
 }
 
-interface IndexationRaiseItem {
-  leaseId: string;
-  canApply: boolean;
-  raiseAmount: number;
-  newRent: number;
-  currentRent: number;
-  propertyName: string;
-  tenantNames: string;
+/**
+ * This month's collection: the progress bar over what came in, and the rent
+ * still to come with the same mark-paid and reminder actions as the breakdown.
+ */
+function CollectionCard({
+  t,
+  paid,
+  expected,
+  paidPct,
+  items,
+  onOpenBreakdown,
+  onRemind,
+  onMarkPaid,
+}: {
+  t: ReturnType<typeof useTranslations>;
+  paid: number;
+  expected: number;
+  paidPct: number;
+  items: BucketItem[];
+  onOpenBreakdown: () => void;
+  onRemind: (leaseId: string, level: ReminderLevel, month?: string) => void;
+  onMarkPaid: (leaseId: string, method: "cash" | "bank_transfer" | "other", month?: string) => void;
+}) {
+  const shown = items.slice(0, COLLECTION_ROWS);
+  const more = items.length - shown.length;
+  return (
+    <Card className="h-full">
+      <CardContent className="p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-bold text-navy">{t("collectionTitle")}</h2>
+        </div>
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{t("collected")}</span>
+          <span className="font-semibold text-navy">
+            {eur(paid)} / {eur(expected)} ({paidPct}%)
+          </span>
+        </div>
+        <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-green-pill transition-all" style={{ width: `${paidPct}%` }} />
+        </div>
+
+        {items.length === 0 ? (
+          <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-icon-green" />
+            {t("collectionNothingLeft")}
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-border/70">
+            {shown.map((item) => {
+              const forMonth = item.dueDate.slice(0, 7);
+              return (
+                <li
+                  key={`${item.leaseId}-${item.dueDate}`}
+                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Image src="/brand/house-tile.svg" alt="" width={40} height={40} className="shrink-0" />
+                    <div className="min-w-0">
+                      <p className="flex flex-wrap items-center gap-2 truncate text-sm font-semibold text-navy">
+                        {item.propertyName}
+                        {item.shortfall && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                            {t("partlyPaid")}
+                          </span>
+                        )}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`font-semibold ${amountColorFor("to-come", item)}`}>{eur(item.rentDue)}</span>
+                    <MarkPaidButton
+                      leaseId={item.leaseId}
+                      t={t}
+                      onMarkPaid={(leaseId, method) => onMarkPaid(leaseId, method, forMonth)}
+                    />
+                    <ReminderButton
+                      leaseId={item.leaseId}
+                      t={t}
+                      onRemind={(leaseId, level) => onRemind(leaseId, level, forMonth)}
+                    />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={t("moreActions")}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-input bg-white text-navy hover:bg-muted"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={onOpenBreakdown}>{t("openBreakdown")}</DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/ledger/${item.leaseId}`}>{t("reconcile")}</Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {more > 0 && (
+          <button
+            type="button"
+            onClick={onOpenBreakdown}
+            className="mt-1 text-sm font-medium text-royal hover:underline"
+          >
+            {t("collectionMore", { count: more })}
+          </button>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
-// Contracts that can be indexed right now. Always reflects today, so it does
-// not follow the month navigator. Best effort: hidden when empty or on error.
+// Contracts that can be indexed right now, with the gain per month.
 function IndexationTodayCard({
-  apiUrl,
+  items,
+  total,
   t,
 }: {
-  apiUrl: string;
+  items: IndexationRaiseItem[];
+  total: number;
   t: ReturnType<typeof useTranslations>;
 }) {
-  const [items, setItems] = useState<IndexationRaiseItem[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`${apiUrl}/api/v1/indexation/raise-summary`, {
-          credentials: "include",
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as { data?: IndexationRaiseItem[] };
-        const list = (json.data ?? [])
-          .filter((i) => i.canApply && i.raiseAmount > 0.005)
-          .sort((a, b) => b.raiseAmount - a.raiseAmount);
-        if (!cancelled) setItems(list);
-      } catch {
-        // Optional card: leave it hidden.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiUrl]);
-
-  if (items.length === 0) return null;
-
-  const total = Number(items.reduce((sum, i) => sum + i.raiseAmount, 0).toFixed(2));
-
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between gap-4">
+    <Card className="h-full">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <p className="text-sm font-medium">{t("indexationToday")}</p>
+              <TrendingUp className="h-5 w-5 text-icon-green" />
+              <h2 className="font-bold text-navy">{t("indexationToday")}</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{t("indexationTodayHint")}</p>
           </div>
-          <p className="text-2xl font-bold text-green-600">
+          <span className="shrink-0 rounded-full bg-tint-green px-3 py-1 text-sm font-bold text-green-dark">
             +{eur(total)}
             {t("perMonth")}
-          </p>
+          </span>
         </div>
-        <ul className="mt-4 divide-y">
+        <ul className="mt-3 divide-y divide-border/70">
           {items.map((item) => (
             <li key={item.leaseId}>
               <Link
                 href={`/indexation?lease=${item.leaseId}`}
-                className="-mx-2 flex items-center justify-between gap-4 rounded-md px-2 py-2 transition-colors hover:bg-muted/50"
+                className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-muted/60"
               >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{item.propertyName}</p>
+                <Image src="/brand/house-tile.svg" alt="" width={36} height={36} className="shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-navy">{item.propertyName}</p>
                   {item.tenantNames && (
                     <p className="truncate text-xs text-muted-foreground">{item.tenantNames}</p>
                   )}
@@ -439,11 +666,12 @@ function IndexationTodayCard({
                   <p className="text-muted-foreground">
                     {eur(item.currentRent)} → {eur(item.newRent)}
                   </p>
-                  <p className="font-semibold text-green-600">
+                  <p className="font-semibold text-green-dark">
                     +{eur(item.raiseAmount)}
                     {t("perMonthShort")}
                   </p>
                 </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Link>
             </li>
           ))}
@@ -496,7 +724,7 @@ function BucketBreakdown({
             {config.items.map((item) => (
               <div
                 key={`${item.leaseId}-${item.dueDate}`}
-                className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-1 rounded-xl border bg-white p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="flex flex-wrap items-center gap-2 font-medium">
@@ -559,7 +787,7 @@ function BucketBreakdown({
                   )}
                   <Link
                     href={`/ledger/${item.leaseId}`}
-                    className="rounded-md border border-input px-2 py-1 text-xs hover:bg-muted"
+                    className="rounded-lg border border-input bg-white px-2 py-1 text-xs font-medium text-navy hover:bg-muted"
                   >
                     {t("reconcile")}
                   </Link>
@@ -607,7 +835,7 @@ function MarkPaidButton({
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
-        className="flex items-center gap-1 rounded-md border border-green-600/40 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:opacity-50 dark:text-green-400 dark:hover:bg-green-950"
+        className="flex items-center gap-1 rounded-lg border border-green-600/30 bg-tint-green px-2 py-1 text-xs font-medium text-green-dark hover:brightness-95 disabled:opacity-50"
       >
         <CheckCircle2 className="h-3.5 w-3.5" />
         {t("markPaid")}
@@ -620,7 +848,7 @@ function MarkPaidButton({
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-md border bg-popover shadow-md">
+          <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-xl border bg-popover shadow-md">
             {methods.map((m) => (
               <button
                 key={m.method}
@@ -669,7 +897,7 @@ function ReminderButton({
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={sending}
-        className="flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+        className="flex items-center gap-1 rounded-lg border border-input bg-white px-2 py-1 text-xs font-medium text-navy hover:bg-muted disabled:opacity-50"
       >
         <Bell className="h-3.5 w-3.5" />
         {t("sendReminder")}
@@ -683,7 +911,7 @@ function ReminderButton({
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md">
+          <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border bg-popover shadow-md">
             {levels.map((l) => (
               <button
                 key={l.level}
@@ -699,60 +927,4 @@ function ReminderButton({
       )}
     </div>
   );
-}
-
-function MetricCard({
-  icon,
-  label,
-  value,
-  valueClass = "",
-  hint,
-  onClick,
-  expanded,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  valueClass?: string;
-  hint?: string;
-  onClick?: () => void;
-  expanded?: boolean;
-}) {
-  const inner = (
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{label}</p>
-        {icon}
-      </div>
-      <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{value}</p>
-      {hint && (
-        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-          {hint}
-          {onClick && (
-            <ChevronDown
-              className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
-            />
-          )}
-        </p>
-      )}
-    </CardContent>
-  );
-
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-expanded={expanded}
-        className="block w-full text-left"
-      >
-        <Card
-          className={`transition-colors hover:bg-muted/50 ${expanded ? "ring-2 ring-ring" : ""}`}
-        >
-          {inner}
-        </Card>
-      </button>
-    );
-  }
-  return <Card>{inner}</Card>;
 }
