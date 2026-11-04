@@ -127,10 +127,10 @@ export function DashboardPreview(): JSX.Element {
   const readyCount = PREVIEW_ROWS.filter((r) => r.status === "ready").length;
 
   return (
-    <div aria-hidden="true" className="flex bg-background text-left text-sm">
-      <aside className="hidden w-40 shrink-0 border-r bg-muted/40 p-3 sm:block">
+    <div aria-hidden="true" className="flex h-full bg-background text-left text-sm text-foreground">
+      <aside className="hidden w-40 shrink-0 bg-brand-gradient p-3 text-white sm:block">
         <div className="mb-4 flex items-center gap-2 font-semibold">
-          <Home className="h-4 w-4 text-primary" />
+          <Home className="h-4 w-4 text-lime" />
           <span>{t("appName")}</span>
         </div>
         <ul className="space-y-1">
@@ -139,8 +139,8 @@ export function DashboardPreview(): JSX.Element {
               key={key}
               className={
                 active
-                  ? "flex items-center gap-2 rounded-md bg-primary/10 px-2 py-1.5 font-medium text-primary"
-                  : "flex items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground"
+                  ? "flex items-center gap-2 rounded-lg bg-green-pill px-2 py-1.5 font-semibold text-navy"
+                  : "flex items-center gap-2 rounded-lg px-2 py-1.5 text-white/80"
               }
             >
               <Icon className="h-4 w-4 shrink-0" />
@@ -153,30 +153,30 @@ export function DashboardPreview(): JSX.Element {
       <div className="min-w-0 flex-1 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-base font-semibold">{t("title")}</h3>
+            <h3 className="text-base font-semibold text-navy">{t("title")}</h3>
             <p className="truncate text-xs text-muted-foreground">
               {t("subtitle")}
             </p>
           </div>
-          <span className="hidden shrink-0 items-center gap-1 rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground md:inline-flex">
+          <span className="hidden shrink-0 items-center gap-1 rounded-lg bg-green-pill px-2.5 py-1.5 text-xs font-semibold text-navy md:inline-flex">
             <Calculator className="h-3.5 w-3.5" />
             {t("calculate")}
           </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="min-w-0 rounded-lg border bg-card p-3">
+          <div className="min-w-0 rounded-xl bg-card p-3 shadow-soft">
             <p className="truncate text-xs text-muted-foreground">
               {t("currentIndex")}
             </p>
-            <p className="mt-1 text-lg font-semibold text-primary">
+            <p className="mt-1 text-lg font-semibold text-royal">
               {formatIndex(CURRENT_HEALTH_INDEX)}
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
               {t("sourceStatbel")}
             </p>
           </div>
-          <div className="min-w-0 rounded-lg border bg-card p-3">
+          <div className="min-w-0 rounded-xl bg-card p-3 shadow-soft">
             <p className="truncate text-xs text-muted-foreground">
               {t("readyToApply")}
             </p>
@@ -187,7 +187,7 @@ export function DashboardPreview(): JSX.Element {
               {t("leasesReady")}
             </p>
           </div>
-          <div className="hidden min-w-0 rounded-lg border bg-card p-3 sm:block">
+          <div className="hidden min-w-0 rounded-xl bg-card p-3 shadow-soft sm:block">
             <p className="truncate text-xs text-muted-foreground">
               {t("nextIndexation")}
             </p>
@@ -198,7 +198,7 @@ export function DashboardPreview(): JSX.Element {
           </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-lg border">
+        <div className="mt-4 overflow-hidden rounded-xl bg-card shadow-soft">
           <table className="w-full table-fixed text-xs">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
