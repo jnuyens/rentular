@@ -40,7 +40,13 @@ import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
-import { loadMonthStatus, rowIdsForMonth } from "../services/monthReceived";
+import {
+  indexationDateFor,
+  loadIndexRecords,
+  loadMonthStatus,
+  rowIdsForMonth,
+} from "../services/monthReceived";
+import { formatReminderAmount, type RemainderContext } from "../services/reminderText";
 import { sweepRemainderRows } from "../services/remainderRows";
 
 const QUEUE_NAME = "payment-check";
@@ -62,12 +68,28 @@ async function periodSettlement(
     paymentDay: number | null;
   },
   dueDate: string,
-): Promise<{ settled: boolean; received: number; shortfall: number }> {
+): Promise<{
+  settled: boolean;
+  received: number;
+  shortfall: number;
+  remainder: RemainderContext | null;
+}> {
   if (!(Number(lease.monthlyRent || 0) > 0)) {
-    return { settled: false, received: 0, shortfall: 0 };
+    return { settled: false, received: 0, shortfall: 0, remainder: null };
   }
   const s = await loadMonthStatus(db, lease, String(dueDate).slice(0, 7));
-  return { settled: s.settled, received: s.received, shortfall: s.shortfall };
+  let remainder: RemainderContext | null = null;
+  if (s.received > 0.01 && !s.settled) {
+    const records =
+      s.oldRent != null ? ((await loadIndexRecords(db, [lease.id])).get(lease.id) ?? []) : [];
+    remainder = {
+      expected: s.expected,
+      received: s.received,
+      oldRent: s.oldRent,
+      indexationDate: s.oldRent != null ? indexationDateFor(records, s.dueDate) : null,
+    };
+  }
+  return { settled: s.settled, received: s.received, shortfall: s.shortfall, remainder };
 }
 
 /** What a reminder asks for: the shortfall when part was paid, else the row amount. */
@@ -260,7 +282,7 @@ async function sendDueDateTenantSms(
       const tenantName = `${tenant.firstName} ${tenant.lastName}`.trim();
       const body = renderTemplate(tpl, {
         tenantName,
-        amount: `€${amountDue.toFixed(2)}`,
+        amount: formatReminderAmount(amountDue, lang),
         dueDate: fmtDueDate(p.dueDate),
         propertyName: prop?.name || "",
         daysPastDue: "0",
@@ -552,6 +574,7 @@ const worker = new Worker(
             lease.latePaymentFeeAmount || "15.00"
           ),
           latePaymentFeeEnforcement: lease.latePaymentFeeEnforcement,
+          remainder: settlement.remainder,
         };
 
         const level = determineReminderLevel(paymentInfo, followUpSettings);

@@ -1,5 +1,6 @@
 import { sendEmail } from "../lib/email";
 import { signLandlordActionToken, type LandlordAction } from "../lib/landlordActionToken";
+import { formatReminderAmount } from "./reminderText";
 
 // "late": overdue notice. "due": heads-up on the due date itself.
 // "final_pending": the automatic third reminder is about to go to the tenant;
@@ -352,7 +353,7 @@ export async function sendLandlordLateEmail(input: LateEmailInput): Promise<void
       propertyName: input.propertyName,
       tenantName: input.tenantName,
       period,
-      amountFmt: `EUR ${input.amount.toFixed(2)}`,
+      amountFmt: formatReminderAmount(input.amount, lang),
       dueDateFmt: formatDueDate(input.dueDate),
       daysPastDue: input.daysPastDue,
       showDays: SHOW_DAYS[kind],
