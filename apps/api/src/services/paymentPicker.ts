@@ -1,4 +1,4 @@
-import { isDepositNote } from "./expectedPayments";
+import { isDepositNote, isRemainderNote } from "./expectedPayments";
 import { deductedAmount, type DeductionRow } from "./rentDeductions";
 
 export type PendingPayment = {
@@ -21,7 +21,9 @@ function isDeposit(p: PendingPayment): boolean {
  *   1. the oldest rent row whose amount or effective amount equals the transfer
  *   2. the oldest deposit whose amount equals the transfer
  *   3. the oldest rent row when the transfer covers its effective amount
- *      (an overpayment)
+ *      (an overpayment). The remainder of a partly paid month is left out
+ *      here: it only takes a transfer of exactly its amount, so a full rent
+ *      transfer for a later month is not swallowed by an older small remainder.
  *   4. nothing (null): the transfer fits no pending payment
  *
  * A deposit is never picked for a different amount, and a transfer smaller
@@ -57,7 +59,7 @@ export function pickPaymentForTransfer(
   const exactDeposit = deposits.find((p) => fits(Number(p.amount)));
   if (exactDeposit) return exactDeposit;
 
-  const oldestRent = rents[0];
+  const oldestRent = rents.find((r) => !isRemainderNote(r.p.notes));
   if (oldestRent && amount >= oldestRent.effective - tolerance) {
     return oldestRent.p;
   }

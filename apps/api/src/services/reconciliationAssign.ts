@@ -5,6 +5,7 @@ import type { StatementRow } from "../lib/bankTransactionView";
 import { pickPaymentForTransfer, type PendingPayment } from "./paymentPicker";
 import { loadLeaseDeductions } from "./rentDeductions";
 import { loadIndexRecords, preIndexationMatch } from "./monthReceived";
+import { isRemainderNote } from "./expectedPayments";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -138,7 +139,12 @@ export async function assignStatementToLease(
   if (!target) {
     const records = (await loadIndexRecords(db, [leaseId])).get(leaseId) ?? [];
     const transfer = Number(statement.amount);
-    const m = preIndexationMatch(pending, transfer, records);
+    // A remainder row is already the indexation difference, never the old rent.
+    const m = preIndexationMatch(
+      pending.filter((p) => !isRemainderNote(p.notes)),
+      transfer,
+      records,
+    );
     if (m) {
       const oldNote = `Paid the rent from before the indexation (${m.expectedOld.toFixed(2)} instead of ${Number(m.row.amount).toFixed(2)})`;
       const rentAmount =

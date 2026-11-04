@@ -40,7 +40,8 @@ import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
-import { loadMonthStatus } from "../services/monthReceived";
+import { loadMonthStatus, rowIdsForMonth } from "../services/monthReceived";
+import { sweepRemainderRows } from "../services/remainderRows";
 
 const QUEUE_NAME = "payment-check";
 
@@ -321,6 +322,17 @@ const worker = new Worker(
     // =======================================================
     console.log("[PaymentCheck] Phase A: Checking overdue payments...");
 
+    // A partly paid month gets a pending row for exactly the missing amount
+    // first, so it is reminded like any unpaid rent below.
+    try {
+      const r = await sweepRemainderRows(db, today);
+      console.log(
+        `[PaymentCheck] remainder rows: ${r.inserted} added, ${r.updated} updated, ${r.cancelled} cancelled`,
+      );
+    } catch (err) {
+      console.error("[PaymentCheck] remainder sweep failed:", err);
+    }
+
     const overduePayments = await db
       .select({
         paymentId: payments.id,
@@ -483,11 +495,31 @@ const worker = new Worker(
             }
           : DEFAULT_SETTINGS;
 
-        // Get existing reminders for this payment
+        // Reminders already sent for this rent month, on any of its rows: a
+        // remainder row continues the ladder of the month's paid rows, so the
+        // tenant never gets the same level twice for one month.
+        const leaseRows = await db
+          .select({
+            id: payments.id,
+            status: payments.status,
+            amount: payments.amount,
+            dueDate: payments.dueDate,
+            paidDate: payments.paidDate,
+            notes: payments.notes,
+            isIgnored: payments.isIgnored,
+          })
+          .from(payments)
+          .where(eq(payments.leaseId, payment.leaseId));
+        const monthRowIds = [
+          ...new Set([
+            payment.paymentId,
+            ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
+          ]),
+        ];
         const existingReminders = await db
           .select({ type: paymentReminders.type })
           .from(paymentReminders)
-          .where(eq(paymentReminders.paymentId, payment.paymentId));
+          .where(inArray(paymentReminders.paymentId, monthRowIds));
 
         const remindersSent = existingReminders.map(
           (r) => r.type as "friendly" | "formal" | "final"

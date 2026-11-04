@@ -304,3 +304,28 @@ export async function loadMonthStatus(
   );
   return { ...settlement, paidRowId: paidRow?.id ?? null };
 }
+
+/** Effective date of the latest indexation in force on `dueDate`, or null. */
+export function indexationDateFor(records: IndexRecord[], dueDate: string): string | null {
+  return latestRecordOnOrBefore(records, dueDate)?.effectiveDate ?? null;
+}
+
+/**
+ * Ids of a lease's rent rows that belong to `month`: paid rows by the month
+ * they pay, other rows by their due date. Deposits are left out. Used so all
+ * rows of one rent month share their reminder history.
+ */
+export function rowIdsForMonth<T extends PaidRowLike & { id: string }>(
+  rows: T[],
+  month: string,
+  paymentDay: number | null | undefined,
+): string[] {
+  return rows
+    .filter((r) => !isDepositNote(r.notes))
+    .filter((r) =>
+      r.status === "paid"
+        ? attributedMonth(r, paymentDay) === month
+        : ymd(r.dueDate).slice(0, 7) === month,
+    )
+    .map((r) => r.id);
+}
