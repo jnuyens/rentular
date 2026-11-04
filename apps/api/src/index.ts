@@ -7,6 +7,7 @@ import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
 import Redis from "ioredis";
 import { getDb } from "@rentular/db";
+import { RENTULAR_VERSION } from "@rentular/shared";
 import { propertiesRouter } from "./routes/properties";
 import { tenantsRouter } from "./routes/tenants";
 import { leasesRouter } from "./routes/leases";
@@ -31,6 +32,7 @@ import { landlordActionsRouter } from "./routes/landlordActions";
 import { smsRouter } from "./routes/sms";
 import { ledgerRouter } from "./routes/ledger";
 import { apiTokensRouter } from "./routes/apiTokens";
+import { appVersionRouter } from "./routes/appVersion";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
@@ -160,10 +162,15 @@ app.get("/health", async (c) => {
 
   const allOk = Object.values(checks).every((v) => v === "ok");
   return c.json(
-    { status: allOk ? "healthy" : "degraded", checks, version: "0.1.0" },
+    { status: allOk ? "healthy" : "degraded", checks, version: RENTULAR_VERSION },
     allOk ? 200 : 503
   );
 });
+
+// Public on purpose: the Android app calls this before login, also against
+// self-hosted servers, to check that app and server versions match. Keep "/app"
+// out of protectedPrefixes.
+app.route("/app", appVersionRouter);
 
 // Routes
 app.route("/properties", propertiesRouter);
