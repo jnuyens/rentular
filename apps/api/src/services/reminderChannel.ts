@@ -1,10 +1,10 @@
-import { renderTemplate } from "../lib/email";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
 import { queueSms } from "../jobs/smsQueueWorker";
 import type { CommunicationMeta } from "../jobs/emailQueueWorker";
-import { sendReminder, type ReminderLevel } from "./paymentFollowUp";
+import { getTemplateVariables, sendReminder, type ReminderLevel } from "./paymentFollowUp";
+import { renderReminderTemplate } from "./reminderText";
 
 export type ReminderChannel = "email" | "sms" | "whatsapp";
 
@@ -31,7 +31,7 @@ export function shortReminderBody(
   vars: Record<string, string>,
 ): string {
   const set = DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en;
-  return renderTemplate(set[level], vars);
+  return renderReminderTemplate(set[level], vars, "short");
 }
 
 /**
@@ -74,14 +74,7 @@ export async function sendReminderViaPreferredChannel(input: {
   const { payment, level, settings, ownerId, ownerEmail } = input;
   const phone = payment.tenantPhone;
   const channel = resolveReminderChannel(input.preferredChannel, phone);
-  const shortVars = {
-    tenantName: payment.tenantName,
-    amount: `€${payment.amount.toFixed(2)}`,
-    dueDate: fmtDueDate(payment.dueDate),
-    propertyName: payment.propertyName,
-    daysPastDue: String(payment.daysPastDue),
-    ownerName: payment.ownerName,
-  };
+  const shortVars = getTemplateVariables(payment, settings, "short");
 
   if (channel === "whatsapp" && phone) {
     await sendWhatsApp({

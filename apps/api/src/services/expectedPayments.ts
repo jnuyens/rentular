@@ -306,3 +306,15 @@ export async function ensureExpectedPaymentsForAllActive(): Promise<{
   }
   return { leases: active.length, created };
 }
+
+/**
+ * Marks a pending row for the part of a month's rent still missing after a
+ * partial payment. The same text is used when the landlord records the
+ * remainder as paid, so a paid remainder reads the same in the ledger.
+ */
+export const REMAINDER_NOTE = "remaining amount after partial payment";
+
+/** Is this pending row the remainder of a partly paid month? */
+export function isRemainderNote(notes: string | null | undefined): boolean {
+  return notes != null && notes.startsWith(REMAINDER_NOTE);
+}

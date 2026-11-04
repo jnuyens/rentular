@@ -192,7 +192,7 @@ describe("sendReminderViaPreferredChannel (MCP-03, T-11-22)", () => {
     expect(mod.fmtDueDate("2026-03-01")).toBe("01/03/2026");
     await dispatch({ preferredChannel: "sms", level: "formal" });
     const opts = (queueSms.mock.calls[0] as any[])[0] as { body: string };
-    expect(opts.body).toContain("850.00");
+    expect(opts.body).toContain("€ 850,00");
     expect(opts.body).toContain("01/03/2026");
   });
 });

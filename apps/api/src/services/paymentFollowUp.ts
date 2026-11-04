@@ -11,6 +11,13 @@ import {
   SOFT_ENFORCEMENT_GRACE_DAYS,
 } from "@rentular/shared";
 import type { LatePaymentFeeEnforcement, SupportedLanguage } from "@rentular/shared";
+import {
+  amountContextText,
+  formatReminderAmount,
+  formatReminderDate,
+  renderReminderTemplate,
+  type RemainderContext,
+} from "./reminderText";
 
 // Types for the data we expect from the database
 interface OverduePayment {
@@ -32,6 +39,8 @@ interface OverduePayment {
   latePaymentFeeEnabled: boolean;
   latePaymentFeeAmount: number;
   latePaymentFeeEnforcement: LatePaymentFeeEnforcement;
+  // Set when the amount is only what is still missing for a partly paid month.
+  remainder?: RemainderContext | null;
 }
 
 interface FollowUpSettings {
@@ -108,9 +117,16 @@ export function shouldWaiveFee(
   return diffDays <= SOFT_ENFORCEMENT_GRACE_DAYS;
 }
 
-function getTemplateVariables(
+/**
+ * Template variables for a reminder, in the tenant's language: amounts in the
+ * Belgian euro format, the due date as dd/mm/yyyy, and {{amountContext}}
+ * explaining a remaining amount (full sentence for email, short for SMS and
+ * WhatsApp).
+ */
+export function getTemplateVariables(
   payment: OverduePayment,
-  settings: FollowUpSettings
+  settings: FollowUpSettings,
+  form: "long" | "short" = "long",
 ): Record<string, string> {
   const interestAmount = settings.interestEnabled
     ? calculateInterest(
@@ -126,16 +142,19 @@ function getTemplateVariables(
 
   const totalOwed = payment.amount + interestAmount + adminFee;
 
+  const lang = payment.tenantLanguage || "en";
+  const eur = (n: number) => formatReminderAmount(n, lang);
   return {
     tenantName: payment.tenantName,
-    amount: `\u20AC${payment.amount.toFixed(2)}`,
-    dueDate: payment.dueDate,
+    amount: eur(payment.amount),
+    dueDate: formatReminderDate(payment.dueDate),
     propertyName: payment.propertyName,
     daysPastDue: payment.daysPastDue.toString(),
-    interestAmount: `\u20AC${interestAmount.toFixed(2)}`,
-    adminFee: `\u20AC${adminFee.toFixed(2)}`,
-    totalOwed: `\u20AC${totalOwed.toFixed(2)}`,
+    interestAmount: eur(interestAmount),
+    adminFee: eur(adminFee),
+    totalOwed: eur(totalOwed),
     ownerName: payment.ownerName,
+    amountContext: amountContextText(payment.remainder, lang, form),
   };
 }
 
@@ -246,8 +265,8 @@ export async function sendReminder(
   const emailOptions: EmailOptions = {
     to: payment.tenantEmail,
     cc: cc || undefined,
-    subject: renderTemplate(subjectTemplate, vars),
-    body: renderTemplate(bodyTemplate, vars),
+    subject: renderTemplate(subjectTemplate, { ...vars, amountContext: "" }),
+    body: renderReminderTemplate(bodyTemplate, vars, "long"),
   };
 
   // TEST PHASE: redirect the reminder to the landlord instead of the tenant.
@@ -296,7 +315,7 @@ export async function sendReminder(
 
     await queueSms({
       to: normalizePhoneNumber(payment.tenantPhone),
-      body: renderTemplate(smsTemplate, vars),
+      body: renderReminderTemplate(smsTemplate, getTemplateVariables(payment, settings, "short"), "short"),
     }, undefined, {
       ownerId,
       leaseId: payment.leaseId,
@@ -332,7 +351,7 @@ function generateLatePaymentPdf(
     "",
     "Payment Details:",
     `  Rent amount due: EUR ${payment.amount.toFixed(2)}`,
-    `  Due date: ${payment.dueDate}`,
+    `  Due date: ${formatReminderDate(payment.dueDate)}`,
     `  Days overdue: ${payment.daysPastDue}`,
     "",
   ];

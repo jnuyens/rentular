@@ -161,43 +161,43 @@ Met vriendelijke groeten,
   },
   fr: {
     friendly: {
-      subject: "Rappel amical : loyer a payer",
-      body: `Cher/Chere {{tenantName}},
+      subject: "Rappel amical : loyer à payer",
+      body: `Cher/Chère {{tenantName}},
 
-Ceci est un rappel amical que votre paiement de loyer de {{amount}} pour {{propertyName}} etait du le {{dueDate}}.
+Ceci est un rappel amical que votre paiement de loyer de {{amount}} pour {{propertyName}} était dû le {{dueDate}}.
 
-Si vous avez deja effectue ce paiement, veuillez ignorer ce message. Dans le cas contraire, nous vous prions de bien vouloir effectuer le paiement dans les plus brefs delais.
+Si vous avez déjà effectué ce paiement, veuillez ignorer ce message. Dans le cas contraire, nous vous prions de bien vouloir effectuer le paiement dans les plus brefs délais.
 
 Cordialement,
 {{ownerName}}`,
     },
     formal: {
       subject: "Paiement en retard - action requise",
-      body: `Cher/Chere {{tenantName}},
+      body: `Cher/Chère {{tenantName}},
 
-Nous n'avons pas encore recu votre paiement de loyer de {{amount}} pour {{propertyName}}, qui etait du le {{dueDate}}. Ce paiement a maintenant {{daysPastDue}} jours de retard.
+Nous n'avons pas encore reçu votre paiement de loyer de {{amount}} pour {{propertyName}}, qui était dû le {{dueDate}}. Ce paiement a maintenant {{daysPastDue}} jours de retard.
 
-Veuillez effectuer le paiement dans les plus brefs delais afin d'eviter toute action ulterieure.
+Veuillez effectuer le paiement dans les plus brefs délais afin d'éviter toute action ultérieure.
 
 Cordialement,
 {{ownerName}}`,
     },
     final: {
-      subject: "Troisieme rappel : paiement du loyer pour {{propertyName}}",
-      body: `Cher/Chere {{tenantName}},
+      subject: "Troisième rappel : paiement du loyer pour {{propertyName}}",
+      body: `Cher/Chère {{tenantName}},
 
-Ceci est notre troisieme rappel concernant le loyer de {{propertyName}}. Nous n'avons pas encore vu le paiement.
+Ceci est notre troisième rappel concernant le loyer de {{propertyName}}. Nous n'avons pas encore vu le paiement.
 
-Montant du : {{amount}}
-Date d'echeance : {{dueDate}}
+Montant dû : {{amount}}
+Date d'échéance : {{dueDate}}
 Jours de retard : {{daysPastDue}}
-Interets de retard : {{interestAmount}}
+Intérêts de retard : {{interestAmount}}
 Frais administratifs : {{adminFee}}
-Montant total du : {{totalOwed}}
+Montant total dû : {{totalOwed}}
 
-Vous trouverez ci-joint un apercu du montant impaye.
+Vous trouverez ci-joint un aperçu du montant impayé.
 
-Si vous avez deja paye, ou si quelque chose ne va pas, contactez {{ownerName}} pour que nous puissions regler cela ensemble. Sinon, merci de regler le montant des que possible.
+Si vous avez déjà payé, ou si quelque chose ne va pas, contactez {{ownerName}} pour que nous puissions régler cela ensemble. Sinon, merci de régler le montant dès que possible.
 
 Cordialement,
 {{ownerName}}`,
@@ -205,45 +205,45 @@ Cordialement,
   },
   de: {
     friendly: {
-      subject: "Freundliche Erinnerung: Mietzahlung faellig",
+      subject: "Freundliche Erinnerung: Mietzahlung fällig",
       body: `Sehr geehrte(r) {{tenantName}},
 
-dies ist eine freundliche Erinnerung, dass Ihre Mietzahlung von {{amount}} fuer {{propertyName}} am {{dueDate}} faellig war.
+dies ist eine freundliche Erinnerung, dass Ihre Mietzahlung von {{amount}} für {{propertyName}} am {{dueDate}} fällig war.
 
-Falls Sie diese Zahlung bereits geleistet haben, koennen Sie diese Nachricht ignorieren. Andernfalls bitten wir Sie, die Zahlung so bald wie moeglich zu veranlassen.
+Falls Sie diese Zahlung bereits geleistet haben, können Sie diese Nachricht ignorieren. Andernfalls bitten wir Sie, die Zahlung so bald wie möglich zu veranlassen.
 
-Mit freundlichen Gruessen,
+Mit freundlichen Grüßen,
 {{ownerName}}`,
     },
     formal: {
-      subject: "Zahlung ueberfaellig - Handlung erforderlich",
+      subject: "Zahlung überfällig - Handlung erforderlich",
       body: `Sehr geehrte(r) {{tenantName}},
 
-wir haben Ihre Mietzahlung von {{amount}} fuer {{propertyName}} noch nicht erhalten. Diese Zahlung war am {{dueDate}} faellig und ist nun {{daysPastDue}} Tage ueberfaellig.
+wir haben Ihre Mietzahlung von {{amount}} für {{propertyName}} noch nicht erhalten. Diese Zahlung war am {{dueDate}} fällig und ist nun {{daysPastDue}} Tage überfällig.
 
-Bitte veranlassen Sie die Zahlung so bald wie moeglich, um weitere Massnahmen zu vermeiden.
+Bitte veranlassen Sie die Zahlung so bald wie möglich, um weitere Maßnahmen zu vermeiden.
 
-Mit freundlichen Gruessen,
+Mit freundlichen Grüßen,
 {{ownerName}}`,
     },
     final: {
-      subject: "Dritte Erinnerung: Mietzahlung fuer {{propertyName}}",
+      subject: "Dritte Erinnerung: Mietzahlung für {{propertyName}}",
       body: `Sehr geehrte(r) {{tenantName}},
 
-dies ist unsere dritte Erinnerung zur Miete fuer {{propertyName}}. Die Zahlung ist bei uns noch nicht eingegangen.
+dies ist unsere dritte Erinnerung zur Miete für {{propertyName}}. Die Zahlung ist bei uns noch nicht eingegangen.
 
-Faelliger Betrag: {{amount}}
-Faelligkeitsdatum: {{dueDate}}
-Tage ueberfaellig: {{daysPastDue}}
+Fälliger Betrag: {{amount}}
+Fälligkeitsdatum: {{dueDate}}
+Tage überfällig: {{daysPastDue}}
 Zinskosten: {{interestAmount}}
-Verwaltungsgebuehr: {{adminFee}}
-Gesamtbetrag faellig: {{totalOwed}}
+Verwaltungsgebühr: {{adminFee}}
+Gesamtbetrag fällig: {{totalOwed}}
 
-Im Anhang finden Sie eine Uebersicht des ausstehenden Betrags.
+Im Anhang finden Sie eine Übersicht des ausstehenden Betrags.
 
-Falls Sie bereits bezahlt haben oder etwas nicht stimmt, melden Sie sich bitte bei {{ownerName}}, dann klaeren wir das gemeinsam. Andernfalls bitten wir Sie, den Betrag so bald wie moeglich zu begleichen.
+Falls Sie bereits bezahlt haben oder etwas nicht stimmt, melden Sie sich bitte bei {{ownerName}}, dann klären wir das gemeinsam. Andernfalls bitten wir Sie, den Betrag so bald wie möglich zu begleichen.
 
-Mit freundlichen Gruessen,
+Mit freundlichen Grüßen,
 {{ownerName}}`,
     },
   },

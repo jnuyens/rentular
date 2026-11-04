@@ -12,7 +12,8 @@ import type { SupportedLanguage } from "@rentular/shared";
 import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
 import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
-import { loadMonthStatus } from "./monthReceived";
+import { indexationDateFor, loadIndexRecords, loadMonthStatus } from "./monthReceived";
+import type { RemainderContext } from "./reminderText";
 
 export type ManualReminderResult =
   | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel; channel: ReminderChannel }
@@ -88,10 +89,19 @@ export async function sendManualReminder(input: {
   let paymentId: string;
   let amount: number;
   let dueForTemplate: string;
+  let remainder: RemainderContext | null = null;
   if (partlyPaid && partialPaymentId) {
     paymentId = partialPaymentId;
     amount = status.shortfall;
     dueForTemplate = usable ? String(usable.dueDate) : status.dueDate;
+    const records =
+      status.oldRent != null ? ((await loadIndexRecords(db, [lease.id])).get(lease.id) ?? []) : [];
+    remainder = {
+      expected: status.expected,
+      received: status.received,
+      oldRent: status.oldRent,
+      indexationDate: status.oldRent != null ? indexationDateFor(records, status.dueDate) : null,
+    };
   } else if (usable) {
     paymentId = usable.id;
     amount = Number(usable.amount);
@@ -162,6 +172,7 @@ export async function sendManualReminder(input: {
     latePaymentFeeEnabled: lease.latePaymentFeeEnabled,
     latePaymentFeeAmount: Number(lease.latePaymentFeeAmount || "15.00"),
     latePaymentFeeEnforcement: lease.latePaymentFeeEnforcement,
+    remainder,
   };
 
   // T-11-22 / CONTEXT: send_reminder (channel-aware). Route over the tenant's
