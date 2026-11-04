@@ -8,6 +8,7 @@ import {
   indexationRecords,
   leases,
   leaseTenants,
+  payments,
   properties,
   propertyManagers,
   tenants,
@@ -33,6 +34,7 @@ import {
   type IndexationEmailParams,
 } from "../services/indexationEmail";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import { isDepositNote } from "../services/expectedPayments";
 import { formatCountry, formatHouseNumber } from "../lib/belgianFormat";
 import { queueEmail } from "../jobs/emailQueueWorker";
 import { renderTemplate } from "../lib/email";
@@ -1059,6 +1061,46 @@ indexationRouter.post(
           updatedAt: new Date(),
         })
         .where(eq(leases.id, leaseId));
+
+      // Open rent rows due from the effective date on still carry the old rent:
+      // raise them by the difference so reminders and the overview ask for the
+      // new rent. Only rows still at the old rent (or without a rent split) are
+      // touched; deposits and ignored rows are left alone.
+      const oldRent = Number(previousRent);
+      const rentDiff = Math.round((newRent - oldRent) * 100) / 100;
+      if (rentDiff !== 0) {
+        const openRows = await db
+          .select({
+            id: payments.id,
+            amount: payments.amount,
+            rentAmount: payments.rentAmount,
+            notes: payments.notes,
+          })
+          .from(payments)
+          .where(
+            and(
+              eq(payments.leaseId, leaseId),
+              eq(payments.status, "pending"),
+              eq(payments.isIgnored, false),
+              gte(payments.dueDate, calc.effectiveDate)
+            )
+          );
+        let raised = 0;
+        for (const row of openRows) {
+          if (isDepositNote(row.notes)) continue;
+          if (row.rentAmount != null && Math.abs(Number(row.rentAmount) - oldRent) >= 0.01) continue;
+          await db
+            .update(payments)
+            .set({
+              amount: String(Math.round((Number(row.amount) + rentDiff) * 100) / 100),
+              rentAmount: String(newRent),
+              updatedAt: new Date(),
+            })
+            .where(eq(payments.id, row.id));
+          raised++;
+        }
+        console.log(`[Indexation] raised ${raised} pending rows for lease ${leaseId}`);
+      }
 
       // D-14: send notification immediately if requested
       let notificationSent = false;

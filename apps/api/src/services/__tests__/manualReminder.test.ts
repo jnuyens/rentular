@@ -60,6 +60,7 @@ vi.mock("@rentular/db", () => ({
   })),
   leases: {}, properties: {}, users: {}, tenants: {}, leaseTenants: {},
   payments: {}, paymentFollowUpSettings: {}, paymentReminders: {},
+  paymentAllocations: {}, indexationRecords: {}, rentDeductions: {}, rentFreePeriods: {},
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -67,6 +68,8 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...a: unknown[]) => ({ and: a })),
   like: vi.fn((...a: unknown[]) => ({ like: a })),
   desc: vi.fn((c: unknown) => c),
+  inArray: vi.fn((...a: unknown[]) => ({ inArray: a })),
+  gte: vi.fn((...a: unknown[]) => ({ gte: a })),
 }));
 
 const LEASE = {
@@ -102,9 +105,13 @@ const PROPERTY = { name: "Apartment 2B" };
 const OWNER = { name: "Owner A", email: "owner@example.com" };
 const PAYMENT = { id: "pay-1", amount: "850.00", dueDate: "2026-03-01", isIgnored: false };
 
-/** Five sequential reads: lease, property, owner, payments, settings (tenants come from the recipient helper). */
+/**
+ * Sequential reads: lease, property, owner, the month's payments, then the
+ * month status (paid rows, allocations, indexations, deductions), then settings.
+ * Tenants come from the recipient helper.
+ */
 function fullReads() {
-  return [[LEASE], [PROPERTY], [OWNER], [PAYMENT], []];
+  return [[LEASE], [PROPERTY], [OWNER], [PAYMENT], [], [], [], [], []];
 }
 
 async function run(periodMonth = "2026-03") {
@@ -175,5 +182,52 @@ describe("sendManualReminder preferred-channel routing (MCP-03, T-11-22)", () =>
     const result = await run("2026-3");
     expect(result.ok).toBe(false);
     expect(result.error).toBe("Invalid period");
+  });
+});
+
+describe("sendManualReminder on a partly paid month", () => {
+  it("asks for the shortfall when the tenant paid the rent from before the indexation", async () => {
+    const lease = { ...LEASE, monthlyRent: "925.00", paymentDay: 4 };
+    const paidRow = { id: "pay-900", amount: "900.00", dueDate: "2026-11-04", isIgnored: false };
+    reads = [
+      [lease], [PROPERTY], [OWNER],
+      [paidRow],
+      [{ id: "pay-900", status: "paid", amount: "900.00", dueDate: "2026-11-04", paidDate: "2026-11-02", notes: null, isIgnored: false }],
+      [],
+      [{ leaseId: "lease-1", effectiveDate: "2026-11-01", previousRent: "900.00", newRent: "925.00" }],
+      [],
+      [],
+    ];
+    const result = await run("2026-11");
+    expect(result.ok).toBe(true);
+    expect(sendReminderViaPreferredChannel).toHaveBeenCalledWith(
+      expect.objectContaining({ payment: expect.objectContaining({ amount: 25, paymentId: "pay-900" }) }),
+    );
+    expect(inserted.some((r) => "status" in r)).toBe(false);
+  });
+
+  it("asks for the rest on the pending row when an early transfer covered part of it", async () => {
+    const lease = { ...LEASE, monthlyRent: "810.00", paymentDay: 2 };
+    const pendingRow = { id: "pay-810", amount: "810.00", dueDate: "2026-11-02", isIgnored: false };
+    reads = [
+      [lease], [PROPERTY], [OWNER],
+      [pendingRow],
+      [
+        { id: "pay-740", status: "paid", amount: "740.00", dueDate: "2026-10-29", paidDate: "2026-10-29", notes: null, isIgnored: false },
+        { id: "pay-780", status: "paid", amount: "780.00", dueDate: "2026-10-02", paidDate: "2026-09-29", notes: null, isIgnored: false },
+      ],
+      [],
+      [{ leaseId: "lease-1", effectiveDate: "2026-11-01", previousRent: "780.00", newRent: "810.00" }],
+      [],
+      [],
+    ];
+    const result = await run("2026-11");
+    expect(result.ok).toBe(true);
+    expect(sendReminderViaPreferredChannel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment: expect.objectContaining({ amount: 70, paymentId: "pay-810", dueDate: "2026-11-02" }),
+      }),
+    );
+    expect(inserted.some((r) => "status" in r)).toBe(false);
   });
 });

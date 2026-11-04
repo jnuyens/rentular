@@ -52,7 +52,6 @@ vi.mock("../../services/paymentStateMachine", () => ({ transitionPayment: vi.fn(
 vi.mock("../../services/expectedPayments", () => ({
   ensureExpectedPaymentsForAllActive: vi.fn(),
   ensureCurrentMonthPayment: vi.fn(),
-  coversMonthRent: vi.fn(),
   DEPOSIT_NOTE: "deposit",
   isDepositNote: (notes: string | null | undefined) =>
     notes != null && notes.startsWith("deposit"),

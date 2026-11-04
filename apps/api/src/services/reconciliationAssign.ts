@@ -4,6 +4,7 @@ import { getDb, payments, bankStatements } from "@rentular/db";
 import type { StatementRow } from "../lib/bankTransactionView";
 import { pickPaymentForTransfer, type PendingPayment } from "./paymentPicker";
 import { loadLeaseDeductions } from "./rentDeductions";
+import { loadIndexRecords, preIndexationMatch } from "./monthReceived";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -61,6 +62,10 @@ async function recordPaidFromTransfer(
  *   amount, or the amount net of an applicable rent deduction, first; then a
  *   deposit of exactly that amount; then the oldest rent on an overpayment)
  *   and marks it paid, dated to the statement's booking date.
+ * - A transfer of exactly the rent from before the latest indexation (the
+ *   tenant did not adjust the standing order yet) is matched to the oldest
+ *   pending rent row, recording the amount actually received and a note, so
+ *   the missing difference stays visible.
  * - Nothing fits (e.g. a partial transfer): in the default (automatic) mode
  *   nothing is written and null is returned, so the transfer stays unmatched
  *   for review. With createWhenUnmatched (the manual route, where the landlord
@@ -82,10 +87,11 @@ export async function assignStatementToLease(
       amount: payments.amount,
       dueDate: payments.dueDate,
       notes: payments.notes,
+      rentAmount: payments.rentAmount,
     })
     .from(payments)
     .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "pending")))
-    .orderBy(asc(payments.dueDate))) as PendingPayment[];
+    .orderBy(asc(payments.dueDate))) as Array<PendingPayment & { rentAmount?: string | null }>;
 
   if (pending.length === 0) {
     return recordPaidFromTransfer(db, statement, leaseId, note);
@@ -98,7 +104,55 @@ export async function assignStatementToLease(
     deductions,
   );
 
+  const paidDate = statement.bookingDate
+    ? new Date(statement.bookingDate)
+    : new Date();
+
+  // Mark a pending row paid and match the statement to it.
+  const markPaidAndMatch = async (
+    paymentId: string,
+    extra: Record<string, unknown>,
+  ): Promise<{ paymentId: string; created: boolean }> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (db as any)
+      .update(payments)
+      .set({
+        status: "paid",
+        paidDate,
+        ...extra,
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, paymentId));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (db as any)
+      .update(bankStatements)
+      .set({
+        matchStatus: "matched",
+        matchedPaymentId: paymentId,
+        matchedAt: new Date(),
+      })
+      .where(eq(bankStatements.id, statement.id));
+    return { paymentId, created: false };
+  };
+
   if (!target) {
+    const records = (await loadIndexRecords(db, [leaseId])).get(leaseId) ?? [];
+    const transfer = Number(statement.amount);
+    const m = preIndexationMatch(pending, transfer, records);
+    if (m) {
+      const oldNote = `Paid the rent from before the indexation (${m.expectedOld.toFixed(2)} instead of ${Number(m.row.amount).toFixed(2)})`;
+      const rentAmount =
+        m.row.rentAmount != null
+          ? String(Math.round((Number(m.row.rentAmount) - m.diff) * 100) / 100)
+          : null;
+      const notes = [m.row.notes, note, oldNote].filter(Boolean).join("\n");
+      console.log(`[Reconciliation] pre-indexation amount matched payment ${m.row.id} for lease ${leaseId}`);
+      return markPaidAndMatch(m.row.id, {
+        amount: String(transfer),
+        ...(rentAmount != null ? { rentAmount } : {}),
+        notes,
+      });
+    }
     if (!opts.createWhenUnmatched) return null;
     return recordPaidFromTransfer(
       db,
@@ -109,27 +163,5 @@ export async function assignStatementToLease(
   }
 
   const combinedNotes = target.notes ? `${target.notes}\n${note}` : note;
-  const paidDate = statement.bookingDate
-    ? new Date(statement.bookingDate)
-    : new Date();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (db as any)
-    .update(payments)
-    .set({
-      status: "paid",
-      paidDate,
-      notes: combinedNotes,
-      updatedAt: new Date(),
-    })
-    .where(eq(payments.id, target.id));
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (db as any)
-    .update(bankStatements)
-    .set({
-      matchStatus: "matched",
-      matchedPaymentId: target.id,
-      matchedAt: new Date(),
-    })
-    .where(eq(bankStatements.id, statement.id));
-  return { paymentId: target.id, created: false };
+  return markPaidAndMatch(target.id, { notes: combinedNotes });
 }

@@ -21,6 +21,8 @@ vi.mock("@rentular/db", () => {
       from: () => ({
         where: () => ({
           limit: async () => selectQueue.shift() ?? [],
+          // Awaited without limit(): the open rent rows raised on apply.
+          then: (resolve: (rows: unknown[]) => unknown) => resolve([]),
         }),
       }),
     }),
@@ -47,6 +49,7 @@ vi.mock("@rentular/db", () => {
     leaseTenants: table("lease_tenants"),
     tenants: table("tenants"),
     propertyManagers: table("property_managers"),
+    payments: table("payments"),
   };
 });
 

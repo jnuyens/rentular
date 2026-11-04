@@ -29,6 +29,16 @@ interface BucketItem {
   rentDue: number;
   dueDate: string;
   recentPayments: Array<{ amount: number; date: string; status: string }>;
+  /**
+   * Only part of the rent came in. In the overdue and to-come lists rentDue is
+   * what is still missing; in the paid list it is what was received.
+   */
+  shortfall?: boolean;
+  expected?: number;
+  received?: number;
+  remaining?: number;
+  /** The rent from before the indexation, when that is exactly what was paid. */
+  oldRent?: number;
 }
 
 interface Overview {
@@ -50,6 +60,18 @@ type Bucket = "paid" | "to-come" | "overdue";
 
 const eur = (n: number) =>
   `€${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** Colour of an item's amount: partly paid rent is never shown as fully paid green. */
+function amountColorFor(bucket: Bucket, item: BucketItem): string {
+  if (bucket === "paid") {
+    return item.shortfall
+      ? "text-amber-700 dark:text-amber-400"
+      : "text-green-700 dark:text-green-400";
+  }
+  return bucket === "overdue"
+    ? "text-red-700 dark:text-red-400"
+    : "text-blue-700 dark:text-blue-400";
+}
 
 export default function OverviewPage() {
   const t = useTranslations("overview");
@@ -112,8 +134,12 @@ export default function OverviewPage() {
     setOpenBucket(null);
   };
 
-  const markPaid = async (leaseId: string, method: "cash" | "bank_transfer" | "other") => {
-    const periodMonth = data?.month ?? new Date().toISOString().slice(0, 7);
+  const markPaid = async (
+    leaseId: string,
+    method: "cash" | "bank_transfer" | "other",
+    month?: string,
+  ) => {
+    const periodMonth = month ?? data?.month ?? new Date().toISOString().slice(0, 7);
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/mark-month-paid`, {
         method: "POST",
@@ -133,8 +159,8 @@ export default function OverviewPage() {
     }
   };
 
-  const sendReminder = async (leaseId: string, level: ReminderLevel) => {
-    const periodMonth = data?.month ?? new Date().toISOString().slice(0, 7);
+  const sendReminder = async (leaseId: string, level: ReminderLevel, month?: string) => {
+    const periodMonth = month ?? data?.month ?? new Date().toISOString().slice(0, 7);
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/send-reminder`, {
         method: "POST",
@@ -437,8 +463,12 @@ function BucketBreakdown({
   bucket: Bucket;
   config: { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean };
   t: ReturnType<typeof useTranslations>;
-  onRemind: (leaseId: string, level: ReminderLevel) => void;
-  onMarkPaid: (leaseId: string, method: "cash" | "bank_transfer" | "other") => void;
+  onRemind: (leaseId: string, level: ReminderLevel, month?: string) => void;
+  onMarkPaid: (
+    leaseId: string,
+    method: "cash" | "bank_transfer" | "other",
+    month?: string,
+  ) => void;
 }) {
   // Reminders and marking paid make sense for money still owed, not already-paid rent.
   const canAct = bucket !== "paid";
@@ -449,12 +479,6 @@ function BucketBreakdown({
       : bucket === "paid"
         ? "text-green-600"
         : "text-blue-600";
-  const amountColor =
-    bucket === "overdue"
-      ? "text-red-700 dark:text-red-400"
-      : bucket === "paid"
-        ? "text-green-700 dark:text-green-400"
-        : "text-blue-700 dark:text-blue-400";
   const Icon =
     bucket === "overdue" ? AlertTriangle : bucket === "paid" ? CheckCircle2 : Clock;
 
@@ -471,14 +495,35 @@ function BucketBreakdown({
           <div className="space-y-3">
             {config.items.map((item) => (
               <div
-                key={item.leaseId}
+                key={`${item.leaseId}-${item.dueDate}`}
                 className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="font-medium">{item.propertyName}</p>
+                  <p className="flex flex-wrap items-center gap-2 font-medium">
+                    {item.propertyName}
+                    {item.shortfall && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        {t("partlyPaid")}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
                   </p>
+                  {item.shortfall && (
+                    <p className="text-xs text-muted-foreground">
+                      {bucket === "paid"
+                        ? t("shortfallRemaining", { remaining: eur(item.remaining ?? 0) })
+                        : t("shortfallPaidOf", {
+                            received: eur(item.received ?? 0),
+                            expected: eur(item.expected ?? 0),
+                            remaining: eur(item.rentDue),
+                          })}
+                    </p>
+                  )}
+                  {item.shortfall && item.oldRent != null && (
+                    <p className="text-xs text-muted-foreground">{t("shortfallOldRent")}</p>
+                  )}
                   {config.showLastPayment && (
                     <p className="mt-1 text-xs">
                       {item.recentPayments.length > 0
@@ -491,12 +536,26 @@ function BucketBreakdown({
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`font-semibold ${amountColor}`}>{eur(item.rentDue)}</span>
+                  <span className={`font-semibold ${amountColorFor(bucket, item)}`}>
+                    {eur(item.rentDue)}
+                  </span>
                   {canAct && (
-                    <MarkPaidButton leaseId={item.leaseId} t={t} onMarkPaid={onMarkPaid} />
+                    <MarkPaidButton
+                      leaseId={item.leaseId}
+                      t={t}
+                      onMarkPaid={(leaseId, method) =>
+                        onMarkPaid(leaseId, method, item.dueDate.slice(0, 7))
+                      }
+                    />
                   )}
                   {canRemind && (
-                    <ReminderButton leaseId={item.leaseId} t={t} onRemind={onRemind} />
+                    <ReminderButton
+                      leaseId={item.leaseId}
+                      t={t}
+                      onRemind={(leaseId, level) =>
+                        onRemind(leaseId, level, item.dueDate.slice(0, 7))
+                      }
+                    />
                   )}
                   <Link
                     href={`/ledger/${item.leaseId}`}

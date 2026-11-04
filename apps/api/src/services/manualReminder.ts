@@ -12,6 +12,7 @@ import type { SupportedLanguage } from "@rentular/shared";
 import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
 import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import { loadMonthStatus } from "./monthReceived";
 
 export type ManualReminderResult =
   | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel; channel: ReminderChannel }
@@ -76,12 +77,22 @@ export async function sendManualReminder(input: {
   // Prefer a non-ignored record.
   const usable = existing.find((p) => !p.isIgnored) || existing[0];
 
+  // Part of the month's rent already came in: ask only for what is missing,
+  // attached to the month's existing record, and never add a full-rent row.
+  const status = await loadMonthStatus(db, lease, input.periodMonth);
+  const partlyPaid = status.received > 0.01 && status.shortfall > 0;
+  const partialPaymentId = usable?.id ?? status.paidRowId;
+
   const rent = Number(lease.monthlyRent || 0);
   const charges = Number(lease.monthlyCharges || 0);
   let paymentId: string;
   let amount: number;
   let dueForTemplate: string;
-  if (usable) {
+  if (partlyPaid && partialPaymentId) {
+    paymentId = partialPaymentId;
+    amount = status.shortfall;
+    dueForTemplate = usable ? String(usable.dueDate) : status.dueDate;
+  } else if (usable) {
     paymentId = usable.id;
     amount = Number(usable.amount);
     dueForTemplate = String(usable.dueDate);
