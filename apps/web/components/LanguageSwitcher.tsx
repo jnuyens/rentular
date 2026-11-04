@@ -15,7 +15,16 @@ const LANGUAGES = [
 const COOKIE_NAME = "NEXT_LOCALE";
 const COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year
 
-export default function LanguageSwitcher({ compact = false, dropDirection = "auto" }: { compact?: boolean; dropDirection?: "up" | "down" | "auto" }) {
+export default function LanguageSwitcher({
+  compact = false,
+  dropDirection = "auto",
+  tone = "light",
+}: {
+  compact?: boolean;
+  dropDirection?: "up" | "down" | "auto";
+  /** "dark" renders a white outline pill for use on the navy sidebar. */
+  tone?: "light" | "dark";
+}) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -61,10 +70,12 @@ export default function LanguageSwitcher({ compact = false, dropDirection = "aut
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 rounded-lg transition-colors hover:bg-[hsl(var(--muted))] ${
-          compact
-            ? "p-1.5 text-[hsl(var(--muted-foreground))]"
-            : "border border-[hsl(var(--border))] px-3 py-1.5 text-sm"
+        className={`flex items-center gap-2 transition-colors ${
+          tone === "dark"
+            ? "rounded-full border border-white/25 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/10"
+            : compact
+              ? "rounded-lg p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
+              : "rounded-lg border border-[hsl(var(--border))] px-3 py-1.5 text-sm hover:bg-[hsl(var(--muted))]"
         }`}
         title="Change language"
       >
@@ -73,7 +84,7 @@ export default function LanguageSwitcher({ compact = false, dropDirection = "aut
       </button>
 
       {open && (
-        <div className={`absolute left-0 w-44 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-1 shadow-lg z-50 ${
+        <div className={`absolute left-0 w-44 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] py-1 shadow-lg z-50 ${
           dropDirection === "up" ? "bottom-full mb-1" :
           dropDirection === "down" ? "top-full mt-1" :
           "top-full mt-1"

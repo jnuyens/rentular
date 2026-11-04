@@ -9,7 +9,6 @@ import {
   MessageSquare, Wrench, Settings, Download, Menu, LogOut,
   FileSignature, Banknote, ArrowLeftRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -55,18 +54,21 @@ export default function MobileNav({
   return (
     <>
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 flex items-center gap-3 border-b bg-background px-4">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 flex items-center gap-3 bg-brand-gradient px-4 text-white shadow-md">
         <Sheet open={open} onOpenChange={setOpen}>
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             aria-label="Open navigation"
             onClick={() => setOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition-colors hover:bg-white/10"
           >
             <Menu className="h-5 w-5" />
-          </Button>
+          </button>
 
-          <SheetContent side="left" className="w-64 p-0">
+          <SheetContent
+            side="left"
+            className="w-64 border-r-0 bg-brand-gradient p-0 text-white [&>button]:data-[state=open]:bg-transparent"
+          >
             <SheetHeader className="sr-only">
               <SheetTitle>Navigation</SheetTitle>
             </SheetHeader>
@@ -74,7 +76,7 @@ export default function MobileNav({
             {/* Sheet sidebar content */}
             <div className="flex h-full flex-col">
               {/* Big logo that hangs over the header line on purpose. */}
-              <div className="relative flex h-16 items-center border-b border-border pl-[6.75rem] pr-6">
+              <div className="relative flex h-16 items-center border-b border-white/10 pl-[6.75rem] pr-6">
                 <Image
                   src="/rentular.png"
                   alt="Rentular"
@@ -82,7 +84,7 @@ export default function MobileNav({
                   height={90}
                   className="absolute left-4 top-3 z-10 h-[90px] w-[82px]"
                 />
-                <span className="text-2xl font-bold">Rentular</span>
+                <span className="text-2xl font-bold text-white">Rentular</span>
               </div>
 
               <nav className="flex-1 space-y-1 px-3 pb-4 pt-12">
@@ -93,10 +95,11 @@ export default function MobileNav({
                       key={item.key}
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
                         isActive
-                          ? "bg-muted text-foreground"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          ? "bg-green-pill font-semibold text-navy shadow-md shadow-black/20"
+                          : "text-white/85 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       {(() => { const Icon = iconMap[item.iconName]; return Icon ? <Icon className="h-5 w-5" /> : null; })()}
@@ -106,26 +109,25 @@ export default function MobileNav({
                 })}
               </nav>
 
-              <div className="border-t border-border p-4">
+              <div className="border-t border-white/10 p-4">
                 <div className="mb-3">
-                  <LanguageSwitcher dropDirection="up" />
+                  <LanguageSwitcher dropDirection="up" tone="dark" />
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 truncate">
-                    <p className="text-sm font-medium">{userName}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="text-sm font-semibold text-white">{userName}</p>
+                    <p className="truncate text-xs text-white/70">
                       {userEmail}
                     </p>
                   </div>
                   <form action={signOutAction}>
-                    <Button
+                    <button
                       type="submit"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
+                      aria-label="Sign out"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white transition-colors hover:bg-white/10"
                     >
                       <LogOut className="h-4 w-4" />
-                    </Button>
+                    </button>
                   </form>
                 </div>
               </div>
@@ -134,10 +136,10 @@ export default function MobileNav({
         </Sheet>
 
         <Image src="/rentular.png" alt="Rentular" width={28} height={28} />
-        <span className="font-semibold">Rentular</span>
+        <span className="font-semibold text-white">Rentular</span>
 
         {currentItem && (
-          <span className="ml-auto text-sm text-muted-foreground">
+          <span className="ml-auto text-sm text-white/75">
             {currentItem.label}
           </span>
         )}
