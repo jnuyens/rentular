@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { eq, and, desc, lt, gte, lte, inArray, like, sql } from "drizzle-orm";
-import { getDb, payments, paymentAllocations, leases, properties, leaseTenants, tenants } from "@rentular/db";
+import { getDb, payments, paymentAllocations, leases, properties, leaseTenants, tenants, rentDeductions } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
 import {
   createPayment as gcCreatePayment,
@@ -11,7 +11,15 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, coversMonthRent, isDepositNote, keepDepositMarker } from "../services/expectedPayments";
+import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, isDepositNote, keepDepositMarker } from "../services/expectedPayments";
+import {
+  dueDateForMonth,
+  loadIndexRecords,
+  loadMonthStatus,
+  monthSettlement,
+  type MonthSettlement,
+} from "../services/monthReceived";
+import type { DeductionRow } from "../services/rentDeductions";
 import { sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
@@ -365,6 +373,12 @@ paymentsRouter.get("/dashboard", async (c) => {
       paidDate: payments.paidDate,
       isIgnored: payments.isIgnored,
       notes: payments.notes,
+      propertyId: leases.propertyId,
+      monthlyRent: leases.monthlyRent,
+      monthlyCharges: leases.monthlyCharges,
+      paymentDay: leases.paymentDay,
+      startDate: leases.startDate,
+      endDate: leases.endDate,
     })
     .from(payments)
     .innerJoin(leases, eq(payments.leaseId, leases.id))
@@ -378,23 +392,69 @@ paymentsRouter.get("/dashboard", async (c) => {
     byLease.set(r.leaseId, arr);
   }
 
-  // Manual allocations for the current month take precedence over the heuristic:
-  // if the landlord has assigned enough of a payment to this month's rent, it is
-  // paid regardless of how the raw payment dates line up.
+  // Ledger allocations per lease and month (up to the selected month). When the
+  // landlord assigned money to a month, that counts as received for it, so the
+  // month is settled regardless of how the raw payment dates line up.
   const allocRows = await db
-    .select({ leaseId: paymentAllocations.leaseId, amount: paymentAllocations.amount })
+    .select({
+      leaseId: paymentAllocations.leaseId,
+      periodMonth: paymentAllocations.periodMonth,
+      amount: paymentAllocations.amount,
+    })
     .from(paymentAllocations)
     .innerJoin(leases, eq(paymentAllocations.leaseId, leases.id))
     .where(
       and(
         inArray(leases.propertyId, accessibleIds),
-        eq(paymentAllocations.periodMonth, month),
+        lte(paymentAllocations.periodMonth, month),
       ),
     );
   const allocByLeaseMonth = new Map<string, number>();
   for (const a of allocRows) {
-    allocByLeaseMonth.set(a.leaseId, (allocByLeaseMonth.get(a.leaseId) ?? 0) + Number(a.amount));
+    const key = `${a.leaseId}|${a.periodMonth}`;
+    allocByLeaseMonth.set(key, (allocByLeaseMonth.get(key) ?? 0) + Number(a.amount));
   }
+
+  // Indexations and rent deductions for every lease in view, loaded once.
+  const leaseIdsInView = [...new Set([...rows.map((r) => r.leaseId), ...activeLeaseRows.map((l) => l.id)])];
+  const recordsByLease = await loadIndexRecords(db, leaseIdsInView);
+  const deductionsByLease = new Map<string, DeductionRow[]>();
+  if (leaseIdsInView.length > 0) {
+    const dedRows = await db
+      .select({
+        leaseId: rentDeductions.leaseId,
+        id: rentDeductions.id,
+        type: rentDeductions.type,
+        amount: rentDeductions.amount,
+        startDate: rentDeductions.startDate,
+        endDate: rentDeductions.endDate,
+        reason: rentDeductions.reason,
+      })
+      .from(rentDeductions)
+      .where(inArray(rentDeductions.leaseId, leaseIdsInView));
+    for (const d of dedRows) {
+      const arr = deductionsByLease.get(d.leaseId) ?? [];
+      arr.push(d as DeductionRow);
+      deductionsByLease.set(d.leaseId, arr);
+    }
+  }
+  type LeaseTerms = {
+    id: string;
+    monthlyRent: string | null;
+    monthlyCharges: string | null;
+    paymentDay: number | null;
+  };
+  const settle = (l: LeaseTerms, forMonth: string): MonthSettlement =>
+    monthSettlement({
+      rows: byLease.get(l.id) ?? [],
+      allocationSum: allocByLeaseMonth.get(`${l.id}|${forMonth}`) ?? 0,
+      records: recordsByLease.get(l.id) ?? [],
+      monthlyRent: Number(l.monthlyRent || 0),
+      monthlyCharges: Number(l.monthlyCharges || 0),
+      deductions: deductionsByLease.get(l.id) ?? [],
+      month: forMonth,
+      paymentDay: l.paymentDay,
+    });
 
   // Names for the overdue breakdown.
   const propRows = await db
@@ -417,8 +477,9 @@ paymentsRouter.get("/dashboard", async (c) => {
     }
   }
 
-  // Per-lease this-month status. Rent counts as paid if a (possibly early)
-  // payment covers it, so early payers are not shown overdue.
+  // Per-lease this-month status. Rent counts as paid only when the full amount
+  // for the month came in (a payment made a few days early counts), so early
+  // payers are not shown overdue and partial payments show what is missing.
   let paidThisMonth = 0;
   let toComeThisMonth = 0;
   let overdueThisMonth = 0;
@@ -429,7 +490,32 @@ paymentsRouter.get("/dashboard", async (c) => {
     rentDue: number;
     dueDate: string;
     recentPayments: Array<{ amount: number; date: string; status: string }>;
+    /** Set when part of the rent came in: rentDue is then what is still missing. */
+    shortfall?: boolean;
+    expected?: number;
+    received?: number;
+    /** The rent from before the indexation, when that is exactly what was paid. */
+    oldRent?: number;
   };
+  const recentPaymentsFor = (leaseId: string) =>
+    (byLease.get(leaseId) ?? [])
+      .filter((p) => p.status === "paid")
+      .sort((a, b) =>
+        String(b.paidDate || b.dueDate).localeCompare(String(a.paidDate || a.dueDate)),
+      )
+      .slice(0, 3)
+      .map((p) => ({
+        amount: Number(p.amount),
+        date: String(p.paidDate || p.dueDate).slice(0, 10),
+        status: p.status,
+      }));
+  const shortfallFields = (s: MonthSettlement) => ({
+    rentDue: s.shortfall,
+    shortfall: true as const,
+    expected: s.expected,
+    received: s.received,
+    ...(s.oldRent != null ? { oldRent: s.oldRent } : {}),
+  });
   const overdueItems: BucketItem[] = [];
   const toComeItems: BucketItem[] = [];
   const paidItems: BucketItem[] = [];
@@ -446,18 +532,7 @@ paymentsRouter.get("/dashboard", async (c) => {
     // start must never hide an active lease's rent.
     const endStr = l.endDate ? String(l.endDate).slice(0, 10) : undefined;
     if (endStr && (!startStr || endStr >= startStr) && due > endStr) continue;
-    const lps = byLease.get(l.id) ?? [];
-    const recentPayments = lps
-      .filter((p) => p.status === "paid")
-      .sort((a, b) =>
-        String(b.paidDate || b.dueDate).localeCompare(String(a.paidDate || a.dueDate)),
-      )
-      .slice(0, 3)
-      .map((p) => ({
-        amount: Number(p.amount),
-        date: String(p.paidDate || p.dueDate).slice(0, 10),
-        status: p.status,
-      }));
+    const recentPayments = recentPaymentsFor(l.id);
     const item: BucketItem = {
       leaseId: l.id,
       propertyName: propName.get(l.propertyId) || l.propertyId,
@@ -466,13 +541,21 @@ paymentsRouter.get("/dashboard", async (c) => {
       dueDate: due,
       recentPayments,
     };
-    const allocatedThisMonth = allocByLeaseMonth.get(l.id) ?? 0;
-    const covered =
-      allocatedThisMonth >= Number(l.monthlyRent || 0) - 0.01 ||
-      lps.some((p) => coversMonthRent(p, due, Number(l.monthlyRent || 0)));
-    if (covered) {
-      paidThisMonth += rent;
+    const s = settle(l, month);
+    if (s.settled) {
+      paidThisMonth += s.expected;
       paidItems.push(item);
+    } else if (s.received > 0.01) {
+      // Partly paid: the received part is paid, the rest is overdue or to come.
+      paidThisMonth += s.received;
+      const partial: BucketItem = { ...item, ...shortfallFields(s) };
+      if (due < todayStr) {
+        overdueThisMonth += s.shortfall;
+        overdueItems.push(partial);
+      } else {
+        toComeThisMonth += s.shortfall;
+        toComeItems.push(partial);
+      }
     } else if (due < todayStr) {
       overdueThisMonth += rent;
       overdueItems.push(item);
@@ -486,25 +569,81 @@ paymentsRouter.get("/dashboard", async (c) => {
   // contracts whose rent is actually due this month).
   const expectedThisMonth = paidThisMonth + toComeThisMonth + overdueThisMonth;
 
-  // Total overdue = this month's overdue (same lease-centric basis) plus unpaid,
-  // past-due records from previous months. A past-due pending record whose period
-  // is actually covered by a (possibly late) paid payment does not count -- this
-  // prevents stale auto-generated rows from inflating the overdue figure.
-  // Only rent that is really past due counts: when looking at a future month,
-  // the rows between today and that month are not due yet, so the cutoff is
-  // the earlier of the month start and today.
+  // Total overdue = this month's overdue (same lease-centric basis) plus what is
+  // still missing for earlier months. Only rent that is really past due counts:
+  // when looking at a future month, the rows between today and that month are
+  // not due yet, so the cutoff is the earlier of the month start and today.
+  //
+  // Each lease+month is evaluated once, so a pending row and a shortfall for the
+  // same month are never both counted. Candidate months are those with a past-due
+  // pending or failed rent row, plus the last six months of each active lease (a
+  // partly paid month may have no pending row left). A settled month counts 0, a
+  // partly paid month counts its shortfall, and a month with nothing received
+  // counts its pending rows (a lookback month without one has nothing to chase).
   const priorCutoff = monthStart < todayStr ? monthStart : todayStr;
-  let priorOverdue = 0;
+  type PriorCandidate = {
+    lease: LeaseTerms & { propertyId: string };
+    pendingSum: number;
+  };
+  const priorCandidates = new Map<string, PriorCandidate>();
   for (const p of rows) {
     if (p.isIgnored) continue;
     if (isDepositNote(p.notes)) continue; // deposits are not rent overdue
     const unpaid = p.status === "pending" || p.status === "failed";
     if (!unpaid || String(p.dueDate).slice(0, 10) >= priorCutoff) continue;
-    const lps = byLease.get(p.leaseId) ?? [];
-    const covered = lps.some((q) =>
-      coversMonthRent(q, String(p.dueDate), Number(p.amount)),
-    );
-    if (!covered) priorOverdue += Number(p.amount);
+    const key = `${p.leaseId}|${String(p.dueDate).slice(0, 7)}`;
+    const cand = priorCandidates.get(key) ?? {
+      lease: {
+        id: p.leaseId,
+        propertyId: p.propertyId,
+        monthlyRent: p.monthlyRent,
+        monthlyCharges: p.monthlyCharges,
+        paymentDay: p.paymentDay,
+      },
+      pendingSum: 0,
+    };
+    cand.pendingSum += Number(p.amount);
+    priorCandidates.set(key, cand);
+  }
+  for (const l of activeLeaseRows) {
+    if (!(Number(l.monthlyRent || 0) > 0)) continue;
+    const startMonth = l.startDate ? String(l.startDate).slice(0, 7) : undefined;
+    const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
+    const endStr = l.endDate ? String(l.endDate).slice(0, 10) : undefined;
+    const saneEnd = endStr && (!startStr || endStr >= startStr) ? endStr : undefined;
+    for (let back = 1; back <= 6; back++) {
+      const d = new Date(targetY, targetM - back, 1);
+      const pm = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const pmDue = dueDateForMonth(pm, l.paymentDay);
+      if (pmDue >= priorCutoff) continue;
+      if (startMonth && pm < startMonth) continue;
+      if (saneEnd && pmDue > saneEnd) continue;
+      const key = `${l.id}|${pm}`;
+      if (!priorCandidates.has(key)) priorCandidates.set(key, { lease: l, pendingSum: 0 });
+    }
+  }
+  let priorOverdue = 0;
+  for (const [key, cand] of priorCandidates) {
+    const pm = key.slice(key.lastIndexOf("|") + 1);
+    if (!(Number(cand.lease.monthlyRent || 0) > 0)) {
+      priorOverdue += cand.pendingSum;
+      continue;
+    }
+    const s = settle(cand.lease, pm);
+    if (s.settled) continue;
+    if (s.received > 0.01) {
+      priorOverdue += s.shortfall;
+      overdueItems.push({
+        leaseId: cand.lease.id,
+        propertyName: propName.get(cand.lease.propertyId) || cand.lease.propertyId,
+        tenantName: (tenantName.get(cand.lease.id) || []).join(", ") || "-",
+        dueDate: s.dueDate,
+        recentPayments: recentPaymentsFor(cand.lease.id),
+        ...shortfallFields(s),
+      });
+    } else {
+      priorOverdue += cand.pendingSum;
+    }
   }
   const overdueTotal = overdueThisMonth + priorOverdue;
 
@@ -691,19 +830,59 @@ paymentsRouter.post(
       return c.json({ error: "Insufficient permissions" }, 403);
     }
 
+    const status = await loadMonthStatus(db, lease, month);
     const existing = await db
       .select()
       .from(payments)
       .where(and(eq(payments.leaseId, leaseId), like(payments.dueDate, `${month}-%`)));
     const alreadyPaid = existing.find((p) => p.status === "paid" && !p.isIgnored);
-    if (alreadyPaid) {
-      return c.json({ data: { id: alreadyPaid.id, status: "paid", already: true } });
+    const paidRowId = status.paidRowId ?? alreadyPaid?.id ?? null;
+    if (status.settled && paidRowId) {
+      return c.json({ data: { id: paidRowId, status: "paid", already: true } });
     }
     let target = existing.find(
       (p) => !p.isIgnored && (p.status === "pending" || p.status === "processing"),
     );
 
     const paidDate = date || new Date().toISOString().split("T")[0]!;
+
+    // Part of the month's rent already came in: record only the remaining amount.
+    // An open record for the month is reused for it, so no pending row is left
+    // behind to be chased later.
+    if (status.received > 0.01 && status.shortfall > 0) {
+      const remainder = String(status.shortfall);
+      const remainderNote = "remaining amount after partial payment";
+      if (target) {
+        await transitionPayment(target.id, "paid", { paidDate });
+        await db
+          .update(payments)
+          .set({
+            amount: remainder,
+            rentAmount: remainder,
+            chargesAmount: "0",
+            method,
+            notes: target.notes ? `${target.notes}\n${remainderNote}` : remainderNote,
+            updatedAt: new Date(),
+          })
+          .where(eq(payments.id, target.id));
+        return c.json({ data: { id: target.id, status: "paid", remainder: status.shortfall } });
+      }
+      const id = crypto.randomUUID();
+      await db.insert(payments).values({
+        id,
+        leaseId,
+        status: "paid",
+        amount: remainder,
+        rentAmount: remainder,
+        chargesAmount: "0",
+        dueDate: status.dueDate,
+        paidDate,
+        method,
+        notes: remainderNote,
+      });
+      return c.json({ data: { id, status: "paid", remainder: status.shortfall } });
+    }
+
     if (!target) {
       const pad = (n: number) => String(n).padStart(2, "0");
       const y = Number(month.slice(0, 4));

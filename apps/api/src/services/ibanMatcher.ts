@@ -9,6 +9,7 @@ import { assignStatementToLease } from "./reconciliationAssign";
 import { isDepositNote } from "./expectedPayments";
 import type { PendingPayment } from "./paymentPicker";
 import { deductedAmount, loadLeaseDeductions } from "./rentDeductions";
+import { loadIndexRecords } from "./monthReceived";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -16,9 +17,11 @@ const AMOUNT_TOLERANCE = 0.01;
 
 /**
  * Amounts a transfer for this lease is expected to be: the oldest pending
- * rent row's amount and that amount net of applicable rent deductions, or the
- * monthly rent when no rent row is pending. A pending deposit on its own never
- * defines the expected amount.
+ * rent row's amount, that amount net of applicable rent deductions, and the
+ * amount from before the latest indexation in force on its due date (a tenant
+ * who has not adjusted the standing order yet), or the monthly rent when no
+ * rent row is pending. A pending deposit on its own never defines the
+ * expected amount.
  */
 export async function expectedAmountsForLease(
   db: Db,
@@ -45,7 +48,19 @@ export async function expectedAmountsForLease(
       (raw - deductedAmount(deductions, String(oldestRent.dueDate))) * 100,
     ) / 100,
   );
-  return net === raw ? [raw] : [raw, net];
+  const amounts = net === raw ? [raw] : [raw, net];
+
+  const due = String(oldestRent.dueDate).slice(0, 10);
+  const latest = ((await loadIndexRecords(db, [leaseId])).get(leaseId) ?? [])
+    .filter((r) => r.effectiveDate <= due)
+    .sort((a, b) => (a.effectiveDate < b.effectiveDate ? -1 : a.effectiveDate > b.effectiveDate ? 1 : 0))
+    .pop();
+  const diff = latest ? Math.round((latest.newRent - latest.previousRent) * 100) / 100 : 0;
+  if (diff > 0) {
+    const old = Math.round((raw - diff) * 100) / 100;
+    if (!amounts.some((a) => Math.abs(a - old) < AMOUNT_TOLERANCE)) amounts.push(old);
+  }
+  return amounts;
 }
 
 function maskIban(iban: string): string {

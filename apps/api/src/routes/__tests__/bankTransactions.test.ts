@@ -24,6 +24,8 @@ const properties = { __t: "properties" };
 const tenants = { __t: "tenants" };
 const rentDeductions = { __t: "rent_deductions" };
 const rentFreePeriods = { __t: "rent_free_periods" };
+const indexationRecords = { __t: "indexation_records" };
+const paymentAllocations = { __t: "payment_allocations" };
 
 interface State {
   statement: Record<string, unknown>;
@@ -116,6 +118,8 @@ vi.mock("@rentular/db", () => ({
   tenants,
   rentDeductions,
   rentFreePeriods,
+  indexationRecords,
+  paymentAllocations,
 }));
 
 vi.mock("drizzle-orm", () => ({
