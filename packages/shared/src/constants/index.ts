@@ -404,3 +404,5 @@ export const STATBEL_API = {
   baseUrl: "https://statbel.fgov.be",
   healthIndexEndpoint: "/api/healthindex",
 } as const;
+
+export * from "./appVersion";

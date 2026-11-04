@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Server setup -->
+    <string name="setup_title">Choisissez votre serveur Rentular</string>
+    <string name="setup_intro">La plupart des gens utilisent rentular.com. Si votre organisation a son propre serveur Rentular, vous pouvez vous y connecter.</string>
+    <string name="setup_current_server">Connecté à %1$s</string>
+    <string name="setup_use_rentular">Utiliser rentular.com</string>
+    <string name="setup_use_own">Utiliser mon propre serveur</string>
+    <string name="setup_own_label">Adresse du serveur</string>
+    <string name="setup_own_hint">location.exemple.be</string>
+    <string name="setup_connect">Se connecter</string>
+    <string name="setup_error_https">Le serveur doit utiliser https. Le http simple n\'est pas pris en charge.</string>
+    <string name="setup_error_invalid">Cela ne ressemble pas à une adresse de serveur. Essayez par exemple location.exemple.be.</string>
+    <string name="setup_error_not_rentular">Ce n\'est pas un serveur Rentular, ou il utilise une version plus ancienne.</string>
+    <string name="setup_error_unreachable">Impossible de joindre ce serveur. Vérifiez l\'adresse et votre connexion.</string>
+
+    <!-- Version check -->
+    <string name="gate_checking_title">Un instant</string>
+    <string name="gate_checking_message">Connexion à %1$s</string>
+    <string name="gate_update_title">Mettez l\'application à jour</string>
+    <string name="gate_update_message">Cette version de l\'application n\'est plus prise en charge. Installez la mise à jour depuis le Play Store pour continuer à utiliser Rentular.</string>
+    <string name="gate_update_button">Ouvrir le Play Store</string>
+    <string name="gate_server_outdated_title">Votre serveur doit être mis à jour</string>
+    <string name="gate_server_outdated_message">%3$s utilise Rentular %1$s, mais cette application a besoin de la version %2$s. Demandez à la personne qui gère le serveur de le mettre à jour.</string>
+    <string name="gate_server_outdated_unknown">%2$s utilise une ancienne version de Rentular. Cette application a besoin de la version %1$s. Demandez à la personne qui gère le serveur de le mettre à jour.</string>
+    <string name="gate_offline_title">Vous semblez être hors ligne</string>
+    <string name="gate_offline_message">Rentular n\'a pas pu vérifier les mises à jour. Vérifiez votre connexion internet et réessayez.</string>
+    <string name="gate_server_down_title">Votre serveur ne répond pas</string>
+    <string name="gate_server_down_message">%1$s ne répond pas. Vérifiez votre connexion, ou contactez la personne qui gère le serveur.</string>
+    <string name="gate_retry">Réessayer</string>
+    <string name="gate_change_server">Changer de serveur</string>
+
+    <!-- Launcher shortcut -->
+    <string name="shortcut_change_server_short">Serveur</string>
+    <string name="shortcut_change_server_long">Changer de serveur</string>
+</resources>

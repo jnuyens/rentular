@@ -1,0 +1,19 @@
+Rentular helps Belgian landlords and property managers keep track of their rentals without spreadsheets.
+
+Rent indexation is the part most landlords forget. Rentular follows the health index and works out the new rent for every lease, including the EPC rules in Flanders and Brussels. For many landlords that one feature covers the cost of the subscription by itself.
+
+What you can do in the app:
+* See at a glance which rent came in and which is still open
+* Send tenants a reminder by email or text message when a payment is late
+* Collect rent by SEPA direct debit, if you want to
+* Manage residential and commercial leases under Belgian rental law
+* Keep properties, tenants, contracts and costs in one place
+* Share a property with a co-owner or a property manager
+
+Rentular works in Dutch, French, German and English. Tenants receive their reminders in their own language.
+
+The free plan covers up to 3 properties. Above that there is one flat price, with no cost per unit.
+
+You create your account in the app or on rentular.com. After signing in once, you stay signed in on your phone.
+
+Rentular is open source. If your organisation runs its own Rentular server, the app can connect to that server instead of rentular.com. You choose this on first launch, and you can change it later by long-pressing the app icon.

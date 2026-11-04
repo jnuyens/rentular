@@ -1,0 +1,19 @@
+Met Rentular houden Belgische verhuurders en vastgoedbeheerders hun verhuur bij, zonder Excel.
+
+De huurindexatie is wat de meeste verhuurders vergeten. Rentular volgt de gezondheidsindex en berekent voor elk contract de nieuwe huur, ook met de EPC-regels in Vlaanderen en Brussel. Voor veel verhuurders betaalt die indexatie alleen al het abonnement terug.
+
+Wat je in de app kan doen:
+* In een oogopslag zien welke huur binnen is en welke nog openstaat
+* Huurders een herinnering sturen per e-mail of sms als een betaling te laat is
+* De huur innen via SEPA-domiciliëring, als je dat wil
+* Woonhuur en handelshuur beheren volgens het Belgische huurrecht
+* Panden, huurders, contracten en kosten op één plek bijhouden
+* Een pand delen met een mede-eigenaar of een beheerder
+
+Rentular werkt in het Nederlands, Frans, Duits en Engels. Huurders krijgen hun herinneringen in hun eigen taal.
+
+Tot 3 panden is Rentular gratis. Daarboven betaal je één vaste prijs, niet per pand.
+
+Je maakt je account aan in de app of op rentular.com. Eén keer aanmelden volstaat, daarna blijf je aangemeld op je telefoon.
+
+Rentular is open source. Heeft je organisatie een eigen Rentular-server, dan kan de app daarmee verbinden in plaats van met rentular.com. Dat kies je bij de eerste start, en je kan het later wijzigen door lang op het app-icoon te drukken.

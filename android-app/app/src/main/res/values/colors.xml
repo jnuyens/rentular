@@ -2,4 +2,11 @@
 <resources>
     <color name="rentular_primary">#2563EB</color>
     <color name="ic_launcher_background">#2563EB</color>
+
+    <!-- Semantic colors for the native screens (server setup, version gate). -->
+    <color name="rentular_on_primary">#FFFFFF</color>
+    <color name="rentular_surface">#FFFFFF</color>
+    <color name="rentular_text_primary">#111827</color>
+    <color name="rentular_text_secondary">#4B5563</color>
+    <color name="rentular_error">#B91C1C</color>
 </resources>
