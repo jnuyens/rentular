@@ -562,21 +562,29 @@ Note the terms page uses formal "u" in NL while the dashboard uses "je"; the dra
 | A8 | Ibanity no longer bills landlords directly once Rentular charges 5 euro (the clause removes the "up to EUR 4" sentence) | Draft legal wording | Legal text inaccurate; owner approval checkpoint covers this |
 | A9 | Brussels DST never switches at midnight on the 1st | Pattern 7 | Off-by-one-hour month boundary; negligible |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Is the prod `STRIPE_SECRET_KEY` (`mk_...`) valid, and live or test?**
    - Known: Stripe docs list `pk_`, `sk_`, `rk_`, `sk_org_` prefixes; no `mk_`.
    - Recommendation: Owner checks Dashboard > Developers > API keys; executor runs a read-only `stripe.accounts.retrieve()` from m1 and reports `livemode`. Create test-mode products first with an `sk_test_`/`rk_test_` key.
+   - RESOLVED: owner verifies the key in the Stripe dashboard at the first checkpoint of 12-01 (CONTEXT round 2); billing stays off until key and both price ids are set.
 2. **VAT handling: Stripe Tax or manual 21% tax rate? Which legal entity is the merchant (Linux Belgium BV?)**
    - Recommendation: Ask the owner at the Stripe setup checkpoint; code supports both via env (`STRIPE_TAX_RATE_ID` set means manual, else `automatic_tax`).
+   - RESOLVED: fixed 21% Belgian VAT tax rate (CONTEXT round 2); no Stripe Tax for now.
 3. **Existing active bank connections on non-exempt accounts: bill from now, grandfather, or ask them to subscribe?**
    - Recommendation: Run the data check query; if any exist, owner decides. Default: no billing until the user goes through checkout; show a banner asking them to start bank tracking billing, and block new connections until then.
+   - RESOLVED: prod check 2026-11-04 shows the only bank connection belongs to the exempt owner; nothing to grandfather (CONTEXT round 2).
 4. **Proration policy** for mid-month bank account changes and Onbeperkt upgrades.
    - Recommendation: `create_prorations` for quantity changes (credit/charge on next invoice), `always_invoice` for Onbeperkt added to an existing bank-only subscription.
+   - RESOLVED: create_prorations for bank tracking quantity changes; always_invoice when Onbeperkt is added to an existing bank-only subscription (plan 12-03).
 5. **Stopping Onbeperkt while keeping bank tracking:** immediate item removal with prorated credit (recommended, simple) vs at period end (needs a scheduled job or subscription schedule).
+   - RESOLVED: at period end (cancel_at_period_end), no prorated refunds (CONTEXT round 2); bank-only re-create handled in 12-03.
 6. **Should `marketing.pricingSmsNote` mention "50 SMS per month"?** Owner wording call; trivial either way.
+   - RESOLVED: yes, "Tot 50 sms per maand." and EN/FR/DE equivalents (CONTEXT round 2, plan 12-02).
 7. **Translate the whole `bankConnections` namespace (36 untranslated keys in nl/fr/de)?** Recommended since the phase touches those pages anyway.
+   - RESOLVED: yes, translated in plan 12-02 (CONTEXT round 2).
 8. **UI spec:** `workflow.ui_phase` is true; the billing tab and upgrade hints are new UI. The planner may want a `/gsd:ui-phase` pass or keep the UI minimal (one settings card, inline hints) and specify it in the plan.
+   - RESOLVED: minimal UI (one Settings billing card plus inline hints), specified concretely in plans 12-09 and 12-10 instead of a separate UI-SPEC.
 
 ## Environment Availability
 
