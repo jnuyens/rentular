@@ -16,10 +16,9 @@ import {
   dueDateForMonth,
   loadIndexRecords,
   loadMonthStatus,
-  monthSettlement,
-  receivedHistory,
   type MonthSettlement,
 } from "../services/monthReceived";
+import { makeSettler, monthHistory, monthTotals } from "../services/monthTotals";
 import type { DeductionRow } from "../services/rentDeductions";
 import { sendManualReminder } from "../services/manualReminder";
 import {
@@ -326,7 +325,7 @@ paymentsRouter.get("/dashboard", async (c) => {
     overdueThisMonth: 0,
     totalWarranty: 0,
     currency: "EUR",
-    history: [] as Array<{ month: string; received: number }>,
+    history: [] as Array<{ month: string; paid: number; expected: number }>,
     portfolio: { properties: 0, tenants: 0, activeLeases: 0 },
   };
 
@@ -447,17 +446,12 @@ paymentsRouter.get("/dashboard", async (c) => {
     monthlyCharges: string | null;
     paymentDay: number | null;
   };
-  const settle = (l: LeaseTerms, forMonth: string): MonthSettlement =>
-    monthSettlement({
-      rows: byLease.get(l.id) ?? [],
-      allocationSum: allocByLeaseMonth.get(`${l.id}|${forMonth}`) ?? 0,
-      records: recordsByLease.get(l.id) ?? [],
-      monthlyRent: Number(l.monthlyRent || 0),
-      monthlyCharges: Number(l.monthlyCharges || 0),
-      deductions: deductionsByLease.get(l.id) ?? [],
-      month: forMonth,
-      paymentDay: l.paymentDay,
-    });
+  const settle = makeSettler({
+    rowsByLease: byLease,
+    allocations: allocByLeaseMonth,
+    recordsByLease,
+    deductionsByLease,
+  });
 
   // Names for the overdue breakdown.
   const propRows = await db
@@ -490,9 +484,6 @@ paymentsRouter.get("/dashboard", async (c) => {
   // Per-lease this-month status. Rent counts as paid only when the full amount
   // for the month came in (a payment made a few days early counts), so early
   // payers are not shown overdue and partial payments show what is missing.
-  let paidThisMonth = 0;
-  let toComeThisMonth = 0;
-  let overdueThisMonth = 0;
   type BucketItem = {
     leaseId: string;
     propertyName: string;
@@ -535,60 +526,41 @@ paymentsRouter.get("/dashboard", async (c) => {
   const overdueItems: BucketItem[] = [];
   const toComeItems: BucketItem[] = [];
   const paidItems: BucketItem[] = [];
-  for (const l of activeLeaseRows) {
-    const rent = Number(l.monthlyRent || 0) + Number(l.monthlyCharges || 0);
-    if (!(rent > 0)) continue;
-    const lastDay = new Date(targetY, targetM + 1, 0).getDate();
-    const dueDay = Math.min(Math.max(1, Math.floor(l.paymentDay ?? 1) || 1), lastDay);
-    const due = `${month}-${pad(dueDay)}`;
-    const startStr = l.startDate ? String(l.startDate).slice(0, 10) : undefined;
-    if (startStr && due < startStr) continue; // lease not active for this month yet
-    // Do not show rent for months after the lease has ended -- but only when the
-    // end date is sane (on or after the start). A corrupt end date before the
-    // start must never hide an active lease's rent.
-    const endStr = l.endDate ? String(l.endDate).slice(0, 10) : undefined;
-    if (endStr && (!startStr || endStr >= startStr) && due > endStr) continue;
-    const recentPayments = recentPaymentsFor(l.id);
+  // The month's figures come from monthTotals, the same computation the
+  // 12-month history uses, so each history bar equals the overview's "paid"
+  // for that month.
+  const totals = monthTotals({ leases: activeLeaseRows, month, today: todayStr, settle });
+  for (const r of totals.leases) {
+    const l = r.lease;
+    const s = r.settlement;
     const item: BucketItem = {
       leaseId: l.id,
       propertyName: propName.get(l.propertyId) || l.propertyId,
       tenantName: (tenantName.get(l.id) || []).join(", ") || "-",
-      rentDue: Math.round(rent * 100) / 100,
-      dueDate: due,
-      recentPayments,
+      rentDue: r.rent,
+      dueDate: r.due,
+      recentPayments: recentPaymentsFor(l.id),
     };
-    const s = settle(l, month);
-    if (s.settled) {
+    if (r.status === "paid") {
       // The paid list shows what was due and received, so it adds up to paidThisMonth.
-      paidThisMonth += s.expected;
       paidItems.push({ ...item, rentDue: s.expected });
-    } else if (s.received > 0.01) {
-      // Partly paid: the received part is paid, the rest is overdue or to come.
-      // The paid list shows the received amount, flagged as partial.
-      // The tenant has already paid for this month, so from the due date on
-      // (the due day itself included) the missing part is overdue, not "to come".
-      paidThisMonth += s.received;
+    } else if (r.status === "partial") {
+      // Partly paid: the paid list shows the received amount, flagged as
+      // partial; the missing part is overdue from the due day on, else to come.
       const partial: BucketItem = { ...item, ...shortfallFields(s) };
       paidItems.push({ ...partial, rentDue: s.received });
-      if (due <= todayStr) {
-        overdueThisMonth += s.shortfall;
-        overdueItems.push(partial);
-      } else {
-        toComeThisMonth += s.shortfall;
-        toComeItems.push(partial);
-      }
-    } else if (due < todayStr) {
-      overdueThisMonth += rent;
+      if (r.due <= todayStr) overdueItems.push(partial);
+      else toComeItems.push(partial);
+    } else if (r.status === "overdue") {
       overdueItems.push(item);
     } else {
-      toComeThisMonth += rent;
       toComeItems.push(item);
     }
   }
-
-  // Expected this month reconciles exactly with the three buckets (only counts
-  // contracts whose rent is actually due this month).
-  const expectedThisMonth = paidThisMonth + toComeThisMonth + overdueThisMonth;
+  const paidThisMonth = totals.paid;
+  const toComeThisMonth = totals.toCome;
+  const overdueThisMonth = totals.overdue;
+  const expectedThisMonth = totals.expected;
 
   // Total overdue = this month's overdue (same lease-centric basis) plus what is
   // still missing for earlier months. Only rent that is really past due counts:
@@ -668,29 +640,14 @@ paymentsRouter.get("/dashboard", async (c) => {
   }
   const overdueTotal = overdueThisMonth + priorOverdue;
 
-  // Rent received in each of the last 12 months up to the selected month, with
-  // the same settlement rules as the figures above. Ended leases count too:
-  // the rent they brought in was real income.
-  const paymentDayByLease = new Map<string, number | null>();
-  for (const r of rows) if (!paymentDayByLease.has(r.leaseId)) paymentDayByLease.set(r.leaseId, r.paymentDay);
-  for (const l of activeLeaseRows) paymentDayByLease.set(l.id, l.paymentDay);
-  const allocByLease = new Map<string, Map<string, number>>();
-  for (const [key, amount] of allocByLeaseMonth) {
-    const sep = key.lastIndexOf("|");
-    const leaseId = key.slice(0, sep);
-    const perMonth = allocByLease.get(leaseId) ?? new Map<string, number>();
-    perMonth.set(key.slice(sep + 1), amount);
-    allocByLease.set(leaseId, perMonth);
-  }
-  const historyLeaseIds = new Set([...leaseIdsInView, ...allocByLease.keys()]);
-  const history = receivedHistory({
-    leases: [...historyLeaseIds].map((id) => ({
-      rows: byLease.get(id) ?? [],
-      paymentDay: paymentDayByLease.get(id) ?? null,
-      allocations: allocByLease.get(id) ?? new Map<string, number>(),
-    })),
+  // Paid and expected for each of the last 12 months up to the selected month,
+  // computed exactly as the figures above would be with that month selected.
+  const history = monthHistory({
+    leases: activeLeaseRows,
     endMonth: month,
     months: 12,
+    today: todayStr,
+    settle,
   });
 
   const r2 = (n: number) => Math.round(n * 100) / 100;
