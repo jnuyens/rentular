@@ -220,6 +220,7 @@ None yet.
 | 261031-mm5 | Overview card: possible indexation today, per contract with total | 2026-10-31 | 5e5a35a | [261031-mm5-overview-card-possible-indexation-today-](./quick/261031-mm5-overview-card-possible-indexation-today-/) |
 | 261031-o1j | Pricing section: free hosted up to 3 properties, EUR 19/month excl. VAT unlimited hosted, self-host (AGPL) | 2026-10-31 | d9372c4 | [261031-o1j-pricing-section-free-hosted-up-to-3-prop](./quick/261031-o1j-pricing-section-free-hosted-up-to-3-prop/) |
 | 261104-pvu | Exact rent settlement: partial payments and pre-indexation rent shown as shortfall, no 90% rule | 2026-11-04 | e3c551b | [261104-pvu-rent-shortfall-visible-after-indexation](./quick/261104-pvu-rent-shortfall-visible-after-indexation/) |
+| 261104-qk9 | Automatic reminders for the shortfall of partly paid months; reminder texts in Belgian formats with remaining-amount context | 2026-11-04 | f01cca4 | [261104-qk9-automatic-reminders-for-the-shortfall-of](./quick/261104-qk9-automatic-reminders-for-the-shortfall-of/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
