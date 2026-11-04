@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Server setup -->
+    <string name="setup_title">Kies je Rentular-server</string>
+    <string name="setup_intro">De meeste mensen gebruiken rentular.com. Heeft je organisatie een eigen Rentular-server, dan kan je daar verbinding mee maken.</string>
+    <string name="setup_current_server">Verbonden met %1$s</string>
+    <string name="setup_use_rentular">rentular.com gebruiken</string>
+    <string name="setup_use_own">Mijn eigen server gebruiken</string>
+    <string name="setup_own_label">Serveradres</string>
+    <string name="setup_own_hint">huur.voorbeeld.be</string>
+    <string name="setup_connect">Verbinden</string>
+    <string name="setup_error_https">De server moet https gebruiken. Gewoon http wordt niet ondersteund.</string>
+    <string name="setup_error_invalid">Dat lijkt geen serveradres. Probeer iets als huur.voorbeeld.be.</string>
+    <string name="setup_error_not_rentular">Dit lijkt geen Rentular-server, of er draait een oudere versie op.</string>
+    <string name="setup_error_unreachable">Deze server is niet bereikbaar. Controleer het adres en je verbinding.</string>
+
+    <!-- Version check -->
+    <string name="gate_checking_title">Even geduld</string>
+    <string name="gate_checking_message">Verbinden met %1$s</string>
+    <string name="gate_update_title">Werk de app bij</string>
+    <string name="gate_update_message">Deze versie van de app wordt niet meer ondersteund. Installeer de update uit de Play Store om Rentular verder te gebruiken.</string>
+    <string name="gate_update_button">Play Store openen</string>
+    <string name="gate_server_outdated_title">Je server moet bijgewerkt worden</string>
+    <string name="gate_server_outdated_message">Op %3$s draait Rentular %1$s, maar deze app heeft versie %2$s nodig. Vraag de beheerder van de server om hem bij te werken.</string>
+    <string name="gate_server_outdated_unknown">Op %2$s draait een oudere versie van Rentular. Deze app heeft versie %1$s nodig. Vraag de beheerder van de server om hem bij te werken.</string>
+    <string name="gate_offline_title">Je lijkt offline te zijn</string>
+    <string name="gate_offline_message">Rentular kon niet nagaan of er updates zijn. Controleer je internetverbinding en probeer opnieuw.</string>
+    <string name="gate_server_down_title">Je server antwoordt niet</string>
+    <string name="gate_server_down_message">%1$s reageert niet. Controleer je verbinding, of neem contact op met de beheerder van de server.</string>
+    <string name="gate_retry">Opnieuw proberen</string>
+    <string name="gate_change_server">Andere server kiezen</string>
+
+    <!-- Launcher shortcut -->
+    <string name="shortcut_change_server_short">Server</string>
+    <string name="shortcut_change_server_long">Andere server kiezen</string>
+</resources>

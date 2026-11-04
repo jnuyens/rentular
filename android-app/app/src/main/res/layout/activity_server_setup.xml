@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/setup_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/rentular_primary">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/rentular_surface"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_marginTop="24dp"
+                android:contentDescription="@null"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:text="@string/setup_title"
+                android:textColor="@color/rentular_text_primary"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="@string/setup_intro"
+                android:textColor="@color/rentular_text_secondary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/setup_current"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:textColor="@color/rentular_text_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/setup_use_rentular"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="@color/rentular_primary"
+                android:text="@string/setup_use_rentular"
+                android:textColor="@color/rentular_on_primary" />
+
+            <Button
+                android:id="@+id/setup_use_own"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/setup_use_own"
+                android:textColor="@color/rentular_primary" />
+
+            <LinearLayout
+                android:id="@+id/setup_own_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/setup_own_label"
+                    android:textColor="@color/rentular_text_primary"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/setup_server_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:autofillHints="url"
+                    android:hint="@string/setup_own_hint"
+                    android:imeOptions="actionGo"
+                    android:inputType="textUri"
+                    android:minHeight="48dp" />
+
+                <TextView
+                    android:id="@+id/setup_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/rentular_error"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/setup_connect"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:backgroundTint="@color/rentular_primary"
+                    android:text="@string/setup_connect"
+                    android:textColor="@color/rentular_on_primary" />
+
+                <ProgressBar
+                    android:id="@+id/setup_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
