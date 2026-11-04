@@ -114,3 +114,35 @@ None. history and portfolio are computed only over `getAccessiblePropertyIds(use
 
 - Files exist: apps/web/public/brand/{hero-canal-laptop.webp,skyline-banner.webp,houses-row.webp,keys-house.png,skyline-silhouette.svg,wave.svg,house-tile.svg}, components/overview/RentHistoryChart.tsx, components/DashboardUserContext.tsx, components/marketing/HeroShowcase.tsx
 - Commits exist: e6f4280, c33ea06, 50c2646, d3e7041, d338492, 5e9feb7
+
+## Task 4: Android theme (run after the 261104-qfd merge)
+
+Gate checked: the 261104-qfd SUMMARY.md exists, `git log -- android-app` shows 17f05b5 and 39e2a7f, and `git status --porcelain android-app` was clean before starting.
+
+**Commit:** b704fa5 `feat(261104-qhe): Android app uses the navy and green brand theme`
+
+What changed:
+- `colors.xml`: brand_navy #0B2A5B, brand_navy_mid #173E82, brand_royal #1D5BD7, brand_green #40AC2A, brand_green_dark #2A741B, brand_lime #7CC945 (hex conversions of the HSL tokens in apps/web/app/globals.css), surface, on_primary (navy). The qfd names are kept and re-pointed: rentular_primary and ic_launcher_background are now navy, rentular_on_primary is navy, rentular_text_primary is navy.
+- `themes.xml`: Base.Theme.Rentular with navy status and navigation bars, light status bar icons off, windowBackground = bg_brand_gradient (launch background), colorPrimary/colorAccent green, colorPrimaryDark navy. New styles Widget.Rentular.Button.Primary (green gradient, navy bold text, 52dp min height, no caps), Widget.Rentular.Button.Text (royal blue borderless) and Widget.Rentular.Card (white, 16dp radius, 6dp elevation).
+- `values-v31/themes.xml` (new): Android 12+ system splash background and icon background navy. Theme.Rentular extends the base theme, so the manifest is unchanged.
+- New drawables: bg_brand_gradient (navy, navy_mid, royal), btn_primary_green (lime to green, darker on press, grey when disabled, 14dp corners), card_rounded (white, 16dp).
+- Launcher: the adaptive icon XMLs already point at @color/ic_launcher_background, which is now navy, so they did not need editing. Foreground unchanged.
+
+### Deviations
+
+**1. [Rule 3 - Blocking] Layout edits on the qfd screens**
+- **Found during:** Task 4
+- **Issue:** The qfd layouts hard-coded `android:backgroundTint="@color/rentular_primary"` on the primary buttons and painted the whole content area white, so theme resources alone could not produce green buttons or cards (the tint would recolour the gradient, and there was no card container).
+- **Fix:** Minimal edits to activity_main.xml and activity_server_setup.xml: root background is the gradient drawable, content sits in a LinearLayout with the card style, primary buttons use Widget.Rentular.Button.Primary, secondary buttons use Widget.Rentular.Button.Text. All view IDs and the types Kotlin looks up are unchanged (gate_panel is still the full-screen view toggled with swipe; the inset roots main_root and setup_root are unchanged). No Kotlin edited.
+- **Cost if wrong:** Purely visual; reverting b704fa5 restores the old look.
+
+**2. [Rule 1 - Bug] Card style parent**
+- AAPT treated `Widget.Rentular.Card` as having an implicit parent `Widget.Rentular`, which does not exist. Added `parent=""`.
+
+### Verification (observed)
+
+- `xmllint --noout` over values, values-v31, drawable, layout and mipmap-anydpi-v26 XML: no errors.
+- `./gradlew testDebugUnitTest assembleDebug` with JAVA_HOME = Android Studio JBR and ANDROID_HOME = ~/Library/Android/sdk: BUILD SUCCESSFUL. Unit test reports: 14 + 12 tests, 0 failures, 0 errors.
+- No em or en dashes in android-app/app/src/main/res.
+- Not verified: how it looks on a device or emulator. That needs a manual install of the debug APK.
+- versionCode not bumped, no release build, apps/web/public/rentular.apk untouched, nothing published.
