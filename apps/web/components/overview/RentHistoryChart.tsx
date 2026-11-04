@@ -8,7 +8,10 @@ import { eur } from "./format";
 
 export interface HistoryEntry {
   month: string; // YYYY-MM
-  received: number;
+  /** What the overview shows as paid when this month is selected. */
+  paid: number;
+  /** What the overview shows as expected when this month is selected. */
+  expected: number;
 }
 
 /** A round step so that about four gridlines cover `max`. */
@@ -37,12 +40,15 @@ export function completeMonthChange(
   if (complete.length < 2) return null;
   const newer = complete[complete.length - 1]!;
   const older = complete[complete.length - 2]!;
-  if (!(older.received > 0)) return null;
-  const pct = Math.round(((newer.received - older.received) / older.received) * 1000) / 10;
+  if (!(older.paid > 0)) return null;
+  const pct = Math.round(((newer.paid - older.paid) / older.paid) * 1000) / 10;
   return { pct, older, newer };
 }
 
-/** Twelve-month bar chart of rent received, computed by the API. Plain SVG. */
+/**
+ * Twelve-month bar chart of the overview's paid figure per month, computed by
+ * the API. Plain SVG.
+ */
 export default function RentHistoryChart({
   history,
   selectedMonth,
@@ -62,7 +68,7 @@ export default function RentHistoryChart({
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const change = completeMonthChange(history, currentMonth);
 
-  const max = Math.max(0, ...history.map((h) => h.received));
+  const max = Math.max(0, ...history.map((h) => h.paid));
   const empty = max <= 0;
   const step = empty ? 1 : niceStep(max);
   const top = empty ? 1 : Math.ceil(max / step) * step;
@@ -132,7 +138,7 @@ export default function RentHistoryChart({
             ))}
             {history.map((h, i) => {
               const x = left + i * slot + (slot - barW) / 2;
-              const barH = Math.max(h.received > 0 ? 2 : 0, (h.received / top) * plotH);
+              const barH = Math.max(h.paid > 0 ? 2 : 0, (h.paid / top) * plotH);
               const selected = h.month === selectedMonth;
               return (
                 <g key={h.month}>
@@ -144,7 +150,7 @@ export default function RentHistoryChart({
                     rx={4}
                     fill={`url(#${gradId}-${selected ? "green" : "blue"})`}
                   >
-                    <title>{`${longMonth.format(monthDate(h.month))}: ${eur(h.received)}`}</title>
+                    <title>{`${longMonth.format(monthDate(h.month))}: ${eur(h.paid)}`}</title>
                   </rect>
                   <text
                     x={x + barW / 2}

@@ -43,7 +43,7 @@ export default function DashboardSidebar({
   return (
     <aside className="relative hidden w-64 shrink-0 flex-col overflow-hidden bg-brand-gradient text-white md:flex">
       <Link href="/overview" className="flex flex-col items-center gap-1 px-6 pb-4 pt-6">
-        <Image src="/rentular.png" alt="" width={72} height={72} priority className="drop-shadow-lg" />
+        <Image src="/brand/logo-mark.png" alt="" width={136} height={104} priority className="h-[104px] w-auto" />
         <span className="text-2xl font-bold tracking-tight text-white">Rentular</span>
       </Link>
 

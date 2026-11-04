@@ -10,11 +10,16 @@ the Play Store metadata notes).
 - [ ] Deploy the server with `GET /api/v1/app/version` to rentular.com first.
       The app refuses to open without that endpoint, and the Play reviewers will
       open it. Check it with `curl https://www.rentular.com/api/v1/app/version`.
-- [ ] Run `./android-app/create-upload-key.sh` once and add the four lines it
-      prints to `~/.gradle/gradle.properties`. Back up the keystore and its
-      password off this machine.
-- [ ] Run `./android-app/build-play-release.sh`. The bundle lands in
-      `android-app/dist/rentular-<versionName>-<versionCode>.aab`.
+- [ ] Run `./android-app/create-upload-key.sh` once. It creates the keystore in
+      `~/.rentular/` and puts a generated password in the root-only file
+      `/etc/rentular/android-upload-key.pass`. Back up the keystore and the
+      password (`sudo cat /etc/rentular/android-upload-key.pass`) off this
+      machine.
+- [ ] Run `./android-app/build-play-release.sh`. It reads the password with
+      sudo and the bundle lands in
+      `android-app/dist/rentular-<versionName>-<versionCode>.aab`. The
+      `RENTULAR_UPLOAD_*` values in the environment or in
+      `~/.gradle/gradle.properties` still override this when set.
 
 ## Play Console
 

@@ -55,7 +55,7 @@ export default function MarketingPage() {
       <nav className="fixed left-0 right-0 top-0 z-50 h-16 border-b border-border/60 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-4 px-4">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/rentular.png" alt="Rentular" width={36} height={36} />
+            <Image src="/brand/logo-mark.png" alt="Rentular" width={63} height={48} priority className="h-12 w-auto" />
             <span className="text-xl font-bold text-navy">Rentular</span>
           </Link>
 
@@ -176,14 +176,15 @@ export default function MarketingPage() {
 
       {/* For landlords */}
       <section id="landlords" className="scroll-mt-16 px-4 py-10">
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-gradient-to-r from-tint-green via-[#eef8e6] to-tint-green px-6 py-8 shadow-soft md:pl-64 md:pr-10">
+        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl bg-gradient-to-r from-tint-green via-[#eef8e6] to-tint-green px-6 py-8 shadow-soft md:pl-72 md:pr-10">
           <Image
             src="/brand/keys-house.webp"
             alt=""
             aria-hidden
-            width={294}
-            height={192}
-            className="pointer-events-none mx-auto mb-4 w-40 select-none md:absolute md:bottom-4 md:left-6 md:mb-0 md:w-52"
+            width={900}
+            height={632}
+            sizes="(min-width: 768px) 240px, 224px"
+            className="pointer-events-none mx-auto mb-4 w-56 select-none md:absolute md:left-6 md:top-1/2 md:mb-0 md:w-60 md:-translate-y-1/2"
           />
           <h2 className="text-2xl font-bold tracking-tight text-navy">{t("landlordsTitle")}</h2>
           <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -331,7 +332,7 @@ export default function MarketingPage() {
       <footer className="bg-navy px-4 py-10 text-white/80">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center gap-2">
-            <Image src="/rentular.png" alt="Rentular" width={28} height={28} />
+            <Image src="/brand/logo-mark.png" alt="Rentular" width={47} height={36} className="h-9 w-auto" />
             <span className="font-semibold text-white">Rentular</span>
           </div>
           <div className="flex items-center gap-6 text-sm">
