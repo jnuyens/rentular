@@ -4,6 +4,7 @@ import {
   monthSettlement,
   preIndexationMatch,
   receivedForMonth,
+  receivedHistory,
   rentForDate,
   type IndexRecord,
   type PaidRowLike,
@@ -264,5 +265,75 @@ describe("preIndexationMatch", () => {
   it("does not match a rent decrease", () => {
     const lower: IndexRecord[] = [{ effectiveDate: "2026-11-01", previousRent: 950, newRent: 925 }];
     expect(preIndexationMatch(pending, 950, lower)).toBeNull();
+  });
+});
+
+describe("receivedHistory", () => {
+  const paid = (amount: number, due: string, paidDate: string, extra: Partial<PaidRowLike> = {}): PaidRowLike => ({
+    status: "paid",
+    amount,
+    dueDate: due,
+    paidDate,
+    ...extra,
+  });
+
+  it("returns the requested number of months, oldest first, ending at endMonth", () => {
+    const h = receivedHistory({ leases: [], endMonth: "2026-11", months: 12 });
+    expect(h).toHaveLength(12);
+    expect(h[0]!.month).toBe("2025-12");
+    expect(h[11]!.month).toBe("2026-11");
+    expect(h.every((e) => e.received === 0)).toBe(true);
+  });
+
+  it("crosses a year boundary", () => {
+    const h = receivedHistory({ leases: [], endMonth: "2026-02", months: 12 });
+    expect(h[0]!.month).toBe("2025-03");
+    expect(h[11]!.month).toBe("2026-02");
+  });
+
+  it("sums receivedForMonth over all leases for each month", () => {
+    const a = { rows: [paid(925, "2026-10-04", "2026-10-06"), paid(925, "2026-11-04", "2026-11-04")], paymentDay: 4, allocations: new Map<string, number>() };
+    const b = { rows: [paid(700.5, "2026-11-01", "2026-11-02")], paymentDay: 1, allocations: new Map<string, number>() };
+    const h = receivedHistory({ leases: [a, b], endMonth: "2026-11", months: 3 });
+    expect(h).toEqual([
+      { month: "2026-09", received: 0 },
+      { month: "2026-10", received: 925 },
+      { month: "2026-11", received: 1625.5 },
+    ]);
+    for (const e of h) {
+      const expected =
+        receivedForMonth(a.rows, e.month, a.paymentDay, a.allocations.get(e.month) ?? 0) +
+        receivedForMonth(b.rows, e.month, b.paymentDay, b.allocations.get(e.month) ?? 0);
+      expect(e.received).toBeCloseTo(expected, 2);
+    }
+  });
+
+  it("counts an allocation-only month and takes the max (never the sum) when both exist", () => {
+    const lease = {
+      rows: [paid(400, "2026-11-04", "2026-11-04")],
+      paymentDay: 4,
+      allocations: new Map<string, number>([
+        ["2026-10", 925],
+        ["2026-11", 500],
+      ]),
+    };
+    const h = receivedHistory({ leases: [lease], endMonth: "2026-11", months: 2 });
+    expect(h).toEqual([
+      { month: "2026-10", received: 925 },
+      { month: "2026-11", received: 500 },
+    ]);
+  });
+
+  it("does not count ignored rows or deposits", () => {
+    const lease = {
+      rows: [
+        paid(1850, "2026-11-04", "2026-11-04", { notes: DEPOSIT_NOTE }),
+        paid(925, "2026-11-04", "2026-11-05", { isIgnored: true }),
+      ],
+      paymentDay: 4,
+      allocations: new Map<string, number>(),
+    };
+    const h = receivedHistory({ leases: [lease], endMonth: "2026-11", months: 1 });
+    expect(h).toEqual([{ month: "2026-11", received: 0 }]);
   });
 });
