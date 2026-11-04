@@ -45,6 +45,18 @@ echo "ANDROID_HOME=$ANDROID_HOME"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 
 # --- Upload key (only checks that the values exist, never prints them) ---
+# Default setup from create-upload-key.sh: the key in ~/.rentular and its
+# password in a root-only file, read with sudo into this process's environment
+# only (never printed, never written to gradle.properties).
+DEFAULT_KEYSTORE="$HOME/.rentular/rentular-upload.keystore"
+ROOT_PASS_FILE="/etc/rentular/android-upload-key.pass"
+if [ -z "${RENTULAR_UPLOAD_STORE_PASSWORD:-}" ] && [ -f "$DEFAULT_KEYSTORE" ] && sudo test -f "$ROOT_PASS_FILE"; then
+  RENTULAR_UPLOAD_STORE_PASSWORD="$(sudo cat "$ROOT_PASS_FILE")"
+  export RENTULAR_UPLOAD_STORE_PASSWORD
+  export RENTULAR_UPLOAD_KEY_PASSWORD="$RENTULAR_UPLOAD_STORE_PASSWORD"
+  export RENTULAR_UPLOAD_STORE_FILE="${RENTULAR_UPLOAD_STORE_FILE:-$DEFAULT_KEYSTORE}"
+  export RENTULAR_UPLOAD_KEY_ALIAS="${RENTULAR_UPLOAD_KEY_ALIAS:-rentular-upload}"
+fi
 GRADLE_PROPS="$HOME/.gradle/gradle.properties"
 missing=()
 for name in RENTULAR_UPLOAD_STORE_FILE RENTULAR_UPLOAD_STORE_PASSWORD RENTULAR_UPLOAD_KEY_ALIAS RENTULAR_UPLOAD_KEY_PASSWORD; do

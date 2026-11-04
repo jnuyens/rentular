@@ -2,17 +2,26 @@
 #
 # Create the upload key for Google Play releases, once.
 #
-# The key goes to ~/.rentular/rentular-upload.keystore, outside the repository.
-# keytool asks for the passwords and your name itself, so this script never sees
-# or prints a password.
+# - A random password is generated and written straight to a root-owned file
+#   that only root can read: /etc/rentular/android-upload-key.pass (0400). It is
+#   never printed and never written anywhere else.
+# - The key goes to ~/.rentular/rentular-upload.keystore, outside the repository,
+#   locked with that password.
+# - build-play-release.sh reads the password back with sudo at build time.
 #
-# Usage:  ./android-app/create-upload-key.sh
+# You are asked for your Mac password once, by sudo.
+#
+# Usage:  ./android-app/create-upload-key.sh "CN=Your Name, O=Your Organisation, C=BE"
+#         (the argument is the certificate name; it defaults to "CN=Rentular, O=Rentular, C=BE")
 #
 set -euo pipefail
 
+DNAME="${1:-CN=Rentular, O=Rentular, C=BE}"
 KEY_DIR="$HOME/.rentular"
 KEYSTORE="$KEY_DIR/rentular-upload.keystore"
 ALIAS="rentular-upload"
+PASS_DIR="/etc/rentular"
+PASS_FILE="$PASS_DIR/android-upload-key.pass"
 
 if [ -e "$KEYSTORE" ]; then
   echo "ERROR: $KEYSTORE already exists. Refusing to overwrite it." >&2
@@ -33,32 +42,43 @@ else
   exit 1
 fi
 
+# --- Password file (root only) ---
+if sudo test -e "$PASS_FILE"; then
+  echo "==> Reusing the existing password in $PASS_FILE."
+else
+  echo "==> Generating a random password into $PASS_FILE (root only)."
+  sudo sh -c "umask 077 && mkdir -p '$PASS_DIR' && openssl rand -base64 24 | tr -d '\n' > '$PASS_FILE' && chown root:wheel '$PASS_DIR' '$PASS_FILE' && chmod 700 '$PASS_DIR' && chmod 400 '$PASS_FILE'"
+fi
+
 mkdir -p "$KEY_DIR"
 chmod 700 "$KEY_DIR"
 
-echo "==> Creating $KEYSTORE (alias $ALIAS)."
-echo "    keytool will ask for a keystore password, your name and organisation."
-"$KEYTOOL" -genkeypair -v \
-  -keystore "$KEYSTORE" \
-  -alias "$ALIAS" \
-  -keyalg RSA \
-  -keysize 4096 \
-  -validity 10000
+echo "==> Creating $KEYSTORE (alias $ALIAS, $DNAME)."
+# The password only lives in this process's environment while keytool runs.
+RENTULAR_UPLOAD_PW="$(sudo cat "$PASS_FILE")" \
+  "$KEYTOOL" -genkeypair \
+    -keystore "$KEYSTORE" \
+    -storetype PKCS12 \
+    -alias "$ALIAS" \
+    -keyalg RSA \
+    -keysize 4096 \
+    -validity 10000 \
+    -dname "$DNAME" \
+    -storepass:env RENTULAR_UPLOAD_PW \
+    -keypass:env RENTULAR_UPLOAD_PW
 
 chmod 600 "$KEYSTORE"
 
 cat <<EOF
 
-==> Done. Add these lines to ~/.gradle/gradle.properties (not to the repository):
+==> Done.
+    Key:      $KEYSTORE
+    Password: $PASS_FILE (root only, never shown)
 
-RENTULAR_UPLOAD_STORE_FILE=$KEYSTORE
-RENTULAR_UPLOAD_KEY_ALIAS=$ALIAS
-RENTULAR_UPLOAD_STORE_PASSWORD=<the password you just typed>
-RENTULAR_UPLOAD_KEY_PASSWORD=<the same password>
+Build a Play release with: ./android-app/build-play-release.sh
 
-Then run: chmod 600 ~/.gradle/gradle.properties
-
-Back up $KEYSTORE and its password somewhere off this machine (a password
-manager works). With Play App Signing a lost upload key can be reset through
-Play support, but that takes time and blocks releases until it is done.
+Back up both files somewhere off this machine (the password can be read with
+"sudo cat $PASS_FILE" when you make the backup). With Play App Signing a lost
+upload key can be reset through Play support, but that takes time and blocks
+releases until it is done.
 EOF
