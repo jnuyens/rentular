@@ -293,7 +293,8 @@
     "depositHelp": "Garantie locative. Par defaut 2x le loyer mensuel; ajustez si necessaire.",
     "depositTwoMonths": "Mettre a 2x le loyer mensuel",
     "priorPaymentsSettled": "Garantie et paiements antérieurs déjà réglés",
-    "priorPaymentsSettledHelp": "Ce contrat a commencé avant son ajout ici. Laissez cette option activée si la garantie et les loyers jusqu'à présent ont déjà été payés, pour que rien d'antérieur ne soit considéré comme ouvert."
+    "priorPaymentsSettledHelp": "Ce contrat a commencé avant son ajout ici. Laissez cette option activée si la garantie et les loyers jusqu'à présent ont déjà été payés, pour que rien d'antérieur ne soit considéré comme ouvert.",
+    "communication": "Communication"
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -1373,7 +1374,8 @@
     "quickMaintenance": "Signaler un entretien",
     "infoTitle": "Louer sereinement en Belgique",
     "infoText": "Domiciliation SEPA, indexation correcte et suivi clair de chaque paiement. Et le code est open source.",
-    "reminderTransferWaiting": "Attention : un virement de {amount} du {date} règle peut-être déjà ce loyer et attend sur la page Rapprochement."
+    "reminderTransferWaiting": "Attention : un virement de {amount} du {date} règle peut-être déjà ce loyer et attend sur la page Rapprochement.",
+    "communication": "Communication"
   },
   "ledger": {
     "title": "Grand livre des loyers",
@@ -1425,5 +1427,80 @@
     "reductionRemoved": "Réduction supprimée",
     "saveReduction": "Enregistrer",
     "rentFree": "Période de gratuité"
+  },
+  "contractComms": {
+    "title": "Communication",
+    "back": "Retour",
+    "loadError": "Impossible de charger l'historique des communications",
+    "lastSevenDays": "{count, plural, =0 {Aucun message au locataire ces 7 derniers jours} one {1 message au locataire ces 7 derniers jours} other {# messages au locataire ces 7 derniers jours}}",
+    "scheduledTitle": "Prévu",
+    "scheduledEmpty": "Rien n'est prévu pour ce contrat.",
+    "timeNote": "Heures de Bruxelles.",
+    "sentTitle": "Envoyés",
+    "sentEmpty": "Rien n'a encore été envoyé pour ce contrat.",
+    "landlordTitle": "Notifications pour vous",
+    "landlordEmpty": "Pas encore de notification pour vous sur ce contrat.",
+    "allChannels": "Tous les canaux",
+    "allKinds": "Tous les types",
+    "loadMore": "Afficher les messages plus anciens",
+    "to": "À",
+    "cc": "CC",
+    "showBody": "Afficher le message",
+    "hideBody": "Masquer le message",
+    "testPhase": "E-mail de test, envoyé à vous au lieu du locataire",
+    "forDue": "loyer du {date}",
+    "toLandlord": "à vous",
+    "channel": {
+      "email": "E-mail",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp",
+      "signal": "Signal",
+      "letter": "Lettre"
+    },
+    "status": {
+      "queued": "En attente",
+      "sent": "Envoyé",
+      "delivered": "Distribué",
+      "failed": "Échec",
+      "bounced": "Rejeté"
+    },
+    "trigger": {
+      "schedule": "automatique",
+      "manual": "envoyé à la main",
+      "manualBy": "par {name}",
+      "magic_link": "via le lien de l'e-mail",
+      "api": "via l'API",
+      "apiBy": "via l'API, par {name}"
+    },
+    "kind": {
+      "payment_reminder_friendly": "Rappel amical",
+      "payment_reminder_formal": "Rappel formel",
+      "payment_reminder_final": "Troisième rappel",
+      "indexation_notification": "Lettre d'indexation",
+      "landlord_report": "Rapport",
+      "custom": "Message",
+      "welcome": "Bienvenue",
+      "lease_renewal": "Renouvellement",
+      "lease_termination": "Résiliation",
+      "other": "Autre",
+      "indexation_alert": "Alerte d'indexation",
+      "landlord_notification": "Notification pour vous",
+      "due_date_sms": "Message le jour de l'échéance",
+      "landlord_final_pending": "Avis avant le troisième rappel",
+      "landlord_late": "Avis de retard de paiement"
+    },
+    "landlordKind": {
+      "late": "Avis de retard de paiement",
+      "due": "Loyer à payer aujourd'hui",
+      "final_pending": "Avis avant le troisième rappel",
+      "transfer_review": "Virement à vérifier"
+    },
+    "condition": {
+      "if_unpaid": "Seulement s'il est toujours impayé",
+      "if_unpaid_on_due_date": "Seulement s'il est impayé à l'échéance",
+      "if_unpaid_unless_held": "Seulement s'il est toujours impayé et que vous ne le bloquez pas",
+      "if_index_published": "Dès que le nouvel indice santé est publié, si l'indexation n'est pas encore appliquée",
+      "on_hold_transfer_review": "En pause : un virement vous attend sur la page Rapprochement"
+    }
   }
 }

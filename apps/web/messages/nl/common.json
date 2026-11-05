@@ -293,7 +293,8 @@
     "depositHelp": "Huurwaarborg. Standaard 2x de maandhuur; pas aan indien nodig.",
     "depositTwoMonths": "Zet op 2x de maandhuur",
     "priorPaymentsSettled": "Waarborg en eerdere betalingen al voldaan",
-    "priorPaymentsSettledHelp": "Dit contract is gestart voor u het hier toevoegde. Laat dit aan staan als de waarborg en de huur tot nu al betaald zijn, zodat niets van vroeger als openstaand wordt beschouwd."
+    "priorPaymentsSettledHelp": "Dit contract is gestart voor u het hier toevoegde. Laat dit aan staan als de waarborg en de huur tot nu al betaald zijn, zodat niets van vroeger als openstaand wordt beschouwd.",
+    "communication": "Communicatie"
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -1373,7 +1374,8 @@
     "quickMaintenance": "Onderhoud melden",
     "infoTitle": "Zorgeloos verhuren in België",
     "infoText": "SEPA-domiciliëring, correcte indexering en duidelijke opvolging van elke betaling. En de code is open source.",
-    "reminderTransferWaiting": "Let op: een overschrijving van {amount} van {date} betaalt deze huur misschien al en wacht op de pagina Reconciliatie."
+    "reminderTransferWaiting": "Let op: een overschrijving van {amount} van {date} betaalt deze huur misschien al en wacht op de pagina Reconciliatie.",
+    "communication": "Communicatie"
   },
   "ledger": {
     "title": "Huurgrootboek",
@@ -1425,5 +1427,80 @@
     "reductionRemoved": "Vermindering verwijderd",
     "saveReduction": "Opslaan",
     "rentFree": "Huurvrije periode"
+  },
+  "contractComms": {
+    "title": "Communicatie",
+    "back": "Terug",
+    "loadError": "Kon de communicatiegeschiedenis niet laden",
+    "lastSevenDays": "{count, plural, =0 {Geen berichten aan de huurder in de laatste 7 dagen} one {1 bericht aan de huurder in de laatste 7 dagen} other {# berichten aan de huurder in de laatste 7 dagen}}",
+    "scheduledTitle": "Gepland",
+    "scheduledEmpty": "Er staat niets gepland voor dit contract.",
+    "timeNote": "Tijden in Brusselse tijd.",
+    "sentTitle": "Verzonden",
+    "sentEmpty": "Er is nog niets verstuurd voor dit contract.",
+    "landlordTitle": "Meldingen aan jou",
+    "landlordEmpty": "Nog geen meldingen aan jou over dit contract.",
+    "allChannels": "Alle kanalen",
+    "allKinds": "Alle soorten",
+    "loadMore": "Toon oudere berichten",
+    "to": "Aan",
+    "cc": "CC",
+    "showBody": "Toon bericht",
+    "hideBody": "Verberg bericht",
+    "testPhase": "Testmail, naar jou verstuurd in plaats van naar de huurder",
+    "forDue": "huur van {date}",
+    "toLandlord": "aan jou",
+    "channel": {
+      "email": "E-mail",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp",
+      "signal": "Signal",
+      "letter": "Brief"
+    },
+    "status": {
+      "queued": "In wachtrij",
+      "sent": "Verzonden",
+      "delivered": "Afgeleverd",
+      "failed": "Mislukt",
+      "bounced": "Teruggestuurd"
+    },
+    "trigger": {
+      "schedule": "automatisch",
+      "manual": "manueel verstuurd",
+      "manualBy": "door {name}",
+      "magic_link": "via e-maillink",
+      "api": "via de API",
+      "apiBy": "via de API, door {name}"
+    },
+    "kind": {
+      "payment_reminder_friendly": "Vriendelijke herinnering",
+      "payment_reminder_formal": "Formele herinnering",
+      "payment_reminder_final": "Derde herinnering",
+      "indexation_notification": "Indexeringsbrief",
+      "landlord_report": "Rapport",
+      "custom": "Bericht",
+      "welcome": "Welkom",
+      "lease_renewal": "Verlenging",
+      "lease_termination": "Opzegging",
+      "other": "Overig",
+      "indexation_alert": "Indexeringsmelding",
+      "landlord_notification": "Melding aan jou",
+      "due_date_sms": "Bericht op de vervaldag",
+      "landlord_final_pending": "Melding vóór de derde herinnering",
+      "landlord_late": "Melding van laattijdige betaling"
+    },
+    "landlordKind": {
+      "late": "Melding van laattijdige betaling",
+      "due": "Huur vandaag te betalen",
+      "final_pending": "Melding vóór de derde herinnering",
+      "transfer_review": "Overschrijving na te kijken"
+    },
+    "condition": {
+      "if_unpaid": "Enkel als het nog niet betaald is",
+      "if_unpaid_on_due_date": "Enkel als het op de vervaldag nog niet betaald is",
+      "if_unpaid_unless_held": "Enkel als het nog niet betaald is en je het niet tegenhoudt",
+      "if_index_published": "Zodra de nieuwe gezondheidsindex er is, als de indexering nog niet toegepast is",
+      "on_hold_transfer_review": "Gepauzeerd: een overschrijving wacht op jou op de pagina Reconciliatie"
+    }
   }
 }

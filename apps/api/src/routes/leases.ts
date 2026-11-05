@@ -9,6 +9,7 @@ import {
   loadPastCommunications,
   loadScheduledCommunications,
 } from "../services/leaseCommunications";
+import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -130,8 +131,16 @@ leasesRouter.get("/:id/communications", async (c) => {
     } catch (err) {
       console.error("[Leases] scheduled communications failed:", err);
     }
+    const prop = await db
+      .select({ name: properties.name })
+      .from(properties)
+      .where(eq(properties.id, lease[0].propertyId))
+      .limit(1);
+    const rec = await getLeaseEmailRecipients(id);
+    const tenantName = rec.primary ? `${rec.primary.firstName} ${rec.primary.lastName}`.trim() : "";
     return c.json({
       data: {
+        lease: { id, propertyName: prop[0]?.name ?? "", tenantName },
         past: past.items,
         scheduled,
         total: past.total,

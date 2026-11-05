@@ -609,6 +609,9 @@ function CollectionCard({
                         <DropdownMenuItem asChild>
                           <Link href={`/ledger/${item.leaseId}`}>{t("reconcile")}</Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/leases/${item.leaseId}`}>{t("communication")}</Link>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -799,6 +802,12 @@ function BucketBreakdown({
                     className="rounded-lg border border-input bg-white px-2 py-1 text-xs font-medium text-navy hover:bg-muted"
                   >
                     {t("reconcile")}
+                  </Link>
+                  <Link
+                    href={`/leases/${item.leaseId}`}
+                    className="rounded-lg border border-input bg-white px-2 py-1 text-xs font-medium text-navy hover:bg-muted"
+                  >
+                    {t("communication")}
                   </Link>
                 </div>
               </div>

@@ -293,7 +293,8 @@
     "depositHelp": "Rental deposit. Defaults to 2x the monthly rent; adjust as needed.",
     "depositTwoMonths": "Set to 2x the monthly rent",
     "priorPaymentsSettled": "Deposit and earlier payments already made",
-    "priorPaymentsSettledHelp": "This contract started before you added it here. Leave this on if the deposit and the rent up to now were already paid, so nothing from before is treated as open."
+    "priorPaymentsSettledHelp": "This contract started before you added it here. Leave this on if the deposit and the rent up to now were already paid, so nothing from before is treated as open.",
+    "communication": "Communication"
   },
   "indexation": {
     "title": "Rent Indexation",
@@ -1373,7 +1374,8 @@
     "quickMaintenance": "Report maintenance",
     "infoTitle": "Worry-free letting in Belgium",
     "infoText": "SEPA collection, correct indexation and clear follow-up of every payment. And the code is open source.",
-    "reminderTransferWaiting": "Heads up: a transfer of {amount} from {date} may already pay this rent and is waiting on the Reconciliation page."
+    "reminderTransferWaiting": "Heads up: a transfer of {amount} from {date} may already pay this rent and is waiting on the Reconciliation page.",
+    "communication": "Communication"
   },
   "ledger": {
     "title": "Rent ledger",
@@ -1425,5 +1427,80 @@
     "reductionRemoved": "Reduction removed",
     "saveReduction": "Save",
     "rentFree": "Rent-free period"
+  },
+  "contractComms": {
+    "title": "Communication",
+    "back": "Back",
+    "loadError": "Could not load the communication history",
+    "lastSevenDays": "{count, plural, =0 {No messages to the tenant in the last 7 days} one {1 message to the tenant in the last 7 days} other {# messages to the tenant in the last 7 days}}",
+    "scheduledTitle": "Scheduled",
+    "scheduledEmpty": "Nothing is scheduled for this contract.",
+    "timeNote": "Times are Brussels time.",
+    "sentTitle": "Sent",
+    "sentEmpty": "Nothing has been sent for this contract yet.",
+    "landlordTitle": "Notices to you",
+    "landlordEmpty": "No notices to you about this contract yet.",
+    "allChannels": "All channels",
+    "allKinds": "All kinds",
+    "loadMore": "Show older messages",
+    "to": "To",
+    "cc": "CC",
+    "showBody": "Show message",
+    "hideBody": "Hide message",
+    "testPhase": "Test mail, went to you instead of the tenant",
+    "forDue": "rent due {date}",
+    "toLandlord": "to you",
+    "channel": {
+      "email": "Email",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp",
+      "signal": "Signal",
+      "letter": "Letter"
+    },
+    "status": {
+      "queued": "Queued",
+      "sent": "Sent",
+      "delivered": "Delivered",
+      "failed": "Failed",
+      "bounced": "Bounced"
+    },
+    "trigger": {
+      "schedule": "automatic",
+      "manual": "sent by hand",
+      "manualBy": "by {name}",
+      "magic_link": "via the email link",
+      "api": "via the API",
+      "apiBy": "via the API, by {name}"
+    },
+    "kind": {
+      "payment_reminder_friendly": "Friendly reminder",
+      "payment_reminder_formal": "Formal reminder",
+      "payment_reminder_final": "Third reminder",
+      "indexation_notification": "Indexation letter",
+      "landlord_report": "Report",
+      "custom": "Message",
+      "welcome": "Welcome",
+      "lease_renewal": "Renewal",
+      "lease_termination": "Termination",
+      "other": "Other",
+      "indexation_alert": "Indexation alert",
+      "landlord_notification": "Notice to you",
+      "due_date_sms": "Due-date message",
+      "landlord_final_pending": "Notice before the third reminder",
+      "landlord_late": "Late payment notice"
+    },
+    "landlordKind": {
+      "late": "Late payment notice",
+      "due": "Rent due today",
+      "final_pending": "Notice before the third reminder",
+      "transfer_review": "Transfer to check"
+    },
+    "condition": {
+      "if_unpaid": "Only if it is still unpaid",
+      "if_unpaid_on_due_date": "Only if it is unpaid on the due date",
+      "if_unpaid_unless_held": "Only if it is still unpaid and you do not hold it",
+      "if_index_published": "Once the new health index is out, if the indexation is not applied yet",
+      "on_hold_transfer_review": "On hold: a transfer is waiting for you on the Reconciliation page"
+    }
   }
 }
