@@ -1372,7 +1372,8 @@
     "quickMessage": "Écrire aux locataires",
     "quickMaintenance": "Signaler un entretien",
     "infoTitle": "Louer sereinement en Belgique",
-    "infoText": "Domiciliation SEPA, indexation correcte et suivi clair de chaque paiement. Et le code est open source."
+    "infoText": "Domiciliation SEPA, indexation correcte et suivi clair de chaque paiement. Et le code est open source.",
+    "reminderTransferWaiting": "Attention : un virement de {amount} du {date} règle peut-être déjà ce loyer et attend sur la page Rapprochement."
   },
   "ledger": {
     "title": "Grand livre des loyers",

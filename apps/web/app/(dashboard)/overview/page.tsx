@@ -248,6 +248,15 @@ export default function OverviewPage() {
             ? t("reminderSentTest", { to: r.sentTo })
             : t("reminderSent", { to: r?.sentTo ?? "" }),
         );
+        if (r?.waitingTransfer) {
+          toast.warning(
+            t("reminderTransferWaiting", {
+              amount: eur(Number(r.waitingTransfer.amount)),
+              date: formatDate(String(r.waitingTransfer.bookingDate)),
+            }),
+            { duration: 15000 },
+          );
+        }
       } else {
         const err = (await res.json().catch(() => ({}))).error || t("reminderFailed");
         toast.error(err);

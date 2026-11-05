@@ -1372,7 +1372,8 @@
     "quickMessage": "Huurders berichten",
     "quickMaintenance": "Onderhoud melden",
     "infoTitle": "Zorgeloos verhuren in België",
-    "infoText": "SEPA-domiciliëring, correcte indexering en duidelijke opvolging van elke betaling. En de code is open source."
+    "infoText": "SEPA-domiciliëring, correcte indexering en duidelijke opvolging van elke betaling. En de code is open source.",
+    "reminderTransferWaiting": "Let op: een overschrijving van {amount} van {date} betaalt deze huur misschien al en wacht op de pagina Reconciliatie."
   },
   "ledger": {
     "title": "Huurgrootboek",

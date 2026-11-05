@@ -6,6 +6,7 @@ import { pickPaymentForTransfer, type PendingPayment } from "./paymentPicker";
 import { loadLeaseDeductions } from "./rentDeductions";
 import { loadIndexRecords, preIndexationMatch } from "./monthReceived";
 import { isRemainderNote } from "./expectedPayments";
+import { findShortfallPlan } from "./shortfallMatch";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -67,7 +68,12 @@ async function recordPaidFromTransfer(
  *   tenant did not adjust the standing order yet) is matched to the oldest
  *   pending rent row, recording the amount actually received and a note, so
  *   the missing difference stays visible.
- * - Nothing fits (e.g. a partial transfer): in the default (automatic) mode
+ * - A transfer that pays what is still missing on a partly paid month (the
+ *   exact shortfall, to the cent, or a further partial smaller than it) is
+ *   booked on that month's pending row with the transfer as its amount. With
+ *   allowFirstPartial (the sender is a known tenant account) a first partial
+ *   on a month that received nothing yet is booked the same way.
+ * - Nothing fits: in the default (automatic) mode
  *   nothing is written and null is returned, so the transfer stays unmatched
  *   for review. With createWhenUnmatched (the manual route, where the landlord
  *   explicitly chose this lease) the transfer is recorded as a separate paid
@@ -80,7 +86,7 @@ export async function assignStatementToLease(
   statement: AssignableStatement,
   leaseId: string,
   note: string,
-  opts: { createWhenUnmatched?: boolean } = {},
+  opts: { createWhenUnmatched?: boolean; allowFirstPartial?: boolean } = {},
 ): Promise<{ paymentId: string; created: boolean } | null> {
   const pending = (await db
     .select({
@@ -89,10 +95,13 @@ export async function assignStatementToLease(
       dueDate: payments.dueDate,
       notes: payments.notes,
       rentAmount: payments.rentAmount,
+      chargesAmount: payments.chargesAmount,
     })
     .from(payments)
     .where(and(eq(payments.leaseId, leaseId), eq(payments.status, "pending")))
-    .orderBy(asc(payments.dueDate))) as Array<PendingPayment & { rentAmount?: string | null }>;
+    .orderBy(asc(payments.dueDate))) as Array<
+    PendingPayment & { rentAmount?: string | null; chargesAmount?: string | null }
+  >;
 
   if (pending.length === 0) {
     return recordPaidFromTransfer(db, statement, leaseId, note);
@@ -156,6 +165,26 @@ export async function assignStatementToLease(
       return markPaidAndMatch(m.row.id, {
         amount: String(transfer),
         ...(rentAmount != null ? { rentAmount } : {}),
+        notes,
+      });
+    }
+    const plan = await findShortfallPlan(db, leaseId, pending, transfer, {
+      allowFirstPartial: opts.allowFirstPartial,
+    });
+    if (plan) {
+      const row = pending.find((p) => p.id === plan.rowId);
+      const planNote =
+        plan.kind === "settle"
+          ? `Paid the rest of the month (${plan.amount.toFixed(2)})`
+          : `Partial payment of ${plan.amount.toFixed(2)}, ${plan.remaining.toFixed(2)} still open`;
+      const notes = [row?.notes, note, planNote].filter(Boolean).join("\n");
+      console.log(
+        `[Reconciliation] ${plan.kind === "settle" ? "shortfall settled" : "partial booked"} on payment ${plan.rowId} for lease ${leaseId} (${plan.month})`,
+      );
+      return markPaidAndMatch(plan.rowId, {
+        amount: String(plan.amount),
+        ...(plan.rentAmount != null ? { rentAmount: String(plan.rentAmount) } : {}),
+        ...(plan.chargesAmount != null ? { chargesAmount: String(plan.chargesAmount) } : {}),
         notes,
       });
     }

@@ -111,6 +111,7 @@ export async function queueSms(
         subject: null,
         body: options.body,
         status: "queued",
+        metadata: meta.metadata && Object.keys(meta.metadata).length > 0 ? meta.metadata : undefined,
       });
     } catch (dbErr) {
       console.error(`[SmsQueue] Failed to insert communications record:`, dbErr);

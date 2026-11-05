@@ -10,6 +10,7 @@ import { isDepositNote } from "./expectedPayments";
 import type { PendingPayment } from "./paymentPicker";
 import { deductedAmount, loadLeaseDeductions } from "./rentDeductions";
 import { loadIndexRecords } from "./monthReceived";
+import { oldestShortfall } from "./shortfallMatch";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -59,6 +60,17 @@ export async function expectedAmountsForLease(
   if (diff > 0) {
     const old = Math.round((raw - diff) * 100) / 100;
     if (!amounts.some((a) => Math.abs(a - old) < AMOUNT_TOLERANCE)) amounts.push(old);
+  }
+
+  // What is still missing on a partly paid month, exact to the cent: a tenant
+  // who paid most of the month and now sends the rest.
+  try {
+    const short = await oldestShortfall(db, leaseId, pending);
+    if (short != null && short > 0 && !amounts.some((a) => Math.abs(a - short) < AMOUNT_TOLERANCE)) {
+      amounts.push(short);
+    }
+  } catch (err) {
+    console.warn(`[IbanMatcher] shortfall lookup failed for lease ${leaseId}:`, err);
   }
   return amounts;
 }
@@ -137,6 +149,9 @@ export async function autoAssignByIban(
       statement,
       targetLeaseId,
       `Auto-assigned by account number ${maskIban(iban)} from bank transfer ${statement.externalTransactionId}`,
+      // The sender is a known account of this lease's tenant, so a partial
+      // transfer is booked as a partial instead of being left unmatched.
+      { allowFirstPartial: true },
     );
     if (!result) {
       console.log(

@@ -1372,7 +1372,8 @@
     "quickMessage": "Mieter anschreiben",
     "quickMaintenance": "Wartung melden",
     "infoTitle": "Sorgenfrei vermieten in Belgien",
-    "infoText": "SEPA-Lastschrift, korrekte Indexierung und klare Nachverfolgung jeder Zahlung. Und der Code ist Open Source."
+    "infoText": "SEPA-Lastschrift, korrekte Indexierung und klare Nachverfolgung jeder Zahlung. Und der Code ist Open Source.",
+    "reminderTransferWaiting": "Hinweis: Eine Überweisung von {amount} vom {date} begleicht diese Miete vielleicht schon und wartet auf der Seite Abgleich."
   },
   "ledger": {
     "title": "Mietenbuch",

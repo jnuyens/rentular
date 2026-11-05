@@ -35,6 +35,8 @@ export interface CommunicationMeta {
   leaseId?: string;
   type: "payment_reminder_friendly" | "payment_reminder_formal" | "payment_reminder_final" | "indexation_notification" | "landlord_report" | "custom" | "welcome" | "lease_renewal" | "lease_termination" | "other" | "indexation_alert";
   recipientName: string;
+  /** Extra fields stored in communications.metadata (trigger, paymentId, ...). */
+  metadata?: Record<string, unknown>;
 }
 
 // Process emails one at a time with a limiter to avoid overwhelming the mail server
@@ -121,6 +123,7 @@ export async function queueEmail(
   if (meta) {
     communicationId = crypto.randomUUID();
     const cc = ccList(options.cc);
+    const metadata = { ...(meta.metadata ?? {}), ...(cc ? { cc } : {}) };
     try {
       const db = getDb();
       await db.insert(communications).values({
@@ -135,7 +138,7 @@ export async function queueEmail(
         body: options.body,
         status: "queued",
         // One row per email; copied co-recipients are kept in metadata.
-        metadata: cc ? { cc } : undefined,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
     } catch (dbErr) {
       console.error(`[EmailQueue] Failed to insert communications record:`, dbErr);

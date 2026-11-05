@@ -1372,7 +1372,8 @@
     "quickMessage": "Message tenants",
     "quickMaintenance": "Report maintenance",
     "infoTitle": "Worry-free letting in Belgium",
-    "infoText": "SEPA collection, correct indexation and clear follow-up of every payment. And the code is open source."
+    "infoText": "SEPA collection, correct indexation and clear follow-up of every payment. And the code is open source.",
+    "reminderTransferWaiting": "Heads up: a transfer of {amount} from {date} may already pay this rent and is waiting on the Reconciliation page."
   },
   "ledger": {
     "title": "Rent ledger",
