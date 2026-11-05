@@ -35,7 +35,8 @@ import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
 import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
-import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
+import { isWhatsAppConfigured } from "../lib/whatsapp";
+import { sendWhatsAppLogged } from "../lib/communicationLog";
 import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
@@ -337,19 +338,17 @@ async function sendDueDateTenantSms(
         ownerName: "",
       });
 
+      const dueLog = {
+        ownerId: lease.ownerId,
+        leaseId: p.leaseId,
+        type: "due_date_sms" as const,
+        recipientName: tenantName,
+        metadata: { trigger: "schedule", paymentId: p.paymentId, amount: amountDue },
+      };
       if (dueChannel === "whatsapp") {
-        await sendWhatsApp({ to: normalizePhoneNumber(tenant.phone), body });
+        await sendWhatsAppLogged({ to: normalizePhoneNumber(tenant.phone), body }, dueLog);
       } else {
-        await queueSms(
-          { to: normalizePhoneNumber(tenant.phone), body },
-          undefined,
-          {
-            ownerId: lease.ownerId,
-            leaseId: p.leaseId,
-            type: "payment_reminder_friendly",
-            recipientName: tenantName,
-          },
-        );
+        await queueSms({ to: normalizePhoneNumber(tenant.phone), body }, undefined, dueLog);
       }
       await db.insert(paymentReminders).values({
         id: crypto.randomUUID(),
@@ -536,6 +535,8 @@ const worker = new Worker(
             );
             try {
               await sendLandlordLateEmail({
+                ownerId: lease.ownerId,
+                leaseId: lease.id,
                 paymentId: payment.paymentId,
                 to: recipients.to,
                 cc: recipients.cc,
@@ -696,6 +697,8 @@ const worker = new Worker(
             const channel = resolveReminderChannel(tenant.preferredChannel, tenant.phone);
             try {
               await sendLandlordLateEmail({
+                ownerId: lease.ownerId,
+                leaseId: lease.id,
                 paymentId: payment.paymentId,
                 to: recipients.to,
                 cc: recipients.cc,
@@ -856,6 +859,8 @@ const worker = new Worker(
         if (!recipients.to) continue;
 
         await sendLandlordLateEmail({
+          ownerId: lease.ownerId,
+          leaseId: lease.id,
           paymentId: payment.paymentId,
           to: recipients.to,
           cc: recipients.cc,

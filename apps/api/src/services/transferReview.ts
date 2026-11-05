@@ -225,7 +225,7 @@ export async function holdForWaitingTransfer(
       {
         ownerId: input.ownerId,
         leaseId: input.leaseId,
-        type: "other",
+        type: "landlord_notification",
         recipientName: owner?.name || to,
         metadata: {
           kind: TRANSFER_REVIEW_KIND,

@@ -3,6 +3,7 @@ import { sendEmail, type EmailOptions } from "../lib/email";
 import { getDb, communications } from "@rentular/db";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
+import type { CommunicationType } from "../lib/communicationLog";
 
 const QUEUE_NAME = "email-queue";
 
@@ -33,7 +34,7 @@ export const emailQueue = new Queue(QUEUE_NAME, {
 export interface CommunicationMeta {
   ownerId: string;
   leaseId?: string;
-  type: "payment_reminder_friendly" | "payment_reminder_formal" | "payment_reminder_final" | "indexation_notification" | "landlord_report" | "custom" | "welcome" | "lease_renewal" | "lease_termination" | "other" | "indexation_alert";
+  type: CommunicationType;
   recipientName: string;
   /** Extra fields stored in communications.metadata (trigger, paymentId, ...). */
   metadata?: Record<string, unknown>;
@@ -55,7 +56,7 @@ const worker = new Worker(
           const db = getDb();
           await db
             .update(communications)
-            .set({ status: "sent", sentAt: new Date() })
+            .set({ status: "sent", sentAt: new Date(), errorMessage: null })
             .where(eq(communications.id, communicationId));
         } catch (dbErr) {
           console.error(`[EmailQueue] Failed to update communications record ${communicationId}:`, dbErr);

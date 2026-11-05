@@ -12,6 +12,7 @@ import type { SupportedLanguage } from "@rentular/shared";
 import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
 import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import type { TriggerMeta } from "../lib/communicationLog";
 import { indexationDateFor, loadIndexRecords, loadMonthStatus } from "./monthReceived";
 import type { RemainderContext } from "./reminderText";
 import { loadWaitingTransfer } from "./transferReview";
@@ -45,6 +46,8 @@ export async function sendManualReminder(input: {
   periodMonth: string; // YYYY-MM
   level: ReminderLevel;
   ownerId: string;
+  /** Who sent it: a person in the app (manual) or an API token (api). */
+  trigger?: TriggerMeta;
 }): Promise<ManualReminderResult> {
   const db = getDb();
   const m = /^(\d{4})-(\d{2})$/.exec(input.periodMonth);
@@ -198,6 +201,7 @@ export async function sendManualReminder(input: {
     ownerEmail: ownerRow[0]?.email,
     preferredChannel: tenant.preferredChannel,
     cc: rec.cc,
+    trigger: input.trigger ?? { trigger: "manual", triggeredBy: input.ownerId },
   });
 
   await db.insert(paymentReminders).values({

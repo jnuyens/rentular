@@ -2,6 +2,7 @@ import { renderTemplate, type EmailOptions } from "../lib/email";
 import { queueEmail, type CommunicationMeta } from "../jobs/emailQueueWorker";
 import { queueSms } from "../jobs/smsQueueWorker";
 import { normalizePhoneNumber } from "../lib/sms";
+import type { TriggerMeta } from "../lib/communicationLog";
 import {
   REMINDER_DEFAULTS,
   DEFAULT_EMAIL_TEMPLATES,
@@ -238,6 +239,7 @@ export async function sendReminder(
   ownerId: string,
   ownerEmail?: string,
   cc?: string,
+  trigger: TriggerMeta = { trigger: "schedule" },
 ): Promise<void> {
   const vars = getTemplateVariables(payment, settings);
 
@@ -296,11 +298,21 @@ export async function sendReminder(
     ];
   }
 
+  const logMeta = {
+    trigger: trigger.trigger,
+    ...(trigger.triggeredBy ? { triggeredBy: trigger.triggeredBy } : {}),
+    paymentId: payment.paymentId,
+    level,
+    amount: payment.amount,
+    ...(testPhase ? { testPhase: true } : {}),
+  };
+
   await queueEmail(emailOptions, undefined, {
     ownerId,
     leaseId: payment.leaseId,
     type: `payment_reminder_${level}` as CommunicationMeta["type"],
     recipientName: payment.tenantName,
+    metadata: logMeta,
   });
 
   // Send SMS if enabled and tenant has a phone number (never during test phase)
@@ -321,6 +333,7 @@ export async function sendReminder(
       leaseId: payment.leaseId,
       type: `payment_reminder_${level}` as CommunicationMeta["type"],
       recipientName: payment.tenantName,
+      metadata: logMeta,
     });
   }
 }

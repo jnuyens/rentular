@@ -1,4 +1,5 @@
 import { sendEmail } from "../lib/email";
+import { logCommunication, markCommunication } from "../lib/communicationLog";
 import { signLandlordActionToken, type LandlordAction } from "../lib/landlordActionToken";
 import { formatReminderAmount } from "./reminderText";
 
@@ -11,6 +12,9 @@ type TenantChannel = "email" | "sms" | "whatsapp";
 
 interface LateEmailInput {
   paymentId: string;
+  /** Owner and lease the email is about; when set, the email is logged. */
+  ownerId?: string;
+  leaseId?: string;
   to: string; // primary recipient(s), comma-joined
   cc?: string; // CC recipient(s), comma-joined
   ownerLocale: string;
@@ -344,20 +348,57 @@ export async function sendLandlordLateEmail(input: LateEmailInput): Promise<void
     options.map(async (o) => ({ label: o.label, url: o.link ? await urlFor(o.link) : undefined })),
   );
 
-  await sendEmail({
-    to: input.to,
-    cc: input.cc,
-    subject: kindCopy.subject(copyVars),
-    body: renderBody(copy, {
-      lead: kindCopy.lead(copyVars),
-      propertyName: input.propertyName,
-      tenantName: input.tenantName,
-      period,
-      amountFmt: formatReminderAmount(input.amount, lang),
-      dueDateFmt: formatDueDate(input.dueDate),
-      daysPastDue: input.daysPastDue,
-      showDays: SHOW_DAYS[kind],
-      options: rendered,
-    }),
+  const subject = kindCopy.subject(copyVars);
+  const body = renderBody(copy, {
+    lead: kindCopy.lead(copyVars),
+    propertyName: input.propertyName,
+    tenantName: input.tenantName,
+    period,
+    amountFmt: formatReminderAmount(input.amount, lang),
+    dueDateFmt: formatDueDate(input.dueDate),
+    daysPastDue: input.daysPastDue,
+    showDays: SHOW_DAYS[kind],
+    options: rendered,
   });
+
+  if (!input.ownerId) {
+    await sendEmail({ to: input.to, cc: input.cc, subject, body });
+    return;
+  }
+
+  // Logged as a landlord notification on the contract. The one-click links
+  // are signed actions, so they are left out of the stored copy: anyone who
+  // can read the history must not be able to act through it.
+  const cc = input.cc
+    ? input.cc.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  const rowId = await logCommunication({
+    ownerId: input.ownerId,
+    leaseId: input.leaseId ?? null,
+    channel: "email",
+    type: "landlord_notification",
+    recipientName: input.to,
+    recipientEmail: input.to,
+    subject,
+    body: redactActionLinks(body),
+    metadata: {
+      kind,
+      paymentId: input.paymentId,
+      trigger: "schedule",
+      ...(cc.length ? { cc } : {}),
+      ...(input.sendOn ? { sendOn: input.sendOn } : {}),
+    },
+  });
+  try {
+    await sendEmail({ to: input.to, cc: input.cc, subject, body });
+    await markCommunication(rowId, { status: "sent" });
+  } catch (err) {
+    await markCommunication(rowId, { status: "failed", error: err });
+    throw err;
+  }
+}
+
+/** Replace signed landlord-action links with a placeholder. */
+export function redactActionLinks(text: string): string {
+  return text.replace(/https?:\/\/\S*\/api\/v1\/landlord-action\/[A-Za-z0-9._~-]+(\?\S*)?/g, "[link]");
 }

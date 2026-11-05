@@ -1141,6 +1141,7 @@ indexationRouter.post(
             ownerId: userId,
             leaseId,
             type: "indexation_notification",
+            metadata: { trigger: c.get("tokenId") ? "api" : "manual", triggeredBy: userId },
             recipientName: tenantName,
           });
 

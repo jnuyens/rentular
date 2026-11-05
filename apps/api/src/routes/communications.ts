@@ -176,6 +176,13 @@ communicationsRouter.post("/:id/resend", async (c) => {
     leaseId: original[0].leaseId || undefined,
     type: original[0].type as CommunicationMeta["type"],
     recipientName: original[0].recipientName,
+    // The new row keeps the original context and says who resent it.
+    metadata: {
+      ...((original[0].metadata as Record<string, unknown> | null) ?? {}),
+      trigger: c.get("tokenId") ? "api" : "manual",
+      triggeredBy: userId,
+      resendOf: original[0].id,
+    },
   };
 
   if (original[0].channel === "email") {
@@ -243,6 +250,7 @@ communicationsRouter.post(
           ownerId,
           leaseId: data.leaseId,
           type: "custom",
+          metadata: { trigger: c.get("tokenId") ? "api" : "manual", triggeredBy: userId },
           recipientName: tenantName || rec.to,
         },
       );
@@ -257,6 +265,7 @@ communicationsRouter.post(
           ownerId,
           leaseId: data.leaseId,
           type: "custom",
+          metadata: { trigger: c.get("tokenId") ? "api" : "manual", triggeredBy: userId },
           recipientName: tenantName || tenant.phone,
         },
       );

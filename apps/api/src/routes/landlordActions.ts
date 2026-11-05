@@ -27,6 +27,7 @@ import { eq } from "drizzle-orm";
 import {
   getDb,
   payments,
+  paymentReminders,
   leases,
   properties,
   users,
@@ -36,7 +37,8 @@ import { sendReminder, DEFAULT_SETTINGS } from "../services/paymentFollowUp";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { getLeaseEmailRecipients, mergeCc } from "../lib/leaseRecipients";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
-import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
+import { isWhatsAppConfigured } from "../lib/whatsapp";
+import { sendWhatsAppLogged } from "../lib/communicationLog";
 import { queueSms } from "../jobs/smsQueueWorker";
 import { renderTemplate } from "../lib/email";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
@@ -262,7 +264,22 @@ function smsResultHtml(lang: string, result: "sent" | "nophone" | "notconfigured
   return `<p>${esc(t[result])}</p>`;
 }
 
-async function sendWhatsAppReminder(ctx: ReminderContext): Promise<"sent" | "nophone" | "notconfigured"> {
+/** Log fields for a reminder the landlord sent from the email link. */
+function magicLinkLog(ctx: ReminderContext, leaseId: string, paymentId: string) {
+  return {
+    ownerId: ctx.ownerId,
+    leaseId,
+    type: "payment_reminder_friendly" as const,
+    recipientName: ctx.tenantName,
+    metadata: { trigger: "magic_link", paymentId, level: "friendly", amount: ctx.amount },
+  };
+}
+
+async function sendWhatsAppReminder(
+  ctx: ReminderContext,
+  leaseId: string,
+  paymentId: string,
+): Promise<"sent" | "nophone" | "notconfigured"> {
   if (!isWhatsAppConfigured()) return "notconfigured";
   if (!ctx.tenantPhone) return "nophone";
   const lang = ctx.tenantLanguage || "nl";
@@ -275,7 +292,10 @@ async function sendWhatsAppReminder(ctx: ReminderContext): Promise<"sent" | "nop
     daysPastDue: String(ctx.daysPastDue),
     ownerName: ctx.ownerName,
   });
-  await sendWhatsApp({ to: normalizePhoneNumber(ctx.tenantPhone), body });
+  await sendWhatsAppLogged(
+    { to: normalizePhoneNumber(ctx.tenantPhone), body },
+    magicLinkLog(ctx, leaseId, paymentId),
+  );
   return "sent";
 }
 
@@ -290,7 +310,11 @@ function waResultHtml(lang: string, result: "sent" | "nophone" | "notconfigured"
   return `<p>${esc(t[result])}</p>`;
 }
 
-async function sendSmsReminder(ctx: ReminderContext, leaseId: string): Promise<"sent" | "nophone" | "notconfigured"> {
+async function sendSmsReminder(
+  ctx: ReminderContext,
+  leaseId: string,
+  paymentId: string,
+): Promise<"sent" | "nophone" | "notconfigured"> {
   if (!isSmsConfigured()) return "notconfigured";
   if (!ctx.tenantPhone) return "nophone";
   const lang = ctx.tenantLanguage || "nl";
@@ -306,7 +330,7 @@ async function sendSmsReminder(ctx: ReminderContext, leaseId: string): Promise<"
   await queueSms(
     { to: normalizePhoneNumber(ctx.tenantPhone), body },
     undefined,
-    { ownerId: ctx.ownerId, leaseId, type: "payment_reminder_friendly", recipientName: ctx.tenantName },
+    magicLinkLog(ctx, leaseId, paymentId),
   );
   return "sent";
 }
@@ -435,13 +459,32 @@ landlordActionsRouter.get("/:token", async (c) => {
       const ctx = await loadReminderContext(db, paymentId, rows[0].leaseId, rows[0].ownerId);
       if (!ctx) return renderKey(c, lang, "notfound");
 
+      // Recorded like any other reminder, so the automatic ladder counts it
+      // and the tenant does not get a second friendly reminder for the month.
+      const recordReminder = async (used: "email" | "sms" | "whatsapp") => {
+        try {
+          await db.insert(paymentReminders).values({
+            id: crypto.randomUUID(),
+            paymentId,
+            type: "friendly",
+            channel: used,
+            sentAt: new Date(),
+            notes: "sent from the landlord email link",
+          });
+        } catch (err) {
+          console.error("[LandlordActions] could not record the reminder:", err);
+        }
+      };
+
       if (channel === "sms") {
-        const result = await sendSmsReminder(ctx, rows[0].leaseId);
+        const result = await sendSmsReminder(ctx, rows[0].leaseId, paymentId);
+        if (result === "sent") await recordReminder("sms");
         return renderHtml(c, lang, smsResultHtml(lang, result, ctx.tenantPhone || undefined));
       }
 
       if (channel === "whatsapp") {
-        const result = await sendWhatsAppReminder(ctx);
+        const result = await sendWhatsAppReminder(ctx, rows[0].leaseId, paymentId);
+        if (result === "sent") await recordReminder("whatsapp");
         return renderHtml(c, lang, waResultHtml(lang, result, ctx.tenantPhone || undefined));
       }
 
@@ -470,7 +513,9 @@ landlordActionsRouter.get("/:token", async (c) => {
         rows[0].ownerId,
         ctx.ownerEmail || undefined,
         testPhase ? undefined : ctx.cc || undefined,
+        { trigger: "magic_link" },
       );
+      await recordReminder("email");
       return renderHtml(c, lang, remindDetailHtml(lang, ctx, token, testPhase));
     }
     // "wait" is a no-op acknowledgment.
