@@ -74,12 +74,14 @@ Version numbers live in two places and move together:
 
 Building:
 
-1. Once: `./create-upload-key.sh` creates `~/.rentular/rentular-upload.keystore`
-   and generates a random password into `/etc/rentular/android-upload-key.pass`,
-   a file only root can read (sudo asks for your Mac password). The password is
-   never printed and never goes into this repository or into
-   `~/.gradle/gradle.properties`. Back up the keystore and the password (read it
-   with `sudo cat /etc/rentular/android-upload-key.pass`) off this machine.
+1. Once: `./create-upload-key.sh "CN=Your Name, O=Your Organisation, C=BE"`
+   generates a random password into `/etc/rentular/android-upload-key.pass`
+   (owned by root, mode 0400, never shown) and creates
+   `~/.rentular/rentular-upload.keystore` locked with it. It uses sudo. The key
+   and password never go into this repository. Alternatively set the four
+   `RENTULAR_UPLOAD_*` values in `~/.gradle/gradle.properties` or the environment;
+   those take precedence. Without either a release build stops with a message
+   saying what is missing.
 2. `./build-play-release.sh` reads the password with sudo at build time, builds
    the signed bundle into `dist/rentular-<versionName>-<versionCode>.aab` and
    refuses to continue when `versionCode` and `REQUIRED_APP_VERSION` differ.
