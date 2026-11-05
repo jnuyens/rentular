@@ -6,6 +6,10 @@ import { getDb, leases, leaseTenants, payments, properties, propertyManagers } f
 import { getRequiredUserId } from "../lib/routeAuth";
 import { ensureExpectedPayments, depositNoteLike } from "../services/expectedPayments";
 import {
+  loadPastCommunications,
+  loadScheduledCommunications,
+} from "../services/leaseCommunications";
+import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
   canAccessDomain,
@@ -100,8 +104,50 @@ leasesRouter.get("/:id", async (c) => {
   return c.json({ data: { ...result[0], tenantIds: tenantRows.map(t => t.tenantId) } });
 });
 
+// Every message sent for a contract (tenant messages and, flagged apart, the
+// notices to the landlord), newest first, plus what is scheduled to go out.
+// Message bodies hold tenant data, so manager rights or more are required.
+leasesRouter.get("/:id/communications", async (c) => {
+  const id = c.req.param("id");
+  const userId = getRequiredUserId(c);
+  const lease = await db
+    .select({ propertyId: leases.propertyId })
+    .from(leases)
+    .where(eq(leases.id, id))
+    .limit(1);
+  if (!lease[0]) return c.json({ error: "Lease not found" }, 404);
+  const role = await getUserPropertyRole(userId, lease[0].propertyId);
+  if (!role) return c.json({ error: "Lease not found" }, 404);
+  if (!hasMinimumRole(role, "manager")) return c.json({ error: "Insufficient permissions" }, 403);
+
+  const limit = Math.min(500, Math.max(1, Number(c.req.query("limit")) || 100));
+  const offset = Math.max(0, Number(c.req.query("offset")) || 0);
+  try {
+    const past = await loadPastCommunications(db, id, { limit, offset });
+    let scheduled: Awaited<ReturnType<typeof loadScheduledCommunications>> = [];
+    try {
+      scheduled = await loadScheduledCommunications(db, id);
+    } catch (err) {
+      console.error("[Leases] scheduled communications failed:", err);
+    }
+    return c.json({
+      data: {
+        past: past.items,
+        scheduled,
+        total: past.total,
+        lastSevenDays: past.lastSevenDays,
+        limit,
+        offset,
+      },
+    });
+  } catch (err) {
+    console.error("[Leases] communications history failed:", err);
+    return c.json({ error: "Could not load the communication history" }, 500);
+  }
+});
+
 // Create a lease
-leasesRouter.post("/", zValidator("json", createLeaseSchema), async (c) => {
+leasesRouter.post("/",zValidator("json", createLeaseSchema), async (c) => {
   const data = c.req.valid("json");
   const userId = getRequiredUserId(c);
 
