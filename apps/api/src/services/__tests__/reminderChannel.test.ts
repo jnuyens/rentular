@@ -127,6 +127,7 @@ describe("sendReminderViaPreferredChannel (MCP-03, T-11-22)", () => {
       "owner-A",
       "owner@example.com",
       undefined,
+      { trigger: "schedule" },
     );
     expect(queueSms).not.toHaveBeenCalled();
     expect(channel).toBe("email");
@@ -141,6 +142,7 @@ describe("sendReminderViaPreferredChannel (MCP-03, T-11-22)", () => {
       "owner-A",
       "owner@example.com",
       "r@law.be",
+      { trigger: "schedule" },
     );
     expect(channel).toBe("email");
   });

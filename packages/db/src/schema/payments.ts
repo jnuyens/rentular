@@ -75,7 +75,7 @@ export const paymentReminders = mysqlTable("payment_reminders", {
     .notNull()
     .references(() => payments.id),
   type: mysqlEnum("type", ["friendly", "formal", "final"]).notNull(),
-  channel: mysqlEnum("channel", ["email", "sms", "whatsapp", "letter"]).notNull(),
+  channel: mysqlEnum("channel", ["email", "sms", "whatsapp", "letter", "signal"]).notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
   notes: text("notes"),
 });

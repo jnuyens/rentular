@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { computeIndexReferenceMonth } from "@rentular/shared/validation";
-import { FileText, Plus, Search, Users, Pencil, Trash2, ChevronUp, ChevronDown, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { FileText, Plus, Search, Users, Pencil, Trash2, ChevronUp, ChevronDown, MoreHorizontal, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -755,6 +756,12 @@ export default function LeasesPage() {
                               <Pencil className="h-3.5 w-3.5 mr-2" />
                               {t("editLease")}
                             </DropdownMenuItem>
+                            <DropdownMenuItem asChild onClick={(e) => e.stopPropagation()}>
+                              <Link href={`/leases/${lease.id}`}>
+                                <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                                {t("communication")}
+                              </Link>
+                            </DropdownMenuItem>
                             {lease.paymentMethod === "gocardless" && !lease.gocardlessMandateId && (
                               <DropdownMenuItem onClick={(e) => {
                                 e.stopPropagation();
@@ -852,6 +859,12 @@ export default function LeasesPage() {
                       >
                         <Pencil className="h-3 w-3 mr-1" />
                         {t("editLease")}
+                      </Button>
+                      <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                        <Link href={`/leases/${lease.id}`}>
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          {t("communication")}
+                        </Link>
                       </Button>
                       <Button
                         variant="outline"

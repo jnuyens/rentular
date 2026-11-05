@@ -671,6 +671,7 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
           ownerId: user.id,
           leaseId: singleLeaseId ?? undefined,
           type: "indexation_alert",
+          metadata: { leaseIds, trigger: "schedule" },
           recipientName,
         });
         summary.email++;
@@ -731,7 +732,7 @@ async function logWhatsApp(entry: {
         externalId: entry.externalId ?? null,
         errorMessage: entry.errorMessage ?? null,
         sentAt: entry.sentAt ?? null,
-        metadata: { leaseIds: entry.leaseIds },
+        metadata: { leaseIds: entry.leaseIds, trigger: "schedule" },
       });
   } catch (err) {
     console.error("[IndexationAlert] Failed to log WhatsApp communication:", err);

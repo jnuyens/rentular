@@ -35,7 +35,8 @@ import { syncBankConnection } from "../services/bankConnectionSync";
 import { queueEmail } from "./emailQueueWorker";
 import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
-import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
+import { isWhatsAppConfigured } from "../lib/whatsapp";
+import { sendWhatsAppLogged } from "../lib/communicationLog";
 import { getScheduleTimezone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
@@ -48,6 +49,32 @@ import {
 } from "../services/monthReceived";
 import { formatReminderAmount, type RemainderContext } from "../services/reminderText";
 import { sweepRemainderRows } from "../services/remainderRows";
+import { holdForWaitingTransfer, loadWaitingTransfer } from "../services/transferReview";
+import { autoAssignByIban } from "../services/ibanMatcher";
+import { autoAssignByAmount } from "../services/amountMatcher";
+
+/**
+ * Run the account-number and amount matchers over the transfers already
+ * imported, right before tenant reminders go out. The 19:00 sync runs them
+ * too, but if it was slow or failed for one connection, a tenant who paid
+ * would otherwise be reminded on stale data. Local work only: no bank call.
+ */
+async function rematchImportedTransfers(db: ReturnType<typeof getDb>): Promise<void> {
+  const conns = await db
+    .select({ id: bankConnections.id, ownerId: bankConnections.ownerId })
+    .from(bankConnections)
+    .where(eq(bankConnections.status, "active"));
+  let assigned = 0;
+  for (const conn of conns) {
+    try {
+      assigned += await autoAssignByIban(db, conn.ownerId, conn.id);
+      assigned += await autoAssignByAmount(db, conn.ownerId, conn.id);
+    } catch (err) {
+      console.error(`[PaymentCheck] rematch failed for connection ${conn.id}:`, err);
+    }
+  }
+  console.log(`[PaymentCheck] pre-reminder matching: ${assigned} transfer(s) booked`);
+}
 
 const QUEUE_NAME = "payment-check";
 
@@ -280,6 +307,28 @@ async function sendDueDateTenantSms(
       const lang = (tenant.language || "nl") as SupportedLanguage;
       const tpl = (DEFAULT_SMS_TEMPLATES[lang] || DEFAULT_SMS_TEMPLATES.en)!.friendly;
       const tenantName = `${tenant.firstName} ${tenant.lastName}`.trim();
+
+      // A transfer that may already pay this rent is waiting for review: no nudge.
+      const waiting = await loadWaitingTransfer(db, {
+        leaseId: p.leaseId,
+        ownerId: lease.ownerId,
+        dueDate: String(p.dueDate),
+        amount: amountDue,
+      });
+      if (waiting) {
+        await holdForWaitingTransfer(db, {
+          hit: waiting,
+          paymentId: p.paymentId,
+          leaseId: p.leaseId,
+          ownerId: lease.ownerId,
+          tenantName,
+          propertyName: prop?.name || "",
+          amount: amountDue,
+          dueDate: String(p.dueDate),
+          what: "due-date message",
+        });
+        continue;
+      }
       const body = renderTemplate(tpl, {
         tenantName,
         amount: formatReminderAmount(amountDue, lang),
@@ -289,19 +338,17 @@ async function sendDueDateTenantSms(
         ownerName: "",
       });
 
+      const dueLog = {
+        ownerId: lease.ownerId,
+        leaseId: p.leaseId,
+        type: "due_date_sms" as const,
+        recipientName: tenantName,
+        metadata: { trigger: "schedule", paymentId: p.paymentId, amount: amountDue },
+      };
       if (dueChannel === "whatsapp") {
-        await sendWhatsApp({ to: normalizePhoneNumber(tenant.phone), body });
+        await sendWhatsAppLogged({ to: normalizePhoneNumber(tenant.phone), body }, dueLog);
       } else {
-        await queueSms(
-          { to: normalizePhoneNumber(tenant.phone), body },
-          undefined,
-          {
-            ownerId: lease.ownerId,
-            leaseId: p.leaseId,
-            type: "payment_reminder_friendly",
-            recipientName: tenantName,
-          },
-        );
+        await queueSms({ to: normalizePhoneNumber(tenant.phone), body }, undefined, dueLog);
       }
       await db.insert(paymentReminders).values({
         id: crypto.randomUUID(),
@@ -327,6 +374,7 @@ const worker = new Worker(
     // Dedicated evening job (~19:15 local): a friendly due-date SMS to tenants,
     // run after the 19:00 payment sync so people who already paid aren't nudged.
     if (job.name === "due-reminder-sms") {
+      await rematchImportedTransfers(db);
       await sendDueDateTenantSms(db, today);
       return { ok: true };
     }
@@ -343,6 +391,14 @@ const worker = new Worker(
     // Phase A: Overdue payment reminders
     // =======================================================
     console.log("[PaymentCheck] Phase A: Checking overdue payments...");
+
+    // Book any transfer that came in but was not matched yet, so nobody who
+    // paid is reminded.
+    try {
+      await rematchImportedTransfers(db);
+    } catch (err) {
+      console.error("[PaymentCheck] pre-reminder matching failed:", err);
+    }
 
     // A partly paid month gets a pending row for exactly the missing amount
     // first, so it is reminded like any unpaid rent below.
@@ -434,6 +490,36 @@ const worker = new Worker(
         const ownerName =
           ownerData[0]?.name || ownerData[0]?.email || "Your landlord";
 
+        // A transfer that may already pay this rent came in but could not be
+        // booked: send nothing to the tenant, and ask the landlord (once per
+        // payment) to check it on the reconciliation page.
+        const waiting = await loadWaitingTransfer(db, {
+          leaseId: payment.leaseId,
+          ownerId: lease.ownerId,
+          dueDate: String(payment.dueDate),
+          amount: amountDue,
+        });
+        if (waiting) {
+          const reviewRecipients = await getLandlordNotificationRecipients(
+            lease.propertyId,
+            ownerData[0]?.email,
+          );
+          await holdForWaitingTransfer(db, {
+            hit: waiting,
+            paymentId: payment.paymentId,
+            leaseId: payment.leaseId,
+            ownerId: lease.ownerId,
+            tenantName: `${tenant.firstName} ${tenant.lastName}`.trim(),
+            propertyName,
+            amount: amountDue,
+            dueDate: String(payment.dueDate),
+            to: reviewRecipients.to || undefined,
+            cc: reviewRecipients.cc || undefined,
+            what: "tenant reminder",
+          });
+          continue;
+        }
+
         // Email the landlord (with one-click action links) the first time this
         // payment is seen late, if enabled for the contract. Once per payment.
         if (lease.landlordLateNotify && !payment.landlordNotifiedAt) {
@@ -449,6 +535,8 @@ const worker = new Worker(
             );
             try {
               await sendLandlordLateEmail({
+                ownerId: lease.ownerId,
+                leaseId: lease.id,
                 paymentId: payment.paymentId,
                 to: recipients.to,
                 cc: recipients.cc,
@@ -609,6 +697,8 @@ const worker = new Worker(
             const channel = resolveReminderChannel(tenant.preferredChannel, tenant.phone);
             try {
               await sendLandlordLateEmail({
+                ownerId: lease.ownerId,
+                leaseId: lease.id,
                 paymentId: payment.paymentId,
                 to: recipients.to,
                 cc: recipients.cc,
@@ -769,6 +859,8 @@ const worker = new Worker(
         if (!recipients.to) continue;
 
         await sendLandlordLateEmail({
+          ownerId: lease.ownerId,
+          leaseId: lease.id,
           paymentId: payment.paymentId,
           to: recipients.to,
           cc: recipients.cc,

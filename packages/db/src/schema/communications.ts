@@ -21,7 +21,7 @@ export const communications = mysqlTable("communications", {
   leaseId: varchar("lease_id", { length: 36 })
     .references(() => leases.id),
   // Channel
-  channel: mysqlEnum("channel", ["email", "sms", "letter", "whatsapp"]).notNull(),
+  channel: mysqlEnum("channel", ["email", "sms", "letter", "whatsapp", "signal"]).notNull(),
   // Type of communication
   type: mysqlEnum("type", [
     "payment_reminder_friendly",
@@ -35,6 +35,8 @@ export const communications = mysqlTable("communications", {
     "lease_termination",
     "other",
     "indexation_alert", // Landlord/manager notice that an indexation is due
+    "landlord_notification", // Late-payment, due-date and review notices to the landlord
+    "due_date_sms",     // Short nudge to the tenant on the due date
   ]).notNull(),
   // Recipient info
   recipientName: varchar("recipient_name", { length: 255 }).notNull(),

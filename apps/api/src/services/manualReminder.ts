@@ -12,11 +12,24 @@ import type { SupportedLanguage } from "@rentular/shared";
 import { DEFAULT_SETTINGS, type ReminderLevel } from "./paymentFollowUp";
 import { sendReminderViaPreferredChannel, type ReminderChannel } from "./reminderChannel";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import type { TriggerMeta } from "../lib/communicationLog";
 import { indexationDateFor, loadIndexRecords, loadMonthStatus } from "./monthReceived";
 import type { RemainderContext } from "./reminderText";
+import { loadWaitingTransfer } from "./transferReview";
+
+/** An unbooked incoming transfer that may already pay the reminded rent. */
+export type WaitingTransferWarning = { amount: number; bookingDate: string; statementId: string };
 
 export type ManualReminderResult =
-  | { ok: true; sentTo: string; testPhase: boolean; level: ReminderLevel; channel: ReminderChannel }
+  | {
+      ok: true;
+      sentTo: string;
+      testPhase: boolean;
+      level: ReminderLevel;
+      channel: ReminderChannel;
+      /** Set when a transfer that may pay this rent waits for review. The reminder was still sent. */
+      waitingTransfer?: WaitingTransferWarning;
+    }
   | { ok: false; error: string };
 
 /**
@@ -33,6 +46,8 @@ export async function sendManualReminder(input: {
   periodMonth: string; // YYYY-MM
   level: ReminderLevel;
   ownerId: string;
+  /** Who sent it: a person in the app (manual) or an API token (api). */
+  trigger?: TriggerMeta;
 }): Promise<ManualReminderResult> {
   const db = getDb();
   const m = /^(\d{4})-(\d{2})$/.exec(input.periodMonth);
@@ -186,6 +201,7 @@ export async function sendManualReminder(input: {
     ownerEmail: ownerRow[0]?.email,
     preferredChannel: tenant.preferredChannel,
     cc: rec.cc,
+    trigger: input.trigger ?? { trigger: "manual", triggeredBy: input.ownerId },
   });
 
   await db.insert(paymentReminders).values({
@@ -206,11 +222,27 @@ export async function sendManualReminder(input: {
       : isTest
         ? ownerRow[0]?.email || ""
         : tenantEmail;
+  // A person chose to send this, so it is never blocked; the landlord is
+  // warned instead when a transfer that may pay it waits for review.
+  let waitingTransfer: WaitingTransferWarning | undefined;
+  try {
+    const hit = await loadWaitingTransfer(db, {
+      leaseId: input.leaseId,
+      ownerId: lease.ownerId,
+      dueDate: dueForTemplate,
+      amount,
+    });
+    if (hit) waitingTransfer = { amount: hit.amount, bookingDate: hit.bookingDate, statementId: hit.id };
+  } catch (err) {
+    console.warn("[ManualReminder] waiting transfer check failed:", err);
+  }
+
   return {
     ok: true,
     sentTo,
     testPhase: isTest,
     level: input.level,
     channel: usedChannel,
+    ...(waitingTransfer ? { waitingTransfer } : {}),
   };
 }

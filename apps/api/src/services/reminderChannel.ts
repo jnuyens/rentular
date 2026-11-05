@@ -1,6 +1,7 @@
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
-import { isWhatsAppConfigured, sendWhatsApp } from "../lib/whatsapp";
+import { isWhatsAppConfigured } from "../lib/whatsapp";
+import { sendWhatsAppLogged, type TriggerMeta } from "../lib/communicationLog";
 import { queueSms } from "../jobs/smsQueueWorker";
 import type { CommunicationMeta } from "../jobs/emailQueueWorker";
 import { getTemplateVariables, sendReminder, type ReminderLevel } from "./paymentFollowUp";
@@ -70,17 +71,31 @@ export async function sendReminderViaPreferredChannel(input: {
   preferredChannel: ReminderChannel | null | undefined;
   /** Co-tenant addresses to copy on the email; SMS and WhatsApp ignore it. */
   cc?: string;
+  /** Who set the reminder off; the automatic schedule when omitted. */
+  trigger?: TriggerMeta;
 }): Promise<ReminderChannel> {
   const { payment, level, settings, ownerId, ownerEmail } = input;
+  const trigger: TriggerMeta = input.trigger ?? { trigger: "schedule" };
   const phone = payment.tenantPhone;
   const channel = resolveReminderChannel(input.preferredChannel, phone);
   const shortVars = getTemplateVariables(payment, settings, "short");
+  const type = `payment_reminder_${level}` as CommunicationMeta["type"];
+  const metadata = {
+    trigger: trigger.trigger,
+    ...(trigger.triggeredBy ? { triggeredBy: trigger.triggeredBy } : {}),
+    paymentId: payment.paymentId,
+    level,
+    amount: payment.amount,
+  };
 
   if (channel === "whatsapp" && phone) {
-    await sendWhatsApp({
-      to: normalizePhoneNumber(phone),
-      body: shortReminderBody(payment.tenantLanguage, level, shortVars),
-    });
+    await sendWhatsAppLogged(
+      {
+        to: normalizePhoneNumber(phone),
+        body: shortReminderBody(payment.tenantLanguage, level, shortVars),
+      },
+      { ownerId, leaseId: payment.leaseId, type, recipientName: payment.tenantName, metadata },
+    );
     return "whatsapp";
   }
 
@@ -88,16 +103,11 @@ export async function sendReminderViaPreferredChannel(input: {
     await queueSms(
       { to: normalizePhoneNumber(phone), body: shortReminderBody(payment.tenantLanguage, level, shortVars) },
       undefined,
-      {
-        ownerId,
-        leaseId: payment.leaseId,
-        type: `payment_reminder_${level}` as CommunicationMeta["type"],
-        recipientName: payment.tenantName,
-      },
+      { ownerId, leaseId: payment.leaseId, type, recipientName: payment.tenantName, metadata },
     );
     return "sms";
   }
 
-  await sendReminder(payment, level, settings, ownerId, ownerEmail, input.cc);
+  await sendReminder(payment, level, settings, ownerId, ownerEmail, input.cc, trigger);
   return "email";
 }

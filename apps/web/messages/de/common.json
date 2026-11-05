@@ -293,7 +293,8 @@
     "depositHelp": "Mietkaution. Standardmaessig 2x die Monatsmiete; bei Bedarf anpassen.",
     "depositTwoMonths": "Auf 2x die Monatsmiete setzen",
     "priorPaymentsSettled": "Kaution und frühere Zahlungen bereits geleistet",
-    "priorPaymentsSettledHelp": "Dieser Vertrag begann, bevor er hier angelegt wurde. Lassen Sie dies aktiviert, wenn die Kaution und die Miete bis heute bereits bezahlt wurden, damit nichts aus der Vergangenheit als offen gilt."
+    "priorPaymentsSettledHelp": "Dieser Vertrag begann, bevor er hier angelegt wurde. Lassen Sie dies aktiviert, wenn die Kaution und die Miete bis heute bereits bezahlt wurden, damit nichts aus der Vergangenheit als offen gilt.",
+    "communication": "Kommunikation"
   },
   "indexation": {
     "title": "Mietindexierung",
@@ -1372,7 +1373,9 @@
     "quickMessage": "Mieter anschreiben",
     "quickMaintenance": "Wartung melden",
     "infoTitle": "Sorgenfrei vermieten in Belgien",
-    "infoText": "SEPA-Lastschrift, korrekte Indexierung und klare Nachverfolgung jeder Zahlung. Und der Code ist Open Source."
+    "infoText": "SEPA-Lastschrift, korrekte Indexierung und klare Nachverfolgung jeder Zahlung. Und der Code ist Open Source.",
+    "reminderTransferWaiting": "Hinweis: Eine Überweisung von {amount} vom {date} begleicht diese Miete vielleicht schon und wartet auf der Seite Abgleich.",
+    "communication": "Kommunikation"
   },
   "ledger": {
     "title": "Mietenbuch",
@@ -1424,5 +1427,80 @@
     "reductionRemoved": "Ermäßigung entfernt",
     "saveReduction": "Speichern",
     "rentFree": "Mietfreie Zeit"
+  },
+  "contractComms": {
+    "title": "Kommunikation",
+    "back": "Zurück",
+    "loadError": "Der Kommunikationsverlauf konnte nicht geladen werden",
+    "lastSevenDays": "{count, plural, =0 {Keine Nachrichten an den Mieter in den letzten 7 Tagen} one {1 Nachricht an den Mieter in den letzten 7 Tagen} other {# Nachrichten an den Mieter in den letzten 7 Tagen}}",
+    "scheduledTitle": "Geplant",
+    "scheduledEmpty": "Für diesen Vertrag ist nichts geplant.",
+    "timeNote": "Uhrzeiten in Brüsseler Zeit.",
+    "sentTitle": "Gesendet",
+    "sentEmpty": "Für diesen Vertrag wurde noch nichts gesendet.",
+    "landlordTitle": "Mitteilungen an Sie",
+    "landlordEmpty": "Noch keine Mitteilungen an Sie zu diesem Vertrag.",
+    "allChannels": "Alle Kanäle",
+    "allKinds": "Alle Arten",
+    "loadMore": "Ältere Nachrichten anzeigen",
+    "to": "An",
+    "cc": "CC",
+    "showBody": "Nachricht anzeigen",
+    "hideBody": "Nachricht ausblenden",
+    "testPhase": "Testmail, an Sie statt an den Mieter gesendet",
+    "forDue": "Miete vom {date}",
+    "toLandlord": "an Sie",
+    "channel": {
+      "email": "E-Mail",
+      "sms": "SMS",
+      "whatsapp": "WhatsApp",
+      "signal": "Signal",
+      "letter": "Brief"
+    },
+    "status": {
+      "queued": "In Warteschlange",
+      "sent": "Gesendet",
+      "delivered": "Zugestellt",
+      "failed": "Fehlgeschlagen",
+      "bounced": "Unzustellbar"
+    },
+    "trigger": {
+      "schedule": "automatisch",
+      "manual": "von Hand gesendet",
+      "manualBy": "von {name}",
+      "magic_link": "über den E-Mail-Link",
+      "api": "über die API",
+      "apiBy": "über die API, von {name}"
+    },
+    "kind": {
+      "payment_reminder_friendly": "Freundliche Erinnerung",
+      "payment_reminder_formal": "Förmliche Mahnung",
+      "payment_reminder_final": "Dritte Mahnung",
+      "indexation_notification": "Indexierungsschreiben",
+      "landlord_report": "Bericht",
+      "custom": "Nachricht",
+      "welcome": "Willkommen",
+      "lease_renewal": "Verlängerung",
+      "lease_termination": "Kündigung",
+      "other": "Sonstiges",
+      "indexation_alert": "Indexierungshinweis",
+      "landlord_notification": "Mitteilung an Sie",
+      "due_date_sms": "Nachricht am Fälligkeitstag",
+      "landlord_final_pending": "Hinweis vor der dritten Mahnung",
+      "landlord_late": "Hinweis auf Zahlungsverzug"
+    },
+    "landlordKind": {
+      "late": "Hinweis auf Zahlungsverzug",
+      "due": "Miete heute fällig",
+      "final_pending": "Hinweis vor der dritten Mahnung",
+      "transfer_review": "Überweisung zu prüfen"
+    },
+    "condition": {
+      "if_unpaid": "Nur wenn sie noch nicht bezahlt ist",
+      "if_unpaid_on_due_date": "Nur wenn sie am Fälligkeitstag nicht bezahlt ist",
+      "if_unpaid_unless_held": "Nur wenn sie noch nicht bezahlt ist und Sie die Mahnung nicht zurückhalten",
+      "if_index_published": "Sobald der neue Gesundheitsindex veröffentlicht ist, falls die Indexierung noch nicht angewendet wurde",
+      "on_hold_transfer_review": "Angehalten: Eine Überweisung wartet auf der Seite Abgleich auf Sie"
+    }
   }
 }

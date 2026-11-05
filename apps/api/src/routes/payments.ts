@@ -1180,7 +1180,15 @@ paymentsRouter.post(
     }
 
     try {
-      const result = await sendManualReminder({ leaseId, periodMonth: month, level, ownerId: userId });
+      // A request authenticated by an API token (MCP tools) is logged as such.
+      const viaToken = !!c.get("tokenId");
+      const result = await sendManualReminder({
+        leaseId,
+        periodMonth: month,
+        level,
+        ownerId: userId,
+        trigger: { trigger: viaToken ? "api" : "manual", triggeredBy: userId },
+      });
       if (!result.ok) return c.json({ error: result.error }, 400);
       return c.json({ data: result });
     } catch (err) {
