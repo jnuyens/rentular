@@ -225,6 +225,8 @@ None yet.
 | 261104-qhe | Visual redesign (tasks 1-3): navy/green design tokens, sidebar, overview with 12-month chart, portfolio, to-do, quick actions; new marketing homepage; Android navy/green theme | 2026-11-05 | 5e9feb7 | [261104-qhe-redesign-look-and-feel-of-website-app-an](./quick/261104-qhe-redesign-look-and-feel-of-website-app-an/) |
 | 261105-lgo | 12-month chart equals the overview Betaald per month (shared monthTotals), transparent logo everywhere, new key image | 2026-11-05 | 6c9ce17 | [261105-lgo-chart-matches-overview-logo-and-key-fixes](./quick/261105-lgo-chart-matches-overview-logo-and-key-fixes/) |
 | 261105-com | Never remind a tenant whose payment is in the bank (shortfall matching + unmatched-transfer hold); every message logged per contract; /leases/[id] communication history with schedule | 2026-11-05 | 245ccc3 | [261105-com-contract-communication-history](./quick/261105-com-contract-communication-history/) |
+| 261106-tzs | All timestamps stored/read as true UTC (UTC DB sessions + one-off correction script), today and display in the location time zone | 2026-11-06 | a6b0ac3 | [261106-tzs-timestamps-utc-and-location-aware-display](./quick/261106-tzs-timestamps-utc-and-location-aware-display/) |
+| 261106-bal | Reminders follow the contract balance (credit, arrears marking), every known-tenant transfer booked oldest month first | 2026-11-06 | f7713e3 | [261106-bal-contract-balance-reminders-and-odd-amounts](./quick/261106-bal-contract-balance-reminders-and-odd-amounts/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
