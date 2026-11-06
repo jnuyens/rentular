@@ -14,6 +14,7 @@ import {
   MANDATE_TERMINAL_STATUSES,
   type PaymentStatus,
 } from "../services/paymentStateMachine";
+import { todayInZone } from "../lib/timezone";
 
 export const webhooksRouter = new Hono();
 
@@ -150,7 +151,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
     const transitioned = await transitionPayment(payment.id, internalStatus, {
       paidDate:
         internalStatus === "paid"
-          ? new Date().toISOString().split("T")[0]
+          ? todayInZone()
           : undefined,
     });
 
@@ -181,7 +182,7 @@ async function handlePaymentEvent(event: GoCardlessEvent): Promise<void> {
         leaseId: lease.id,
         status: internalStatus,
         amount: "0.00",
-        dueDate: new Date().toISOString().split("T")[0],
+        dueDate: todayInZone(),
         method: "gocardless",
         gocardlessPaymentId: gcPaymentId,
         notes:
@@ -226,7 +227,7 @@ async function handleMandateEvent(event: GoCardlessEvent): Promise<void> {
       .where(eq(leases.gocardlessMandateId, mandateId));
 
     for (const lease of affectedLeases) {
-      const flagNote = `Mandate ${mandateId} ${event.action} on ${new Date().toISOString().split("T")[0]} -- SEPA collection stopped, action required.`;
+      const flagNote = `Mandate ${mandateId} ${event.action} on ${todayInZone()} -- SEPA collection stopped, action required.`;
       const updatedNotes = lease.notes
         ? `${lease.notes}\n${flagNote}`
         : flagNote;

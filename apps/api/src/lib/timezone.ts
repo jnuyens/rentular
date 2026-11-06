@@ -36,3 +36,43 @@ export function resolveTimezone(opts?: {
 export function getScheduleTimezone(): string {
   return DEFAULT_TIMEZONE;
 }
+
+/**
+ * The calendar date (YYYY-MM-DD) of an instant as seen in a timezone. Use this
+ * instead of `toISOString().slice(0, 10)`, which gives the UTC date and is a day
+ * behind in Brussels between 00:00 and 01:00/02:00 local time.
+ */
+export function ymdInZone(at: Date, tz: string = DEFAULT_TIMEZONE): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(at);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** Today's calendar date (YYYY-MM-DD) in a timezone (default: platform zone). */
+export function todayInZone(tz: string = DEFAULT_TIMEZONE, now: Date = new Date()): string {
+  return ymdInZone(now, tz);
+}
+
+/** Day of the month (1-31) of an instant in a timezone. */
+export function dayOfMonthInZone(at: Date, tz: string = DEFAULT_TIMEZONE): number {
+  return Number(ymdInZone(at, tz).slice(8, 10));
+}
+
+/**
+ * Normalize a TIMESTAMP value to an ISO 8601 UTC string ending in Z. Database
+ * sessions run in UTC, so a zone-less "YYYY-MM-DD HH:MM:SS" string from a raw
+ * query is a UTC wall clock and must not be parsed as server-local time.
+ */
+export function toUtcIso(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value.toISOString();
+  const s = String(value).trim();
+  const zoneLess = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s);
+  const d = new Date(zoneLess ? `${s.replace(" ", "T")}Z` : s);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { KeyRound, Copy, Trash2, Plus, Check } from "lucide-react";
 import type { ApiTokenPublic, ApiTokenScope } from "@rentular/shared";
-import { formatDate } from "@/lib/dateLocale";
+import { formatDate, formatDateTime } from "@/lib/dateLocale";
 import {
   Card,
   CardContent,
@@ -280,7 +280,7 @@ export function ApiTokensCard({ apiUrl }: { apiUrl: string }) {
                   <TableCell>{formatDate(token.createdAt)}</TableCell>
                   <TableCell>
                     {token.lastUsedAt
-                      ? formatDate(token.lastUsedAt)
+                      ? formatDateTime(token.lastUsedAt)
                       : t("tokenNeverUsed")}
                   </TableCell>
                   <TableCell>

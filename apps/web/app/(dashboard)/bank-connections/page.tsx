@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
+import { formatDateTime } from "@/lib/dateLocale";
 
 interface BankConnection {
   id: string;
@@ -43,13 +44,7 @@ function daysUntil(dateStr: string | null): number | null {
 }
 
 function relativeTime(dateStr: string | null): string {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  } catch {
-    return dateStr;
-  }
+  return dateStr ? formatDateTime(dateStr) : "";
 }
 
 export default function BankConnectionsPage() {

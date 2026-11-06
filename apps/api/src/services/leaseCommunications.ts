@@ -12,7 +12,7 @@ import { REMINDER_DEFAULTS } from "@rentular/shared";
 import { LANDLORD_TYPES, type CommunicationType } from "../lib/communicationLog";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
-import { getScheduleTimezone } from "../lib/timezone";
+import { getScheduleTimezone, toUtcIso } from "../lib/timezone";
 import { isSmsConfigured } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
 import { isDepositNote } from "./expectedPayments";
@@ -75,9 +75,7 @@ export type ScheduledCommunication = {
 };
 
 function iso(v: unknown): string | null {
-  if (!v) return null;
-  const d = v instanceof Date ? v : new Date(String(v));
-  return isNaN(d.getTime()) ? null : d.toISOString();
+  return toUtcIso(v);
 }
 
 function asMeta(v: unknown): Record<string, unknown> {

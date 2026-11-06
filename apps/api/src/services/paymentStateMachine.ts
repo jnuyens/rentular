@@ -1,5 +1,6 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { getDb, payments, leases } from "@rentular/db";
+import { todayInZone } from "../lib/timezone";
 
 // Rentular internal payment statuses (must match payments.status enum)
 export type PaymentStatus = "pending" | "processing" | "paid" | "failed" | "cancelled" | "refunded";
@@ -77,7 +78,7 @@ export async function transitionPayment(
   if (metadata?.paidDate) {
     updateData.paidDate = metadata.paidDate;
   } else if (newStatus === "paid" && !payment.paidDate) {
-    updateData.paidDate = new Date().toISOString().split("T")[0];
+    updateData.paidDate = todayInZone();
   }
 
   if (metadata?.gocardlessPaymentId) {

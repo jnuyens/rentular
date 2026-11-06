@@ -19,10 +19,9 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate } from "@/lib/dateLocale";
+import { formatDate, formatDateTime } from "@/lib/dateLocale";
 import { eur } from "@/components/overview/format";
 
-const TZ = "Europe/Brussels";
 const PAGE_SIZE = 100;
 
 interface PastItem {
@@ -67,24 +66,6 @@ interface HistoryData {
   scheduled: ScheduledItem[];
   total: number;
   lastSevenDays: number;
-}
-
-/** dd/mm/yyyy HH:mm of an instant, in Brussels time. */
-function brusselsDateTime(isoValue: string | null): string {
-  if (!isoValue) return "";
-  const d = new Date(isoValue);
-  if (isNaN(d.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${formatDate(`${get("year")}-${get("month")}-${get("day")}`)} ${get("hour")}:${get("minute")}`;
 }
 
 function ChannelIcon({ channel }: { channel: string }) {
@@ -208,7 +189,7 @@ export default function LeaseCommunicationPage() {
               <p className="text-sm font-medium">
                 {kindLabel(item.type, item.kind)}
                 <span className="ml-2 font-normal text-muted-foreground">
-                  {brusselsDateTime(item.sentAt || item.createdAt)}
+                  {formatDateTime(item.sentAt || item.createdAt)}
                 </span>
               </p>
               {item.subject && <p className="truncate text-sm">{item.subject}</p>}

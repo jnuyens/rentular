@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatDate } from "@/lib/dateLocale";
+import { formatDate, monthInZone } from "@/lib/dateLocale";
 import { useDashboardUser } from "@/components/DashboardUserContext";
 import KpiCard from "@/components/overview/KpiCard";
 import ProgressRing from "@/components/overview/ProgressRing";
@@ -198,11 +198,11 @@ export default function OverviewPage() {
   }, [openBucket]);
 
   const shiftMonth = (delta: number) => {
-    const base = data?.month ?? new Date().toISOString().slice(0, 7);
+    const base = data?.month ?? monthInZone();
     const [yy, mm] = base.split("-").map(Number);
     const d = new Date(yy, (mm - 1) + delta, 1);
     const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const nowM = new Date().toISOString().slice(0, 7);
+    const nowM = monthInZone();
     setMonth(next === nowM ? null : next);
     setOpenBucket(null);
   };
@@ -212,7 +212,7 @@ export default function OverviewPage() {
     method: "cash" | "bank_transfer" | "other",
     month?: string,
   ) => {
-    const periodMonth = month ?? data?.month ?? new Date().toISOString().slice(0, 7);
+    const periodMonth = month ?? data?.month ?? monthInZone();
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/mark-month-paid`, {
         method: "POST",
@@ -233,7 +233,7 @@ export default function OverviewPage() {
   };
 
   const sendReminder = async (leaseId: string, level: ReminderLevel, month?: string) => {
-    const periodMonth = month ?? data?.month ?? new Date().toISOString().slice(0, 7);
+    const periodMonth = month ?? data?.month ?? monthInZone();
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/send-reminder`, {
         method: "POST",

@@ -11,6 +11,7 @@ import {
   hasMinimumRole,
 } from "../lib/propertyAccess";
 import type { PropertyManagerRole } from "@rentular/shared";
+import { todayInZone } from "../lib/timezone";
 
 const db = getDb();
 
@@ -28,10 +29,10 @@ const createMaintenanceSchema = z.object({
 function computeNextDue(lastCompleted: string | undefined, intervalMonths: number): string {
   if (lastCompleted) {
     const d = new Date(lastCompleted);
-    d.setMonth(d.getMonth() + intervalMonths);
+    d.setUTCMonth(d.getUTCMonth() + intervalMonths);
     return d.toISOString().split("T")[0];
   }
-  return new Date().toISOString().split("T")[0];
+  return todayInZone();
 }
 
 function computeStatus(nextDue: string): "ok" | "due_soon" | "overdue" {
@@ -152,7 +153,7 @@ maintenanceRouter.post("/:id/complete", async (c) => {
     return c.json({ error: "Insufficient permissions" }, 403);
   }
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayInZone();
   const nextDue = computeNextDue(today, task[0].intervalMonths);
 
   await db.update(maintenanceTasks).set({ lastCompleted: today, nextDue })

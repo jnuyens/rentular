@@ -23,6 +23,7 @@ import { eq, and, or, isNull, gt, lt, desc } from "drizzle-orm";
 import { getDb, apiTokens } from "@rentular/db";
 import { API_TOKEN_PREFIX } from "@rentular/shared";
 import type { ApiTokenScope, ApiTokenPublic } from "@rentular/shared";
+import { toUtcIso } from "./timezone";
 
 const MIN_PEPPER_LENGTH = 16;
 const TOUCH_THROTTLE_MS = 3_600_000; // update last_used_at at most once per hour
@@ -62,10 +63,7 @@ export function hashToken(raw: string): string {
 }
 
 function toIso(value: Date | string | null | undefined): string | null {
-  if (!value) return null;
-  return value instanceof Date
-    ? value.toISOString()
-    : new Date(value).toISOString();
+  return toUtcIso(value);
 }
 
 function toPublic(row: TokenRow): ApiTokenPublic {

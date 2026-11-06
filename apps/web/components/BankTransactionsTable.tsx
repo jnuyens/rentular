@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDate } from "@/lib/dateLocale";
 
 export interface LinkedPayment {
   id: string;
@@ -66,14 +67,7 @@ interface BankTransactionsTableProps {
 }
 
 function fmtDate(dateStr: string | null): string {
-  if (!dateStr) return "---";
-  try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  } catch {
-    return dateStr;
-  }
+  return dateStr ? formatDate(dateStr) || dateStr : "---";
 }
 
 function fmtAmount(amount: number, currency: string): string {

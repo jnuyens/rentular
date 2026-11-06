@@ -9,6 +9,7 @@ import {
   getUserPropertyRole,
   hasMinimumRole,
 } from "../lib/propertyAccess";
+import { todayInZone } from "../lib/timezone";
 
 const db = getDb();
 
@@ -164,7 +165,7 @@ rentAdjustmentsRouter.get("/deductions", async (c) => {
   }
 
   if (active === "true") {
-    const today = new Date().toISOString().split("T")[0]!;
+    const today = todayInZone();
     // Active means: startDate <= today AND (endDate is null OR endDate >= today)
     conditions.push(lte(rentDeductions.startDate, today));
     conditions.push(or(isNull(rentDeductions.endDate), gte(rentDeductions.endDate, today))!);

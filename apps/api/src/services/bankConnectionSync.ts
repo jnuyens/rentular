@@ -37,6 +37,7 @@ import { processIncomingTransactions } from "./transactionMatcher";
 import { autoAssignByIban } from "./ibanMatcher";
 import { autoAssignByAmount } from "./amountMatcher";
 import type { IncomingTransaction } from "../lib/bankAccountData";
+import { ymdInZone } from "../lib/timezone";
 
 export interface SyncResult {
   fetched: number;
@@ -65,7 +66,7 @@ function decryptTriplet(
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().split("T")[0]!;
+  return ymdInZone(d);
 }
 
 // Per-connection in-flight lock. Refresh tokens are single-use (Ibanity), so two

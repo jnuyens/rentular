@@ -19,6 +19,7 @@ import {
   signIndexationSnoozeToken,
   type SnoozeOption,
 } from "../lib/indexationSnoozeToken";
+import { ymdInZone } from "../lib/timezone";
 
 // Daily "indexation due" digest for landlords and property managers.
 // The decision functions below are pure so they can be unit tested without a
@@ -100,7 +101,7 @@ export function alertCycleDate(
   today: Date = new Date()
 ): string {
   const [y, m, d] = startDate.split("-").map(Number) as [number, number, number];
-  const todayStr = today.toISOString().split("T")[0]!;
+  const todayStr = ymdInZone(today);
   let year = Number(todayStr.slice(0, 4));
   const pad = (n: number) => String(n).padStart(2, "0");
   let anniversary = `${year}-${pad(m)}-${pad(d)}`;

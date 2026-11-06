@@ -27,6 +27,7 @@ import {
   tenants,
 } from "@rentular/db";
 import { decrypt } from "./encryption";
+import { toUtcIso } from "./timezone";
 
 type Db = ReturnType<typeof getDb>;
 
@@ -98,9 +99,7 @@ function toIsoDate(value: unknown): string | null {
 }
 
 function toIsoDateTime(value: unknown): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) return value.toISOString();
-  return String(value);
+  return toUtcIso(value);
 }
 
 /**

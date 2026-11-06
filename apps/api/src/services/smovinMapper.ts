@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { todayInZone } from "../lib/timezone";
 
 // Smovin scraped data types (input shapes from discovery worker)
 
@@ -436,7 +437,7 @@ export function mapSmovinLease(
     : startDate;
 
   // Fallback for missing startDate — use today so the user can fix it later
-  const effectiveStartDate = startDate || new Date().toISOString().split("T")[0];
+  const effectiveStartDate = startDate || todayInZone();
   if (!startDate) {
     console.warn(
       `[SmovinMapper] Lease has no startDate (raw: "${smovinLease.startDate}"), using today as fallback`,
