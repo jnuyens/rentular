@@ -128,6 +128,7 @@ export function ContractBalanceCard({ leaseId }: { leaseId: string }) {
             {data.arrearsRepaid > 0 && <> {t("arrearsNote", { amount: eur(data.arrearsRepaid) })}</>}
           </p>
         )}
+        {data.fromMonth && <p className="text-xs text-muted-foreground">{t("windowNote")}</p>}
 
         <div>
           <h3 className="text-sm font-semibold">{t("paymentsTitle")}</h3>

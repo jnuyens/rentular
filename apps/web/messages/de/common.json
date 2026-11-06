@@ -1512,6 +1512,7 @@
     "even": "Alles erledigt: nichts offen",
     "summary": "Fällige Miete seit {month}: {expected}. Erhalten: {received}.",
     "arrearsNote": "Davon wurden {amount} als Abzahlung älterer Rückstände markiert. Das zählt nicht als Guthaben.",
+    "windowNote": "Gezählt ab dem Monat, für den die erste hier eingegangene Zahlung gilt. Offene Monate davor wurden bezahlt, bevor die Bankdaten vorlagen, und werden nie angemahnt.",
     "explain": "Geld, mit dem Rückstände aus der Zeit vor der Erfassung dieses Vertrags in Rentular abgezahlt werden, ist kein Guthaben für spätere Monate. Markieren Sie es hier, damit die Erinnerungen stimmen.",
     "paymentsTitle": "Erhaltene Zahlungen",
     "noPayments": "Noch keine Zahlungen erhalten.",
