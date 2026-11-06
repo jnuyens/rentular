@@ -1,5 +1,5 @@
-import { eq, and, asc } from "drizzle-orm";
-import { getDb, bankStatements, payments } from "@rentular/db";
+import { eq, and, asc, inArray } from "drizzle-orm";
+import { getDb, bankStatements, leases, payments } from "@rentular/db";
 import { decryptOrNull, type StatementRow } from "../lib/bankTransactionView";
 import {
   normalizeIban,
@@ -79,11 +79,54 @@ function maskIban(iban: string): string {
   return iban.length > 4 ? `****${iban.slice(-4)}` : iban;
 }
 
+/** The digits of a Belgian structured communication, or "" when it has fewer than 12. */
+function commDigits(v: string | null | undefined): string {
+  const d = (v ?? "").replace(/[^0-9]/g, "");
+  return d.length >= 12 ? d : "";
+}
+
+/**
+ * The owner's active leases whose structured communication (on the lease or
+ * on one of its pending payments) equals `digits`.
+ */
+async function findLeasesByStructuredCommunication(
+  db: Db,
+  ownerId: string,
+  digits: string,
+): Promise<Array<{ leaseId: string; monthlyRent: string }>> {
+  const leaseRows = await db
+    .select({
+      leaseId: leases.id,
+      monthlyRent: leases.monthlyRent,
+      comm: leases.structuredCommunication,
+    })
+    .from(leases)
+    .where(and(eq(leases.ownerId, ownerId), eq(leases.status, "active")));
+  const paymentRows = await db
+    .select({ leaseId: payments.leaseId, comm: payments.structuredCommunication })
+    .from(payments)
+    .innerJoin(leases, eq(leases.id, payments.leaseId))
+    .where(
+      and(eq(leases.ownerId, ownerId), eq(leases.status, "active"), eq(payments.status, "pending")),
+    );
+  const ids = new Set<string>();
+  for (const r of leaseRows) if (commDigits(r.comm) === digits) ids.add(r.leaseId);
+  for (const r of paymentRows) if (commDigits(r.comm) === digits) ids.add(r.leaseId);
+  return leaseRows
+    .filter((r) => ids.has(r.leaseId))
+    .map((r) => ({ leaseId: r.leaseId, monthlyRent: String(r.monthlyRent) }));
+}
+
 /**
  * Second matching pass, after the structured-communication matcher: assign
- * still-unmatched incoming credits whose sender IBAN is a known tenant account.
+ * still-unbooked incoming credits from a known tenant: the sender IBAN is a
+ * known tenant account, or the transfer carries a lease's structured
+ * communication. Transfers the first pass flagged as a different amount are
+ * looked at too, as long as they are not linked to a payment.
  *
- * - IBAN maps to exactly one active lease  -> auto-assign.
+ * - The tenant maps to exactly one active lease -> auto-assign. The amount
+ *   need not fit: an odd amount is booked on the oldest open month (see
+ *   assignStatementToLease, knownTenant).
  * - IBAN maps to several leases (e.g. a parent paying two student rooms) ->
  *   disambiguate by amount; assign only when exactly one lease's expected
  *   amount matches the transfer, otherwise leave it for manual review.
@@ -95,15 +138,17 @@ export async function autoAssignByIban(
   ownerId: string,
   connectionId: string,
 ): Promise<number> {
-  const rows = (await db
-    .select()
-    .from(bankStatements)
-    .where(
-      and(
-        eq(bankStatements.connectionId, connectionId),
-        eq(bankStatements.matchStatus, "unmatched"),
-      ),
-    )) as StatementRow[];
+  const rows = (
+    (await db
+      .select()
+      .from(bankStatements)
+      .where(
+        and(
+          eq(bankStatements.connectionId, connectionId),
+          inArray(bankStatements.matchStatus, ["unmatched", "mismatched_amount"]),
+        ),
+      )) as StatementRow[]
+  ).filter((s) => s.matchStatus === "unmatched" || !s.matchedPaymentId);
 
   let assigned = 0;
 
@@ -118,9 +163,15 @@ export async function autoAssignByIban(
         statement.counterpartyIbanAuthTag,
       ),
     );
-    if (!iban) continue;
+    const digits = commDigits(statement.structuredCommunication);
+    if (!iban && !digits) continue;
 
-    const candidates = await findCandidateLeasesByIban(db, ownerId, iban);
+    let candidates = iban ? await findCandidateLeasesByIban(db, ownerId, iban) : [];
+    let byComm = false;
+    if (candidates.length === 0 && digits) {
+      candidates = await findLeasesByStructuredCommunication(db, ownerId, digits);
+      byComm = candidates.length > 0;
+    }
     if (candidates.length === 0) continue;
 
     let targetLeaseId: string | null = null;
@@ -148,10 +199,12 @@ export async function autoAssignByIban(
       db,
       statement,
       targetLeaseId,
-      `Auto-assigned by account number ${maskIban(iban)} from bank transfer ${statement.externalTransactionId}`,
-      // The sender is a known account of this lease's tenant, so a partial
-      // transfer is booked as a partial instead of being left unmatched.
-      { allowFirstPartial: true },
+      byComm
+        ? `Auto-assigned by structured communication from bank transfer ${statement.externalTransactionId}`
+        : `Auto-assigned by account number ${maskIban(iban)} from bank transfer ${statement.externalTransactionId}`,
+      // The transfer comes from this lease's tenant, so an odd amount is
+      // booked on the open months instead of being left unmatched.
+      { allowFirstPartial: true, knownTenant: true },
     );
     if (!result) {
       console.log(
@@ -161,7 +214,7 @@ export async function autoAssignByIban(
     }
     assigned++;
     console.log(
-      `[IbanMatcher] Auto-assigned statement ${statement.id} -> lease ${targetLeaseId} (IBAN ${maskIban(iban)})`,
+      `[IbanMatcher] Auto-assigned statement ${statement.id} -> lease ${targetLeaseId} (${byComm ? "structured communication" : `IBAN ${maskIban(iban)}`})`,
     );
   }
 

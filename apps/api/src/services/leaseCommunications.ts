@@ -17,6 +17,7 @@ import { isSmsConfigured } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
 import { isDepositNote } from "./expectedPayments";
 import { loadMonthStatus, rowIdsForMonth } from "./monthReceived";
+import { cappedReminderAmount, contractBalance, loadBalanceData } from "./contractBalance";
 import { isReminderTestPhase, resolveReminderChannel } from "./reminderChannel";
 import { loadWaitingTransfer } from "./transferReview";
 import { nextAnniversaryAfter } from "./indexationAlerts";
@@ -256,6 +257,11 @@ export async function loadScheduledCommunications(
   const push = (e: Omit<ScheduledCommunication, "plannedAt" | "timezone">) =>
     out.push({ ...e, timezone: tz, plannedAt: zonedTimeToUtc(e.date, e.time, tz).toISOString() });
 
+  // Reminders follow the contract balance: nothing is scheduled while the
+  // contract is even or in credit on the month's due date (or today, for rent
+  // already due), and no month asks more than the contract owes.
+  const balanceData = await loadBalanceData(db, lease);
+
   let futureSeen = false;
   for (const p of open) {
     const due = String(p.dueDate).slice(0, 10);
@@ -265,7 +271,13 @@ export async function loadScheduledCommunications(
     const month = due.slice(0, 7);
     const status = await loadMonthStatus(db, lease, month);
     if (status.settled) continue;
-    const amount = status.received > 0.01 ? status.shortfall : Number(p.amount);
+    let amount = status.received > 0.01 ? status.shortfall : Number(p.amount);
+    if (balanceData && Number(lease.monthlyRent || 0) > 0) {
+      const balance = contractBalance({ ...balanceData, today: due > today ? due : today });
+      const capped = cappedReminderAmount(amount, balance.owed);
+      if (capped == null) continue;
+      amount = capped;
+    }
 
     // Due-date nudge at the evening run of the due date itself.
     if (

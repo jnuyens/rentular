@@ -16,6 +16,12 @@ import type { TriggerMeta } from "../lib/communicationLog";
 import { indexationDateFor, loadIndexRecords, loadMonthStatus } from "./monthReceived";
 import type { RemainderContext } from "./reminderText";
 import { loadWaitingTransfer } from "./transferReview";
+import { cappedReminderAmount, loadContractBalance } from "./contractBalance";
+import { wallClock } from "./communicationSchedule";
+import { getScheduleTimezone } from "../lib/timezone";
+
+/** Returned when the contract is even or in credit, so there is nothing to remind about. */
+export const NOTHING_OWED_ERROR = "Nothing is owed on this contract, so no reminder was sent";
 
 /** An unbooked incoming transfer that may already pay the reminded rent. */
 export type WaitingTransferWarning = { amount: number; bookingDate: string; statementId: string };
@@ -97,6 +103,15 @@ export async function sendManualReminder(input: {
   // attached to the month's existing record, and never add a full-rent row.
   const status = await loadMonthStatus(db, lease, input.periodMonth);
   const partlyPaid = status.received > 0.01 && status.shortfall > 0;
+
+  // The contract balance decides whether there is anything to remind about:
+  // an even contract, or one in credit, gets no reminder, and the amount never
+  // exceeds what the contract owes. Rent not due yet is judged on its due date.
+  const today = wallClock(new Date(), getScheduleTimezone()).ymd;
+  const balance = await loadContractBalance(db, lease, status.dueDate > today ? status.dueDate : today);
+  if (balance && !(balance.owed > 0)) {
+    return { ok: false, error: NOTHING_OWED_ERROR };
+  }
   const partialPaymentId = usable?.id ?? status.paidRowId;
 
   const rent = Number(lease.monthlyRent || 0);
@@ -137,6 +152,15 @@ export async function sendManualReminder(input: {
       chargesAmount: String(charges),
       notes: "auto-generated expected payment",
     });
+  }
+
+  if (balance) {
+    const capped = cappedReminderAmount(amount, balance.owed);
+    if (capped != null && capped < amount) {
+      amount = capped;
+      // The month's own explanation would no longer match the amount asked.
+      remainder = null;
+    }
   }
 
   // Owner follow-up settings (fall back to defaults).
