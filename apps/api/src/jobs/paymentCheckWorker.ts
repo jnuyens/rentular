@@ -37,7 +37,7 @@ import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
 import { sendWhatsAppLogged } from "../lib/communicationLog";
-import { getScheduleTimezone } from "../lib/timezone";
+import { getScheduleTimezone, todayInZone } from "../lib/timezone";
 import { renderTemplate } from "../lib/email";
 import { ensureExpectedPaymentsForAllActive, depositNoteLike } from "../services/expectedPayments";
 import { DEFAULT_SMS_TEMPLATES, type SupportedLanguage } from "@rentular/shared";
@@ -369,7 +369,7 @@ const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
     const db = getDb();
-    const today = new Date().toISOString().split("T")[0]!;
+    const today = todayInZone(getScheduleTimezone());
 
     // Dedicated evening job (~19:15 local): a friendly due-date SMS to tenants,
     // run after the 19:00 payment sync so people who already paid aren't nudged.

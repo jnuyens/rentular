@@ -17,6 +17,7 @@ import {
   hasMinimumRole,
   getAccessiblePropertyIds,
 } from "../lib/propertyAccess";
+import { todayInZone } from "../lib/timezone";
 
 export const gocardlessRouter = new Hono();
 
@@ -390,7 +391,7 @@ gocardlessRouter.post("/mandates/:mandateId/cancel", async (c) => {
       .where(eq(leases.gocardlessMandateId, mandateId));
 
     for (const lease of affectedLeases) {
-      const flagNote = `Mandate ${mandateId} cancelled on ${new Date().toISOString().split("T")[0]} -- SEPA collection stopped, action required.`;
+      const flagNote = `Mandate ${mandateId} cancelled on ${todayInZone()} -- SEPA collection stopped, action required.`;
       const updatedNotes = lease.notes
         ? `${lease.notes}\n${flagNote}`
         : flagNote;

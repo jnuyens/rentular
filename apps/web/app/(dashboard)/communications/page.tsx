@@ -28,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { formatDateTime } from "@/lib/dateLocale";
 
 interface Communication {
   id: string;
@@ -328,13 +329,7 @@ export default function CommunicationsPage() {
                         {comm.subject || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {new Date(comm.createdAt).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTime(comm.createdAt)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-between">
@@ -435,13 +430,7 @@ export default function CommunicationsPage() {
                       />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(comm.createdAt).toLocaleDateString(undefined, {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatDateTime(comm.createdAt)}
                     </p>
                   </div>
 

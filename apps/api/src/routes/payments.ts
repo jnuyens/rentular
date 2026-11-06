@@ -26,6 +26,7 @@ import {
   getUserPropertyRole,
   hasMinimumRole,
 } from "../lib/propertyAccess";
+import { todayInZone } from "../lib/timezone";
 
 const db = getDb();
 
@@ -267,7 +268,7 @@ paymentsRouter.get("/summary/overdue", async (c) => {
   const accessibleIds = await getAccessiblePropertyIds(userId);
   if (accessibleIds.length === 0) return c.json({ data: { totalOverdue: 0, count: 0, payments: [] } });
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayInZone();
 
   const result = await db
     .select()
@@ -795,7 +796,7 @@ paymentsRouter.post(
     }
 
     const data = c.req.valid("json");
-    const paidDate = data.date || new Date().toISOString().split("T")[0]!;
+    const paidDate = data.date || todayInZone();
     await transitionPayment(payment.id, "paid", { paidDate });
     await db
       .update(payments)
@@ -853,7 +854,7 @@ paymentsRouter.post(
       (p) => !p.isIgnored && (p.status === "pending" || p.status === "processing"),
     );
 
-    const paidDate = date || new Date().toISOString().split("T")[0]!;
+    const paidDate = date || todayInZone();
 
     // Part of the month's rent already came in: record only the remaining amount.
     // An open record for the month is reused for it, so no pending row is left

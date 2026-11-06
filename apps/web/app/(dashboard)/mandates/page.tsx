@@ -31,6 +31,7 @@ import {
 import { MandateStatusBadge } from "@/components/MandateStatusBadge";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import { CancelMandateDialog } from "@/components/CancelMandateDialog";
+import { formatDate } from "@/lib/dateLocale";
 
 interface MandateRow {
   mandateId: string;
@@ -46,14 +47,8 @@ interface MandateRow {
   nextChargeDate: string;
 }
 
-function fmtDate(dateStr: string): string {
-  if (!dateStr) return "---";
-  try {
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  } catch {
-    return dateStr;
-  }
+function fmtDate(dateStr: string | null): string {
+  return dateStr ? formatDate(dateStr) || dateStr : "---";
 }
 
 export default function MandatesPage() {

@@ -7,11 +7,12 @@ import { loadLeaseDeductions } from "./rentDeductions";
 import { loadIndexRecords, preIndexationMatch } from "./monthReceived";
 import { isRemainderNote } from "./expectedPayments";
 import { findShortfallPlan } from "./shortfallMatch";
+import { todayInZone } from "../lib/timezone";
 
 type Db = ReturnType<typeof getDb>;
 
 function isoToday(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInZone();
 }
 
 export type AssignableStatement = Pick<

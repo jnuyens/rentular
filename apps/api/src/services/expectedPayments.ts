@@ -2,6 +2,7 @@ import { eq, and, gte, like } from "drizzle-orm";
 import { getDb, leases, paymentAllocations, payments } from "@rentular/db";
 import { loadIndexRecords, monthSettlement } from "./monthReceived";
 import { loadLeaseDeductions } from "./rentDeductions";
+import { ymdInZone } from "../lib/timezone";
 
 type LeaseRow = typeof leases.$inferSelect;
 
@@ -56,8 +57,8 @@ export function computeExpectedDueDates(
   const todayStr = toYMD(today);
   const startStr = startDate ? startDate.slice(0, 10) : undefined;
 
-  const baseYear = today.getFullYear();
-  const baseMonth = today.getMonth(); // 0-based
+  const baseYear = Number(todayStr.slice(0, 4));
+  const baseMonth = Number(todayStr.slice(5, 7)) - 1; // 0-based
 
   // Return the next `count` upcoming due dates (the soonest payment-day
   // occurrences that are today or later). We only surface the immediate upcoming
@@ -77,9 +78,7 @@ export function computeExpectedDueDates(
 }
 
 function toYMD(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
+  return ymdInZone(d);
 }
 
 /**

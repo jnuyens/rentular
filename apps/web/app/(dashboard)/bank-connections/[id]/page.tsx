@@ -30,6 +30,7 @@ import {
   BankTransactionsTable,
   type BankTransaction,
 } from "@/components/BankTransactionsTable";
+import { formatDate, formatDateTime } from "@/lib/dateLocale";
 
 interface BankConnection {
   id: string;
@@ -46,13 +47,7 @@ interface BankConnection {
 }
 
 function fmtDate(dateStr: string | null): string {
-  if (!dateStr) return "---";
-  try {
-    const d = new Date(dateStr);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-  } catch {
-    return dateStr;
-  }
+  return dateStr ? formatDate(dateStr) || dateStr : "---";
 }
 
 function daysUntil(dateStr: string | null): number | null {
@@ -277,7 +272,7 @@ export default function BankConnectionDetailPage() {
             <p>
               {connection.lastSyncAt
                 ? t("detail.lastSyncedAt", {
-                    time: fmtDate(connection.lastSyncAt),
+                    time: formatDateTime(connection.lastSyncAt),
                   })
                 : t("detail.neverSynced")}
             </p>

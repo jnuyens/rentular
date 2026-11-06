@@ -64,6 +64,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { todayInZone, addDaysYmd, monthEndYmd } from "@/lib/dateLocale";
 
 interface Payment {
   id: string;
@@ -238,16 +239,13 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  // Calendar dates in the landlord's zone; toISOString() would give the UTC
+  // date, which is the day before between midnight and 01:00/02:00 Brussels.
+  const todayIso = todayInZone();
   const monthPrefix = todayIso.slice(0, 7);
   // Window for "paid this month" that also catches rent paid a few weeks early.
-  const _now = new Date();
-  const _cut = new Date(_now.getFullYear(), _now.getMonth(), 1);
-  _cut.setDate(_cut.getDate() - 25);
-  const paidWindowStart = _cut.toISOString().slice(0, 10);
-  const monthEndIso = new Date(_now.getFullYear(), _now.getMonth() + 1, 0)
-    .toISOString()
-    .slice(0, 10);
+  const paidWindowStart = addDaysYmd(`${monthPrefix}-01`, -25);
+  const monthEndIso = monthEndYmd(todayIso);
 
   // Filter views, usable both as clickable chips here and as ?view= drill-down
   // links from the overview dashboard.

@@ -14,6 +14,7 @@ import {
   periodEndFor,
   periodRentDue,
 } from "./rentDeductions";
+import { todayInZone } from "../lib/timezone";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -423,7 +424,7 @@ export async function recordPeriodPayment(input: {
     .limit(1);
   if (!leaseRows[0]) return { ok: false, error: "Lease not found" };
   const due = dueDateFor(Number(m[1]), Number(m[2]) - 1, leaseRows[0].paymentDay ?? 1);
-  const paidDate = input.date || new Date().toISOString().slice(0, 10);
+  const paidDate = input.date || todayInZone();
 
   const paymentId = crypto.randomUUID();
   await db.insert(payments).values({

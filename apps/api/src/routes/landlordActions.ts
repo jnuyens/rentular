@@ -46,6 +46,7 @@ import { verifyIndexationSnoozeToken, type SnoozeLang } from "../lib/indexationS
 import { snoozeUntil, nextAnniversaryAfter } from "../services/indexationAlerts";
 import { localYmd } from "../services/indexationCalc";
 import { formatLongDate } from "../lib/belgianFormat";
+import { todayInZone } from "../lib/timezone";
 
 export const landlordActionsRouter = new Hono();
 
@@ -442,7 +443,7 @@ landlordActionsRouter.get("/:token", async (c) => {
     if (action === "paid") {
       await db
         .update(payments)
-        .set({ status: "paid", paidDate: new Date().toISOString().slice(0, 10), updatedAt: new Date() })
+        .set({ status: "paid", paidDate: todayInZone(), updatedAt: new Date() })
         .where(eq(payments.id, paymentId));
     } else if (action === "off") {
       await db

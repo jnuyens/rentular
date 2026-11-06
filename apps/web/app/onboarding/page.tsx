@@ -9,6 +9,7 @@ import { MandateSetupModal } from "@/components/MandateSetupModal";
 import PhoneInput from "@/components/PhoneInput";
 import LocaleDateInput from "@/components/LocaleDateInput";
 import Image from "next/image";
+import { todayInZone } from "@/lib/dateLocale";
 
 interface Property {
   id: string;
@@ -243,7 +244,7 @@ export default function OnboardingPage() {
             type: leaseForm.type,
             region: leaseForm.region,
             status: "active",
-            signingDate: new Date().toISOString().split("T")[0],
+            signingDate: todayInZone(),
           };
           const res = await fetch(`${apiUrl}/api/v1/leases`, {
             method: "POST",

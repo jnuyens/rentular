@@ -1,4 +1,4 @@
-import { getScheduleTimezone } from "../lib/timezone";
+import { getScheduleTimezone, todayInZone } from "../lib/timezone";
 import { Worker, Queue } from "bullmq";
 import { eq, and, gte, lte } from "drizzle-orm";
 import {
@@ -33,16 +33,15 @@ const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
     const db = getDb();
-    const today = new Date();
-    const currentDay = today.getDate();
-    const reportDate = today.toISOString().split("T")[0]!;
+    const reportDate = todayInZone(getScheduleTimezone());
+    const currentDay = Number(reportDate.slice(8, 10));
 
     console.log(
       `[LandlordReport] Checking reports for day ${currentDay} (${reportDate})`
     );
 
     // Get month boundaries
-    const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const monthStart = `${reportDate.slice(0, 7)}-01`;
     const monthEnd = reportDate;
 
     // Query all owners with report settings
