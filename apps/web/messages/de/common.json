@@ -1375,7 +1375,9 @@
     "infoTitle": "Sorgenfrei vermieten in Belgien",
     "infoText": "SEPA-Lastschrift, korrekte Indexierung und klare Nachverfolgung jeder Zahlung. Und der Code ist Open Source.",
     "reminderTransferWaiting": "Hinweis: Eine Überweisung von {amount} vom {date} begleicht diese Miete vielleicht schon und wartet auf der Seite Abgleich.",
-    "communication": "Kommunikation"
+    "communication": "Kommunikation",
+    "contractCredit": "Guthaben {amount}",
+    "reminderNothingOwed": "Auf diesem Vertrag ist nichts offen, daher wurde keine Erinnerung gesendet."
   },
   "ledger": {
     "title": "Mietenbuch",
@@ -1502,5 +1504,32 @@
       "if_index_published": "Sobald der neue Gesundheitsindex veröffentlicht ist, falls die Indexierung noch nicht angewendet wurde",
       "on_hold_transfer_review": "Angehalten: Eine Überweisung wartet auf der Seite Abgleich auf Sie"
     }
+  },
+  "contractBalance": {
+    "title": "Vertragssaldo",
+    "owed": "Offen: {amount}",
+    "credit": "Guthaben: {amount}",
+    "even": "Alles erledigt: nichts offen",
+    "summary": "Fällige Miete seit {month}: {expected}. Erhalten: {received}.",
+    "arrearsNote": "Davon wurden {amount} als Abzahlung älterer Rückstände markiert. Das zählt nicht als Guthaben.",
+    "explain": "Geld, mit dem Rückstände aus der Zeit vor der Erfassung dieses Vertrags in Rentular abgezahlt werden, ist kein Guthaben für spätere Monate. Markieren Sie es hier, damit die Erinnerungen stimmen.",
+    "paymentsTitle": "Erhaltene Zahlungen",
+    "noPayments": "Noch keine Zahlungen erhalten.",
+    "oddAmount": "Abweichender Betrag",
+    "oddAmountHint": "Automatisch verbucht, obwohl der Betrag nicht passte. Bitte kurz prüfen.",
+    "creditBadge": "Guthaben",
+    "arrearsBadge": "Ältere Rückstände: {amount}",
+    "markArrears": "Als Abzahlung von Rückständen markieren",
+    "editArrears": "Ändern",
+    "amountLabel": "Betrag für ältere Rückstände",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "removeMark": "Markierung entfernen",
+    "saved": "Gespeichert",
+    "saveFailed": "Speichern hat nicht geklappt",
+    "amountTooLarge": "Der Betrag darf nicht höher sein als die Zahlung",
+    "loadError": "Der Vertragssaldo konnte nicht geladen werden",
+    "showAll": "Alle {count} Zahlungen anzeigen",
+    "showLess": "Weniger anzeigen"
   }
 }

@@ -21,7 +21,7 @@ import {
 import { makeSettler, monthHistory, monthTotals } from "../services/monthTotals";
 import { contractBalance, type ContractBalance } from "../services/contractBalance";
 import type { DeductionRow } from "../services/rentDeductions";
-import { sendManualReminder } from "../services/manualReminder";
+import { NOTHING_OWED_ERROR, sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -1237,7 +1237,12 @@ paymentsRouter.post(
         ownerId: userId,
         trigger: { trigger: viaToken ? "api" : "manual", triggeredBy: userId },
       });
-      if (!result.ok) return c.json({ error: result.error }, 400);
+      if (!result.ok) {
+        return c.json(
+          { error: result.error, ...(result.error === NOTHING_OWED_ERROR ? { code: "nothing_owed" } : {}) },
+          400,
+        );
+      }
       return c.json({ data: result });
     } catch (err) {
       console.error("[Payments] manual reminder failed:", err);

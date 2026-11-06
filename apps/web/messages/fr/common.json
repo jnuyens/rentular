@@ -1375,7 +1375,9 @@
     "infoTitle": "Louer sereinement en Belgique",
     "infoText": "Domiciliation SEPA, indexation correcte et suivi clair de chaque paiement. Et le code est open source.",
     "reminderTransferWaiting": "Attention : un virement de {amount} du {date} règle peut-être déjà ce loyer et attend sur la page Rapprochement.",
-    "communication": "Communication"
+    "communication": "Communication",
+    "contractCredit": "Avoir {amount}",
+    "reminderNothingOwed": "Rien n'est dû sur ce contrat, aucun rappel n'a donc été envoyé."
   },
   "ledger": {
     "title": "Grand livre des loyers",
@@ -1502,5 +1504,32 @@
       "if_index_published": "Dès que le nouvel indice santé est publié, si l'indexation n'est pas encore appliquée",
       "on_hold_transfer_review": "En pause : un virement vous attend sur la page Rapprochement"
     }
+  },
+  "contractBalance": {
+    "title": "Solde du contrat",
+    "owed": "Restant dû : {amount}",
+    "credit": "Avoir : {amount}",
+    "even": "Tout est en ordre : rien n'est dû",
+    "summary": "Loyer dû depuis {month} : {expected}. Reçu : {received}.",
+    "arrearsNote": "Dont {amount} marqués comme remboursement d'arriérés plus anciens, qui ne comptent pas comme avoir.",
+    "explain": "L'argent qui rembourse des arriérés antérieurs au suivi de ce contrat dans Rentular n'est pas un avoir pour les mois suivants. Marquez-le ici pour que les rappels restent justes.",
+    "paymentsTitle": "Paiements reçus",
+    "noPayments": "Aucun paiement reçu pour l'instant.",
+    "oddAmount": "Montant inhabituel",
+    "oddAmountHint": "Comptabilisé automatiquement alors que le montant ne correspondait pas. Mieux vaut vérifier.",
+    "creditBadge": "Avoir",
+    "arrearsBadge": "Arriérés anciens : {amount}",
+    "markArrears": "Marquer comme remboursement d'arriérés",
+    "editArrears": "Modifier",
+    "amountLabel": "Montant pour les arriérés anciens",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "removeMark": "Retirer le marquage",
+    "saved": "Enregistré",
+    "saveFailed": "L'enregistrement a échoué",
+    "amountTooLarge": "Le montant ne peut pas dépasser le paiement",
+    "loadError": "Impossible de charger le solde du contrat",
+    "showAll": "Afficher les {count} paiements",
+    "showLess": "Afficher moins"
   }
 }

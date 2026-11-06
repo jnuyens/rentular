@@ -56,6 +56,10 @@ interface BucketItem {
   remaining?: number;
   /** The rent from before the indexation, when that is exactly what was paid. */
   oldRent?: number;
+  /** What the whole contract still owes today. */
+  contractOwed?: number;
+  /** What the tenant paid more than was due over the whole contract. */
+  contractCredit?: number;
 }
 
 interface Overview {
@@ -258,8 +262,8 @@ export default function OverviewPage() {
           );
         }
       } else {
-        const err = (await res.json().catch(() => ({}))).error || t("reminderFailed");
-        toast.error(err);
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.code === "nothing_owed" ? t("reminderNothingOwed") : body.error || t("reminderFailed"));
       }
     } catch {
       toast.error(t("reminderFailed"));
@@ -576,6 +580,11 @@ function CollectionCard({
                             {t("partlyPaid")}
                           </span>
                         )}
+                        {item.contractCredit != null && item.contractCredit > 0 && (
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            {t("contractCredit", { amount: eur(item.contractCredit) })}
+                          </span>
+                        )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
@@ -744,6 +753,11 @@ function BucketBreakdown({
                     {item.shortfall && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
                         {t("partlyPaid")}
+                      </span>
+                    )}
+                    {item.contractCredit != null && item.contractCredit > 0 && (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                        {t("contractCredit", { amount: eur(item.contractCredit) })}
                       </span>
                     )}
                   </p>
