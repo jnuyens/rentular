@@ -112,6 +112,20 @@ ORDER BY paid_date;
 --   are paid as listed. Check it on the contract page, or:
 --   GET /api/v1/leases/<lease_id>/balance  -> owed 0, credit 0, arrearsRepaid 1090
 --
+-- Tracking window (fix of 2026-11-06): the window starts at the month her
+-- FIRST RECEIVED payment pays for. That is June only when the 1500.00 of
+-- 2026-06-28 is tagged to June (its due_date is a June date, e.g. 2026-06-01,
+-- because it was booked on June's open row). If it is an untagged bank row
+-- (due_date = paid_date = 2026-06-28), it lands in July's window (8 days
+-- before 1 July), the window starts in July, expected is 5 x 1090.00 =
+-- 5450.00 and she shows 1090.00 credit even with the marks. The report
+-- column window_start tells which case it is. Since the owner reads the 28/06
+-- transfer as June's rent, the fix in that case is to tag it to June
+-- (after a backup, check it touches exactly 1 row):
+--   UPDATE payments SET due_date = '2026-06-01', updated_at = NOW()
+--   WHERE lease_id = @lease_id AND status = 'paid' AND amount = 1500.00
+--     AND paid_date = '2026-06-28' AND due_date = '2026-06-28';
+--
 -- Undo (removes only the mark line):
 --   UPDATE payments
 --   SET notes = NULLIF(TRIM(BOTH '\n' FROM REGEXP_REPLACE(notes, '\\n?\\[arrears repayment: [0-9.]+\\]', '')), ''),
