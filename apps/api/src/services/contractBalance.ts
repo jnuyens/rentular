@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb, leases, paymentAllocations, payments } from "@rentular/db";
 import { isDepositNote } from "./expectedPayments";
 import {
+  attributedMonth,
   dueDateForMonth,
   loadIndexRecords,
   monthSettlement,
@@ -82,7 +83,7 @@ export type ContractBalance = {
   owed: number;
   /** What the tenant paid more than was due (0 when something is owed). */
   credit: number;
-  /** First month counted, or null when nothing is tracked yet. */
+  /** First month of the tracking window (see trackingStart), or null when nothing is tracked yet. */
   fromMonth: string | null;
   perMonth: BalanceMonth[];
 };
@@ -114,11 +115,51 @@ function isOpen(status: string): boolean {
 }
 
 /**
+ * The first month of the tracking window, or null when nothing is tracked.
+ *
+ * The window starts at the month the first received rent payment pays for
+ * (attributedMonth, the same attribution receivedForMonth uses), or at the
+ * lease start month when that is later. Many tenants pay at the end of the
+ * previous month: their first transfer seen here pays the next month, and
+ * the month before it was paid before the bank data was imported. An open row
+ * for such a month is left over from the expected-payments generator, so
+ * months before the window are never owed and never reminded.
+ *
+ * A paid row whose whole amount is marked as paying older arrears does not
+ * open the window: that money pays rent from before tracking. Without any
+ * received rent the window starts at the due month of the first rent row
+ * (or the lease start when later), so a tenant who never paid is still owed.
+ */
+export function trackingStart(lease: BalanceLease, rows: BalanceRow[]): string | null {
+  const rentRows = rows.filter(isRent);
+  const firstPaid =
+    rentRows
+      .filter((r) => r.status === "paid" && !r.isIgnored)
+      .filter((r) => cents(arrearsAmount(r.notes)) < cents(r.amount))
+      .map((r) => attributedMonth(r, lease.paymentDay))
+      .sort()[0] ?? null;
+  const firstRow =
+    firstPaid ??
+    rentRows
+      .filter((r) => r.status !== "cancelled")
+      .map((r) => ymd(r.dueDate).slice(0, 7))
+      .sort()[0] ??
+    null;
+  const startMonth = lease.startDate ? ymd(lease.startDate).slice(0, 7) : null;
+  if (firstRow && startMonth) return firstRow > startMonth ? firstRow : startMonth;
+  return firstRow ?? startMonth;
+}
+
+/** True when `month` (YYYY-MM) lies before the contract's tracking window. */
+export function beforeTrackingWindow(balance: Pick<ContractBalance, "fromMonth">, month: string): boolean {
+  return balance.fromMonth != null && month.slice(0, 7) < balance.fromMonth;
+}
+
+/**
  * The balance of a whole contract on `today` (YYYY-MM-DD).
  *
- * Expected: every month from the first tracked month (the month of the first
- * rent row, or the lease start when that is later) whose due date is on or
- * before today, with the exact settlement rule of monthReceived (rent in force
+ * Expected: every month from the start of the tracking window (see
+ * trackingStart) whose due date is on or before today, with the exact settlement rule of monthReceived (rent in force
  * on the due date plus charges minus deductions). A month whose open row the
  * landlord set to ignore counts only what came in for it, so it neither adds
  * debt nor hides credit.
@@ -157,14 +198,10 @@ export function contractBalance(input: {
   receivedCents -= arrearsCents;
 
   // The tracked months.
-  const tracked = rentRows.filter((r) => r.status !== "cancelled");
-  const firstRow = tracked.map((r) => ymd(r.dueDate).slice(0, 7)).sort()[0] ?? null;
   const start = lease.startDate ? ymd(lease.startDate) : null;
   const end = lease.endDate ? ymd(lease.endDate) : null;
   const saneEnd = end && (!start || end >= start) ? end : null;
-  const startMonth = start ? start.slice(0, 7) : null;
-  const fromMonth =
-    firstRow && startMonth ? (firstRow > startMonth ? firstRow : startMonth) : firstRow ?? startMonth;
+  const fromMonth = trackingStart(lease, rows);
 
   const allocByMonth = new Map<string, number>();
   for (const a of input.allocations) {
@@ -218,6 +255,20 @@ export function contractBalance(input: {
 export function cappedReminderAmount(monthAmount: number, owed: number): number | null {
   if (!(cents(owed) > 0)) return null;
   return Math.min(cents(monthAmount), cents(owed)) / 100;
+}
+
+/**
+ * What a reminder for `month` may ask under the contract balance: null when
+ * the month lies before the tracking window or the contract owes nothing,
+ * else the month's amount capped at what the contract owes.
+ */
+export function reminderAmountFor(
+  balance: Pick<ContractBalance, "fromMonth" | "owed">,
+  month: string,
+  monthAmount: number,
+): number | null {
+  if (beforeTrackingWindow(balance, month)) return null;
+  return cappedReminderAmount(monthAmount, balance.owed);
 }
 
 /** Everything contractBalance needs for one lease, loaded once. */

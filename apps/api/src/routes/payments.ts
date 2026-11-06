@@ -19,7 +19,7 @@ import {
   type MonthSettlement,
 } from "../services/monthReceived";
 import { makeSettler, monthHistory, monthTotals } from "../services/monthTotals";
-import { contractBalance, type ContractBalance } from "../services/contractBalance";
+import { beforeTrackingWindow, contractBalance, type ContractBalance } from "../services/contractBalance";
 import type { DeductionRow } from "../services/rentDeductions";
 import { NOTHING_OWED_ERROR, sendManualReminder } from "../services/manualReminder";
 import {
@@ -483,6 +483,12 @@ paymentsRouter.get("/dashboard", async (c) => {
     const b = balanceByLease.get(leaseId);
     return !!b && !(b.owed > 0);
   };
+  // A month before the contract's tracking window was paid before the bank
+  // data came in: its open row is a generator leftover, never overdue.
+  const beforeWindow = (leaseId: string, m: string) => {
+    const b = balanceByLease.get(leaseId);
+    return !!b && beforeTrackingWindow(b, m);
+  };
   // Overdue per lease, so the total never exceeds what each contract owes.
   const overdueByLease = new Map<string, number>();
   const addOverdue = (leaseId: string, amount: number) =>
@@ -589,11 +595,13 @@ paymentsRouter.get("/dashboard", async (c) => {
       // partial; the missing part is overdue from the due day on, else to come.
       const partial: BucketItem = { ...item, ...shortfallFields(s) };
       paidItems.push({ ...partial, rentDue: s.received });
-      if (r.due <= todayStr) {
+      if (r.due > todayStr) toComeItems.push(partial);
+      else if (!beforeWindow(l.id, month)) {
         addOverdue(l.id, s.shortfall);
         if (!owesNothing(l.id)) overdueItems.push(partial);
-      } else toComeItems.push(partial);
+      }
     } else if (r.status === "overdue") {
+      if (beforeWindow(l.id, month)) continue;
       addOverdue(l.id, r.rent);
       if (!owesNothing(l.id)) overdueItems.push(item);
     } else {
@@ -660,6 +668,7 @@ paymentsRouter.get("/dashboard", async (c) => {
   }
   for (const [key, cand] of priorCandidates) {
     const pm = key.slice(key.lastIndexOf("|") + 1);
+    if (beforeWindow(cand.lease.id, pm)) continue;
     if (!(Number(cand.lease.monthlyRent || 0) > 0)) {
       addOverdue(cand.lease.id, cand.pendingSum);
       continue;

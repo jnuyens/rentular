@@ -3,6 +3,8 @@ import {
   arrearsAmount,
   cappedReminderAmount,
   contractBalance,
+  reminderAmountFor,
+  trackingStart,
   withArrearsMark,
   type BalanceRow,
 } from "../contractBalance";
@@ -101,8 +103,10 @@ describe("contractBalance", () => {
 
   it("Provinciestraat: the extra 1090 is credit unless marked as paying older arrears", () => {
     const lease = { monthlyRent: "1090.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2024-09-01", endDate: null };
+    // The owner reads the 28/06 transfer as June's rent (plus 410 arrears), so
+    // the row is tagged to June: due 2026-06-01, paid 2026-06-28.
     const base = [
-      paid("p1", 1500, "2026-06-28"),
+      { ...paid("p1", 1500, "2026-06-28"), dueDate: "2026-06-01" },
       paid("p2", 1500, "2026-07-29"),
       paid("p3", 1300, "2026-08-04"),
       paid("p4", 60, "2026-08-11"),
@@ -129,6 +133,16 @@ describe("contractBalance", () => {
     const dec = contractBalance({ lease, rows: marked, ...noData, today: "2026-12-05" });
     expect(dec.owed).toBe(1090);
     expect(contractBalance({ lease, rows: base, ...noData, today: "2026-12-05" }).owed).toBe(0);
+
+    // As an untagged bank import (due date = paid date) the 28/06 transfer lands
+    // in the window of July's rent, so the window starts in July and the same
+    // marks leave one month of credit.
+    const untagged = marked.map((r) => (r.id === "p1" ? { ...r, dueDate: "2026-06-28" } : r));
+    const u = contractBalance({ lease, rows: untagged, ...noData, today: "2026-11-06" });
+    expect(u.fromMonth).toBe("2026-07");
+    expect(u.expected).toBe(5450);
+    expect(u.received).toBe(6540);
+    expect(u.credit).toBe(1090);
   });
 
   it("deposits never count, and an ignored month neither adds debt nor hides credit", () => {
@@ -151,6 +165,105 @@ describe("contractBalance", () => {
     expect(b.fromMonth).toBe("2026-03");
     expect(b.expected).toBe(1500);
     expect(b.owed).toBe(750);
+  });
+});
+
+describe("tracking window: starts at the month of the first received payment", () => {
+  // Real prod cases (2026-11-06). These tenants pay at the end of the previous
+  // month; the June row left by the expected-payments generator was paid in May,
+  // before the bank data was imported.
+  it("Tervuursestraat 97 (Akpinar, 780, 810 from 2026-11-01): July to November is even", () => {
+    const lease = { monthlyRent: "810.00", monthlyCharges: "0.00", paymentDay: 2, startDate: "2019-05-01", endDate: null };
+    const records: IndexRecord[] = [{ effectiveDate: "2026-11-01", previousRent: 780, newRent: 810 }];
+    const rows = [
+      pending("jun", 780, "2026-06-02"),
+      paid("p-jul", 780, "2026-06-29"),
+      paid("p-aug", 780, "2026-07-29"),
+      paid("p-sep", 780, "2026-08-29"),
+      paid("p-oct", 780, "2026-09-29"),
+      paid("p-nov", 810, "2026-10-29"),
+    ];
+    expect(trackingStart(lease, rows)).toBe("2026-07");
+    const b = contractBalance({ lease, rows, allocations: [], records, deductions: [], today: "2026-11-06" });
+    expect(b.fromMonth).toBe("2026-07");
+    expect(b.perMonth.map((m) => [m.month, m.expected])).toEqual([
+      ["2026-07", 780],
+      ["2026-08", 780],
+      ["2026-09", 780],
+      ["2026-10", 780],
+      ["2026-11", 810],
+    ]);
+    expect(b.expected).toBe(3930);
+    expect(b.received).toBe(3930);
+    expect(b.owed).toBe(0);
+    expect(b.credit).toBe(0);
+    // The June leftover is never reminded, even once something is owed later.
+    expect(reminderAmountFor(b, "2026-06", 780)).toBeNull();
+    const dec = contractBalance({ lease, rows, allocations: [], records, deductions: [], today: "2026-12-05" });
+    expect(dec.owed).toBe(810);
+    expect(reminderAmountFor(dec, "2026-06", 780)).toBeNull();
+    expect(reminderAmountFor(dec, "2026-12", 810)).toBe(810);
+  });
+
+  it("Oude Haachtsesteenweg 75A1 Diegem (Almazan, 1150): no phantom June", () => {
+    const lease = { monthlyRent: "1150.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2023-03-01", endDate: null };
+    const rows = [
+      pending("jun", 1150, "2026-06-01"),
+      paid("p-jul", 1150, "2026-06-30"),
+      paid("p-aug", 1150, "2026-07-30"),
+      paid("p-sep", 1150, "2026-08-30"),
+      paid("p-oct", 1150, "2026-09-30"),
+      paid("p-nov", 1150, "2026-10-30"),
+    ];
+    const b = contractBalance({ lease, rows, ...noData, today: "2026-11-06" });
+    expect(b.fromMonth).toBe("2026-07");
+    expect(b.expected).toBe(5750);
+    expect(b.received).toBe(5750);
+    expect(b.owed).toBe(0);
+    expect(reminderAmountFor(b, "2026-06", 1150)).toBeNull();
+  });
+
+  it("Smisstraat 38 studio 5 (Nascimento, 618, pays 650): the extra 32 a month is credit", () => {
+    const lease = { monthlyRent: "618.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2024-01-01", endDate: null };
+    const rows = [
+      pending("jun", 618, "2026-06-01"),
+      paid("p-jul", 618, "2026-06-30"),
+      paid("p-aug", 618, "2026-07-30"),
+      paid("p-sep", 650, "2026-08-30"),
+      paid("p-oct", 650, "2026-09-30"),
+      paid("p-nov", 650, "2026-10-30"),
+    ];
+    // The old rule counted June: 6 x 618 = 3708 against 3186 received, 522 owed.
+    const b = contractBalance({ lease, rows, ...noData, today: "2026-11-06" });
+    expect(b.fromMonth).toBe("2026-07");
+    expect(b.expected).toBe(3090);
+    expect(b.received).toBe(3186);
+    expect(b.owed).toBe(0);
+    expect(b.credit).toBe(96);
+  });
+
+  it("a payment row tagged to its rent month keeps that month as the start", () => {
+    const lease = { monthlyRent: "1090.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2024-09-01", endDate: null };
+    const rows = [{ ...paid("jun", 1090, "2026-06-28"), dueDate: "2026-06-01" }, paid("jul", 1090, "2026-07-30")];
+    expect(trackingStart(lease, rows)).toBe("2026-06");
+  });
+
+  it("money marked entirely as older arrears does not open the window", () => {
+    const lease = { monthlyRent: "800.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2025-01-01", endDate: null };
+    const rows = [
+      paid("arrears", 800, "2026-05-15", withArrearsMark(null, 800)),
+      paid("jun", 800, "2026-06-01"),
+    ];
+    expect(trackingStart(lease, rows)).toBe("2026-06");
+  });
+
+  it("without any received rent the window starts at the first rent row, so it is still owed", () => {
+    const lease = { monthlyRent: "700.00", monthlyCharges: "0.00", paymentDay: 1, startDate: "2026-09-01", endDate: null };
+    const rows = [pending("sep", 700, "2026-09-01"), pending("oct", 700, "2026-10-01")];
+    const b = contractBalance({ lease, rows, ...noData, today: "2026-10-05" });
+    expect(b.fromMonth).toBe("2026-09");
+    expect(b.owed).toBe(1400);
+    expect(reminderAmountFor(b, "2026-09", 700)).toBe(700);
   });
 });
 

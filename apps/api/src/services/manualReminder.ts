@@ -16,7 +16,7 @@ import type { TriggerMeta } from "../lib/communicationLog";
 import { indexationDateFor, loadIndexRecords, loadMonthStatus } from "./monthReceived";
 import type { RemainderContext } from "./reminderText";
 import { loadWaitingTransfer } from "./transferReview";
-import { cappedReminderAmount, loadContractBalance } from "./contractBalance";
+import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "./contractBalance";
 import { wallClock } from "./communicationSchedule";
 import { getScheduleTimezone } from "../lib/timezone";
 
@@ -109,7 +109,8 @@ export async function sendManualReminder(input: {
   // exceeds what the contract owes. Rent not due yet is judged on its due date.
   const today = wallClock(new Date(), getScheduleTimezone()).ymd;
   const balance = await loadContractBalance(db, lease, status.dueDate > today ? status.dueDate : today);
-  if (balance && !(balance.owed > 0)) {
+  // A month before the tracking window was paid before the bank data came in.
+  if (balance && (!(balance.owed > 0) || beforeTrackingWindow(balance, input.periodMonth))) {
     return { ok: false, error: NOTHING_OWED_ERROR };
   }
   const partialPaymentId = usable?.id ?? status.paidRowId;

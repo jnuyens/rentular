@@ -52,7 +52,7 @@ import { sweepRemainderRows } from "../services/remainderRows";
 import { holdForWaitingTransfer, loadWaitingTransfer } from "../services/transferReview";
 import { autoAssignByIban } from "../services/ibanMatcher";
 import { autoAssignByAmount } from "../services/amountMatcher";
-import { cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
+import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
 
 /**
  * Run the account-number and amount matchers over the transfers already
@@ -110,9 +110,14 @@ async function periodSettlement(
   }
   const s = await loadMonthStatus(db, lease, String(dueDate).slice(0, 7));
   // Reminders follow the contract balance: an even contract, or one in
-  // credit, is never reminded, and a month never asks more than it owes.
+  // credit, is never reminded, and a month never asks more than it owes. An
+  // open row for a month before the tracking window is a leftover of the
+  // expected-payments generator, never a debt.
   const balance = await loadContractBalance(db, lease.id, today);
   const owed = balance ? balance.owed : null;
+  if (balance && beforeTrackingWindow(balance, String(dueDate).slice(0, 7))) {
+    return { settled: true, received: s.received, shortfall: 0, remainder: null, owed };
+  }
   if (owed != null && !(owed > 0)) {
     return { settled: true, received: s.received, shortfall: 0, remainder: null, owed };
   }
