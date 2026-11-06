@@ -19,8 +19,9 @@ import {
   type MonthSettlement,
 } from "../services/monthReceived";
 import { makeSettler, monthHistory, monthTotals } from "../services/monthTotals";
+import { contractBalance, type ContractBalance } from "../services/contractBalance";
 import type { DeductionRow } from "../services/rentDeductions";
-import { sendManualReminder } from "../services/manualReminder";
+import { NOTHING_OWED_ERROR, sendManualReminder } from "../services/manualReminder";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -369,6 +370,7 @@ paymentsRouter.get("/dashboard", async (c) => {
 
   const rows = await db
     .select({
+      id: payments.id,
       leaseId: payments.leaseId,
       status: payments.status,
       amount: payments.amount,
@@ -395,23 +397,20 @@ paymentsRouter.get("/dashboard", async (c) => {
     byLease.set(r.leaseId, arr);
   }
 
-  // Ledger allocations per lease and month (up to the selected month). When the
-  // landlord assigned money to a month, that counts as received for it, so the
-  // month is settled regardless of how the raw payment dates line up.
+  // Ledger allocations per lease and month. When the landlord assigned money
+  // to a month, that counts as received for it, so the month is settled
+  // regardless of how the raw payment dates line up. Each month only reads its
+  // own key; all months are loaded for the contract balance below.
   const allocRows = await db
     .select({
       leaseId: paymentAllocations.leaseId,
       periodMonth: paymentAllocations.periodMonth,
       amount: paymentAllocations.amount,
+      paymentId: paymentAllocations.paymentId,
     })
     .from(paymentAllocations)
     .innerJoin(leases, eq(paymentAllocations.leaseId, leases.id))
-    .where(
-      and(
-        inArray(leases.propertyId, accessibleIds),
-        lte(paymentAllocations.periodMonth, month),
-      ),
-    );
+    .where(inArray(leases.propertyId, accessibleIds));
   const allocByLeaseMonth = new Map<string, number>();
   for (const a of allocRows) {
     const key = `${a.leaseId}|${a.periodMonth}`;
@@ -453,6 +452,41 @@ paymentsRouter.get("/dashboard", async (c) => {
     recordsByLease,
     deductionsByLease,
   });
+
+  // The balance of each active contract today: what is still owed over all
+  // tracked months, or the credit when more came in than was due. A contract
+  // that is even or in credit is never listed as overdue.
+  const balanceByLease = new Map<string, ContractBalance>();
+  for (const l of activeLeaseRows) {
+    if (!(Number(l.monthlyRent || 0) > 0)) continue;
+    balanceByLease.set(
+      l.id,
+      contractBalance({
+        lease: l,
+        rows: rows.filter((r) => r.leaseId === l.id),
+        allocations: allocRows.filter((a) => a.leaseId === l.id),
+        records: recordsByLease.get(l.id) ?? [],
+        deductions: deductionsByLease.get(l.id) ?? [],
+        today: todayStr,
+      }),
+    );
+  }
+  const balanceFields = (leaseId: string) => {
+    const b = balanceByLease.get(leaseId);
+    if (!b) return {};
+    return {
+      contractOwed: b.owed,
+      ...(b.credit > 0 ? { contractCredit: b.credit } : {}),
+    };
+  };
+  const owesNothing = (leaseId: string) => {
+    const b = balanceByLease.get(leaseId);
+    return !!b && !(b.owed > 0);
+  };
+  // Overdue per lease, so the total never exceeds what each contract owes.
+  const overdueByLease = new Map<string, number>();
+  const addOverdue = (leaseId: string, amount: number) =>
+    overdueByLease.set(leaseId, (overdueByLease.get(leaseId) ?? 0) + amount);
 
   // Names for the overdue breakdown.
   const propRows = await db
@@ -503,6 +537,10 @@ paymentsRouter.get("/dashboard", async (c) => {
     remaining?: number;
     /** The rent from before the indexation, when that is exactly what was paid. */
     oldRent?: number;
+    /** What the whole contract still owes today. */
+    contractOwed?: number;
+    /** What the tenant paid more than was due over the whole contract. */
+    contractCredit?: number;
   };
   const recentPaymentsFor = (leaseId: string) =>
     (byLease.get(leaseId) ?? [])
@@ -541,6 +579,7 @@ paymentsRouter.get("/dashboard", async (c) => {
       rentDue: r.rent,
       dueDate: r.due,
       recentPayments: recentPaymentsFor(l.id),
+      ...balanceFields(l.id),
     };
     if (r.status === "paid") {
       // The paid list shows what was due and received, so it adds up to paidThisMonth.
@@ -550,10 +589,13 @@ paymentsRouter.get("/dashboard", async (c) => {
       // partial; the missing part is overdue from the due day on, else to come.
       const partial: BucketItem = { ...item, ...shortfallFields(s) };
       paidItems.push({ ...partial, rentDue: s.received });
-      if (r.due <= todayStr) overdueItems.push(partial);
-      else toComeItems.push(partial);
+      if (r.due <= todayStr) {
+        addOverdue(l.id, s.shortfall);
+        if (!owesNothing(l.id)) overdueItems.push(partial);
+      } else toComeItems.push(partial);
     } else if (r.status === "overdue") {
-      overdueItems.push(item);
+      addOverdue(l.id, r.rent);
+      if (!owesNothing(l.id)) overdueItems.push(item);
     } else {
       toComeItems.push(item);
     }
@@ -616,17 +658,17 @@ paymentsRouter.get("/dashboard", async (c) => {
       if (!priorCandidates.has(key)) priorCandidates.set(key, { lease: l, pendingSum: 0 });
     }
   }
-  let priorOverdue = 0;
   for (const [key, cand] of priorCandidates) {
     const pm = key.slice(key.lastIndexOf("|") + 1);
     if (!(Number(cand.lease.monthlyRent || 0) > 0)) {
-      priorOverdue += cand.pendingSum;
+      addOverdue(cand.lease.id, cand.pendingSum);
       continue;
     }
     const s = settle(cand.lease, pm);
     if (s.settled) continue;
     if (s.received > 0.01) {
-      priorOverdue += s.shortfall;
+      addOverdue(cand.lease.id, s.shortfall);
+      if (owesNothing(cand.lease.id)) continue;
       overdueItems.push({
         leaseId: cand.lease.id,
         propertyName: propName.get(cand.lease.propertyId) || cand.lease.propertyId,
@@ -634,12 +676,18 @@ paymentsRouter.get("/dashboard", async (c) => {
         dueDate: s.dueDate,
         recentPayments: recentPaymentsFor(cand.lease.id),
         ...shortfallFields(s),
+        ...balanceFields(cand.lease.id),
       });
     } else {
-      priorOverdue += cand.pendingSum;
+      addOverdue(cand.lease.id, cand.pendingSum);
     }
   }
-  const overdueTotal = overdueThisMonth + priorOverdue;
+  // Total overdue, per contract never more than the contract owes today.
+  let overdueTotal = 0;
+  for (const [leaseId, amount] of overdueByLease) {
+    const b = balanceByLease.get(leaseId);
+    overdueTotal += b ? Math.min(amount, b.owed) : amount;
+  }
 
   // Paid and expected for each of the last 12 months up to the selected month,
   // computed exactly as the figures above would be with that month selected.
@@ -1190,7 +1238,12 @@ paymentsRouter.post(
         ownerId: userId,
         trigger: { trigger: viaToken ? "api" : "manual", triggeredBy: userId },
       });
-      if (!result.ok) return c.json({ error: result.error }, 400);
+      if (!result.ok) {
+        return c.json(
+          { error: result.error, ...(result.error === NOTHING_OWED_ERROR ? { code: "nothing_owed" } : {}) },
+          400,
+        );
+      }
       return c.json({ data: result });
     } catch (err) {
       console.error("[Payments] manual reminder failed:", err);

@@ -183,3 +183,54 @@ export async function oldestShortfall(
     ? oldest.settlement.shortfall
     : null;
 }
+
+export type SpillPlan = {
+  /** One booking per open month that gets part of the transfer, oldest first. */
+  bookings: ShortfallPlan[];
+  /** What is left after every open month got what it misses: credit on the contract. */
+  credit: number;
+};
+
+/**
+ * How a transfer from a known tenant is booked when its amount fits no open
+ * payment exactly: the oldest open month first, each month gets at most what
+ * it still misses (its shortfall, or its whole expected amount when nothing
+ * came in yet), the rest goes to the next open month in order, and whatever
+ * is left after the last open month is credit. Exact to the cent.
+ */
+export function planSpill(input: {
+  openMonths: Array<{ month: string; settlement: MonthSettlement; rows: ShortfallPendingRow[] }>;
+  transfer: number;
+}): SpillPlan {
+  let left = cents(input.transfer);
+  const bookings: ShortfallPlan[] = [];
+  for (const open of input.openMonths) {
+    if (left <= 0) break;
+    const s = open.settlement;
+    const need = cents(s.received) > 0 ? cents(s.shortfall) : cents(s.expected);
+    if (need <= 0) continue;
+    const portion = Math.min(left, need);
+    const plan = planShortfallTransfer({
+      settlement: s,
+      month: open.month,
+      monthRows: open.rows,
+      transfer: portion / 100,
+      allowFirstPartial: true,
+    });
+    if (!plan) continue;
+    bookings.push(plan);
+    left -= portion;
+  }
+  return { bookings, credit: Math.max(0, left) / 100 };
+}
+
+/** The spill plan of a transfer over a lease's open months, oldest first. */
+export async function findSpillPlan(
+  db: Db,
+  leaseId: string,
+  pending: ShortfallPendingRow[],
+  transfer: number,
+): Promise<SpillPlan> {
+  const open = await openMonthsForLease(db, leaseId, pending);
+  return planSpill({ openMonths: open, transfer });
+}

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, formatDateTime } from "@/lib/dateLocale";
 import { eur } from "@/components/overview/format";
+import { ContractBalanceCard } from "@/components/leases/ContractBalanceCard";
 
 const PAGE_SIZE = 100;
 
@@ -260,6 +261,8 @@ export default function LeaseCommunicationPage() {
           </p>
         )}
       </div>
+
+      <ContractBalanceCard leaseId={leaseId} />
 
       {loading ? (
         <div className="space-y-2">

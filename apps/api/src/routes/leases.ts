@@ -4,12 +4,22 @@ import { z } from "zod";
 import { eq, and, inArray, isNotNull, like } from "drizzle-orm";
 import { getDb, leases, leaseTenants, payments, properties, propertyManagers } from "@rentular/db";
 import { getRequiredUserId } from "../lib/routeAuth";
-import { ensureExpectedPayments, depositNoteLike } from "../services/expectedPayments";
+import { ensureExpectedPayments, depositNoteLike, isDepositNote } from "../services/expectedPayments";
 import {
   loadPastCommunications,
   loadScheduledCommunications,
 } from "../services/leaseCommunications";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
+import {
+  arrearsAmount,
+  contractBalance,
+  isCreditNote,
+  isOddAmountNote,
+  loadBalanceData,
+  withArrearsMark,
+} from "../services/contractBalance";
+import { wallClock } from "../services/communicationSchedule";
+import { getScheduleTimezone } from "../lib/timezone";
 import {
   getAccessiblePropertyIds,
   getUserPropertyRole,
@@ -363,6 +373,118 @@ leasesRouter.get("/:id/indexation", async (c) => {
     formula: "newRent = baseRent * (currentIndex / baseIndex)",
   });
 });
+
+// The contract balance: rent due so far against everything received, with
+// the paid rent rows so the landlord can mark money that paid older arrears.
+leasesRouter.get("/:id/balance", async (c) => {
+  const id = c.req.param("id");
+  const userId = getRequiredUserId(c);
+  const lease = await db
+    .select({
+      id: leases.id,
+      propertyId: leases.propertyId,
+      monthlyRent: leases.monthlyRent,
+      monthlyCharges: leases.monthlyCharges,
+      paymentDay: leases.paymentDay,
+      startDate: leases.startDate,
+      endDate: leases.endDate,
+    })
+    .from(leases)
+    .where(eq(leases.id, id))
+    .limit(1);
+  if (!lease[0]) return c.json({ error: "Lease not found" }, 404);
+  const role = await getUserPropertyRole(userId, lease[0].propertyId);
+  if (!role) return c.json({ error: "Lease not found" }, 404);
+  try {
+    const data = await loadBalanceData(db, lease[0]);
+    if (!data) return c.json({ error: "Lease not found" }, 404);
+    const today = wallClock(new Date(), getScheduleTimezone()).ymd;
+    const b = contractBalance({ ...data, today });
+    const paidRows = data.rows
+      .filter((r) => r.status === "paid" && !r.isIgnored && !isDepositNote(r.notes))
+      .map((r) => ({
+        id: r.id,
+        amount: Number(r.amount),
+        dueDate: String(r.dueDate).slice(0, 10),
+        paidDate: r.paidDate ? String(r.paidDate).slice(0, 10) : null,
+        arrears: arrearsAmount(r.notes),
+        oddAmount: isOddAmountNote(r.notes),
+        credit: isCreditNote(r.notes),
+      }))
+      .sort((a, b2) => (a.paidDate ?? a.dueDate) < (b2.paidDate ?? b2.dueDate) ? 1 : -1);
+    return c.json({
+      data: {
+        leaseId: id,
+        today,
+        owed: b.owed,
+        credit: b.credit,
+        expected: b.expected,
+        received: b.received,
+        arrearsRepaid: b.arrearsRepaid,
+        fromMonth: b.fromMonth,
+        canEdit: hasMinimumRole(role, "manager"),
+        paidRows,
+      },
+    });
+  } catch (err) {
+    console.error("[Leases] contract balance failed:", err);
+    return c.json({ error: "Could not compute the contract balance" }, 500);
+  }
+});
+
+// Mark (part of) a paid rent row as paying off older arrears: rent from before
+// the contract was tracked here, or otherwise missing from the history. That
+// money then no longer counts as credit for later months. Amount 0 unmarks.
+leasesRouter.post(
+  "/:id/payments/:paymentId/arrears",
+  zValidator("json", z.object({ amount: z.number().min(0) })),
+  async (c) => {
+    const id = c.req.param("id");
+    const paymentId = c.req.param("paymentId");
+    const userId = getRequiredUserId(c);
+    const { amount } = c.req.valid("json");
+    const lease = await db
+      .select({ propertyId: leases.propertyId })
+      .from(leases)
+      .where(eq(leases.id, id))
+      .limit(1);
+    if (!lease[0]) return c.json({ error: "Lease not found" }, 404);
+    const role = await getUserPropertyRole(userId, lease[0].propertyId);
+    if (!role) return c.json({ error: "Lease not found" }, 404);
+    if (!hasMinimumRole(role, "manager")) return c.json({ error: "Insufficient permissions" }, 403);
+
+    const row = (
+      await db
+        .select({
+          id: payments.id,
+          status: payments.status,
+          amount: payments.amount,
+          notes: payments.notes,
+          isIgnored: payments.isIgnored,
+        })
+        .from(payments)
+        .where(and(eq(payments.id, paymentId), eq(payments.leaseId, id)))
+        .limit(1)
+    )[0];
+    if (!row) return c.json({ error: "Payment not found" }, 404);
+    if (row.status !== "paid" || row.isIgnored || isDepositNote(row.notes)) {
+      return c.json({ error: "Only a paid rent payment can be marked" }, 400);
+    }
+    const cents = Math.round(amount * 100);
+    if (cents > Math.round(Number(row.amount) * 100)) {
+      return c.json({ error: "The amount is larger than the payment" }, 400);
+    }
+    const notes = withArrearsMark(row.notes, cents / 100);
+    await db
+      .update(payments)
+      .set({ notes, updatedAt: new Date() })
+      .where(eq(payments.id, row.id));
+    console.log(
+      `[Leases] user ${userId} set arrears repayment on payment ${row.id} (lease ${id}) to ${(cents / 100).toFixed(2)} (was ${arrearsAmount(row.notes).toFixed(2)})`,
+    );
+    return c.json({ data: { paymentId: row.id, arrears: cents / 100 } });
+  },
+);
 
 // Get payment history for a lease
 leasesRouter.get("/:id/payments", async (c) => {

@@ -52,6 +52,7 @@ import { sweepRemainderRows } from "../services/remainderRows";
 import { holdForWaitingTransfer, loadWaitingTransfer } from "../services/transferReview";
 import { autoAssignByIban } from "../services/ibanMatcher";
 import { autoAssignByAmount } from "../services/amountMatcher";
+import { cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
 
 /**
  * Run the account-number and amount matchers over the transfers already
@@ -95,18 +96,28 @@ async function periodSettlement(
     paymentDay: number | null;
   },
   dueDate: string,
+  today: string,
 ): Promise<{
   settled: boolean;
   received: number;
   shortfall: number;
   remainder: RemainderContext | null;
+  /** What the whole contract owes; null when it was not computed (no rent set). */
+  owed: number | null;
 }> {
   if (!(Number(lease.monthlyRent || 0) > 0)) {
-    return { settled: false, received: 0, shortfall: 0, remainder: null };
+    return { settled: false, received: 0, shortfall: 0, remainder: null, owed: null };
   }
   const s = await loadMonthStatus(db, lease, String(dueDate).slice(0, 7));
+  // Reminders follow the contract balance: an even contract, or one in
+  // credit, is never reminded, and a month never asks more than it owes.
+  const balance = await loadContractBalance(db, lease.id, today);
+  const owed = balance ? balance.owed : null;
+  if (owed != null && !(owed > 0)) {
+    return { settled: true, received: s.received, shortfall: 0, remainder: null, owed };
+  }
   let remainder: RemainderContext | null = null;
-  if (s.received > 0.01 && !s.settled) {
+  if (s.received > 0.01 && !s.settled && (owed == null || s.shortfall <= owed)) {
     const records =
       s.oldRent != null ? ((await loadIndexRecords(db, [lease.id])).get(lease.id) ?? []) : [];
     remainder = {
@@ -116,15 +127,20 @@ async function periodSettlement(
       indexationDate: s.oldRent != null ? indexationDateFor(records, s.dueDate) : null,
     };
   }
-  return { settled: s.settled, received: s.received, shortfall: s.shortfall, remainder };
+  return { settled: s.settled, received: s.received, shortfall: s.shortfall, remainder, owed };
 }
 
-/** What a reminder asks for: the shortfall when part was paid, else the row amount. */
+/**
+ * What a reminder asks for: the shortfall when part was paid, else the row
+ * amount, capped at what the whole contract owes.
+ */
 function amountDueFor(
-  s: { settled: boolean; received: number; shortfall: number },
+  s: { settled: boolean; received: number; shortfall: number; owed: number | null },
   rowAmount: string | number,
 ): number {
-  return s.received > 0.01 && !s.settled ? s.shortfall : Number(rowAmount);
+  const month = s.received > 0.01 && !s.settled ? s.shortfall : Number(rowAmount);
+  if (s.owed == null) return month;
+  return cappedReminderAmount(month, s.owed) ?? 0;
 }
 
 const connection = {
@@ -256,7 +272,7 @@ async function sendDueDateTenantSms(
           .limit(1)
       )[0];
       if (!lease) continue;
-      const settlement = await periodSettlement(db, lease, p.dueDate);
+      const settlement = await periodSettlement(db, lease, p.dueDate, today);
       if (settlement.settled) continue;
       const amountDue = amountDueFor(settlement, p.amount);
 
@@ -462,7 +478,7 @@ const worker = new Worker(
         // Skip rent that has been recorded paid (a payment or ledger allocation
         // covers it), even if this pending record was left behind. When part of
         // the rent came in, only the rest is asked for.
-        const settlement = await periodSettlement(db, lease, payment.dueDate);
+        const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
         const amountDue = amountDueFor(settlement, payment.amount);
 
@@ -825,7 +841,7 @@ const worker = new Worker(
         if (!lease.landlordLateNotify) continue;
 
         // Already recorded paid (payment or ledger allocation)? Do not notify.
-        const settlement = await periodSettlement(db, lease, payment.dueDate);
+        const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
         const amountDue = amountDueFor(settlement, payment.amount);
 

@@ -1375,7 +1375,9 @@
     "infoTitle": "Worry-free letting in Belgium",
     "infoText": "SEPA collection, correct indexation and clear follow-up of every payment. And the code is open source.",
     "reminderTransferWaiting": "Heads up: a transfer of {amount} from {date} may already pay this rent and is waiting on the Reconciliation page.",
-    "communication": "Communication"
+    "communication": "Communication",
+    "contractCredit": "Credit {amount}",
+    "reminderNothingOwed": "Nothing is owed on this contract, so no reminder was sent."
   },
   "ledger": {
     "title": "Rent ledger",
@@ -1502,5 +1504,32 @@
       "if_index_published": "Once the new health index is out, if the indexation is not applied yet",
       "on_hold_transfer_review": "On hold: a transfer is waiting for you on the Reconciliation page"
     }
+  },
+  "contractBalance": {
+    "title": "Contract balance",
+    "owed": "Outstanding: {amount}",
+    "credit": "Credit: {amount}",
+    "even": "All settled: nothing outstanding",
+    "summary": "Rent due since {month}: {expected}. Received: {received}.",
+    "arrearsNote": "{amount} of that was marked as paying off older arrears and does not count as credit.",
+    "explain": "Money that pays off arrears from before this contract was tracked in Rentular is not credit for later months. Mark it here so the reminders stay right.",
+    "paymentsTitle": "Payments received",
+    "noPayments": "No payments received yet.",
+    "oddAmount": "Odd amount",
+    "oddAmountHint": "Booked automatically although the amount did not match. Worth a quick check.",
+    "creditBadge": "Credit",
+    "arrearsBadge": "Older arrears: {amount}",
+    "markArrears": "Mark as paying off arrears",
+    "editArrears": "Change",
+    "amountLabel": "Amount for older arrears",
+    "save": "Save",
+    "cancel": "Cancel",
+    "removeMark": "Remove mark",
+    "saved": "Saved",
+    "saveFailed": "Could not save this",
+    "amountTooLarge": "The amount can't be more than the payment",
+    "loadError": "Could not load the contract balance",
+    "showAll": "Show all {count} payments",
+    "showLess": "Show fewer"
   }
 }

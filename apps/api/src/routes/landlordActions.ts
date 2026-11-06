@@ -46,11 +46,14 @@ import { verifyIndexationSnoozeToken, type SnoozeLang } from "../lib/indexationS
 import { snoozeUntil, nextAnniversaryAfter } from "../services/indexationAlerts";
 import { localYmd } from "../services/indexationCalc";
 import { formatLongDate } from "../lib/belgianFormat";
-import { todayInZone } from "../lib/timezone";
+import { loadMonthStatus } from "../services/monthReceived";
+import { cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
+import { wallClock } from "../services/communicationSchedule";
+import { getScheduleTimezone, todayInZone } from "../lib/timezone";
 
 export const landlordActionsRouter = new Hono();
 
-type MsgKey = "paid" | "wait" | "off" | "hold" | "invalid" | "notfound";
+type MsgKey = "paid" | "wait" | "off" | "hold" | "invalid" | "notfound" | "nothingOwed";
 
 const MESSAGES: Record<string, Record<MsgKey, string>> = {
   en: {
@@ -60,6 +63,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     hold: "Okay, the third reminder will not be sent automatically. You take it from here.",
     invalid: "This link is invalid or has expired.",
     notfound: "This payment could not be found.",
+    nothingOwed: "Nothing is owed on this contract right now: the payments made cover the rent so far. No reminder was sent.",
   },
   nl: {
     paid: "Gemarkeerd als betaald. Bedankt.",
@@ -68,6 +72,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     hold: "Oké, de derde herinnering wordt niet automatisch verstuurd. Jij neemt het van hier over.",
     invalid: "Deze link is ongeldig of verlopen.",
     notfound: "Deze betaling kon niet worden gevonden.",
+    nothingOwed: "Er staat op dit contract momenteel niets open: de betalingen dekken de huur tot nu toe. Er is geen herinnering verstuurd.",
   },
   fr: {
     paid: "Marqué comme payé. Merci.",
@@ -76,6 +81,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     hold: "D'accord, le troisième rappel ne sera pas envoyé automatiquement. Vous prenez le relais.",
     invalid: "Ce lien est invalide ou a expiré.",
     notfound: "Ce paiement est introuvable.",
+    nothingOwed: "Rien n'est dû sur ce contrat pour le moment : les paiements reçus couvrent le loyer jusqu'ici. Aucun rappel n'a été envoyé.",
   },
   de: {
     paid: "Als bezahlt markiert. Danke.",
@@ -84,6 +90,7 @@ const MESSAGES: Record<string, Record<MsgKey, string>> = {
     hold: "In Ordnung, die dritte Erinnerung wird nicht automatisch gesendet. Sie übernehmen ab hier.",
     invalid: "Dieser Link ist ungültig oder abgelaufen.",
     notfound: "Diese Zahlung wurde nicht gefunden.",
+    nothingOwed: "Auf diesem Vertrag ist derzeit nichts offen: Die eingegangenen Zahlungen decken die Miete bis heute. Es wurde keine Erinnerung gesendet.",
   },
 };
 
@@ -116,6 +123,8 @@ interface ReminderContext {
   tenantLanguage: SupportedLanguage;
   propertyName: string;
   amount: number;
+  /** What the whole contract owes; null when not computed. */
+  owed: number | null;
   dueDate: string;
   daysPastDue: number;
   ownerId: string;
@@ -137,7 +146,15 @@ async function loadReminderContext(
     .where(eq(payments.id, paymentId))
     .limit(1);
   const lease = await db
-    .select({ propertyId: leases.propertyId })
+    .select({
+      id: leases.id,
+      propertyId: leases.propertyId,
+      monthlyRent: leases.monthlyRent,
+      monthlyCharges: leases.monthlyCharges,
+      paymentDay: leases.paymentDay,
+      startDate: leases.startDate,
+      endDate: leases.endDate,
+    })
     .from(leases)
     .where(eq(leases.id, leaseId))
     .limit(1);
@@ -160,6 +177,21 @@ async function loadReminderContext(
   const dueMs = new Date(p[0].dueDate).getTime();
   const daysPastDue = Math.max(0, Math.floor((Date.now() - dueMs) / 86_400_000));
 
+  // Ask what the month still misses, never more than the whole contract owes.
+  const due = String(p[0].dueDate).slice(0, 10);
+  let amount = Number(p[0].amount);
+  let owed: number | null = null;
+  if (Number(lease[0].monthlyRent || 0) > 0) {
+    const status = await loadMonthStatus(db, lease[0], due.slice(0, 7));
+    if (status.received > 0.01 && status.shortfall > 0) amount = status.shortfall;
+    const today = wallClock(new Date(), getScheduleTimezone()).ymd;
+    const balance = await loadContractBalance(db, lease[0], due > today ? due : today);
+    if (balance) {
+      owed = balance.owed;
+      amount = cappedReminderAmount(amount, balance.owed) ?? 0;
+    }
+  }
+
   // CC the landlord people (managers + owner) on the reminder.
   const rec = await getLandlordNotificationRecipients(lease[0].propertyId, owner[0]?.email);
   const cc = mergeCc(rec.to, rec.cc, tenantRec.cc) ?? "";
@@ -170,7 +202,8 @@ async function loadReminderContext(
     tenantPhone: tenant.phone,
     tenantLanguage: (tenant.language || "nl") as SupportedLanguage,
     propertyName: prop[0]?.name || "",
-    amount: Number(p[0].amount),
+    amount,
+    owed,
     dueDate: p[0].dueDate,
     daysPastDue,
     ownerId,
@@ -459,6 +492,7 @@ landlordActionsRouter.get("/:token", async (c) => {
     } else if (action === "remind") {
       const ctx = await loadReminderContext(db, paymentId, rows[0].leaseId, rows[0].ownerId);
       if (!ctx) return renderKey(c, lang, "notfound");
+      if (ctx.owed != null && !(ctx.owed > 0)) return renderKey(c, lang, "nothingOwed");
 
       // Recorded like any other reminder, so the automatic ladder counts it
       // and the tenant does not get a second friendly reminder for the month.

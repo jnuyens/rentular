@@ -1375,7 +1375,9 @@
     "infoTitle": "Zorgeloos verhuren in België",
     "infoText": "SEPA-domiciliëring, correcte indexering en duidelijke opvolging van elke betaling. En de code is open source.",
     "reminderTransferWaiting": "Let op: een overschrijving van {amount} van {date} betaalt deze huur misschien al en wacht op de pagina Reconciliatie.",
-    "communication": "Communicatie"
+    "communication": "Communicatie",
+    "contractCredit": "Tegoed {amount}",
+    "reminderNothingOwed": "Op dit contract staat niets open, dus er is geen herinnering verstuurd."
   },
   "ledger": {
     "title": "Huurgrootboek",
@@ -1502,5 +1504,32 @@
       "if_index_published": "Zodra de nieuwe gezondheidsindex er is, als de indexering nog niet toegepast is",
       "on_hold_transfer_review": "Gepauzeerd: een overschrijving wacht op jou op de pagina Reconciliatie"
     }
+  },
+  "contractBalance": {
+    "title": "Saldo van het contract",
+    "owed": "Openstaand: {amount}",
+    "credit": "Tegoed: {amount}",
+    "even": "Alles in orde: er staat niets open",
+    "summary": "Huur verschuldigd sinds {month}: {expected}. Ontvangen: {received}.",
+    "arrearsNote": "Daarvan is {amount} gemarkeerd als afbetaling van oudere achterstal. Dat telt niet als tegoed.",
+    "explain": "Geld waarmee de huurder achterstal afbetaalt van voor dit contract in Rentular gevolgd werd, is geen tegoed voor latere maanden. Markeer het hier, dan kloppen de herinneringen.",
+    "paymentsTitle": "Ontvangen betalingen",
+    "noPayments": "Nog geen betalingen ontvangen.",
+    "oddAmount": "Afwijkend bedrag",
+    "oddAmountHint": "Automatisch geboekt hoewel het bedrag niet overeenkwam. Kijk het even na.",
+    "creditBadge": "Tegoed",
+    "arrearsBadge": "Oudere achterstal: {amount}",
+    "markArrears": "Markeer als afbetaling van achterstal",
+    "editArrears": "Aanpassen",
+    "amountLabel": "Bedrag voor oudere achterstal",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "removeMark": "Markering verwijderen",
+    "saved": "Opgeslagen",
+    "saveFailed": "Opslaan is niet gelukt",
+    "amountTooLarge": "Het bedrag kan niet groter zijn dan de betaling",
+    "loadError": "Het saldo van het contract kon niet geladen worden",
+    "showAll": "Toon alle {count} betalingen",
+    "showLess": "Toon minder"
   }
 }
