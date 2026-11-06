@@ -17,7 +17,7 @@ import { isSmsConfigured } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
 import { isDepositNote } from "./expectedPayments";
 import { loadMonthStatus, rowIdsForMonth } from "./monthReceived";
-import { cappedReminderAmount, contractBalance, loadBalanceData } from "./contractBalance";
+import { contractBalance, loadBalanceData, reminderAmountFor } from "./contractBalance";
 import { isReminderTestPhase, resolveReminderChannel } from "./reminderChannel";
 import { loadWaitingTransfer } from "./transferReview";
 import { nextAnniversaryAfter } from "./indexationAlerts";
@@ -272,7 +272,8 @@ export async function loadScheduledCommunications(
     let amount = status.received > 0.01 ? status.shortfall : Number(p.amount);
     if (balanceData && Number(lease.monthlyRent || 0) > 0) {
       const balance = contractBalance({ ...balanceData, today: due > today ? due : today });
-      const capped = cappedReminderAmount(amount, balance.owed);
+      // Nothing is planned for a month before the tracking window either.
+      const capped = reminderAmountFor(balance, month, amount);
       if (capped == null) continue;
       amount = capped;
     }

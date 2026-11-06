@@ -1512,6 +1512,7 @@
     "even": "Tout est en ordre : rien n'est dû",
     "summary": "Loyer dû depuis {month} : {expected}. Reçu : {received}.",
     "arrearsNote": "Dont {amount} marqués comme remboursement d'arriérés plus anciens, qui ne comptent pas comme avoir.",
+    "windowNote": "Compté à partir du mois que paie le premier paiement reçu ici. Les mois ouverts avant cela ont été payés avant l'arrivée des données bancaires et ne font jamais l'objet d'un rappel.",
     "explain": "L'argent qui rembourse des arriérés antérieurs au suivi de ce contrat dans Rentular n'est pas un avoir pour les mois suivants. Marquez-le ici pour que les rappels restent justes.",
     "paymentsTitle": "Paiements reçus",
     "noPayments": "Aucun paiement reçu pour l'instant.",

@@ -1512,6 +1512,7 @@
     "even": "Alles in orde: er staat niets open",
     "summary": "Huur verschuldigd sinds {month}: {expected}. Ontvangen: {received}.",
     "arrearsNote": "Daarvan is {amount} gemarkeerd als afbetaling van oudere achterstal. Dat telt niet als tegoed.",
+    "windowNote": "Geteld vanaf de maand waarvoor de eerste hier ontvangen betaling dient. Openstaande maanden daarvoor werden betaald voordat de bankgegevens binnenkwamen en krijgen nooit een herinnering.",
     "explain": "Geld waarmee de huurder achterstal afbetaalt van voor dit contract in Rentular gevolgd werd, is geen tegoed voor latere maanden. Markeer het hier, dan kloppen de herinneringen.",
     "paymentsTitle": "Ontvangen betalingen",
     "noPayments": "Nog geen betalingen ontvangen.",

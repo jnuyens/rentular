@@ -47,7 +47,7 @@ import { snoozeUntil, nextAnniversaryAfter } from "../services/indexationAlerts"
 import { localYmd } from "../services/indexationCalc";
 import { formatLongDate } from "../lib/belgianFormat";
 import { loadMonthStatus } from "../services/monthReceived";
-import { cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
+import { loadContractBalance, reminderAmountFor } from "../services/contractBalance";
 import { wallClock } from "../services/communicationSchedule";
 import { getScheduleTimezone, todayInZone } from "../lib/timezone";
 
@@ -187,8 +187,10 @@ async function loadReminderContext(
     const today = wallClock(new Date(), getScheduleTimezone()).ymd;
     const balance = await loadContractBalance(db, lease[0], due > today ? due : today);
     if (balance) {
-      owed = balance.owed;
-      amount = cappedReminderAmount(amount, balance.owed) ?? 0;
+      const capped = reminderAmountFor(balance, due.slice(0, 7), amount);
+      // A month before the tracking window counts as nothing owed.
+      owed = capped == null ? 0 : balance.owed;
+      amount = capped ?? 0;
     }
   }
 

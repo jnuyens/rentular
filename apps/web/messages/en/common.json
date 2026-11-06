@@ -1512,6 +1512,7 @@
     "even": "All settled: nothing outstanding",
     "summary": "Rent due since {month}: {expected}. Received: {received}.",
     "arrearsNote": "{amount} of that was marked as paying off older arrears and does not count as credit.",
+    "windowNote": "Counted from the month the first payment received here pays for. Open months before that were paid before the bank data came in and are never reminded.",
     "explain": "Money that pays off arrears from before this contract was tracked in Rentular is not credit for later months. Mark it here so the reminders stay right.",
     "paymentsTitle": "Payments received",
     "noPayments": "No payments received yet.",
