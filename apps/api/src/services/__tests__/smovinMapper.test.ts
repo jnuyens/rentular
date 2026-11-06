@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mapTenantLanguage, mapSmovinTenant, mapSmovinLease } from "../smovinMapper";
+import { todayInZone } from "../../lib/timezone";
 
 describe("mapTenantLanguage", () => {
   it("maps supported Smovin locales to Rentular languages", () => {
@@ -78,7 +79,7 @@ describe("mapSmovinLease startDate handling", () => {
   });
 
   it("falls back to today when Smovin gave no startDate", () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayInZone();
     const lease = mapSmovinLease(
       { startDate: "", monthlyRent: "850,00 €" },
       "owner-1",

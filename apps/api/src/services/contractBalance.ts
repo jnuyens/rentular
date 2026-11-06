@@ -79,6 +79,11 @@ export type ContractBalance = {
   received: number;
   /** Money marked as paying older arrears. */
   arrearsRepaid: number;
+  /**
+   * Rent paid ahead for a month whose due date is still to come. It is not
+   * credit: it settles that month once it is due.
+   */
+  paidInAdvance: number;
   /** What the tenant still owes on the contract (0 when even or in credit). */
   owed: number;
   /** What the tenant paid more than was due (0 when something is owed). */
@@ -197,6 +202,18 @@ export function contractBalance(input: {
   );
   receivedCents -= arrearsCents;
 
+  // Rent paid ahead for a month that is not due yet (e.g. November's rent
+  // paid on 05/11 for a due date of 08/11) is not credit: it belongs to that
+  // coming month and only counts once the month is due.
+  let advanceCents = 0;
+  for (const r of paidRent) {
+    const month = attributedMonth(r, lease.paymentDay);
+    if (dueDateForMonth(month, lease.paymentDay) > today) {
+      advanceCents += Math.max(0, cents(r.amount) - Math.min(cents(arrearsAmount(r.notes)), cents(r.amount)));
+    }
+  }
+  receivedCents -= advanceCents;
+
   // The tracked months.
   const start = lease.startDate ? ymd(lease.startDate) : null;
   const end = lease.endDate ? ymd(lease.endDate) : null;
@@ -240,6 +257,7 @@ export function contractBalance(input: {
     expected: expectedCents / 100,
     received: receivedCents / 100,
     arrearsRepaid: arrearsCents / 100,
+    paidInAdvance: advanceCents / 100,
     owed: balanceCents > 0 ? balanceCents / 100 : 0,
     credit: balanceCents < 0 ? -balanceCents / 100 : 0,
     fromMonth,

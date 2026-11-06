@@ -315,3 +315,24 @@ describe("planSpill", () => {
     expect(planSpill({ openMonths: [], transfer: 250.55 })).toEqual({ bookings: [], credit: 250.55 });
   });
 });
+
+describe("contractBalance: rent paid ahead for a month not due yet", () => {
+  it("does not count November paid on 05/11 (due 08/11) as credit on 06/11", () => {
+    const lease = {
+      monthlyRent: "1050.00",
+      monthlyCharges: "0.00",
+      paymentDay: 8,
+      startDate: "2020-02-01",
+      endDate: null,
+    };
+    const rows = [
+      { id: "oct", status: "paid", amount: "1050.00", dueDate: "2026-10-08", paidDate: "2026-10-04", notes: null, isIgnored: false },
+      { id: "nov", status: "paid", amount: "1050.00", dueDate: "2026-11-08", paidDate: "2026-11-05", notes: null, isIgnored: false },
+    ];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const b = contractBalance({ lease, rows, records: [], deductions: [], allocations: [], today: "2026-11-06" } as any);
+    expect(b.paidInAdvance).toBe(1050);
+    expect(b.credit).toBe(0);
+    expect(b.owed).toBe(0);
+  });
+});

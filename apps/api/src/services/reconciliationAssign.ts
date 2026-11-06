@@ -282,5 +282,8 @@ export async function assignStatementToLease(
   }
 
   const combinedNotes = target.notes ? `${target.notes}\n${note}` : note;
-  return markPaidAndMatch(target.id, { notes: combinedNotes });
+  // The row records what actually came in: a transfer that matched the rent
+  // net of a deduction (e.g. 536.08 against 1050 minus a 513.92 property-tax
+  // reduction) must not be booked as the full rent.
+  return markPaidAndMatch(target.id, { notes: combinedNotes, amount: String(transfer) });
 }
