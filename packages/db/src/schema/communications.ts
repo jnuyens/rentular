@@ -37,8 +37,11 @@ export const communications = mysqlTable("communications", {
     "indexation_alert", // Landlord/manager notice that an indexation is due
     "landlord_notification", // Late-payment, due-date and review notices to the landlord
     "due_date_sms",     // Short nudge to the tenant on the due date
+    "tenant_reply",     // Email the tenant sent back to the contract's reply address
   ]).notNull(),
-  // Recipient info
+  // outbound: sent by the platform. inbound: received, e.g. a tenant reply.
+  direction: mysqlEnum("direction", ["outbound", "inbound"]).default("outbound").notNull(),
+  // Recipient info (for inbound rows: the sender)
   recipientName: varchar("recipient_name", { length: 255 }).notNull(),
   recipientEmail: varchar("recipient_email", { length: 255 }),
   recipientPhone: varchar("recipient_phone", { length: 50 }),
