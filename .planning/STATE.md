@@ -228,6 +228,7 @@ None yet.
 | 261106-tzs | All timestamps stored/read as true UTC (UTC DB sessions + one-off correction script), today and display in the location time zone | 2026-11-06 | a6b0ac3 | [261106-tzs-timestamps-utc-and-location-aware-display](./quick/261106-tzs-timestamps-utc-and-location-aware-display/) |
 | 261106-bal | Reminders follow the contract balance (credit, arrears marking), every known-tenant transfer booked oldest month first | 2026-11-06 | f7713e3 | [261106-bal-contract-balance-reminders-and-odd-amounts](./quick/261106-bal-contract-balance-reminders-and-odd-amounts/) |
 | 261107-rpl | Per-contract reply address: tenant replies filed on the contract and forwarded to the managers, Cloudflare email worker | 2026-11-08 | 81cdf11 | [261107-rpl-tenant-reply-address](./quick/261107-rpl-tenant-reply-address/) |
+| 261108-shd | Current self-hosting docs (SELF-HOSTING.md, CONTRIBUTING.md, README, env templates), SMTP auth, turbo env and compose fixes, stray worktree copy untracked | 2026-11-08 | 84e0764 | [261108-shd-self-hosting-docs](./quick/261108-shd-self-hosting-docs/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
