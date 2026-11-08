@@ -138,6 +138,10 @@ services:
     env_file:
       - ${RENTULAR_ENV_FILE:-/opt/rentular/.env}
     environment:
+      # NextAuth stores users and sessions through the DB, so the web container
+      # needs the compose service name too.
+      DB_HOST: mariadb
+      DB_PORT: "3306"
       NODE_ENV: production
     ports:
       - "127.0.0.1:3000:3000" # loopback ONLY, host nginx proxies rentular.com here
