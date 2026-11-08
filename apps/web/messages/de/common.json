@@ -1438,8 +1438,8 @@
     "scheduledTitle": "Geplant",
     "scheduledEmpty": "Für diesen Vertrag ist nichts geplant.",
     "timeNote": "Uhrzeiten in Brüsseler Zeit.",
-    "sentTitle": "Gesendet",
-    "sentEmpty": "Für diesen Vertrag wurde noch nichts gesendet.",
+    "sentTitle": "Mit dem Mieter",
+    "sentEmpty": "Noch keine Nachrichten mit dem Mieter.",
     "landlordTitle": "Mitteilungen an Sie",
     "landlordEmpty": "Noch keine Mitteilungen an Sie zu diesem Vertrag.",
     "allChannels": "Alle Kanäle",
@@ -1464,7 +1464,8 @@
       "sent": "Gesendet",
       "delivered": "Zugestellt",
       "failed": "Fehlgeschlagen",
-      "bounced": "Unzustellbar"
+      "bounced": "Unzustellbar",
+      "received": "Empfangen"
     },
     "trigger": {
       "schedule": "automatisch",
@@ -1489,13 +1490,15 @@
       "landlord_notification": "Mitteilung an Sie",
       "due_date_sms": "Nachricht am Fälligkeitstag",
       "landlord_final_pending": "Hinweis vor der dritten Mahnung",
-      "landlord_late": "Hinweis auf Zahlungsverzug"
+      "landlord_late": "Hinweis auf Zahlungsverzug",
+      "tenant_reply": "Antwort des Mieters"
     },
     "landlordKind": {
       "late": "Hinweis auf Zahlungsverzug",
       "due": "Miete heute fällig",
       "final_pending": "Hinweis vor der dritten Mahnung",
-      "transfer_review": "Überweisung zu prüfen"
+      "transfer_review": "Überweisung zu prüfen",
+      "tenant_reply_forward": "An Sie weitergeleitete Antwort des Mieters"
     },
     "condition": {
       "if_unpaid": "Nur wenn sie noch nicht bezahlt ist",
@@ -1503,7 +1506,12 @@
       "if_unpaid_unless_held": "Nur wenn sie noch nicht bezahlt ist und Sie die Mahnung nicht zurückhalten",
       "if_index_published": "Sobald der neue Gesundheitsindex veröffentlicht ist, falls die Indexierung noch nicht angewendet wurde",
       "on_hold_transfer_review": "Angehalten: Eine Überweisung wartet auf der Seite Abgleich auf Sie"
-    }
+    },
+    "from": "Von",
+    "unknownSender": "Unbekannter Absender",
+    "unknownSenderHint": "Diese Adresse gehört zu keinem Mieter dieses Vertrags.",
+    "autoReply": "Automatische Antwort, nicht weitergeleitet",
+    "attachments": "Anhänge"
   },
   "contractBalance": {
     "title": "Vertragssaldo",

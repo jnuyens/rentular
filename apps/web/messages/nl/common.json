@@ -1438,8 +1438,8 @@
     "scheduledTitle": "Gepland",
     "scheduledEmpty": "Er staat niets gepland voor dit contract.",
     "timeNote": "Tijden in Brusselse tijd.",
-    "sentTitle": "Verzonden",
-    "sentEmpty": "Er is nog niets verstuurd voor dit contract.",
+    "sentTitle": "Met de huurder",
+    "sentEmpty": "Nog geen berichten met de huurder.",
     "landlordTitle": "Meldingen aan jou",
     "landlordEmpty": "Nog geen meldingen aan jou over dit contract.",
     "allChannels": "Alle kanalen",
@@ -1464,7 +1464,8 @@
       "sent": "Verzonden",
       "delivered": "Afgeleverd",
       "failed": "Mislukt",
-      "bounced": "Teruggestuurd"
+      "bounced": "Teruggestuurd",
+      "received": "Ontvangen"
     },
     "trigger": {
       "schedule": "automatisch",
@@ -1489,13 +1490,15 @@
       "landlord_notification": "Melding aan jou",
       "due_date_sms": "Bericht op de vervaldag",
       "landlord_final_pending": "Melding vóór de derde herinnering",
-      "landlord_late": "Melding van laattijdige betaling"
+      "landlord_late": "Melding van laattijdige betaling",
+      "tenant_reply": "Antwoord van huurder"
     },
     "landlordKind": {
       "late": "Melding van laattijdige betaling",
       "due": "Huur vandaag te betalen",
       "final_pending": "Melding vóór de derde herinnering",
-      "transfer_review": "Overschrijving na te kijken"
+      "transfer_review": "Overschrijving na te kijken",
+      "tenant_reply_forward": "Antwoord van huurder, doorgestuurd naar jou"
     },
     "condition": {
       "if_unpaid": "Enkel als het nog niet betaald is",
@@ -1503,7 +1506,12 @@
       "if_unpaid_unless_held": "Enkel als het nog niet betaald is en je het niet tegenhoudt",
       "if_index_published": "Zodra de nieuwe gezondheidsindex er is, als de indexering nog niet toegepast is",
       "on_hold_transfer_review": "Gepauzeerd: een overschrijving wacht op jou op de pagina Reconciliatie"
-    }
+    },
+    "from": "Van",
+    "unknownSender": "Onbekende afzender",
+    "unknownSenderHint": "Dit adres hoort niet bij een huurder van dit contract.",
+    "autoReply": "Automatisch antwoord, niet doorgestuurd",
+    "attachments": "Bijlagen"
   },
   "contractBalance": {
     "title": "Saldo van het contract",
