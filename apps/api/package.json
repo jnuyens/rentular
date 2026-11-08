@@ -23,7 +23,7 @@
     "fflate": "0.8.2",
     "gocardless-nodejs": "^4.2.0",
     "hono": "^4.6.0",
-    "ioredis": "^5.4.0",
+    "ioredis": "^6.0.0",
     "jose": "^6.2.1",
     "mysql2": "^3.24.4",
     "nodemailer": "^6.9.0",
