@@ -23,6 +23,13 @@ export interface EmailOptions {
   // gets logged to communications.
   html?: string;
   ownerId?: string;
+  /** Reply-To header, e.g. the contract's reply address or the tenant who wrote in. */
+  replyTo?: string;
+  /** Message-ID to set (with angle brackets), so replies can be matched to it. */
+  messageId?: string;
+  /** In-Reply-To / References for a message that answers another one. */
+  inReplyTo?: string;
+  references?: string[];
   attachments?: Array<{
     filename: string;
     content: Buffer;
@@ -129,6 +136,10 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     subject: options.subject,
     text: options.body,
     html: options.html || undefined,
+    replyTo: options.replyTo || undefined,
+    messageId: options.messageId || undefined,
+    inReplyTo: options.inReplyTo || undefined,
+    references: options.references && options.references.length ? options.references : undefined,
     attachments: options.attachments,
   });
 }
