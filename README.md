@@ -20,6 +20,7 @@
 - **Payment Follow-up** - Track rent payments, send automated reminders for late payments
 - **Rent Indexation** - Automatic rent adjustments based on the Belgian health index (Statbel)
 - **GoCardless Integration** - SEPA Direct Debit for automated rent collection
+- **Bank Connections** - Match incoming transfers through Ponto (PSD2)
 - **Periodic Maintenance** - Track fire alarm inspections, heating maintenance, chimney sweeps
 - **Stripe Subscriptions** - Hosted checkout with card, Bancontact, and iDEAL support
 - **Multi-language** - Dutch, French, German, and English
@@ -32,7 +33,7 @@
 | API | Hono |
 | Database | MySQL / MariaDB |
 | ORM | Drizzle |
-| Auth | Auth.js (Google, Facebook, Twitter/X) |
+| Auth | Auth.js (email and password, Google, Facebook, Twitter/X) |
 | Payments | GoCardless + Stripe |
 | Background Jobs | BullMQ + Redis |
 | Monorepo | Turborepo + pnpm |
@@ -42,54 +43,69 @@
 ```
 rentular/
   apps/
-    web/              # Next.js frontend (dashboard)
-    api/              # Hono REST API
+    web/              Next.js frontend (dashboard, sign-in, public pages)
+    api/              Hono REST API, also runs the background jobs
+    mcp-server/       MCP server so Claude can work with your Rentular data
   packages/
-    db/               # Drizzle ORM schema + migrations
-    shared/           # Types, validation, constants
-    indexation/       # Belgian rent indexation logic
-    payments/         # GoCardless payment abstraction
-    notifications/    # Email/SMS notification service
+    db/               Drizzle ORM schema and database connection
+    shared/           Types, validation, constants (indexation, formats, versions)
+  infra/
+    cloudflare/inbound-email/   Email worker for tenant replies
+  android-app/        Android WebView app
+  deploy/             Example deploy script, nginx config, Ponto certificate helper
 ```
 
-## Getting Started
+Parts with their own docs:
+
+- [apps/mcp-server/README.md](apps/mcp-server/README.md): connect Claude Desktop or Claude Code to Rentular.
+- [infra/cloudflare/inbound-email/README.md](infra/cloudflare/inbound-email/README.md): route tenant replies back into Rentular.
+- [android-app/README.md](android-app/README.md): build the Android app, and how it checks server versions.
+
+## Self-hosting
+
+To run Rentular on your own server, read [SELF-HOSTING.md](SELF-HOSTING.md).
+It covers Docker compose and a plain Node/PM2 setup, the reverse proxy, the
+database, the first account, webhooks, updates and backups.
+
+## Getting Started (development)
 
 ### Prerequisites
 
-- Node.js >= 20
-- pnpm >= 9
-- Docker and Docker Compose
-
-The repository includes [`.nvmrc`](/Users/jnuyens/rentular/source/.nvmrc), [`.node-version`](/Users/jnuyens/rentular/source/.node-version), and a Volta pin in [`package.json`](/Users/jnuyens/rentular/source/package.json) so local shells can stay on Node 20 consistently.
+- Node.js 20.19, pinned through Volta in [`package.json`](package.json). Any later 20.x works too.
+- pnpm 9.15, from the `packageManager` field in [`package.json`](package.json). `corepack enable` picks it up.
+- Docker and Docker Compose, for MariaDB, Redis and Mailpit.
 
 If you use Homebrew on macOS:
 
 ```bash
 brew install node@20
 export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+corepack enable
 ```
 
 ### Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/rentular/rentular.git
+git clone https://github.com/jnuyens/rentular.git
 cd rentular
 
 # Install dependencies
 pnpm install
 
-# Copy environment file
+# Copy the environment file, then edit it
 cp .env.example .env
-# Edit .env with your configuration
 
 # Start infrastructure (MariaDB + Redis + Mailpit)
 docker compose up -d
 
-# Run database migrations
+# Nothing reads .env by itself, so export it into your shell
+set -a; . ./.env; set +a
+
+# Create the tables on the fresh database
 pnpm db:push
 
-# Start development servers
+# Start the development servers
 pnpm dev
 ```
 
@@ -97,24 +113,23 @@ The web app will be available at http://localhost:3000 and the API at http://loc
 
 For email testing, Mailpit UI is at http://localhost:8025.
 
-### Validation
+Do not run `pnpm db:generate` or `pnpm db:migrate`: the migration history in
+`packages/db/drizzle` does not match the current schema. Use `pnpm db:push`.
+On MariaDB, `db:push` only works against an empty database; see
+[SELF-HOSTING.md](SELF-HOSTING.md#database).
+
+### Checks
 
 ```bash
-# Validate the API
+# Type-check the API, the web app, or the whole workspace
 pnpm --filter @rentular/api lint
-
-# Validate the web app
 pnpm --filter @rentular/web lint
-
-# Validate the full workspace
 pnpm lint
+
+# Unit tests (vitest)
+pnpm --filter @rentular/api test
+pnpm --filter @rentular/mcp-server test
 ```
-
-### Current Scope
-
-- Database support is MySQL / MariaDB only.
-- Email/password registration, login, password reset, and account password/email changes are implemented.
-- Payment collection and payment mutation endpoints that do not persist data yet return `501 Not Implemented` instead of reporting false success.
 
 ## Belgian Rental Law
 
@@ -128,8 +143,8 @@ Rentular implements Belgian rental law specifics:
 
 ## Contributing
 
-Contributions are welcome! Please read our contributing guidelines before submitting a pull request.
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run things, the checks, and what a pull request needs.
 
 ## License
 
-This project is licensed under the AGPL-3.0 License - see the LICENSE file for details.
+This project is licensed under the AGPL-3.0 License. See [LICENSE](LICENSE) for details.

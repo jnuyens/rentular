@@ -1,5 +1,5 @@
 # ===========================================================================
-# Rentular — PRODUCTION compose (m1 / Hetzner, behind host nginx + LE TLS)
+# Rentular: production compose stack (behind a host reverse proxy with TLS)
 # ===========================================================================
 # This is a SEPARATE, hardened stack from docker-compose.yml (which stays the
 # dev infra). deploy.sh (Plan 05) runs:
@@ -14,9 +14,13 @@
 #     127.0.0.1:3306 while the DB stays off the public interface.
 #   - NO default DB passwords. DB_ROOT_PASSWORD/DB_PASSWORD/DB_NAME/DB_USER are
 #     REQUIRED from /opt/rentular/.env via the ${VAR:?err} form (compose aborts
-#     if unset) — no ${VAR:-default} fallbacks.
-#   - Secrets injected into api + web via `env_file: /opt/rentular/.env`
-#     (root-owned, chmod 600, git-ignored — see .env.production.example).
+#     if unset), no ${VAR:-default} fallbacks.
+#   - Secrets injected into api + web via `env_file:`, by default
+#     /opt/rentular/.env (root-owned, chmod 600, not in git; see
+#     .env.production.example). Set RENTULAR_ENV_FILE to use another path.
+#   - Compose itself also needs DB_ROOT_PASSWORD, DB_NAME, DB_USER,
+#     DB_PASSWORD and NEXT_PUBLIC_API_URL for interpolation. Run it with
+#     --env-file pointing at the same file (see SELF-HOSTING.md).
 #
 # The obsolete top-level `version:` key is intentionally omitted.
 #
@@ -40,7 +44,7 @@ services:
       MARIADB_USER: ${DB_USER:?DB_USER is required}
       MARIADB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required (set it in /opt/rentular/.env)}
     ports:
-      - "127.0.0.1:3306:3306" # loopback ONLY — host-shell bootstrap connects here
+      - "127.0.0.1:3306:3306" # loopback ONLY, host-shell bootstrap connects here
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
@@ -63,16 +67,16 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- Mailpit (email capture; D-01 — pre-release keeps mail on-box) ------
+  # --- Mailpit (email capture; D-01, pre-release keeps mail on-box) ------
   # SMTP :1025 stays internal (compose network only). Only the UI is published,
   # on loopback, for inspection via an SSH tunnel to 127.0.0.1:8025.
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8025:8025" # Web UI — loopback ONLY (reach via SSH tunnel)
+      - "127.0.0.1:8025:8025" # Web UI, loopback ONLY (reach via SSH tunnel)
     expose:
-      - "1025" # SMTP — internal compose network only, not published
+      - "1025" # SMTP, internal compose network only, not published
     environment:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
@@ -84,25 +88,29 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     env_file:
-      - /opt/rentular/.env
+      - ${RENTULAR_ENV_FILE:-/opt/rentular/.env}
     environment:
       # Container-network overrides: reach infra by compose service DNS, not the
       # DB_HOST=127.0.0.1 value the host-shell bootstrap uses.
       DB_HOST: mariadb
       DB_PORT: "3306"
+      # The health check and token guard read REDIS_URL, the BullMQ workers read
+      # REDIS_HOST/REDIS_PORT. Set both so every Redis client finds the service.
       REDIS_URL: redis://redis:6379
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
       NODE_ENV: production
+      # SMTP_HOST/SMTP_PORT come from the env file: mailpit/1025 captures mail
+      # in the bundled Mailpit, or point them at your real relay.
     ports:
-      - "127.0.0.1:4000:4000" # loopback ONLY — host nginx proxies /api/v1 here
+      - "127.0.0.1:4000:4000" # loopback ONLY, host nginx proxies /api/v1 here
     depends_on:
       mariadb:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      # API is new Hono().basePath("/api/v1") — health is served at /api/v1/health.
+      # API is new Hono().basePath("/api/v1"), health is served at /api/v1/health.
       # node:20-slim has no curl/wget; use node global fetch.
       test:
         [
@@ -128,11 +136,15 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required at build (e.g. https://rentular.com/api/v1)}
     restart: unless-stopped
     env_file:
-      - /opt/rentular/.env
+      - ${RENTULAR_ENV_FILE:-/opt/rentular/.env}
     environment:
+      # NextAuth stores users and sessions through the DB, so the web container
+      # needs the compose service name too.
+      DB_HOST: mariadb
+      DB_PORT: "3306"
       NODE_ENV: production
     ports:
-      - "127.0.0.1:3000:3000" # loopback ONLY — host nginx proxies rentular.com here
+      - "127.0.0.1:3000:3000" # loopback ONLY, host nginx proxies rentular.com here
     depends_on:
       api:
         condition: service_started

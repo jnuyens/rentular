@@ -8,7 +8,7 @@ dist/
 .turbo/
 out/
 
-# Environment — ignore every .env variant, keep only *.example templates
+# Environment, ignore every .env variant, keep only *.example templates
 .env
 .env.*
 !.env.example
@@ -37,3 +37,6 @@ coverage/
 
 # Ibanity Ponto sandbox certificate bundles (never commit)
 application_228c5f9c-*/
+
+# Claude Code agent worktrees (local only)
+.claude/worktrees/

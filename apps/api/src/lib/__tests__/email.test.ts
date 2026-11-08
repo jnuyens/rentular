@@ -171,4 +171,44 @@ describe("email module (NTF-07)", () => {
       expect(() => clearTransportCache("non-existent-owner")).not.toThrow();
     });
   });
+
+  describe("buildPlatformTransportOptions", () => {
+    it("keeps the unauthenticated local relay setup when no credentials are set", async () => {
+      const { buildPlatformTransportOptions } = await import("../email");
+      expect(buildPlatformTransportOptions({})).toEqual({
+        host: "localhost",
+        port: 1025,
+        secure: false,
+        tls: { rejectUnauthorized: false },
+      });
+    });
+
+    it("adds SMTP AUTH and verifies the certificate when SMTP_USER is set", async () => {
+      const { buildPlatformTransportOptions } = await import("../email");
+      expect(
+        buildPlatformTransportOptions({
+          SMTP_HOST: "smtp.example.org",
+          SMTP_PORT: "587",
+          SMTP_USER: "mailer",
+          SMTP_PASSWORD: "s3cret",
+        })
+      ).toEqual({
+        host: "smtp.example.org",
+        port: 587,
+        secure: false,
+        auth: { user: "mailer", pass: "s3cret" },
+      });
+    });
+
+    it("uses implicit TLS on port 465 unless SMTP_SECURE says otherwise", async () => {
+      const { buildPlatformTransportOptions } = await import("../email");
+      expect(buildPlatformTransportOptions({ SMTP_PORT: "465", SMTP_USER: "u" }).secure).toBe(true);
+      expect(
+        buildPlatformTransportOptions({ SMTP_PORT: "465", SMTP_USER: "u", SMTP_SECURE: "false" }).secure
+      ).toBe(false);
+      expect(
+        buildPlatformTransportOptions({ SMTP_PORT: "2465", SMTP_USER: "u", SMTP_SECURE: "true" }).secure
+      ).toBe(true);
+    });
+  });
 });
