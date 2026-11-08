@@ -3,7 +3,8 @@ import { sendEmail, type EmailOptions } from "../lib/email";
 import { getDb, communications } from "@rentular/db";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import type { CommunicationType } from "../lib/communicationLog";
+import { LANDLORD_TYPES, type CommunicationType } from "../lib/communicationLog";
+import { replyHeadersFor } from "../lib/replyAddress";
 
 const QUEUE_NAME = "email-queue";
 
@@ -44,10 +45,10 @@ export interface CommunicationMeta {
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    const { to, cc, subject, body, html, attachments, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
+    const { to, cc, subject, body, html, attachments, replyTo, messageId, communicationId, ownerId } = job.data as EmailOptions & { communicationId?: string; ownerId?: string };
     console.log(`[EmailQueue] Sending email to ${to}${cc ? ` (cc: ${cc})` : ""}: "${subject}"`);
     try {
-      await sendEmail({ to, cc, subject, body, html, attachments, ownerId });
+      await sendEmail({ to, cc, subject, body, html, attachments, replyTo, messageId, ownerId });
       console.log(`[EmailQueue] Sent successfully to ${to}`);
 
       // Update communications record on success
@@ -96,6 +97,11 @@ worker.on("completed", (job) => {
   console.log(`[EmailQueue] Job ${job.id} completed`);
 });
 
+/** Emails to the tenant about one contract; landlord and manager mail is excluded. */
+export function isTenantContractEmail(meta: CommunicationMeta): boolean {
+  return !!meta.leaseId && !(LANDLORD_TYPES as readonly string[]).includes(meta.type) && meta.type !== "tenant_reply";
+}
+
 /** Split a comma-separated cc value into trimmed addresses, or undefined when empty. */
 function ccList(cc: string | undefined): string[] | undefined {
   if (!cc) return undefined;
@@ -124,7 +130,19 @@ export async function queueEmail(
   if (meta) {
     communicationId = crypto.randomUUID();
     const cc = ccList(options.cc);
-    const metadata = { ...(meta.metadata ?? {}), ...(cc ? { cc } : {}) };
+    // A tenant email about a contract gets the contract's reply address, so the
+    // tenant's answer reaches the managers and the contract history.
+    const reply = isTenantContractEmail(meta) ? await replyHeadersFor(meta.leaseId!, communicationId) : null;
+    if (reply) options = { ...options, replyTo: reply.replyTo, messageId: reply.messageId };
+    // A resend copies the original metadata; its reply headers are replaced, never reused.
+    const { replyTo: _oldReplyTo, messageId: _oldMessageId, ...baseMeta } = meta.metadata ?? {};
+    void _oldReplyTo;
+    void _oldMessageId;
+    const metadata = {
+      ...baseMeta,
+      ...(cc ? { cc } : {}),
+      ...(reply ? { replyTo: reply.replyTo, messageId: reply.messageId } : {}),
+    };
     try {
       const db = getDb();
       await db.insert(communications).values({

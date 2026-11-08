@@ -1438,8 +1438,8 @@
     "scheduledTitle": "Scheduled",
     "scheduledEmpty": "Nothing is scheduled for this contract.",
     "timeNote": "Times are Brussels time.",
-    "sentTitle": "Sent",
-    "sentEmpty": "Nothing has been sent for this contract yet.",
+    "sentTitle": "With the tenant",
+    "sentEmpty": "No messages with the tenant yet.",
     "landlordTitle": "Notices to you",
     "landlordEmpty": "No notices to you about this contract yet.",
     "allChannels": "All channels",
@@ -1464,7 +1464,8 @@
       "sent": "Sent",
       "delivered": "Delivered",
       "failed": "Failed",
-      "bounced": "Bounced"
+      "bounced": "Bounced",
+      "received": "Received"
     },
     "trigger": {
       "schedule": "automatic",
@@ -1489,13 +1490,15 @@
       "landlord_notification": "Notice to you",
       "due_date_sms": "Due-date message",
       "landlord_final_pending": "Notice before the third reminder",
-      "landlord_late": "Late payment notice"
+      "landlord_late": "Late payment notice",
+      "tenant_reply": "Reply from tenant"
     },
     "landlordKind": {
       "late": "Late payment notice",
       "due": "Rent due today",
       "final_pending": "Notice before the third reminder",
-      "transfer_review": "Transfer to check"
+      "transfer_review": "Transfer to check",
+      "tenant_reply_forward": "Tenant reply passed on to you"
     },
     "condition": {
       "if_unpaid": "Only if it is still unpaid",
@@ -1503,7 +1506,12 @@
       "if_unpaid_unless_held": "Only if it is still unpaid and you do not hold it",
       "if_index_published": "Once the new health index is out, if the indexation is not applied yet",
       "on_hold_transfer_review": "On hold: a transfer is waiting for you on the Reconciliation page"
-    }
+    },
+    "from": "From",
+    "unknownSender": "Unknown sender",
+    "unknownSenderHint": "This address is not one of the tenants on this contract.",
+    "autoReply": "Automatic reply, not passed on",
+    "attachments": "Attachments"
   },
   "contractBalance": {
     "title": "Contract balance",

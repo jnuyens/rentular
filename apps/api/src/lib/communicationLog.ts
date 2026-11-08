@@ -21,7 +21,8 @@ export type CommunicationType =
   | "other"
   | "indexation_alert"
   | "landlord_notification"
-  | "due_date_sms";
+  | "due_date_sms"
+  | "tenant_reply";
 
 /** Who set a message off. */
 export type CommunicationTrigger = "schedule" | "manual" | "magic_link" | "api";

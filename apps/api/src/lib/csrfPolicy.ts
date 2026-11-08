@@ -13,7 +13,12 @@ export function shouldSkipCsrf(c: Context): boolean {
   const path = c.req.path;
   // Anchored prefix match (not substring): a future nested route that merely
   // contains "/webhooks/" or "/stripe/webhook" must not inherit the CSRF skip.
-  if (path.startsWith("/api/v1/webhooks/") || path.startsWith("/api/v1/stripe/webhook")) {
+  // The inbound mail endpoint is called by the email worker with a shared secret.
+  if (
+    path.startsWith("/api/v1/webhooks/") ||
+    path.startsWith("/api/v1/stripe/webhook") ||
+    path.startsWith("/api/v1/inbound/")
+  ) {
     return true;
   }
   return c.req.header("Authorization")?.startsWith("Bearer rtl_") ?? false;

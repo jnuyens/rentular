@@ -4,9 +4,9 @@
  */
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@rentular/db", () => ({ getDb: () => null }));
+vi.mock("@rentular/db", async (orig) => ({ ...(await orig<Record<string, unknown>>()), getDb: () => null }));
 
-import { toPastCommunication } from "../leaseCommunications";
+import { toPastCommunication, loadPastCommunications } from "../leaseCommunications";
 
 const base = {
   id: "c1",
@@ -55,5 +55,64 @@ describe("toPastCommunication", () => {
   it("old rows without metadata still show", () => {
     const out = toPastCommunication({ ...base, metadata: null, status: "failed", errorMessage: "SMTP 550" }, new Map());
     expect(out).toMatchObject({ trigger: null, triggeredByName: null, status: "failed", errorMessage: "SMTP 550" });
+    expect(out).toMatchObject({ direction: "outbound", senderKnown: null, attachments: [] });
+  });
+
+  it("a tenant reply shows as inbound with sender, attachments and the unknown-sender flag", () => {
+    const out = toPastCommunication(
+      {
+        ...base,
+        type: "tenant_reply",
+        direction: "inbound",
+        recipientName: "Advocaat",
+        recipientEmail: "someone@else.be",
+        status: "delivered",
+        metadata: {
+          senderKnown: false,
+          matchedCommunicationId: "c0",
+          attachments: [{ name: "brief.pdf", size: 1234, type: "application/pdf" }],
+        },
+      },
+      new Map(),
+    );
+    expect(out).toMatchObject({
+      audience: "tenant",
+      direction: "inbound",
+      senderKnown: false,
+      auto: false,
+      matchedCommunicationId: "c0",
+      attachments: [{ name: "brief.pdf", size: 1234, type: "application/pdf" }],
+      recipientEmail: "someone@else.be",
+    });
+  });
+});
+
+describe("loadPastCommunications", () => {
+  it("returns inbound rows in past, and counts only outbound tenant messages in the last 7 days", async () => {
+    const rows = [
+      { ...base, id: "in1", type: "tenant_reply", direction: "inbound", status: "delivered", metadata: { senderKnown: true } },
+      { ...base, id: "out1", direction: "outbound", metadata: null },
+    ];
+    let totalsSql = "";
+    const db = {
+      select: (cols?: Record<string, unknown>) => ({
+        from: () => ({
+          where: () => {
+            if (cols && "recent" in cols) {
+              totalsSql = ((cols.recent as { queryChunks: Array<{ value?: unknown }> }).queryChunks).map((ch) => (Array.isArray(ch.value) ? ch.value.join("") : "")).join(" ");
+              return Promise.resolve([{ total: 2, recent: 1 }]);
+            }
+            return { orderBy: () => ({ limit: () => ({ offset: () => Promise.resolve(rows) }) }) };
+          },
+        }),
+      }),
+    };
+    const out = await loadPastCommunications(db as never, "lease-1", { limit: 100, offset: 0 });
+    expect(out.items.map((i) => [i.id, i.direction])).toEqual([
+      ["in1", "inbound"],
+      ["out1", "outbound"],
+    ]);
+    expect(out.lastSevenDays).toBe(1);
+    expect(totalsSql).toContain("'outbound'");
   });
 });

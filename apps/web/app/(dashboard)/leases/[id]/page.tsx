@@ -14,6 +14,8 @@ import {
   Mail,
   MessageCircle,
   MessageSquare,
+  Paperclip,
+  Reply,
   Send,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -43,6 +45,10 @@ interface PastItem {
   paymentId: string | null;
   kind: string | null;
   testPhase: boolean;
+  direction?: "outbound" | "inbound";
+  senderKnown?: boolean | null;
+  auto?: boolean;
+  attachments?: Array<{ name: string; size: number; type: string }>;
   sentAt: string | null;
   createdAt: string | null;
 }
@@ -177,14 +183,26 @@ export default function LeaseCommunicationPage() {
 
   const renderPast = (item: PastItem) => {
     const isOpen = open.has(item.id);
+    const inbound = item.direction === "inbound";
     const recipient = item.recipientEmail || item.recipientPhone || item.recipientName;
-    const trigger = triggerLabel(item);
+    const sender =
+      item.recipientEmail && item.recipientName && item.recipientName !== item.recipientEmail
+        ? `${item.recipientName} <${item.recipientEmail}>`
+        : recipient;
+    const trigger = inbound ? null : triggerLabel(item);
+    const attachments = item.attachments ?? [];
     return (
-      <li key={item.id} className="rounded-lg border bg-white p-3">
+      <li
+        key={item.id}
+        className={`rounded-lg border p-3 ${inbound ? "border-l-4 border-l-navy bg-blue-50/40" : "bg-white"}`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-2">
-            <span className="mt-0.5 text-muted-foreground" title={channelLabel(item.channel)}>
-              <ChannelIcon channel={item.channel} />
+            <span
+              className="mt-0.5 text-muted-foreground"
+              title={inbound ? kindLabel(item.type) : channelLabel(item.channel)}
+            >
+              {inbound ? <Reply className="h-4 w-4 text-navy" /> : <ChannelIcon channel={item.channel} />}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-medium">
@@ -192,10 +210,18 @@ export default function LeaseCommunicationPage() {
                 <span className="ml-2 font-normal text-muted-foreground">
                   {formatDateTime(item.sentAt || item.createdAt)}
                 </span>
+                {inbound && item.senderKnown === false && (
+                  <span
+                    className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+                    title={t("unknownSenderHint")}
+                  >
+                    {t("unknownSender")}
+                  </span>
+                )}
               </p>
               {item.subject && <p className="truncate text-sm">{item.subject}</p>}
               <p className="text-xs text-muted-foreground">
-                {t("to")}: {recipient}
+                {inbound ? t("from") : t("to")}: {inbound ? sender : recipient}
                 {item.cc.length > 0 && (
                   <>
                     {" "}
@@ -204,6 +230,16 @@ export default function LeaseCommunicationPage() {
                 )}
               </p>
               {trigger && <p className="text-xs text-muted-foreground">{trigger}</p>}
+              {inbound && item.senderKnown === false && (
+                <p className="text-xs text-amber-700">{t("unknownSenderHint")}</p>
+              )}
+              {inbound && item.auto && <p className="text-xs text-muted-foreground">{t("autoReply")}</p>}
+              {attachments.length > 0 && (
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Paperclip className="h-3 w-3" />
+                  {t("attachments")}: {attachments.map((a) => a.name).join(", ")}
+                </p>
+              )}
               {item.testPhase && <p className="text-xs text-amber-700">{t("testPhase")}</p>}
               {(item.status === "failed" || item.status === "bounced") && item.errorMessage && (
                 <p className="mt-1 break-words text-xs text-red-700">{item.errorMessage}</p>
@@ -213,7 +249,7 @@ export default function LeaseCommunicationPage() {
           <span
             className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[item.status] ?? "bg-muted"}`}
           >
-            {statusLabel(item.status)}
+            {inbound ? t("status.received") : statusLabel(item.status)}
           </span>
         </div>
         <button

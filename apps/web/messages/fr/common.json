@@ -1438,8 +1438,8 @@
     "scheduledTitle": "Prévu",
     "scheduledEmpty": "Rien n'est prévu pour ce contrat.",
     "timeNote": "Heures de Bruxelles.",
-    "sentTitle": "Envoyés",
-    "sentEmpty": "Rien n'a encore été envoyé pour ce contrat.",
+    "sentTitle": "Avec le locataire",
+    "sentEmpty": "Pas encore de messages avec le locataire.",
     "landlordTitle": "Notifications pour vous",
     "landlordEmpty": "Pas encore de notification pour vous sur ce contrat.",
     "allChannels": "Tous les canaux",
@@ -1464,7 +1464,8 @@
       "sent": "Envoyé",
       "delivered": "Distribué",
       "failed": "Échec",
-      "bounced": "Rejeté"
+      "bounced": "Rejeté",
+      "received": "Reçu"
     },
     "trigger": {
       "schedule": "automatique",
@@ -1489,13 +1490,15 @@
       "landlord_notification": "Notification pour vous",
       "due_date_sms": "Message le jour de l'échéance",
       "landlord_final_pending": "Avis avant le troisième rappel",
-      "landlord_late": "Avis de retard de paiement"
+      "landlord_late": "Avis de retard de paiement",
+      "tenant_reply": "Réponse du locataire"
     },
     "landlordKind": {
       "late": "Avis de retard de paiement",
       "due": "Loyer à payer aujourd'hui",
       "final_pending": "Avis avant le troisième rappel",
-      "transfer_review": "Virement à vérifier"
+      "transfer_review": "Virement à vérifier",
+      "tenant_reply_forward": "Réponse du locataire qui vous a été transmise"
     },
     "condition": {
       "if_unpaid": "Seulement s'il est toujours impayé",
@@ -1503,7 +1506,12 @@
       "if_unpaid_unless_held": "Seulement s'il est toujours impayé et que vous ne le bloquez pas",
       "if_index_published": "Dès que le nouvel indice santé est publié, si l'indexation n'est pas encore appliquée",
       "on_hold_transfer_review": "En pause : un virement vous attend sur la page Rapprochement"
-    }
+    },
+    "from": "De",
+    "unknownSender": "Expéditeur inconnu",
+    "unknownSenderHint": "Cette adresse n'est pas celle d'un locataire de ce contrat.",
+    "autoReply": "Réponse automatique, non transmise",
+    "attachments": "Pièces jointes"
   },
   "contractBalance": {
     "title": "Solde du contrat",
