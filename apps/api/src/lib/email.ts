@@ -3,16 +3,38 @@ import { getDb, smtpSettings } from "@rentular/db";
 import { eq } from "drizzle-orm";
 import { decrypt } from "./encryption";
 
-const defaultTransporter = createTransport({
-  host: process.env.SMTP_HOST || "localhost",
-  port: Number(process.env.SMTP_PORT) || 1025,
-  secure: false,
-  // The local relay (postfix on the host) presents a certificate for its own
-  // hostname, not 127.0.0.1, so STARTTLS to the loopback address would fail
-  // verification. Trust it: this only relaxes cert checking for the trusted
-  // localhost relay, not for authenticated remote SMTP (that path sets its own).
-  tls: { rejectUnauthorized: false },
-});
+/**
+ * Options for the platform SMTP transport, read from the environment.
+ *
+ * SMTP_HOST / SMTP_PORT pick the relay (default localhost:1025, Mailpit).
+ * SMTP_USER / SMTP_PASSWORD turn on SMTP AUTH for a remote relay.
+ * SMTP_SECURE=true uses implicit TLS (usually port 465); when it is unset,
+ * port 465 implies TLS and every other port uses STARTTLS when offered.
+ *
+ * Without credentials the relay is assumed to be a trusted local one (postfix
+ * on the host), which presents a certificate for its own hostname rather than
+ * 127.0.0.1, so certificate checking is relaxed for that case only. With
+ * credentials the certificate is verified normally.
+ */
+export function buildPlatformTransportOptions(env: NodeJS.ProcessEnv = process.env): {
+  host: string;
+  port: number;
+  secure: boolean;
+  auth?: { user: string; pass: string };
+  tls?: { rejectUnauthorized: boolean };
+} {
+  const host = env.SMTP_HOST || "localhost";
+  const port = Number(env.SMTP_PORT) || 1025;
+  const secureFlag = (env.SMTP_SECURE || "").trim().toLowerCase();
+  const secure = secureFlag ? secureFlag === "true" || secureFlag === "1" : port === 465;
+  const user = env.SMTP_USER || "";
+  if (user) {
+    return { host, port, secure, auth: { user, pass: env.SMTP_PASSWORD || "" } };
+  }
+  return { host, port, secure, tls: { rejectUnauthorized: false } };
+}
+
+const defaultTransporter = createTransport(buildPlatformTransportOptions());
 
 export interface EmailOptions {
   to: string;
