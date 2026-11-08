@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-11-01"
 
 [vars]
-API_URL = "https://rentular.com"
+API_URL = "https://www.rentular.com"
 FALLBACK_FORWARD = "jnuyens@gmail.com"
 
 # Secret, not in this file:

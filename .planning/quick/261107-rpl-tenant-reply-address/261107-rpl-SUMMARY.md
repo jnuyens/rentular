@@ -44,7 +44,7 @@ Tenant emails about a contract now carry `Reply-To: reply+<token>.<msg>@rentular
 2. Apply `.planning/quick/261107-rpl-tenant-reply-address/prod-ddl.sql`. It adds `tenant_reply` to `communications.type`, adds `communications.direction` (default `outbound`) and creates `lease_reply_tokens`. **This has to happen before the code goes out.** Drizzle selects `direction` on every communications read, so code without the column breaks the history page and the communications list. If the FK is rejected (errno 150), rerun the CREATE TABLE without the CONSTRAINT line.
 3. Deploy the code: build web, then `pm2 restart` web and api. Leave `INBOUND_*` unset for now and nothing visible changes: no Reply-To, and the inbound endpoint answers 404.
 4. Generate two secrets (`openssl rand -hex 32` twice). In the API `.env` on m1, set `INBOUND_REPLY_SECRET=<secret A>` and `INBOUND_WEBHOOK_SECRET=<secret B>`. Optionally set `INBOUND_FALLBACK_TO`, which defaults to `ADMIN_EMAIL`. `INBOUND_REPLY_DOMAIN` defaults to `rentular.com`. Restart the api.
-   - Check from outside: `curl -s -o /dev/null -w '%{http_code}' -X POST https://rentular.com/api/v1/inbound/email` should print 401. A 404 means the secret is not loaded, and a Caddy error means the route is not proxied.
+   - Check from outside: `curl -s -o /dev/null -w '%{http_code}' -X POST https://www.rentular.com/api/v1/inbound/email` should print 401. A 404 means the secret is not loaded, and a Caddy error means the route is not proxied.
    - Caddy may cap request bodies. Allow at least 12 MB on `/api/v1/inbound/*`.
 5. Do the Cloudflare steps below.
 6. Test: send yourself a reminder or custom message on a test contract. Reply to it with an attachment. The reply should appear on `/leases/<id>` as "Antwoord van huurder", and the managers should get the forward with Reply-To set to you. Then send a mail to `whatever@rentular.com` and check it still arrives at jnuyens@gmail.com.
@@ -55,7 +55,7 @@ Steps 4 and 5 can happen in either order. Until the worker is live, replies to `
 
 1. `cd infra/cloudflare/inbound-email`
 2. `npx wrangler login` (with the account that owns rentular.com).
-3. Check the `[vars]` in `wrangler.toml`: `API_URL = "https://rentular.com"` and `FALLBACK_FORWARD = "jnuyens@gmail.com"`. The fallback must be a verified destination in Email Routing, and it already is.
+3. Check the `[vars]` in `wrangler.toml`: `API_URL = "https://www.rentular.com"` and `FALLBACK_FORWARD = "jnuyens@gmail.com"`. The fallback must be a verified destination in Email Routing, and it already is.
 4. `npx wrangler deploy`
 5. `npx wrangler secret put INBOUND_WEBHOOK_SECRET` and paste secret B.
 6. In the dashboard, go to rentular.com, then Email, Email Routing, Routing rules. Edit the **Catch-all address** rule: set the action to "Send to a Worker" and the destination to `rentular-inbound-email`. Save. Leave existing custom address rules alone.
