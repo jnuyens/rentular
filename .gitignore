@@ -37,3 +37,6 @@ coverage/
 
 # Ibanity Ponto sandbox certificate bundles (never commit)
 application_228c5f9c-*/
+
+# Claude Code agent worktrees (local only)
+.claude/worktrees/
