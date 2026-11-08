@@ -1,21 +1,30 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# Rentular — atomic build-on-box deploy (m1 / Hetzner)
+# Rentular: atomic build-on-box deploy for the docker-compose.prod.yml stack
 # ===========================================================================
+# EXAMPLE SCRIPT. rentular.com itself runs under PM2 and does not use this.
+# It is kept as a starting point for a self-hosted compose install, see
+# SELF-HOSTING.md. Everything lives under RENTULAR_DIR (default /opt/rentular):
+#   $RENTULAR_DIR/repo      a git clone of the repository (SOURCE_REPO)
+#   $RENTULAR_DIR/.env      the secrets file (RENTULAR_ENV_FILE)
+#   $RENTULAR_DIR/releases  one directory per deploy
+#   $RENTULAR_DIR/current   symlink to the live release
+# DEPLOY_ROOT is still accepted as the older name for RENTULAR_DIR.
+#
 # Adapts the modulejail git-push -> webhook -> atomic-release model to the
 # dynamic, multi-process Docker case (D-05/D-07). Unlike modulejail (a static
 # Astro rsync where flipping `current` instantly swaps served files), the LIVE
-# artifact here is the set of running containers — so a release is:
+# artifact here is the set of running containers, so a release is:
 #
 #   1. check the pushed tree out into releases/<ts>
 #   2. pnpm install --frozen-lockfile  (installs devDeps too: the release tree
 #      therefore has drizzle-kit + tsx available for the bootstrap step)
 #   3. pnpm build      <-- THE DEPLOY GATE (tsup ESM + next build). NEVER the
-#                          linter — `tsc --noEmit` has ~57 pre-existing errors
+#                          linter, `tsc --noEmit` has ~57 pre-existing errors
 #                          (Phase 2/6 debt) that would fail every deploy (D-06).
 #                          Lint debt is tracked separately, not a deploy gate.
 #   4. flip the `current` symlink to releases/<ts> ATOMICALLY (ln -sfn to a
-#      temp name, then mv over `current` — a same-directory rename is atomic)
+#      temp name, then mv over `current`, a same-directory rename is atomic)
 #   5. docker compose -f current/docker-compose.prod.yml build && up -d
 #   6. one-shot idempotent bootstrap (drizzle-kit push + owner create) run from
 #      the release BUILD TREE (has devDeps) as a HOST shell process
@@ -27,8 +36,8 @@
 # so the previously-running release stays live (T-10-05-05).
 #
 # SECRETS (T-10-05-03): this is a HOST shell script, so compose's `env_file:`
-# does NOT apply to it — the one-shot bootstrap must source the secrets itself.
-# We `. /opt/rentular/.env` (source only — NEVER cat/echo/print the file) and
+# does NOT apply to it, the one-shot bootstrap must source the secrets itself.
+# We `. /opt/rentular/.env` (source only, NEVER cat/echo/print the file) and
 # OVERRIDE DB_HOST=127.0.0.1 for the bootstrap, because the compose service DNS
 # name `mariadb` does not resolve from the host shell and MariaDB is
 # loopback-published at 127.0.0.1:3306 by docker-compose.prod.yml (Plan 04).
@@ -36,10 +45,11 @@
 set -euo pipefail
 
 # --- Configuration ---------------------------------------------------------
-DEPLOY_ROOT="${DEPLOY_ROOT:-/opt/rentular}"
+DEPLOY_ROOT="${RENTULAR_DIR:-${DEPLOY_ROOT:-/opt/rentular}}"
 RELEASES_DIR="$DEPLOY_ROOT/releases"
 CURRENT_LINK="$DEPLOY_ROOT/current"
-ENV_FILE="$DEPLOY_ROOT/.env"
+ENV_FILE="${RENTULAR_ENV_FILE:-$DEPLOY_ROOT/.env}"
+export RENTULAR_ENV_FILE="$ENV_FILE"
 COMPOSE_FILE="docker-compose.prod.yml"
 DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 KEEP_RELEASES=5
@@ -66,7 +76,7 @@ trap 'rc=$?; if [ "$rc" -ne 0 ]; then log "FAILED (exit $rc)"; rollback_hint; fi
 # --- 1. Materialise the pushed tree into releases/<ts> ---------------------
 log "Creating release $TS at $RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
-# Export the deploy branch's committed tree into the release dir (no .git — a
+# Export the deploy branch's committed tree into the release dir (no .git, a
 # clean, immutable snapshot of exactly what was pushed).
 git -C "$SOURCE_REPO" fetch --prune origin "$DEPLOY_BRANCH"
 git -C "$SOURCE_REPO" archive --format=tar "origin/$DEPLOY_BRANCH" | tar -x -C "$RELEASE_DIR"
@@ -90,29 +100,29 @@ mv -Tf "$DEPLOY_ROOT/current.tmp" "$CURRENT_LINK"
 
 # --- 5. Build + (re)start the container stack off `current` ----------------
 log "Building container images"
-docker compose -f "$CURRENT_LINK/$COMPOSE_FILE" build
+docker compose --env-file "$ENV_FILE" -f "$CURRENT_LINK/$COMPOSE_FILE" build
 log "Starting/updating the stack"
-docker compose -f "$CURRENT_LINK/$COMPOSE_FILE" up -d
+docker compose --env-file "$ENV_FILE" -f "$CURRENT_LINK/$COMPOSE_FILE" up -d
 
 # --- 6. One-shot idempotent bootstrap (host shell; sources secrets) --------
 # Load the secrets into THIS shell WITHOUT printing them. `set -a` auto-exports
 # every var the file defines; `. "$ENV_FILE"` sources it (sourcing is required
-# and allowed — the "never cat/echo the .env" rule means never PRINT it).
+# and allowed, the "never cat/echo the .env" rule means never PRINT it).
 if [ -f "$ENV_FILE" ]; then
   log "Sourcing secrets for bootstrap (not printed)"
   set -a
   # shellcheck disable=SC1090
-  . "$DEPLOY_ROOT/.env"
+  . "$ENV_FILE"
   set +a
   # The compose service DNS `mariadb` does not resolve from the host shell;
   # MariaDB is loopback-published at 127.0.0.1:3306 (Plan 04). Override so the
   # host-shell bootstrap reaches it. This override is local to this process.
   export DB_HOST=127.0.0.1
   log "Running idempotent bootstrap (drizzle-kit push + owner create) via DB_HOST=127.0.0.1"
-  # Run from the release build tree — devDeps (drizzle-kit + tsx) are present.
+  # Run from the release build tree, devDeps (drizzle-kit + tsx) are present.
   pnpm --filter @rentular/api bootstrap
 else
-  log "WARNING: $ENV_FILE not found — skipping bootstrap (containers still started)"
+  log "WARNING: $ENV_FILE not found, skipping bootstrap (containers still started)"
 fi
 
 # --- 7. Prune old releases (keep newest 5) ---------------------------------
@@ -132,4 +142,4 @@ if [ -d "$RELEASES_DIR" ]; then
   done
 fi
 
-log "Deploy $TS complete — current -> $(readlink -f "$CURRENT_LINK")"
+log "Deploy $TS complete, current -> $(readlink -f "$CURRENT_LINK")"

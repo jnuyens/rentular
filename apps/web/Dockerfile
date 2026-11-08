@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 # ---------------------------------------------------------------------------
-# @rentular/web — Next.js 15 standalone SSR server.
+# @rentular/web: Next.js 15 standalone SSR server.
 # Multi-stage: prune the monorepo to this app's closure, build the standalone
 # output, then run the traced server on a slim runner.
 #
 # CRITICAL: NEXT_PUBLIC_API_URL is statically inlined into the browser (and
 # server-component) bundle at `next build` time. It MUST be supplied as a
-# build ARG so it is baked in — a runtime-only env var is IGNORED by the
+# build ARG so it is baked in, a runtime-only env var is IGNORED by the
 # already-compiled bundle and the browser would fall back to localhost:4000.
 # The prod value (https://rentular.com/api/v1) is passed via compose build.args
 # in Plan 04; do not hardcode it here.
@@ -34,7 +34,11 @@ RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-RUN pnpm --filter @rentular/web build
+# lib/auth.ts builds the DB pool when Next collects page data, and the pool
+# refuses to exist without DB_PASSWORD. No connection is opened during the
+# build, so a throwaway value is enough. It is set for this command only and
+# does not end up in the image.
+RUN DB_PASSWORD=build-time-placeholder pnpm --filter @rentular/web build
 
 # --- runner: standalone server + static assets ---
 FROM base AS runner
