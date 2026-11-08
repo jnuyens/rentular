@@ -1,0 +1,10 @@
+name = "rentular-inbound-email"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[vars]
+API_URL = "https://rentular.com"
+FALLBACK_FORWARD = "jnuyens@gmail.com"
+
+# Secret, not in this file:
+#   wrangler secret put INBOUND_WEBHOOK_SECRET
