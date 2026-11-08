@@ -54,6 +54,16 @@ export type PastCommunication = {
   paymentId: string | null;
   kind: string | null;
   testPhase: boolean;
+  /** outbound: sent by the platform; inbound: a reply that came in. */
+  direction: "outbound" | "inbound";
+  /** Inbound only: whether the sender is a tenant (or was copied) on this contract. */
+  senderKnown: boolean | null;
+  /** Inbound only: auto-reply or bounce, not forwarded. */
+  auto: boolean;
+  /** Attachment names and sizes (content is not stored). */
+  attachments: Array<{ name: string; size: number; type: string }>;
+  /** Inbound only: the outgoing message this reply answers. */
+  matchedCommunicationId: string | null;
   queuedAt: string | null;
   sentAt: string | null;
   createdAt: string | null;
@@ -110,6 +120,7 @@ export function toPastCommunication(
     status: string;
     errorMessage: string | null;
     metadata: unknown;
+    direction?: string | null;
     queuedAt: unknown;
     sentAt: unknown;
     createdAt: unknown;
@@ -119,6 +130,7 @@ export function toPastCommunication(
   const meta = asMeta(row.metadata);
   const triggeredBy = str(meta.triggeredBy);
   const cc = Array.isArray(meta.cc) ? meta.cc.filter((x): x is string => typeof x === "string") : [];
+  const direction = row.direction === "inbound" ? "inbound" : "outbound";
   return {
     id: row.id,
     audience: (LANDLORD_TYPES as readonly string[]).includes(row.type) ? "landlord" : "tenant",
@@ -138,6 +150,15 @@ export function toPastCommunication(
     paymentId: str(meta.paymentId),
     kind: str(meta.kind),
     testPhase: meta.testPhase === true,
+    direction,
+    senderKnown: direction === "inbound" ? meta.senderKnown === true : null,
+    auto: meta.auto === true,
+    attachments: Array.isArray(meta.attachments)
+      ? meta.attachments
+          .filter((a): a is Record<string, unknown> => !!a && typeof a === "object")
+          .map((a) => ({ name: String(a.name ?? ""), size: Number(a.size ?? 0), type: String(a.type ?? "") }))
+      : [],
+    matchedCommunicationId: str(meta.matchedCommunicationId),
     queuedAt: iso(row.queuedAt),
     sentAt: iso(row.sentAt),
     createdAt: iso(row.createdAt),
@@ -167,7 +188,7 @@ export async function loadPastCommunications(
   const totals = await db
     .select({
       total: sql<number>`COUNT(*)`,
-      recent: sql<number>`SUM(CASE WHEN ${communications.createdAt} >= ${new Date(Date.now() - 7 * 86_400_000)} AND ${communications.type} NOT IN ('landlord_notification','landlord_report','indexation_alert') THEN 1 ELSE 0 END)`,
+      recent: sql<number>`SUM(CASE WHEN ${communications.createdAt} >= ${new Date(Date.now() - 7 * 86_400_000)} AND ${communications.direction} = 'outbound' AND ${communications.type} NOT IN ('landlord_notification','landlord_report','indexation_alert') THEN 1 ELSE 0 END)`,
     })
     .from(communications)
     .where(where);
