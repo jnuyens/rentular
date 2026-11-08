@@ -227,6 +227,7 @@ None yet.
 | 261105-com | Never remind a tenant whose payment is in the bank (shortfall matching + unmatched-transfer hold); every message logged per contract; /leases/[id] communication history with schedule | 2026-11-05 | 245ccc3 | [261105-com-contract-communication-history](./quick/261105-com-contract-communication-history/) |
 | 261106-tzs | All timestamps stored/read as true UTC (UTC DB sessions + one-off correction script), today and display in the location time zone | 2026-11-06 | a6b0ac3 | [261106-tzs-timestamps-utc-and-location-aware-display](./quick/261106-tzs-timestamps-utc-and-location-aware-display/) |
 | 261106-bal | Reminders follow the contract balance (credit, arrears marking), every known-tenant transfer booked oldest month first | 2026-11-06 | f7713e3 | [261106-bal-contract-balance-reminders-and-odd-amounts](./quick/261106-bal-contract-balance-reminders-and-odd-amounts/) |
+| 261107-rpl | Per-contract reply address: tenant replies filed on the contract and forwarded to the managers, Cloudflare email worker | 2026-11-08 | 81cdf11 | [261107-rpl-tenant-reply-address](./quick/261107-rpl-tenant-reply-address/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
