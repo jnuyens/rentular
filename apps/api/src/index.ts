@@ -33,6 +33,7 @@ import { smsRouter } from "./routes/sms";
 import { ledgerRouter } from "./routes/ledger";
 import { apiTokensRouter } from "./routes/apiTokens";
 import { appVersionRouter } from "./routes/appVersion";
+import { inboundRouter } from "./routes/inbound";
 import { setupPaymentCheckSchedule } from "./jobs/paymentCheckWorker";
 import { setupLandlordReportSchedule } from "./jobs/landlordReportWorker";
 import { setupWebhookCleanupSchedule } from "./services/webhookCleanup";
@@ -195,6 +196,8 @@ app.route("/stripe", stripeRouter);
 app.route("/import", importRouter);
 // Public: magic-link actions from the late-payment landlord email (token-authed).
 app.route("/landlord-action", landlordActionsRouter);
+// Public: tenant replies from the Cloudflare Email Worker (shared-secret authed).
+app.route("/inbound", inboundRouter);
 app.route("/sms", smsRouter);
 app.route("/ledger", ledgerRouter);
 app.route("/api-tokens", apiTokensRouter);
