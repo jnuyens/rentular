@@ -29,6 +29,10 @@ export const users = mysqlTable("users", {
   // company -> CPM). Null is treated as individual. VAT is optional (companies).
   landlordType: mysqlEnum("landlord_type", ["individual", "company"]),
   vatNumber: varchar("vat_number", { length: 32 }),
+  // Subscription plan. Null means derived: paid above the free plan's property
+  // limit, free otherwise (see apps/api/src/lib/bankProviderOptions.ts). Set by
+  // an admin or the Stripe webhook.
+  plan: mysqlEnum("plan", ["free", "paid"]),
   onboardingStep: int("onboarding_step").default(1),
   onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
