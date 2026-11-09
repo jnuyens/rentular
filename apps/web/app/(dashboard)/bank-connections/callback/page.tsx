@@ -13,6 +13,8 @@ const ERROR_KEYS: Record<string, string> = {
   expired_state: "errorExpiredState",
   missing_params: "errorMissingParams",
   no_accounts: "errorNoAccounts",
+  no_app: "errorNoApp",
+  account_missing: "errorAccountMissing",
 };
 
 function CallbackContent() {

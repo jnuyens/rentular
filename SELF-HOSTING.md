@@ -333,7 +333,7 @@ scheduling time zone:
 | 19:15 daily | overdue reminders and due-date nudges to tenants |
 | 06:00 daily | fetch the Belgian health index from Statbel |
 | 08:00 daily | landlord payment report |
-| 09:00 daily | indexation alerts |
+| 09:00 daily | indexation alerts, bank re-login warnings |
 | Sunday 03:00 | clean up old webhook events and expired bank statements |
 
 The time zone is the one of the monitored bank account, then the landlord's,
@@ -359,6 +359,7 @@ body).
 | GoCardless | Developers, webhook endpoint; secret into `GOCARDLESS_WEBHOOK_SECRET` | `https://rent.example.org/api/v1/webhooks/gocardless` |
 | Stripe | Developers, webhooks; signing secret into `STRIPE_WEBHOOK_SECRET` | `https://rent.example.org/api/v1/stripe/webhook` |
 | Ponto | Ibanity developer portal, redirect URI; same value in `BANK_CONNECTION_REDIRECT_URL` | `https://rent.example.org/api/v1/bank-connections/callback` |
+| Enable Banking | Enable Banking Control Panel, the application's redirect URL | `https://rent.example.org/api/v1/bank-connections/enable-banking/callback` |
 
 The sign-in callbacks go to the web app, the others to the API. Both are
 covered by the proxy examples above.
@@ -379,6 +380,46 @@ requests for both certificate types. Store the files outside the repository,
 readable only by the user that runs the API (`chmod 600`). With the compose
 route, mount them into the API container and use the paths inside the
 container, or put the PEM text inline in the env file.
+
+### Enable Banking (free, your own app)
+
+Enable Banking reads your bank account for free in what it calls restricted
+mode: the application is yours and you only link your own accounts. That fits
+a self-hosted install, and it is the default bank option there. Set
+`RENTULAR_INSTANCE=self` (also the default when `WEB_URL` is not on
+rentular.com).
+
+1. Create an account at [enablebanking.com](https://enablebanking.com).
+2. In the Control Panel, register a new application for the **production**
+   environment.
+3. Set its redirect URL to exactly
+   `https://rent.example.org/api/v1/bank-connections/enable-banking/callback`.
+   Rentular shows the exact value, with a copy button, on Bank connections,
+   Connect, Enable Banking.
+4. Download the private key (`.pem`) that comes with the application.
+5. In the Control Panel, choose "Activate by linking accounts" and link your
+   own bank account. This activates the application without a contract.
+6. In Rentular, open Bank connections, Connect, Enable Banking, paste the
+   application id and upload the `.pem`. Rentular signs a test request right
+   away and shows "Works" or the exact error. "Invalid JWT" means the id and
+   the key do not belong together, or the server clock is off.
+7. Pick your bank, choose personal or business, and log in at the bank.
+
+The key is stored encrypted with `AUTH_SECRET` and never shown again. A
+single-landlord install can skip the upload and set `ENABLE_BANKING_APP_ID`
+and `ENABLE_BANKING_PRIVATE_KEY_PATH` instead (ignored on a hosted instance).
+
+Restricted mode is for your own accounts. Do not link other people's
+accounts to your application; for that Enable Banking needs a contract.
+
+Banks ask for a new login every few months (KBC: at most 180 days). Rentular
+emails you 14, 7, 3 and 1 day before, and on the day it expires, and shows a
+banner in the app. While a connection is expired, no automatic reminders go to
+tenants whose rent is paid into that account, so nobody is chased for rent
+that was already paid. Logging in again takes a minute and keeps the history.
+
+Some banks allow only 4 fetches a day without you present. Rentular's
+scheduled syncs (00:00, 12:00 and 19:00) use 3; "Sync now" does not count.
 
 ## Optional channels
 

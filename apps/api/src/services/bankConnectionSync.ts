@@ -38,6 +38,8 @@ import { autoAssignByIban } from "./ibanMatcher";
 import { autoAssignByAmount } from "./amountMatcher";
 import type { IncomingTransaction } from "../lib/bankAccountData";
 import { ymdInZone } from "../lib/timezone";
+import { fetchEnableBankingTransactions } from "./enableBankingSync";
+import { warnConnectionNow } from "./bankReauthWarnings";
 
 export interface SyncResult {
   fetched: number;
@@ -75,65 +77,43 @@ function isoDate(d: Date): string {
 // promise instead of racing.
 const inFlight = new Map<string, Promise<SyncResult>>();
 
+/**
+ * Sync one connection. Pass the landlord's IP and user agent when they asked
+ * for the sync themselves: Ponto wants the IP, Enable Banking the PSU headers.
+ */
 export function syncBankConnection(
   connectionId: string,
   customerIpAddress?: string,
+  customerUserAgent?: string,
 ): Promise<SyncResult> {
   const existing = inFlight.get(connectionId);
   if (existing) return existing;
-  const p = runSync(connectionId, customerIpAddress).finally(() =>
+  const p = runSync(connectionId, customerIpAddress, customerUserAgent).finally(() =>
     inFlight.delete(connectionId),
   );
   inFlight.set(connectionId, p);
   return p;
 }
 
-async function runSync(
-  connectionId: string,
+type ConnectionRow = typeof bankConnections.$inferSelect;
+
+const EMPTY_RESULT: SyncResult = {
+  fetched: 0,
+  matched: 0,
+  mismatched: 0,
+  unmatched: 0,
+  skippedDuplicates: 0,
+  amountAssigned: 0,
+};
+
+/** Ponto: rotate the tokens, ask Ponto to synchronize, read the transactions. */
+async function fetchPontoTransactions(
+  db: ReturnType<typeof getDb>,
+  conn: ConnectionRow,
   customerIpAddress?: string,
-): Promise<SyncResult> {
-  const db = getDb();
-
-  // Load the connection row
-  const rows = await db
-    .select()
-    .from(bankConnections)
-    .where(eq(bankConnections.id, connectionId))
-    .limit(1);
-
-  const conn = rows[0];
-  if (!conn) {
-    throw new Error(`[BankSync] Connection ${connectionId} not found`);
-  }
-
-  if (conn.status !== "active") {
-    console.log(
-      `[BankSync] Connection ${connectionId} is ${conn.status}; skipping sync`,
-    );
-    return {
-      fetched: 0,
-      matched: 0,
-      mismatched: 0,
-      unmatched: 0,
-      skippedDuplicates: 0,
-      amountAssigned: 0,
-    };
-  }
-
-  if (!conn.externalAccountId) {
-    console.warn(
-      `[BankSync] Connection ${connectionId} has no externalAccountId; skipping sync`,
-    );
-    return {
-      fetched: 0,
-      matched: 0,
-      mismatched: 0,
-      unmatched: 0,
-      skippedDuplicates: 0,
-      amountAssigned: 0,
-    };
-  }
-
+): Promise<{ transactions: IncomingTransaction[]; dateFrom: string }> {
+  const connectionId = conn.id;
+  const externalAccountId = conn.externalAccountId!;
   const model = conn.pontoModel ?? "ppm";
 
   // Ponto access tokens are short-lived and refresh tokens are single-use and
@@ -180,6 +160,9 @@ async function runSync(
         updatedAt: new Date(),
       })
       .where(eq(bankConnections.id, connectionId));
+    await warnConnectionNow(connectionId).catch((e) =>
+      console.error(`[BankSync] Re-login warning failed for ${connectionId}:`, e),
+    );
     throw new Error(
       `[BankSync] Connection ${connectionId} token refresh failed; marked expired`,
     );
@@ -197,7 +180,7 @@ async function runSync(
     try {
       const status = await syncAccountTransactions({
         accessToken,
-        accountId: conn.externalAccountId,
+        accountId: externalAccountId,
         customerIpAddress: customerIp,
         model,
       });
@@ -223,9 +206,71 @@ async function runSync(
 
   // Fetch transactions from provider
   const transactions = await provider.getTransactions({
-    accountId: conn.externalAccountId,
+    accountId: externalAccountId,
     dateFrom,
   });
+
+  return { transactions, dateFrom };
+}
+
+async function runSync(
+  connectionId: string,
+  customerIpAddress?: string,
+  customerUserAgent?: string,
+): Promise<SyncResult> {
+  const db = getDb();
+
+  // Load the connection row
+  const rows = await db
+    .select()
+    .from(bankConnections)
+    .where(eq(bankConnections.id, connectionId))
+    .limit(1);
+
+  const conn = rows[0];
+  if (!conn) {
+    throw new Error(`[BankSync] Connection ${connectionId} not found`);
+  }
+
+  if (conn.status !== "active") {
+    console.log(
+      `[BankSync] Connection ${connectionId} is ${conn.status}; skipping sync`,
+    );
+    return {
+      fetched: 0,
+      matched: 0,
+      mismatched: 0,
+      unmatched: 0,
+      skippedDuplicates: 0,
+      amountAssigned: 0,
+    };
+  }
+
+  if (!conn.externalAccountId) {
+    console.warn(
+      `[BankSync] Connection ${connectionId} has no externalAccountId; skipping sync`,
+    );
+    return {
+      fetched: 0,
+      matched: 0,
+      mismatched: 0,
+      unmatched: 0,
+      skippedDuplicates: 0,
+      amountAssigned: 0,
+    };
+  }
+
+  let fetchedWindow: { transactions: IncomingTransaction[]; dateFrom: string } | null;
+  if (conn.provider === "enable_banking") {
+    fetchedWindow = await fetchEnableBankingTransactions(db, conn, {
+      ipAddress: customerIpAddress,
+      userAgent: customerUserAgent,
+    });
+  } else {
+    fetchedWindow = await fetchPontoTransactions(db, conn, customerIpAddress);
+  }
+  if (!fetchedWindow) return { ...EMPTY_RESULT };
+  const { transactions, dateFrom } = fetchedWindow;
 
   console.log(
     `[BankSync] Connection ${connectionId}: fetched ${transactions.length} transactions since ${dateFrom}`,

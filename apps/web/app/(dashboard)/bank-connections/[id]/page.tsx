@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
+import { BankReauthBanner } from "@/components/BankReauthBanner";
 import {
   BankTransactionsTable,
   type BankTransaction,
@@ -44,6 +45,8 @@ interface BankConnection {
   errorMessage: string | null;
   country: string | null;
   createdAt: string | null;
+  needsRelogin?: boolean;
+  accountChoices?: Array<{ uid: string; iban: string; name: string | null }>;
 }
 
 function fmtDate(dateStr: string | null): string {
@@ -70,6 +73,33 @@ export default function BankConnectionDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+
+  const confirmAccounts = async () => {
+    if (!id || picked.length === 0) return;
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `${apiUrl}/api/v1/bank-connections/enable-banking/${id}/accounts`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accountUids: picked }),
+        },
+      );
+      if (res.ok) {
+        await fetchConnection();
+        await fetchTransactions();
+      } else {
+        toast.error(t("pick.error"));
+      }
+    } catch {
+      toast.error(t("pick.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const fetchTransactions = useCallback(async () => {
     if (!id) return;
@@ -212,8 +242,13 @@ export default function BankConnectionDetailPage() {
 
   const expiryDays = daysUntil(connection.consentExpiresAt);
   const showRenew =
-    connection.status === "expired" ||
-    (expiryDays !== null && expiryDays <= 7);
+    connection.status !== "pending" &&
+    connection.status !== "revoked" &&
+    (connection.status === "expired" ||
+      connection.status === "error" ||
+      !!connection.needsRelogin ||
+      (expiryDays !== null && expiryDays <= 14));
+  const choices = connection.status === "pending" ? connection.accountChoices ?? [] : [];
 
   return (
     <div>
@@ -226,6 +261,39 @@ export default function BankConnectionDetailPage() {
         </Button>
         <h1 className="text-2xl font-semibold">{connection.institutionName}</h1>
         <BankConnectionStatusBadge status={connection.status} />
+      </div>
+
+      <div className="mb-6 space-y-3">
+        <BankReauthBanner connections={[connection]} />
+        {choices.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t("pick.title")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-muted-foreground">{t("pick.body")}</p>
+              {choices.map((a) => (
+                <label key={a.uid} className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={picked.includes(a.uid)}
+                    onChange={(e) =>
+                      setPicked((cur) =>
+                        e.target.checked ? [...cur, a.uid] : cur.filter((u) => u !== a.uid),
+                      )
+                    }
+                  />
+                  <span className="font-mono">{a.iban || a.uid}</span>
+                  {a.name && <span className="text-muted-foreground">{a.name}</span>}
+                </label>
+              ))}
+              <Button onClick={confirmAccounts} disabled={busy || picked.length === 0}>
+                {t("pick.confirm")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Info Cards */}

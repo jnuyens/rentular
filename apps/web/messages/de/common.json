@@ -1231,7 +1231,77 @@
         "defaultName": "Vermieter",
         "defaultInstitution": "Ihr Konto"
       }
-    }
+    },
+    "relogin": {
+      "bannerSoon": "Ihre Bankverbindung mit {bank} läuft am {date} ab. Die erneute Anmeldung dauert eine Minute.",
+      "bannerExpired": "Ihre Bankverbindung mit {bank} ist abgelaufen. Automatische Erinnerungen für Mieten, die auf dieses Konto eingehen, ruhen, bis Sie sich erneut anmelden.",
+      "button": "Erneut anmelden",
+      "error": "Die erneute Anmeldung konnte nicht starten. Bitte versuchen Sie es noch einmal."
+    },
+    "choose": {
+      "title": "Wie möchten Sie Ihre Bank verbinden?",
+      "ebTitle": "Enable Banking mit Ihrer eigenen App",
+      "ebLine1": "Kostenlos. Sie richten einmal Ihre eigene Enable Banking App ein, das dauert etwa zehn Minuten.",
+      "ebLine2": "Gedacht für Ihre eigenen Konten. Rentular sieht nie Ihr Bankpasswort.",
+      "pontoTitle": "Ponto",
+      "pontoLine1": "Nichts einzurichten: Sie melden sich bei Ihrer Bank an und fertig.",
+      "pontoLine2": "Ponto stellt Ihnen jedes verbundene Konto direkt in Rechnung.",
+      "free": "Kostenlos",
+      "none": "Auf dieser Installation ist noch keine Bankverbindung verfügbar. Fragen Sie Ihren Administrator."
+    },
+    "notices": {
+      "enable_banking_kept": "Sie nutzen Enable Banking mit Ihrer eigenen App. Das funktioniert weiterhin.",
+      "ponto_kept": "Sie nutzen Ponto. Das funktioniert weiterhin."
+    },
+    "eb": {
+      "title": "Über Enable Banking verbinden (Ihre eigene App, kostenlos)",
+      "intro": "Mit Enable Banking lesen Sie Ihre eigenen Bankkonten kostenlos, solange die App Ihnen gehört und Sie nur Ihre eigenen Konten verknüpfen. Sie richten es einmal ein:",
+      "step1": "Erstellen Sie ein Konto auf enablebanking.com.",
+      "step2": "Registrieren Sie im Control Panel eine neue Anwendung für die Produktionsumgebung.",
+      "step3": "Tragen Sie genau diesen Wert als Redirect URL ein:",
+      "step4": "Laden Sie den privaten Schlüssel (.pem Datei) der Anwendung herunter.",
+      "step5": "Wählen Sie im Control Panel \"Activate by linking accounts\" und verknüpfen Sie Ihr eigenes Bankkonto. Damit ist die App kostenlos aktiviert.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "openControlPanel": "Enable Banking Control Panel öffnen",
+      "appId": "Application ID",
+      "appIdHelp": "Sie finden sie im Control Panel neben Ihrer Anwendung.",
+      "keyFile": "Privater Schlüssel (.pem)",
+      "keyUploaded": "Schlüssel hochgeladen am {date}",
+      "keyHelp": "Der Schlüssel bleibt verschlüsselt auf dem Rentular Server und wird nie wieder angezeigt.",
+      "save": "Speichern und testen",
+      "replace": "Schlüssel ersetzen",
+      "remove": "Schlüssel entfernen",
+      "removeConfirm": "Schlüssel entfernen? Damit erstellte Bankverbindungen funktionieren dann nicht mehr.",
+      "removed": "Schlüssel entfernt",
+      "verifying": "Wird getestet...",
+      "works": "Funktioniert",
+      "worksBanks": "Funktioniert: {count} Banken verfügbar",
+      "failed": "Funktioniert noch nicht: {error}",
+      "hintWrongKey": "\"Invalid JWT\" bedeutet meist, dass Application ID und Schlüssel nicht zusammengehören oder die Uhr des Servers falsch geht.",
+      "instanceApp": "Diese Installation nutzt die Enable Banking App, die der Administrator eingerichtet hat.",
+      "test": "Erneut testen",
+      "keyReadError": "Diese Datei konnte nicht gelesen werden.",
+      "saveError": "Speichern nicht möglich: {error}",
+      "pickBank": "Wählen Sie Ihre Bank",
+      "searchBanks": "Ihre Bank suchen",
+      "noBanks": "Keine Banken gefunden",
+      "banksError": "Die Bankliste konnte nicht geladen werden: {error}",
+      "psuType": "Kontoart",
+      "personal": "Privatkonto",
+      "business": "Geschäftskonto",
+      "login": "Bei Ihrer Bank anmelden",
+      "loginError": "Die Anmeldung bei Ihrer Bank konnte nicht starten: {error}",
+      "verifyFirst": "Speichern und testen Sie zuerst Ihre App."
+    },
+    "pick": {
+      "title": "Welche Konten soll Rentular verfolgen?",
+      "body": "Ihre Bank hat mehrere Konten freigegeben. Wählen Sie das Konto oder die Konten, auf die Ihre Miete eingeht.",
+      "confirm": "Gewählte Konten verfolgen",
+      "error": "Ihre Auswahl konnte nicht gespeichert werden."
+    },
+    "errorNoApp": "Es ist noch keine Enable Banking App eingerichtet. Laden Sie zuerst Ihren Schlüssel hoch.",
+    "errorAccountMissing": "Dieses Konto war nicht Teil der neuen Anmeldung bei Ihrer Bank. Melden Sie sich erneut an und wählen Sie dasselbe Konto."
   },
   "reconciliation": {
     "rematch": "Neu abgleichen",
@@ -1377,7 +1447,8 @@
     "reminderTransferWaiting": "Hinweis: Eine Überweisung von {amount} vom {date} begleicht diese Miete vielleicht schon und wartet auf der Seite Abgleich.",
     "communication": "Kommunikation",
     "contractCredit": "Guthaben {amount}",
-    "reminderNothingOwed": "Auf diesem Vertrag ist nichts offen, daher wurde keine Erinnerung gesendet."
+    "reminderNothingOwed": "Auf diesem Vertrag ist nichts offen, daher wurde keine Erinnerung gesendet.",
+    "reminderBankStale": "Hinweis: Ihre Bankverbindung mit {bank} braucht eine neue Anmeldung, neuere Zahlungen sind daher eventuell noch nicht bekannt."
   },
   "ledger": {
     "title": "Mietenbuch",

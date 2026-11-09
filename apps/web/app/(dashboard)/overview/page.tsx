@@ -35,6 +35,7 @@ import PortfolioCard, { type Portfolio } from "@/components/overview/PortfolioCa
 import TodoCard from "@/components/overview/TodoCard";
 import QuickActions from "@/components/overview/QuickActions";
 import BelgiumInfoCard from "@/components/overview/BelgiumInfoCard";
+import { BankReauthBanner } from "@/components/BankReauthBanner";
 import { eur, pctOf } from "@/components/overview/format";
 import {
   MuteBadge,
@@ -272,6 +273,11 @@ export default function OverviewPage() {
             ? t("reminderSentTest", { to: r.sentTo })
             : t("reminderSent", { to: r?.sentTo ?? "" }),
         );
+        if (r?.staleBankConnection) {
+          toast.warning(t("reminderBankStale", { bank: r.staleBankConnection.bankName }), {
+            duration: 15000,
+          });
+        }
         if (r?.waitingTransfer) {
           toast.warning(
             t("reminderTransferWaiting", {
@@ -421,6 +427,8 @@ export default function OverviewPage() {
           </div>
         </div>
       </div>
+
+      <BankReauthBanner />
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

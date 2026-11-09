@@ -46,8 +46,21 @@ import {
 } from "../lib/pontoConnect";
 import { encrypt, decrypt } from "../lib/encryption";
 import { syncBankConnection } from "../services/bankConnectionSync";
+import {
+  enableBankingRouter,
+  psuFromRequest,
+  startEnableBankingLogin,
+} from "./enableBankingConnections";
+import { getEnableBankingAppStatus, loadBankProviderOptions, loadEnableBankingCredentials } from "../lib/enableBankingApps";
+import { EnableBankingClient, getEnableBankingRedirectUrl } from "../lib/enableBanking";
+import { readMetadata } from "../services/enableBankingSync";
+import { isConnectionStale } from "../services/bankReauth";
 
 export const bankConnectionsRouter = new Hono();
+
+// Enable Banking (own application) lives under /enable-banking; mounted
+// before the /:id routes so its static paths win.
+bankConnectionsRouter.route("/enable-banking", enableBankingRouter);
 
 // In-memory per-connection sync rate limiter (1/min). v1 keeps this in-process —
 // CONTEXT line 156 marks Redis-based limiter as optional / future work.
@@ -78,6 +91,23 @@ function sanitizeConnection<T extends Record<string, unknown>>(row: T): Record<s
   return rest;
 }
 
+/**
+ * What the web app sees of a connection: no tokens or provider metadata, plus
+ * whether a re-login is needed and, for an Enable Banking login with several
+ * accounts, the accounts to pick from.
+ */
+function publicConnection(row: typeof bankConnections.$inferSelect): Record<string, unknown> {
+  const meta = row.provider === "enable_banking" ? readMetadata(row.providerMetadata) : null;
+  return {
+    ...sanitizeConnection(row),
+    needsRelogin: isConnectionStale(row, new Date()),
+    accountChoices:
+      row.status === "pending" && meta?.accounts?.length
+        ? meta.accounts.map((a) => ({ uid: a.uid, iban: a.iban, name: a.name ?? null }))
+        : undefined,
+  };
+}
+
 function webUrl(): string {
   return process.env.WEB_URL || "http://localhost:3000";
 }
@@ -98,6 +128,27 @@ async function resolveModel(ownerId: string): Promise<PontoModelT> {
     .limit(1);
   return rows[0]?.landlordType === "company" ? "cpm" : "ppm";
 }
+
+// ===========================================================================
+// GET /options: which providers this landlord may connect with
+// ===========================================================================
+bankConnectionsRouter.get("/options", async (c) => {
+  try {
+    const userId = getRequiredUserId(c);
+    const options = await loadBankProviderOptions(userId);
+    const app = await getEnableBankingAppStatus(userId);
+    return c.json({
+      data: {
+        ...options,
+        enableBanking: { ...app, redirectUrl: getEnableBankingRedirectUrl() },
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[BankConnections] /options error:", err);
+    return c.json({ error: message }, 500);
+  }
+});
 
 // ===========================================================================
 // GET /institutions — list Ponto financial institutions for the picker
@@ -266,6 +317,8 @@ bankConnectionsRouter.get(
         consentExpiresAt,
         providerMetadata: { accountIds: [account.id] },
         errorMessage: null,
+        reauthWarnStage: null,
+        reauthWarnedAt: null,
         updatedAt: new Date(),
       };
 
@@ -339,7 +392,7 @@ bankConnectionsRouter.get("/", async (c) => {
       .from(bankConnections)
       .where(eq(bankConnections.ownerId, userId))
       .orderBy(desc(bankConnections.createdAt));
-    return c.json({ data: rows.map(sanitizeConnection) });
+    return c.json({ data: rows.map(publicConnection) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[BankConnections] GET / error:", err);
@@ -361,7 +414,7 @@ bankConnectionsRouter.get("/:id", async (c) => {
       .where(and(eq(bankConnections.id, id), eq(bankConnections.ownerId, userId)))
       .limit(1);
     if (!rows[0]) return c.json({ error: "Connection not found" }, 404);
-    return c.json({ data: sanitizeConnection(rows[0]) });
+    return c.json({ data: publicConnection(rows[0]) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[BankConnections] GET /:id error:", err);
@@ -432,7 +485,6 @@ bankConnectionsRouter.post("/:id/renew", async (c) => {
   try {
     const userId = getRequiredUserId(c);
     const id = c.req.param("id");
-    if (!isPontoConfigured()) return c.json(notConfigured(), 503);
 
     const db = getDb();
     const rows = await db
@@ -442,6 +494,25 @@ bankConnectionsRouter.post("/:id/renew", async (c) => {
       .limit(1);
     if (!rows[0]) return c.json({ error: "Connection not found" }, 404);
     const conn = rows[0];
+
+    // Enable Banking: a new bank login for the same bank; the callback puts the
+    // new session on this row. Allowed whatever the plan, so an existing
+    // connection never breaks.
+    if (conn.provider === "enable_banking") {
+      if (conn.status === "revoked") return c.json({ error: "Connection was removed" }, 409);
+      const meta = readMetadata(conn.providerMetadata);
+      const { consentLink } = await startEnableBankingLogin({
+        ownerId: userId,
+        connectionId: id,
+        aspspName: meta.aspsp?.name || conn.institutionId,
+        country: meta.aspsp?.country || conn.country || "BE",
+        psuType: meta.psuType || "personal",
+        psu: psuFromRequest(c),
+      });
+      return c.json({ data: { consentLink } });
+    }
+
+    if (!isPontoConfigured()) return c.json(notConfigured(), 503);
 
     const model = conn.pontoModel ?? "ppm";
     const state = await signOAuthState({
@@ -475,9 +546,40 @@ bankConnectionsRouter.delete("/:id", async (c) => {
     if (!rows[0]) return c.json({ error: "Connection not found" }, 404);
     const conn = rows[0];
 
+    // Enable Banking: delete the session unless another monitored account of
+    // the same login still uses it. Best effort, like Ponto below.
+    if (conn.provider === "enable_banking") {
+      const sessionId = readMetadata(conn.providerMetadata).sessionId;
+      if (sessionId) {
+        const others = (
+          await db
+            .select()
+            .from(bankConnections)
+            .where(and(eq(bankConnections.ownerId, userId), eq(bankConnections.provider, "enable_banking")))
+        ).filter(
+          (r) =>
+            r.id !== id &&
+            r.status !== "revoked" &&
+            readMetadata(r.providerMetadata).sessionId === sessionId,
+        );
+        if (others.length === 0) {
+          try {
+            const creds = await loadEnableBankingCredentials(userId);
+            if (creds) await new EnableBankingClient(creds).deleteSession(sessionId);
+          } catch (revokeErr) {
+            console.warn(
+              `[BankConnections] Enable Banking session revoke failed for ${id}, continuing:`,
+              (revokeErr as Error).message,
+            );
+          }
+        }
+      }
+    }
+
     // Best-effort revoke against Ponto. Failures are logged but do not block
     // the soft-delete because the row may already be expired/revoked upstream.
     if (
+      conn.provider !== "enable_banking" &&
       conn.encryptedAccessToken &&
       conn.tokenIv &&
       conn.tokenAuthTag
@@ -552,11 +654,13 @@ bankConnectionsRouter.post("/:id/sync", async (c) => {
 
     // Customer IP for the Ponto synchronization (PSD2). Behind Caddy the real
     // client IP is in X-Forwarded-For; fall back to X-Real-IP.
-    const customerIp =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-      c.req.header("x-real-ip") ||
-      undefined;
-    const result = await syncBankConnection(id, customerIp);
+    // Enable Banking sends both as PSU headers (all or none).
+    const psu = psuFromRequest(c);
+    const result = await syncBankConnection(
+      id,
+      psu.ipAddress || undefined,
+      psu.userAgent || undefined,
+    );
     return c.json({ data: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

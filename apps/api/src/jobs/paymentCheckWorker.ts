@@ -1,7 +1,5 @@
 import { Worker, Queue } from "bullmq";
-import { readFileSync } from "fs";
-import { join } from "path";
-import { eq, and, lt, lte, gte, inArray, or, isNull, ne, notLike } from "drizzle-orm";
+import { eq, and, lt, inArray, or, isNull, ne, notLike } from "drizzle-orm";
 import {
   getDb,
   payments,
@@ -30,9 +28,13 @@ import {
 import { sendLandlordLateEmail } from "../services/landlordLateEmail";
 import { getLandlordNotificationRecipients } from "../lib/notificationRecipients";
 import { getLeaseEmailRecipients } from "../lib/leaseRecipients";
-import { getBankAccountDataProvider } from "../lib/bankAccountData";
 import { syncBankConnection } from "../services/bankConnectionSync";
-import { queueEmail } from "./emailQueueWorker";
+import {
+  createMonitoringGuard,
+  runReauthWarnings,
+  warnConnectionNow,
+  type StaleMonitoring,
+} from "../services/bankReauthWarnings";
 import { queueSms } from "./smsQueueWorker";
 import { isSmsConfigured, normalizePhoneNumber } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
@@ -219,72 +221,25 @@ const connection = {
 
 const paymentCheckQueue = new Queue(QUEUE_NAME, { connection });
 
-const SUPPORTED_EMAIL_LOCALES = ["en", "nl", "fr", "de"] as const;
+/** Daily re-login warnings for bank connections, in the morning. */
+const REAUTH_WARNING_CRON = "0 9 * * *";
 
-interface RenewalEmailTemplate {
-  subject7Day: string;
-  subject1Day: string;
-  greeting: string;
-  body7Day: string;
-  body1Day: string;
-  ctaLabel: string;
-  ctaUrl: string;
-  consequence: string;
-  signature: string;
-  defaultName: string;
-  defaultInstitution: string;
-}
-
-// Loads the locale-aware bank-connection renewal-warning email template from the
-// web app's i18n messages (bankConnections.email.renewalWarning). Falls back to
-// English when the recipient locale is unsupported or missing.
-function loadRenewalEmailTemplate(locale: string): RenewalEmailTemplate {
-  const lc = (SUPPORTED_EMAIL_LOCALES as readonly string[]).includes(locale)
-    ? locale
-    : "en";
-  // process.cwd() is apps/api at runtime (dev via tsx, prod via bundled ESM);
-  // the web messages live one level up under apps/web/messages.
-  const path = join(process.cwd(), "..", "web", "messages", lc, "common.json");
-  const messages = JSON.parse(readFileSync(path, "utf8"));
-  const t = messages?.bankConnections?.email?.renewalWarning;
-  if (!t) {
-    throw new Error(
-      `[PaymentCheck] Missing bankConnections.email.renewalWarning in ${lc} locale`
-    );
-  }
-  return t as RenewalEmailTemplate;
-}
-
-// Composes the localized renewal-warning email. days controls 7-day vs 1-day copy.
-// No tokens or secrets are interpolated, only the recipient name, institution
-// label, days, connection id (deep link), and web origin (T-09-05-02).
-function buildRenewalEmail(
-  locale: string,
-  params: {
-    days: number;
-    name: string | null;
-    institution: string | null;
-    connectionId: string;
-    webUrl: string;
-  }
-): { subject: string; body: string } {
-  const t = loadRenewalEmailTemplate(locale);
-  const name = params.name || t.defaultName;
-  const institution = params.institution || t.defaultInstitution;
-  const isSevenDay = params.days >= 7;
-
-  const subject = isSevenDay ? t.subject7Day : t.subject1Day;
-  const bodyLine = (isSevenDay ? t.body7Day : t.body1Day).replace(
-    "{institution}",
-    institution
+/**
+ * While the bank data behind a lease is stale (its connection expired or
+ * failed), no automatic tenant message goes out for it: the tenant may well
+ * have paid. The landlord gets the "expired" re-login warning instead, once.
+ */
+async function holdForStaleBank(stale: StaleMonitoring | null, what: string, paymentId: string): Promise<boolean> {
+  if (!stale) return false;
+  console.log(
+    `[PaymentCheck] ${what} held for ${paymentId}: bank connection ${stale.connectionId} (${stale.bankName}) needs a re-login`,
   );
-  const greeting = t.greeting.replace("{name}", name);
-  const ctaUrl = t.ctaUrl
-    .replace("{webUrl}", params.webUrl)
-    .replace("{connectionId}", params.connectionId);
-
-  const body = `${greeting}\n\n${bodyLine}\n\n${t.ctaLabel}: ${ctaUrl}\n\n${t.consequence}\n\n${t.signature}`;
-  return { subject, body };
+  try {
+    await warnConnectionNow(stale.connectionId);
+  } catch (err) {
+    console.error(`[PaymentCheck] re-login warning failed for ${stale.connectionId}:`, err);
+  }
+  return true;
 }
 
 // Process payment checks
@@ -299,6 +254,7 @@ async function sendDueDateTenantSms(
   today: string,
 ): Promise<void> {
   if ((!isSmsConfigured() && !isWhatsAppConfigured()) || isReminderTestPhase()) return;
+  const staleBankFor = createMonitoringGuard(db);
   try {
     await ensureExpectedPaymentsForAllActive();
   } catch (err) {
@@ -334,6 +290,7 @@ async function sendDueDateTenantSms(
             monthlyRent: leases.monthlyRent,
             monthlyCharges: leases.monthlyCharges,
             paymentDay: leases.paymentDay,
+            bankAccountId: leases.bankAccountId,
           })
           .from(leases)
           .where(eq(leases.id, p.leaseId))
@@ -342,6 +299,7 @@ async function sendDueDateTenantSms(
       if (!lease) continue;
       const settlement = await periodSettlement(db, lease, p.dueDate, today);
       if (settlement.settled) continue;
+      if (await holdForStaleBank(await staleBankFor(lease), "due-date message", p.paymentId)) continue;
       const amountDue = amountDueFor(settlement, p.amount);
 
       // A muted contract gets no due-date message either. And on the mute end
@@ -469,6 +427,11 @@ const worker = new Worker(
 
     // Dedicated evening job (~19:15 local): a friendly due-date SMS to tenants,
     // run after the 19:00 payment sync so people who already paid aren't nudged.
+    if (job.name === "bank-reauth-warnings") {
+      await runReauthWarnings();
+      return { ok: true };
+    }
+
     if (job.name === "due-reminder-sms") {
       await rematchImportedTransfers(db);
       await sendDueDateTenantSms(db, today);
@@ -531,6 +494,7 @@ const worker = new Worker(
       );
 
     let sentCount = 0;
+    const staleBankFor = createMonitoringGuard(db);
 
     for (const payment of overduePayments) {
       try {
@@ -547,6 +511,7 @@ const worker = new Worker(
             latePaymentFeeAmount: leases.latePaymentFeeAmount,
             latePaymentFeeEnforcement: leases.latePaymentFeeEnforcement,
             landlordLateNotify: leases.landlordLateNotify,
+            bankAccountId: leases.bankAccountId,
           })
           .from(leases)
           .where(eq(leases.id, payment.leaseId))
@@ -591,6 +556,7 @@ const worker = new Worker(
           console.log(`[PaymentCheck] ${payment.paymentId} is reminded together with ${plan.lead.id} (mute ended)`);
           continue;
         }
+        if (await holdForStaleBank(await staleBankFor(lease), "tenant reminder", payment.paymentId)) continue;
         const combined = combineReminder({
           plan,
           payment: { id: payment.paymentId, dueDate: String(payment.dueDate) },
@@ -1068,97 +1034,8 @@ const worker = new Worker(
       console.log("[PaymentCheck] No active bank connections to poll");
     }
 
-    // =======================================================
-    // Phase C: Consent expiry check (D-09)
-    // =======================================================
-    console.log("[PaymentCheck] Phase C: Checking consent expiry...");
-
-    const now = new Date();
-    const sevenDaysFromNow = new Date(
-      now.getTime() + 7 * 24 * 60 * 60 * 1000
-    );
-
-    const expiringConnections = await db
-      .select()
-      .from(bankConnections)
-      .where(
-        and(
-          eq(bankConnections.status, "active"),
-          lte(bankConnections.consentExpiresAt, sevenDaysFromNow),
-          gte(bankConnections.consentExpiresAt, now) // not yet expired
-        )
-      );
-
-    for (const conn of expiringConnections) {
-      const daysUntilExpiry = Math.ceil(
-        ((conn.consentExpiresAt?.getTime() || 0) - now.getTime()) /
-          (24 * 60 * 60 * 1000)
-      );
-
-      // Only warn at 7 days and 1 day thresholds per D-09
-      if (daysUntilExpiry !== 7 && daysUntilExpiry !== 1) continue;
-
-      try {
-        // Attempt silent renewal first per D-09
-        const consentProvider = getBankAccountDataProvider();
-        const newExpiry = await consentProvider.renewConsent(
-          conn.externalRequisitionId!
-        );
-
-        if (newExpiry) {
-          // Renewal succeeded -- update consent expiry
-          await db
-            .update(bankConnections)
-            .set({
-              consentExpiresAt: newExpiry,
-              updatedAt: new Date(),
-            })
-            .where(eq(bankConnections.id, conn.id));
-          console.log(
-            `[PaymentCheck] Consent renewed for connection ${conn.id}, new expiry: ${newExpiry.toISOString()}`
-          );
-        } else {
-          // Renewal failed -- send warning email to landlord per D-09
-          const owner = await db
-            .select({
-              email: users.email,
-              name: users.name,
-              locale: users.locale,
-            })
-            .from(users)
-            .where(eq(users.id, conn.ownerId))
-            .limit(1);
-
-          if (owner[0]?.email) {
-            const recipientLocale = owner[0].locale || "en";
-            const { subject, body } = buildRenewalEmail(recipientLocale, {
-              days: daysUntilExpiry,
-              name: owner[0].name,
-              institution: conn.institutionName || conn.iban,
-              connectionId: conn.id,
-              webUrl: process.env.WEB_URL || "http://localhost:3000",
-            });
-            await queueEmail({
-              to: owner[0].email,
-              subject,
-              body,
-            }, undefined, {
-              ownerId: conn.ownerId,
-              type: "other",
-              recipientName: owner[0].name || "Landlord",
-            });
-            console.log(
-              `[PaymentCheck] Consent expiry warning sent to ${owner[0].email} for connection ${conn.id} (${daysUntilExpiry} days remaining)`
-            );
-          }
-        }
-      } catch (err) {
-        console.error(
-          `[PaymentCheck] Failed to check/renew consent for connection ${conn.id}:`,
-          err
-        );
-      }
-    }
+    // Consent expiry warnings run in their own morning job
+    // (bank-reauth-warnings, see services/bankReauthWarnings.ts).
 
     console.log("[PaymentCheck] Balance check completed");
 
@@ -1220,7 +1097,18 @@ export async function setupPaymentCheckSchedule(): Promise<void> {
     );
   }
 
-  console.log(`[PaymentCheck] Scheduled balance checks at 00:00, 12:00, 19:00 + overdue-reminders & due-SMS at 19:15, timezone ${tz}`);
+  // Morning: re-login warnings for bank connections that are about to expire.
+  await paymentCheckQueue.add(
+    "bank-reauth-warnings",
+    { scheduledAt: REAUTH_WARNING_CRON },
+    {
+      repeat: { pattern: REAUTH_WARNING_CRON, tz },
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 50 },
+    },
+  );
+
+  console.log(`[PaymentCheck] Scheduled balance checks at 00:00, 12:00, 19:00 + overdue-reminders & due-SMS at 19:15 + bank re-login warnings at 09:00, timezone ${tz}`);
 }
 
 export { paymentCheckQueue, worker };

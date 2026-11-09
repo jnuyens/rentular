@@ -5,6 +5,7 @@ import {
   timestamp,
   mysqlEnum,
   index,
+  tinyint,
   json,
 } from "drizzle-orm/mysql-core";
 import { users } from "./users";
@@ -30,6 +31,10 @@ export const bankConnections = mysqlTable("bank_connections", {
   lastSyncAt: timestamp("last_sync_at"),
   lastSyncCursor: varchar("last_sync_cursor", { length: 255 }),
   errorMessage: text("error_message"),
+  // Re-login warnings: the last stage emailed (days before expiry: 14, 7, 3,
+  // 1, or 0 on the day it expired) and when. Reset to null after a re-login.
+  reauthWarnStage: tinyint("reauth_warn_stage"),
+  reauthWarnedAt: timestamp("reauth_warned_at"),
   // Phase 9: AES-256-GCM encrypted OAuth tokens (Ponto). Reuses apps/api/src/lib/encryption.ts
   // helper which returns { encrypted, iv, tag } base64 triplets — three columns per secret.
   encryptedAccessToken: text("encrypted_access_token"),

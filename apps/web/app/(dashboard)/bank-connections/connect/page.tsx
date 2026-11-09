@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -16,14 +16,46 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InstitutionPicker } from "@/components/InstitutionPicker";
 
-type Step = "info" | "select" | "redirecting" | "error";
+type Step = "loading" | "choose" | "none" | "info" | "select" | "redirecting" | "error";
+
+interface ProviderOptions {
+  providers: Array<"enable_banking" | "ponto">;
+  defaultProvider: "enable_banking" | "ponto" | null;
+}
 
 export default function ConnectBankPage() {
   const t = useTranslations("bankConnections");
   const router = useRouter();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-  const [step, setStep] = useState<Step>("info");
+  const [step, setStep] = useState<Step>("loading");
+  const [options, setOptions] = useState<ProviderOptions | null>(null);
+
+  // Which providers this landlord may use decides the first screen: a choice
+  // when there are two, straight into the only one otherwise.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/bank-connections/options`, {
+          credentials: "include",
+        });
+        const o: ProviderOptions | null = res.ok ? (await res.json()).data : null;
+        if (cancelled) return;
+        setOptions(o);
+        const providers = o?.providers ?? ["ponto"];
+        if (providers.length === 0) setStep("none");
+        else if (providers.length > 1) setStep("choose");
+        else if (providers[0] === "enable_banking") router.replace("/bank-connections/enable-banking");
+        else setStep("info");
+      } catch {
+        if (!cancelled) setStep("info");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl, router]);
   const [selectedInstitutionId, setSelectedInstitutionId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,6 +88,61 @@ export default function ConnectBankPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {step === "loading" && <Skeleton className="h-48 w-full" />}
+
+      {step === "none" && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-muted-foreground">{t("choose.none")}</CardContent>
+        </Card>
+      )}
+
+      {step === "choose" && options && (
+        <div className="space-y-4">
+          <h1 className="text-2xl font-semibold">{t("choose.title")}</h1>
+          {options.providers.map((p) =>
+            p === "enable_banking" ? (
+              <Card key={p}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    {t("choose.ebTitle")}
+                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                      {t("choose.free")}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  <p>{t("choose.ebLine1")}</p>
+                  <p>{t("choose.ebLine2")}</p>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => router.push("/bank-connections/enable-banking")}>
+                    {t("continue")}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ) : (
+              <Card key={p}>
+                <CardHeader>
+                  <CardTitle className="text-base">{t("choose.pontoTitle")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm text-muted-foreground">
+                  <p>{t("choose.pontoLine1")}</p>
+                  <p>{t("choose.pontoLine2")}</p>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" onClick={() => setStep("info")}>
+                    {t("continue")}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ),
+          )}
+          <Button variant="ghost" onClick={() => router.push("/bank-connections")}>
+            {t("cancel")}
+          </Button>
+        </div>
+      )}
+
       {step === "info" && (
         <Card>
           <CardHeader>

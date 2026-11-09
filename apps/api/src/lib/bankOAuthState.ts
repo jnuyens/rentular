@@ -31,6 +31,11 @@ export interface OAuthStatePayload {
   // Which Ponto application (PPM/CPM) this consent belongs to, so the callback
   // exchanges the code against the right app.
   model?: "ppm" | "cpm";
+  // Enable Banking: which provider started the flow, and the bank picked.
+  provider?: "ponto" | "enable_banking";
+  aspspName?: string;
+  aspspCountry?: string;
+  psuType?: "personal" | "business";
   nonce: string;
 }
 
@@ -76,6 +81,20 @@ export async function verifyOAuthState(
         ? "cpm"
         : payload.model === "ppm"
           ? "ppm"
+          : undefined,
+    provider:
+      payload.provider === "enable_banking"
+        ? "enable_banking"
+        : payload.provider === "ponto"
+          ? "ponto"
+          : undefined,
+    aspspName: payload.aspspName ? String(payload.aspspName) : undefined,
+    aspspCountry: payload.aspspCountry ? String(payload.aspspCountry) : undefined,
+    psuType:
+      payload.psuType === "business"
+        ? "business"
+        : payload.psuType === "personal"
+          ? "personal"
           : undefined,
     nonce: String(payload.nonce),
   };
