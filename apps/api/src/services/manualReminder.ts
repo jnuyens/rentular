@@ -19,6 +19,7 @@ import { loadWaitingTransfer } from "./transferReview";
 import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "./contractBalance";
 import { wallClock } from "./communicationSchedule";
 import { getScheduleTimezone } from "../lib/timezone";
+import { createMonitoringGuard } from "./bankReauthWarnings";
 
 /** Returned when the contract is even or in credit, so there is nothing to remind about. */
 export const NOTHING_OWED_ERROR = "Nothing is owed on this contract, so no reminder was sent";
@@ -35,6 +36,8 @@ export type ManualReminderResult =
       channel: ReminderChannel;
       /** Set when a transfer that may pay this rent waits for review. The reminder was still sent. */
       waitingTransfer?: WaitingTransferWarning;
+      /** Set when the bank connection this rent is followed through needs a re-login: the tenant may have paid already. */
+      staleBankConnection?: { connectionId: string; bankName: string };
     }
   | { ok: false; error: string };
 
@@ -262,12 +265,26 @@ export async function sendManualReminder(input: {
     console.warn("[ManualReminder] waiting transfer check failed:", err);
   }
 
+  // Same for a bank connection that needs a re-login: recent payments into
+  // that account are not known yet.
+  let staleBankConnection: { connectionId: string; bankName: string } | undefined;
+  try {
+    const stale = await createMonitoringGuard(db)({
+      ownerId: lease.ownerId,
+      bankAccountId: lease.bankAccountId ?? null,
+    });
+    if (stale) staleBankConnection = { connectionId: stale.connectionId, bankName: stale.bankName };
+  } catch (err) {
+    console.warn("[ManualReminder] bank connection check failed:", err);
+  }
+
   return {
     ok: true,
     sentTo,
     testPhase: isTest,
     level: input.level,
     channel: usedChannel,
+    ...(staleBankConnection ? { staleBankConnection } : {}),
     ...(waitingTransfer ? { waitingTransfer } : {}),
   };
 }
