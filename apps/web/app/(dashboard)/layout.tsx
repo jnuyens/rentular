@@ -118,7 +118,11 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="relative flex-1 overflow-auto bg-transparent pt-14 md:pt-0 p-4 md:p-8">
-        <DashboardUserProvider userName={session.user?.name}>
+        <DashboardUserProvider
+          userName={session.user?.name}
+          userId={session.user?.id || session.user?.email}
+          supportEmail={process.env.SUPPORT_EMAIL}
+        >
           <div className="relative">{children}</div>
         </DashboardUserProvider>
       </main>

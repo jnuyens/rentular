@@ -1652,5 +1652,103 @@
       "invalid_date": "That is not a valid date.",
       "failed": "That did not work. Please try again."
     }
+  },
+  "ebWizard": {
+    "pageTitle": "Connect your bank account with Enable Banking",
+    "toConnections": "Back to bank connections",
+    "stepOf": "Step {current} of {total}",
+    "back": "Back",
+    "next": "Next",
+    "expect": "What you should see now:",
+    "guide": "Read the full guide",
+    "help": "Need help? Email <link>{email}</link>.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "s1": {
+      "title": "What you are going to do",
+      "body1": "Enable Banking is a licensed service that can read your bank account with your permission. That way Rentular sees for itself when the rent comes in.",
+      "body2": "You create your own app at Enable Banking. As long as you only use it to read your own accounts, it costs you nothing. Rentular can only read your account, it can never make payments.",
+      "time": "Time: about 10 minutes, and only once.",
+      "need": "What you need: the banking app on your phone, or your card reader.",
+      "pontoTitle": "Rather not set anything up?",
+      "ponto": "With Ponto you just log in at your bank, no app of your own. Ponto bills you directly for that, per connected account.",
+      "pontoLink": "Connect through Ponto",
+      "expect": "Nothing yet. Click Next when you are ready to start.",
+      "expectInstance": "Nothing yet. Your administrator already set up the app, so click Next to log in at your bank."
+    },
+    "s2": {
+      "title": "An account at Enable Banking",
+      "body1": "Click the button below. The Enable Banking website opens in a new tab, so you can keep this page open.",
+      "body2": "Sign up there with your email address. You get an email with a link: click it to confirm your address.",
+      "open": "Open enablebanking.com",
+      "expect": "You are logged in to the Enable Banking Control Panel."
+    },
+    "s3": {
+      "title": "Register your app",
+      "body1": "In the Control Panel, go to \"API applications\" and register a new application. Choose \"Production\", not \"Sandbox\". For the name you can use \"Rentular\", for example.",
+      "body2": "For the redirect URL, paste exactly this address. One character too many or too few and logging in at your bank will fail later.",
+      "open": "Open the Control Panel",
+      "redirectLabel": "Redirect URL",
+      "body3": "If the form also asks for a privacy policy or terms of use, use these addresses:",
+      "privacyLabel": "Privacy policy",
+      "termsLabel": "Terms of use",
+      "body4": "Submit the form. Your browser then downloads a file ending in .pem right away. The name of that file is the application ID of your app.",
+      "pemWarning": "Keep this file safe, you can only download it once.",
+      "expect": "Your app is listed in the Control Panel, and there is a .pem file in your Downloads folder."
+    },
+    "s4": {
+      "title": "Upload the key file",
+      "body1": "Drag the .pem file from your Downloads folder into the box below, or pick it with the link. Rentular tests the key right away.",
+      "drop": "Drag your .pem file here",
+      "pick": "or choose a file",
+      "fileChosen": "Selected: {name}",
+      "keySaved": "Your key was uploaded on {date}. Choose a new file if you want to replace it.",
+      "idFromFile": "Filled in from the file name. Change it if it is not right.",
+      "idWhere": "You find the application ID in the Control Panel under \"API applications\", next to the name of your app. It is a long code of letters and digits.",
+      "ok": "It works: Rentular can talk to your app.",
+      "errJwt": "Enable Banking does not recognise the key. Usually the wrong .pem file was picked, or the application ID belongs to another app. Once in a while the server clock is off.",
+      "errInactive": "The key is right, but your app is not active yet. You sort that out in step 5.",
+      "errOther": "The test did not work. Try again in a few minutes.",
+      "toStep5": "Go to step 5",
+      "expect": "A green message: \"It works: Rentular can talk to your app.\"",
+      "nextHint": "Upload your key first."
+    },
+    "s5": {
+      "title": "Link your own account in Enable Banking",
+      "body1": "Open your app in the Control Panel and click \"Activate by linking accounts\".",
+      "body2": "Choose your bank and log in with your banking app or card reader. Pick the account the rent is paid into.",
+      "body3": "This only tells Enable Banking which account your free app may read. Rentular still asks your bank for permission separately in the next step.",
+      "check": "Done in the Control Panel? Then test your app again here.",
+      "expect": "In the Control Panel your app shows as active, with your account next to it.",
+      "nextHint": "Test your app first."
+    },
+    "s6": {
+      "title": "Log in at your bank through Rentular",
+      "body1": "Choose the type of account and search for your bank. Then click \"Log in at your bank\" and approve the request in your banking app.",
+      "psuHelp": "An ordinary account in your own name is a personal account, even if you receive rent on it. A business account is the account of a company.",
+      "body2": "Your bank then sends you back to Rentular. If your bank shared several accounts, you choose which ones Rentular should follow.",
+      "expect": "You are back in Rentular and see the account you just connected."
+    },
+    "done": {
+      "title": "Done",
+      "account": "Connected: {account}",
+      "validUntil": "Your bank allows this until {date}.",
+      "warn": "Rentular emails you 14, 7, 3 and 1 day before that date, so you can log in again in time.",
+      "next": "The first sync is running now. After that Rentular fetches your transactions three times a day.",
+      "view": "View the connection",
+      "another": "Connect another account",
+      "list": "Go to your bank connections"
+    },
+    "entry": {
+      "title": "Connect your bank account for free, step by step",
+      "body": "Rentular then sees for itself when the rent comes in. Setting it up takes about 10 minutes.",
+      "cta": "Start",
+      "dismiss": "Hide"
+    },
+    "callback": {
+      "noAccounts": "Your bank returned no accounts. Usually step 5 (linking your account in Enable Banking) has not been done yet.",
+      "toStep5": "Back to step 5",
+      "toSteps": "Back to the steps"
+    }
   }
 }
