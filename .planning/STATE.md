@@ -231,6 +231,7 @@ None yet.
 | 261108-shd | Current self-hosting docs (SELF-HOSTING.md, CONTRIBUTING.md, README, env templates), SMTP auth, turbo env and compose fixes, stray worktree copy untracked | 2026-11-08 | 84e0764 | [261108-shd-self-hosting-docs](./quick/261108-shd-self-hosting-docs/) |
 | 261109-agr | Per-contract "mute late payment reminders until" (next rent, next week, date) on overview, payments and contract page, internal notes in the contract history | 2026-11-09 | 4222cbc | [261109-agr-payment-agreement-pause-reminders](./quick/261109-agr-payment-agreement-pause-reminders/) |
 | 261109-ebk | Enable Banking provider (own app, free) for self-hosted and free users next to Ponto, re-login warnings at 14/7/3/1/0 days, no automatic reminders on stale bank data | 2026-11-09 | c021d86 | [261109-ebk-enable-banking-provider](./quick/261109-ebk-enable-banking-provider/) |
+| 261110-ebw | Enable Banking step-by-step wizard in the app and public tutorial at /help/enable-banking (EN/NL/FR/DE) | 2026-11-10 | worktree-agent-a0fd4d82bc3a65f0f | [261110-ebw-enable-banking-wizard-and-tutorial](./quick/261110-ebw-enable-banking-wizard-and-tutorial/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
