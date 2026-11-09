@@ -130,7 +130,7 @@ async function resolveModel(ownerId: string): Promise<PontoModelT> {
 }
 
 // ===========================================================================
-// GET /options — which providers this landlord may connect with
+// GET /options: which providers this landlord may connect with
 // ===========================================================================
 bankConnectionsRouter.get("/options", async (c) => {
   try {

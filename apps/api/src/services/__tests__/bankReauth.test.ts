@@ -130,7 +130,7 @@ describe("re-login email", () => {
       for (const stage of [14, 7, 3, 1, 0] as ReauthStage[]) {
         const { subject, body } = buildReauthEmail(lang, { ...base, stage });
         expect(subject.length).toBeGreaterThan(10);
-        expect(`${subject}${body}`).not.toMatch(/[–—]/);
+        expect(`${subject}${body}`).not.toMatch(/[\u2013\u2014]/);
       }
     }
     expect(buildReauthEmail("fr", { ...base, stage: 0 }).subject).toContain("a expiré");
