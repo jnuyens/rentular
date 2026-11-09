@@ -1231,7 +1231,77 @@
         "defaultName": "Propriétaire",
         "defaultInstitution": "votre compte"
       }
-    }
+    },
+    "relogin": {
+      "bannerSoon": "Votre connexion bancaire avec {bank} expire le {date}. Se reconnecter prend une minute.",
+      "bannerExpired": "Votre connexion bancaire avec {bank} a expiré. Les rappels automatiques pour les loyers versés sur ce compte sont suspendus jusqu'à votre reconnexion.",
+      "button": "Se reconnecter",
+      "error": "La reconnexion n'a pas pu démarrer. Veuillez réessayer."
+    },
+    "choose": {
+      "title": "Comment voulez-vous connecter votre banque ?",
+      "ebTitle": "Enable Banking avec votre propre application",
+      "ebLine1": "Gratuit. Vous créez une fois votre propre application Enable Banking, ce qui prend une dizaine de minutes.",
+      "ebLine2": "Prévu pour vos propres comptes. Rentular ne voit jamais votre mot de passe bancaire.",
+      "pontoTitle": "Ponto",
+      "pontoLine1": "Rien à configurer : vous vous connectez à votre banque et c'est fait.",
+      "pontoLine2": "Ponto vous facture directement par compte connecté.",
+      "free": "Gratuit",
+      "none": "Aucune connexion bancaire n'est encore disponible sur cette installation. Demandez à votre administrateur."
+    },
+    "notices": {
+      "enable_banking_kept": "Vous utilisez Enable Banking avec votre propre application. Cela continue de fonctionner.",
+      "ponto_kept": "Vous utilisez Ponto. Cela continue de fonctionner."
+    },
+    "eb": {
+      "title": "Connecter via Enable Banking (votre propre application, gratuit)",
+      "intro": "Enable Banking vous permet de lire gratuitement vos propres comptes bancaires, tant que l'application est à vous et que vous ne liez que vos propres comptes. Vous le configurez une seule fois :",
+      "step1": "Créez un compte sur enablebanking.com.",
+      "step2": "Dans le Control Panel, enregistrez une nouvelle application pour l'environnement de production.",
+      "step3": "Indiquez exactement cette valeur comme redirect URL :",
+      "step4": "Téléchargez la clé privée (fichier .pem) de l'application.",
+      "step5": "Dans le Control Panel, choisissez \"Activate by linking accounts\" et liez votre propre compte bancaire. L'application est ainsi activée gratuitement.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "openControlPanel": "Ouvrir le Control Panel d'Enable Banking",
+      "appId": "Application ID",
+      "appIdHelp": "Vous le trouvez dans le Control Panel, à côté de votre application.",
+      "keyFile": "Clé privée (.pem)",
+      "keyUploaded": "Clé envoyée le {date}",
+      "keyHelp": "La clé reste chiffrée sur le serveur Rentular et n'est plus jamais affichée.",
+      "save": "Enregistrer et tester",
+      "replace": "Remplacer la clé",
+      "remove": "Supprimer la clé",
+      "removeConfirm": "Supprimer la clé ? Les connexions bancaires créées avec elle ne fonctionneront plus.",
+      "removed": "Clé supprimée",
+      "verifying": "Test en cours...",
+      "works": "Fonctionne",
+      "worksBanks": "Fonctionne : {count} banques disponibles",
+      "failed": "Ne fonctionne pas encore : {error}",
+      "hintWrongKey": "\"Invalid JWT\" signifie en général que l'application ID et la clé ne vont pas ensemble, ou que l'horloge du serveur n'est pas à l'heure.",
+      "instanceApp": "Cette installation utilise l'application Enable Banking configurée par l'administrateur.",
+      "test": "Tester à nouveau",
+      "keyReadError": "Impossible de lire ce fichier.",
+      "saveError": "Enregistrement impossible : {error}",
+      "pickBank": "Choisissez votre banque",
+      "searchBanks": "Rechercher votre banque",
+      "noBanks": "Aucune banque trouvée",
+      "banksError": "Impossible de charger la liste des banques : {error}",
+      "psuType": "Type de compte",
+      "personal": "Compte privé",
+      "business": "Compte professionnel",
+      "login": "Se connecter à votre banque",
+      "loginError": "La connexion à votre banque n'a pas pu démarrer : {error}",
+      "verifyFirst": "Enregistrez et testez d'abord votre application."
+    },
+    "pick": {
+      "title": "Quels comptes Rentular doit-il suivre ?",
+      "body": "Votre banque a partagé plusieurs comptes. Choisissez le ou les comptes sur lesquels vos loyers arrivent.",
+      "confirm": "Suivre les comptes choisis",
+      "error": "Votre choix n'a pas pu être enregistré."
+    },
+    "errorNoApp": "Aucune application Enable Banking n'est configurée. Envoyez d'abord votre clé.",
+    "errorAccountMissing": "Ce compte ne faisait pas partie de la nouvelle connexion bancaire. Reconnectez-vous et choisissez le même compte."
   },
   "reconciliation": {
     "rematch": "Rapprocher",
@@ -1377,7 +1447,8 @@
     "reminderTransferWaiting": "Attention : un virement de {amount} du {date} règle peut-être déjà ce loyer et attend sur la page Rapprochement.",
     "communication": "Communication",
     "contractCredit": "Avoir {amount}",
-    "reminderNothingOwed": "Rien n'est dû sur ce contrat, aucun rappel n'a donc été envoyé."
+    "reminderNothingOwed": "Rien n'est dû sur ce contrat, aucun rappel n'a donc été envoyé.",
+    "reminderBankStale": "Attention : votre connexion bancaire avec {bank} demande une nouvelle connexion, les paiements récents ne sont donc peut-être pas encore connus."
   },
   "ledger": {
     "title": "Grand livre des loyers",

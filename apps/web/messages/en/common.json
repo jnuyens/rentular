@@ -1231,7 +1231,77 @@
         "defaultName": "Landlord",
         "defaultInstitution": "your account"
       }
-    }
+    },
+    "relogin": {
+      "bannerSoon": "Your bank connection with {bank} expires on {date}. Logging in again takes a minute.",
+      "bannerExpired": "Your bank connection with {bank} has expired. Automatic reminders for rent paid into this account are paused until you log in again.",
+      "button": "Log in again",
+      "error": "Could not start the new login. Please try again."
+    },
+    "choose": {
+      "title": "How do you want to connect your bank?",
+      "ebTitle": "Enable Banking with your own app",
+      "ebLine1": "Free. You set up your own Enable Banking app once, which takes about ten minutes.",
+      "ebLine2": "Meant for your own accounts. Rentular never sees your bank password.",
+      "pontoTitle": "Ponto",
+      "pontoLine1": "Nothing to set up: log in at your bank and you are done.",
+      "pontoLine2": "Ponto bills you directly for each connected account.",
+      "free": "Free",
+      "none": "No bank connection is available on this installation yet. Ask your administrator."
+    },
+    "notices": {
+      "enable_banking_kept": "You use Enable Banking with your own app. That keeps working.",
+      "ponto_kept": "You use Ponto. That keeps working."
+    },
+    "eb": {
+      "title": "Connect via Enable Banking (your own app, free)",
+      "intro": "Enable Banking lets you read your own bank accounts for free, as long as the app is yours and you only link your own accounts. You set it up once:",
+      "step1": "Create an account at enablebanking.com.",
+      "step2": "In the Control Panel, register a new application for the production environment.",
+      "step3": "Set the redirect URL to exactly this value:",
+      "step4": "Download the private key (.pem file) of the application.",
+      "step5": "In the Control Panel, choose \"Activate by linking accounts\" and link your own bank account. That activates the app for free.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "openControlPanel": "Open the Enable Banking Control Panel",
+      "appId": "Application ID",
+      "appIdHelp": "You find it in the Control Panel, next to your application.",
+      "keyFile": "Private key (.pem)",
+      "keyUploaded": "Key uploaded on {date}",
+      "keyHelp": "The key stays on the Rentular server, encrypted, and is never shown again.",
+      "save": "Save and test",
+      "replace": "Replace key",
+      "remove": "Remove key",
+      "removeConfirm": "Remove the key? Bank connections made with it stop working.",
+      "removed": "Key removed",
+      "verifying": "Testing...",
+      "works": "Works",
+      "worksBanks": "Works: {count} banks available",
+      "failed": "Does not work yet: {error}",
+      "hintWrongKey": "\"Invalid JWT\" usually means the application ID and the key do not belong together, or the server clock is off.",
+      "instanceApp": "This installation uses the Enable Banking app set up by the administrator.",
+      "test": "Test again",
+      "keyReadError": "Could not read this file.",
+      "saveError": "Could not save: {error}",
+      "pickBank": "Pick your bank",
+      "searchBanks": "Search your bank",
+      "noBanks": "No banks found",
+      "banksError": "Could not load the bank list: {error}",
+      "psuType": "Account type",
+      "personal": "Personal account",
+      "business": "Business account",
+      "login": "Log in at your bank",
+      "loginError": "Could not start the bank login: {error}",
+      "verifyFirst": "Save and test your app first."
+    },
+    "pick": {
+      "title": "Which accounts should Rentular follow?",
+      "body": "Your bank shared several accounts. Pick the account or accounts your rent is paid into.",
+      "confirm": "Follow selected accounts",
+      "error": "Could not save your choice."
+    },
+    "errorNoApp": "No Enable Banking app is set up. Upload your key first.",
+    "errorAccountMissing": "This account was not part of the new bank login. Log in again and select the same account."
   },
   "reconciliation": {
     "rematch": "Re-match",
@@ -1377,7 +1447,8 @@
     "reminderTransferWaiting": "Heads up: a transfer of {amount} from {date} may already pay this rent and is waiting on the Reconciliation page.",
     "communication": "Communication",
     "contractCredit": "Credit {amount}",
-    "reminderNothingOwed": "Nothing is owed on this contract, so no reminder was sent."
+    "reminderNothingOwed": "Nothing is owed on this contract, so no reminder was sent.",
+    "reminderBankStale": "Note: your bank connection with {bank} needs a new login, so recent payments may not be known yet."
   },
   "ledger": {
     "title": "Rent ledger",

@@ -1231,7 +1231,77 @@
         "defaultName": "Verhuurder",
         "defaultInstitution": "uw rekening"
       }
-    }
+    },
+    "relogin": {
+      "bannerSoon": "Je bankkoppeling met {bank} verloopt op {date}. Opnieuw inloggen duurt een minuut.",
+      "bannerExpired": "Je bankkoppeling met {bank} is verlopen. Automatische herinneringen voor huur die op deze rekening binnenkomt, staan stil tot je opnieuw inlogt.",
+      "button": "Opnieuw inloggen",
+      "error": "Opnieuw inloggen lukte niet. Probeer het nog eens."
+    },
+    "choose": {
+      "title": "Hoe wil je je bank koppelen?",
+      "ebTitle": "Enable Banking met je eigen app",
+      "ebLine1": "Gratis. Je maakt één keer je eigen Enable Banking-app aan, dat duurt een tiental minuten.",
+      "ebLine2": "Bedoeld voor je eigen rekeningen. Rentular ziet nooit je bankwachtwoord.",
+      "pontoTitle": "Ponto",
+      "pontoLine1": "Niets in te stellen: je logt in bij je bank en klaar.",
+      "pontoLine2": "Ponto rekent je rechtstreeks aan per gekoppelde rekening.",
+      "free": "Gratis",
+      "none": "Op deze installatie is nog geen bankkoppeling beschikbaar. Vraag het aan je beheerder."
+    },
+    "notices": {
+      "enable_banking_kept": "Je gebruikt Enable Banking met je eigen app. Dat blijft werken.",
+      "ponto_kept": "Je gebruikt Ponto. Dat blijft werken."
+    },
+    "eb": {
+      "title": "Verbind via Enable Banking (je eigen app, gratis)",
+      "intro": "Met Enable Banking lees je gratis je eigen bankrekeningen, zolang de app van jou is en je alleen je eigen rekeningen koppelt. Je stelt het één keer in:",
+      "step1": "Maak een account aan op enablebanking.com.",
+      "step2": "Registreer in het Control Panel een nieuwe applicatie voor de productieomgeving.",
+      "step3": "Zet de redirect URL op exact deze waarde:",
+      "step4": "Download de private key (.pem-bestand) van de applicatie.",
+      "step5": "Kies in het Control Panel \"Activate by linking accounts\" en koppel je eigen bankrekening. Zo activeer je de app gratis.",
+      "copy": "Kopiëren",
+      "copied": "Gekopieerd",
+      "openControlPanel": "Open het Enable Banking Control Panel",
+      "appId": "Application ID",
+      "appIdHelp": "Je vindt het in het Control Panel, naast je applicatie.",
+      "keyFile": "Private key (.pem)",
+      "keyUploaded": "Sleutel opgeladen op {date}",
+      "keyHelp": "De sleutel blijft versleuteld op de Rentular-server en wordt nooit meer getoond.",
+      "save": "Bewaren en testen",
+      "replace": "Sleutel vervangen",
+      "remove": "Sleutel verwijderen",
+      "removeConfirm": "Sleutel verwijderen? Bankkoppelingen die ermee gemaakt zijn, werken dan niet meer.",
+      "removed": "Sleutel verwijderd",
+      "verifying": "Bezig met testen...",
+      "works": "Werkt",
+      "worksBanks": "Werkt: {count} banken beschikbaar",
+      "failed": "Werkt nog niet: {error}",
+      "hintWrongKey": "\"Invalid JWT\" betekent meestal dat de application ID en de sleutel niet bij elkaar horen, of dat de klok van de server niet juist staat.",
+      "instanceApp": "Deze installatie gebruikt de Enable Banking-app die de beheerder heeft ingesteld.",
+      "test": "Opnieuw testen",
+      "keyReadError": "Dit bestand kon niet gelezen worden.",
+      "saveError": "Bewaren lukte niet: {error}",
+      "pickBank": "Kies je bank",
+      "searchBanks": "Zoek je bank",
+      "noBanks": "Geen banken gevonden",
+      "banksError": "De lijst met banken kon niet geladen worden: {error}",
+      "psuType": "Soort rekening",
+      "personal": "Privérekening",
+      "business": "Zakelijke rekening",
+      "login": "Inloggen bij je bank",
+      "loginError": "Inloggen bij je bank kon niet starten: {error}",
+      "verifyFirst": "Bewaar en test eerst je app."
+    },
+    "pick": {
+      "title": "Welke rekeningen moet Rentular volgen?",
+      "body": "Je bank deelde meerdere rekeningen. Kies de rekening of rekeningen waarop je huur binnenkomt.",
+      "confirm": "Gekozen rekeningen volgen",
+      "error": "Je keuze kon niet bewaard worden."
+    },
+    "errorNoApp": "Er is nog geen Enable Banking-app ingesteld. Laad eerst je sleutel op.",
+    "errorAccountMissing": "Deze rekening zat niet in de nieuwe login bij je bank. Log opnieuw in en kies dezelfde rekening."
   },
   "reconciliation": {
     "rematch": "Opnieuw matchen",
@@ -1377,7 +1447,8 @@
     "reminderTransferWaiting": "Let op: een overschrijving van {amount} van {date} betaalt deze huur misschien al en wacht op de pagina Reconciliatie.",
     "communication": "Communicatie",
     "contractCredit": "Tegoed {amount}",
-    "reminderNothingOwed": "Op dit contract staat niets open, dus er is geen herinnering verstuurd."
+    "reminderNothingOwed": "Op dit contract staat niets open, dus er is geen herinnering verstuurd.",
+    "reminderBankStale": "Let op: je bankkoppeling met {bank} vraagt een nieuwe login, dus recente betalingen zijn misschien nog niet gekend."
   },
   "ledger": {
     "title": "Huurgrootboek",

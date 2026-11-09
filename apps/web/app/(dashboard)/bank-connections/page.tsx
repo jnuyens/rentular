@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
+import { BankReauthBanner } from "@/components/BankReauthBanner";
 import { formatDateTime } from "@/lib/dateLocale";
 
 interface BankConnection {
@@ -28,6 +29,7 @@ interface BankConnection {
   consentExpiresAt: string | null;
   lastSyncAt: string | null;
   errorMessage: string | null;
+  needsRelogin?: boolean;
 }
 
 function maskIban(iban: string | null): string {
@@ -55,6 +57,14 @@ export default function BankConnectionsPage() {
   const [connections, setConnections] = useState<BankConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [notices, setNotices] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/v1/bank-connections/options`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => setNotices(b?.data?.notices || []))
+      .catch(() => setNotices([]));
+  }, [apiUrl]);
 
   const fetchConnections = useCallback(async () => {
     setLoading(true);
@@ -101,6 +111,17 @@ export default function BankConnectionsPage() {
           </Link>
         </Button>
       </div>
+
+      {!loading && !error && connections.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <BankReauthBanner connections={connections} />
+          {notices.map((n) => (
+            <p key={n} className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+              {t(`notices.${n}`)}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* Loading State */}
       {loading && (
