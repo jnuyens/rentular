@@ -1063,7 +1063,9 @@
     "trustSecure": "Secure and reliable",
     "trustOpenSource": "Open source (AGPL-3.0)",
     "trustGithub": "Code on GitHub",
-    "closingTitle": "Built in Belgium, <hl>for Belgian landlords.</hl>"
+    "closingTitle": "Built in Belgium, <hl>for Belgian landlords.</hl>",
+    "footerHelpBank": "Guide: connect your bank",
+    "pricingBankFreeNote": "On the free plan you connect your bank at no cost with your own Enable Banking app. <link>How it works</link>."
   },
   "onboarding": {
     "landlordType": {
@@ -1749,6 +1751,158 @@
       "noAccounts": "Your bank returned no accounts. Usually step 5 (linking your account in Enable Banking) has not been done yet.",
       "toStep5": "Back to step 5",
       "toSteps": "Back to the steps"
+    }
+  },
+  "ebHelp": {
+    "metaTitle": "Connect your bank account for free with Enable Banking | Rentular",
+    "metaDescription": "Step by step: create your own Enable Banking app and let Rentular see for itself when the rent comes in. Free for your own accounts.",
+    "eyebrow": "Guide",
+    "title": "Connect your bank account for free with Enable Banking",
+    "intro": "With these steps Rentular sees for itself when the rent is in your account. Keep this page open next to the Enable Banking Control Panel and follow the steps in Rentular.",
+    "backToHome": "Back to the home page",
+    "toc": "On this page",
+    "stepLabel": "Step {n}",
+    "expectLabel": "What you should see:",
+    "about": {
+      "title": "What is Enable Banking?",
+      "paras": [
+        "Enable Banking is a licensed European account information service. With your permission it reads your bank account and passes the transactions on to an app you choose.",
+        "You create that app yourself at Enable Banking. Rentular uses it to see which rent has been paid, and only sends a reminder when a payment is really missing."
+      ]
+    },
+    "free": {
+      "title": "Why is it free?",
+      "paras": [
+        "Enable Banking lets you use your own app for free in what it calls restricted mode: the app only reads the accounts you link yourself in the Control Panel. It is your app and your accounts, so there is no middleman charging per account.",
+        "Enable Banking's terms apply to your account and your app. Read them on their website. Rentular has no say in those terms and cannot promise they will never change."
+      ]
+    },
+    "ponto": {
+      "title": "Enable Banking or Ponto?",
+      "paras": [
+        "With Ponto there is nothing to set up: you log in at your bank and you are done. Ponto bills you directly for that, per connected account.",
+        "On the free plan and on your own install you can choose. On the paid plan at rentular.com the connection goes through Ponto."
+      ]
+    },
+    "needs": {
+      "title": "What you need",
+      "items": [
+        "A Rentular account. The free plan is enough.",
+        "About 10 minutes, and only once.",
+        "The banking app on your phone, or your card reader. Your bank asks you to confirm twice: in step 5 and in step 6."
+      ]
+    },
+    "steps": {
+      "s1": {
+        "title": "What you are going to do",
+        "paras": [
+          "Log in to Rentular, open \"Bank Connections\" in the menu and click connect. Choose \"Enable Banking with your own app\". Rentular then shows the steps one at a time, with your progress at the top.",
+          "You can stop at any moment. When you come back later, Rentular opens the step where you left off."
+        ],
+        "expect": "At the top of the page in Rentular it says \"Step 1 of 6\"."
+      },
+      "s2": {
+        "title": "An account at Enable Banking",
+        "paras": [
+          "Go to enablebanking.com and sign up with your email address. This is an account at Enable Banking itself, separate from Rentular.",
+          "You get an email to confirm your address. Click the link in that email. If nothing arrives, check your spam folder too."
+        ],
+        "expect": "You are logged in to the Enable Banking Control Panel."
+      },
+      "s3": {
+        "title": "Register your app",
+        "paras": [
+          "In the Control Panel, go to \"API applications\" and register a new application.",
+          "Choose \"Production\" as the environment. \"Sandbox\" is a test environment with fake banks and does not work with your real account.",
+          "Give the app a name you will recognise, for example \"Rentular\".",
+          "For the redirect URL, enter exactly the address Rentular shows you in this step, using the copy button. For this website it is {url}",
+          "If the form asks for a privacy policy or terms of use, you can use {privacy} and {terms}.",
+          "When you submit the form, your browser downloads a file ending in .pem. The name of that file is the application ID of your app. The file is the private key of your app: keep it safe, because you can only download it once, and give it to nobody but Rentular."
+        ],
+        "expect": "Your app is listed under \"API applications\" and the .pem file is in your Downloads folder."
+      },
+      "s4": {
+        "title": "Upload the key file",
+        "paras": [
+          "In Rentular, drag the .pem file into the box, or pick it with the link. If the file still has its original name, Rentular fills in the application ID for you. If you renamed it, copy the application ID from the Control Panel: you find it next to the name of your app.",
+          "Click \"Save and test\". Rentular contacts Enable Banking right away to check that the key works.",
+          "If Rentular says the key is right but your app is not active yet, just carry on with step 5."
+        ],
+        "expect": "A green message: \"It works: Rentular can talk to your app.\""
+      },
+      "s5": {
+        "title": "Link your own account in Enable Banking",
+        "paras": [
+          "Open your app in the Control Panel and click \"Activate by linking accounts\".",
+          "Choose your bank, log in with your banking app or card reader and pick the account the rent is paid into. You may pick more than one.",
+          "This puts the app in restricted mode: it can only read the accounts you link here. Rentular does not get access yet. You ask your bank for that separately in step 6.",
+          "Go back to Rentular and click \"Test again\"."
+        ],
+        "expect": "In the Control Panel your app shows as active, with your account next to it."
+      },
+      "s6": {
+        "title": "Log in at your bank through Rentular",
+        "paras": [
+          "Choose the type of account. An ordinary account in your own name is a personal account, even if you receive rent on it. A business account is the account of a company.",
+          "Search for your bank in the list, select it and click \"Log in at your bank\". You land at your bank. Approve the request in your banking app.",
+          "Your bank then sends you back to Rentular. If your bank shared more than one account, tick the ones Rentular should follow."
+        ],
+        "expect": "You are back in Rentular and see the account you just connected."
+      },
+      "s7": {
+        "title": "Done",
+        "paras": [
+          "Rentular shows which account is connected and until when your bank allows it, for example \"Your bank allows this until 08/05/2027\".",
+          "The first sync starts right away. After that Rentular fetches your transactions three times a day and sees for itself which rent has been paid.",
+          "Before that date you have to log in at your bank once more. Rentular emails you 14, 7, 3 and 1 day ahead, with a link that takes you straight to the right page."
+        ],
+        "expect": "A green check mark with \"Done\" and the name of your bank."
+      }
+    },
+    "trouble": {
+      "title": "Troubleshooting",
+      "jwt": {
+        "q": "\"Invalid JWT\" or \"Enable Banking does not recognise the key\"",
+        "a": "The application ID and the .pem file do not belong together. Check that you picked the file of the right app and that the application ID is correct. If you created more than one app, use the ID of the app you downloaded the file from. On your own server the server clock may also be off."
+      },
+      "noAccounts": {
+        "q": "\"Your bank returned no accounts\"",
+        "a": "Usually step 5 has not been done yet, or you linked a different account there. Link the right account in the Control Panel with \"Activate by linking accounts\" and then log in again through Rentular."
+      },
+      "bankMissing": {
+        "q": "My bank is not in the list",
+        "a": "First check that you picked the right type of account: some banks are only listed for personal or only for business accounts. If it is still missing, Enable Banking does not support that bank at the moment. You can use Ponto instead, if it is available to you."
+      },
+      "expired": {
+        "q": "My connection expired, or I have to log in again",
+        "a": "In Rentular, click \"Log in again\" on the connection and approve the request in your banking app. Your history is kept. While the connection is expired, Rentular sends no automatic reminders to tenants, because it cannot see who has paid."
+      },
+      "reconfirm": {
+        "q": "My bank asks me to confirm again after 90 days",
+        "a": "That is normal. Banks may ask again after a while whether access can continue, and your bank decides how long that is. Rentular never asks for more than 180 days. You get an email in time with a link to log in again."
+      },
+      "lostPem": {
+        "q": "I lost my .pem file",
+        "a": "You cannot download the file again. Generate a new key for your app in the Control Panel, upload that new file in step 4 and test again. If you keep the same app, you usually do not have to log in at your bank again."
+      }
+    },
+    "privacy": {
+      "title": "Privacy and security",
+      "paras": [
+        "Rentular stores the key of your app encrypted on the Rentular server. After the upload Rentular never shows it again, not even to you.",
+        "Rentular can only read your account. It cannot make payments and never sees your bank password: you always log in on your bank's own page or app.",
+        "You can remove the key and the connection in Rentular at any time."
+      ]
+    },
+    "selfHost": {
+      "title": "Self-hosting",
+      "body": "Running Rentular on your own server? It works the same way, with the address of your own install as the redirect URL. The administrator can also set up one app for the whole install, and then you skip steps 2 to 5. Everything is in <link>SELF-HOSTING.md</link> on GitHub."
+    },
+    "cta": {
+      "title": "Ready to start?",
+      "body": "Log in to Rentular and open the steps. You can keep this page open next to it.",
+      "button": "Start in Rentular",
+      "help": "Questions? Email <link>{email}</link>."
     }
   }
 }

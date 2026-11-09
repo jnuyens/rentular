@@ -1,9 +1,8 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
+import { DEFAULT_SUPPORT_EMAIL } from "@/lib/site";
 
-/** Contact shown under "Need help?" when SUPPORT_EMAIL is not set. */
-export const DEFAULT_SUPPORT_EMAIL = "privacy@rentular.com";
 
 interface DashboardUser {
   userName: string | null;

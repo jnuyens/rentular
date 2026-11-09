@@ -6,6 +6,7 @@ import SupportChat from "@/components/SupportChat";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import MobileNav from "@/components/MobileNav";
 import { DashboardUserProvider } from "@/components/DashboardUserContext";
+import { getSupportEmail } from "@/lib/site";
 
 const navigationItems = [
   { key: "overview" as const, href: "/overview", iconName: "LayoutDashboard" as const },
@@ -121,7 +122,7 @@ export default async function DashboardLayout({
         <DashboardUserProvider
           userName={session.user?.name}
           userId={session.user?.id || session.user?.email}
-          supportEmail={process.env.SUPPORT_EMAIL}
+          supportEmail={getSupportEmail()}
         >
           <div className="relative">{children}</div>
         </DashboardUserProvider>

@@ -1063,7 +1063,9 @@
     "trustSecure": "Veilig en betrouwbaar",
     "trustOpenSource": "Open source (AGPL-3.0)",
     "trustGithub": "Code op GitHub",
-    "closingTitle": "Gebouwd in België, <hl>voor Belgische verhuurders.</hl>"
+    "closingTitle": "Gebouwd in België, <hl>voor Belgische verhuurders.</hl>",
+    "footerHelpBank": "Handleiding bank koppelen",
+    "pricingBankFreeNote": "Op het gratis plan koppel je je bank zonder kosten met je eigen Enable Banking-app. <link>Zo werkt het</link>."
   },
   "onboarding": {
     "landlordType": {
@@ -1749,6 +1751,158 @@
       "noAccounts": "Je bank gaf geen rekeningen terug. Meestal is stap 5 (rekening koppelen in Enable Banking) nog niet gebeurd.",
       "toStep5": "Terug naar stap 5",
       "toSteps": "Terug naar de stappen"
+    }
+  },
+  "ebHelp": {
+    "metaTitle": "Je bankrekening gratis koppelen met Enable Banking | Rentular",
+    "metaDescription": "Stap voor stap: maak je eigen Enable Banking-app aan en laat Rentular zelf zien wanneer de huur binnenkomt. Gratis voor je eigen rekeningen.",
+    "eyebrow": "Handleiding",
+    "title": "Je bankrekening gratis koppelen met Enable Banking",
+    "intro": "Met deze stappen ziet Rentular zelf wanneer de huur op je rekening staat. Hou deze pagina open naast het Control Panel van Enable Banking en volg de stappen in Rentular.",
+    "backToHome": "Terug naar de startpagina",
+    "toc": "Op deze pagina",
+    "stepLabel": "Stap {n}",
+    "expectLabel": "Wat je zou moeten zien:",
+    "about": {
+      "title": "Wat is Enable Banking?",
+      "paras": [
+        "Enable Banking is een Europese dienst voor rekeninginformatie met een vergunning. Met jouw toestemming leest het je bankrekening en geeft het de verrichtingen door aan een app die jij kiest.",
+        "Die app maak je zelf aan bij Enable Banking. Rentular gebruikt ze om te zien welke huur betaald is, en om pas een herinnering te sturen als een betaling echt uitblijft."
+      ]
+    },
+    "free": {
+      "title": "Waarom is het gratis?",
+      "paras": [
+        "Enable Banking laat je een eigen app gratis gebruiken in wat het de beperkte modus noemt: de app leest alleen de rekeningen die je zelf in het Control Panel koppelt. Het is jouw app en het zijn jouw rekeningen, dus er komt geen tussenpersoon aan te pas die per rekening aanrekent.",
+        "Op je account en je app zijn de voorwaarden van Enable Banking van toepassing. Lees ze na op hun website. Rentular heeft geen invloed op die voorwaarden en kan niet beloven dat ze nooit veranderen."
+      ]
+    },
+    "ponto": {
+      "title": "Enable Banking of Ponto?",
+      "paras": [
+        "Met Ponto hoef je niets in te stellen: je logt in bij je bank en klaar. Ponto rekent dat rechtstreeks aan jou aan, per gekoppelde rekening.",
+        "Op het gratis plan en op een eigen installatie kan je kiezen. Op het betalende plan van rentular.com loopt de koppeling via Ponto."
+      ]
+    },
+    "needs": {
+      "title": "Wat je nodig hebt",
+      "items": [
+        "Een Rentular-account. Het gratis plan volstaat.",
+        "Ongeveer 10 minuten, en dat maar één keer.",
+        "Je bankapp op je gsm, of je kaartlezer. Je bank vraagt twee keer om te bevestigen: in stap 5 en in stap 6."
+      ]
+    },
+    "steps": {
+      "s1": {
+        "title": "Wat je gaat doen",
+        "paras": [
+          "Log in bij Rentular, open \"Bank Connections\" in het menu en klik op koppelen. Kies \"Enable Banking met je eigen app\". Rentular toont dan de stappen één voor één, met bovenaan hoe ver je bent.",
+          "Je kan op elk moment stoppen. Kom je later terug, dan opent Rentular de stap waar je gebleven was."
+        ],
+        "expect": "Bovenaan de pagina in Rentular staat \"Stap 1 van 6\"."
+      },
+      "s2": {
+        "title": "Account bij Enable Banking",
+        "paras": [
+          "Ga naar enablebanking.com en maak een account aan met je e-mailadres. Dat is een account bij Enable Banking zelf, los van Rentular.",
+          "Je krijgt een mail om je adres te bevestigen. Klik op de link in die mail. Zie je niets binnenkomen, kijk dan ook bij je spam."
+        ],
+        "expect": "Je bent ingelogd in het Control Panel van Enable Banking."
+      },
+      "s3": {
+        "title": "App registreren",
+        "paras": [
+          "Ga in het Control Panel naar \"API applications\" en registreer een nieuwe applicatie.",
+          "Kies \"Production\" als omgeving. \"Sandbox\" is een testomgeving met nepbanken en werkt niet met je echte rekening.",
+          "Geef de app een naam die je herkent, bijvoorbeeld \"Rentular\".",
+          "Vul als redirect URL exact het adres in dat Rentular je in deze stap toont, met de kopieerknop. Voor deze website is dat {url}",
+          "Vraagt het formulier naar een privacybeleid of gebruiksvoorwaarden, dan kan je {privacy} en {terms} gebruiken.",
+          "Als je het formulier bevestigt, downloadt je browser een bestand dat eindigt op .pem. De naam van dat bestand is de application ID van je app. Het bestand is de privésleutel van je app: bewaar het goed, want je kan het maar één keer downloaden, en geef het aan niemand anders dan Rentular."
+        ],
+        "expect": "Je app staat in de lijst bij \"API applications\" en het .pem-bestand staat in je map Downloads."
+      },
+      "s4": {
+        "title": "Sleutelbestand uploaden",
+        "paras": [
+          "Sleep in Rentular het .pem-bestand in het vak, of kies het met de link. Heeft het bestand nog zijn oorspronkelijke naam, dan vult Rentular de application ID zelf in. Heb je het hernoemd, kopieer de application ID dan uit het Control Panel: je vindt ze naast de naam van je app.",
+          "Klik op \"Bewaren en testen\". Rentular maakt meteen contact met Enable Banking om te zien of de sleutel werkt.",
+          "Zegt Rentular dat de sleutel klopt maar je app nog niet actief is, ga dan gewoon door naar stap 5."
+        ],
+        "expect": "Een groene melding: \"Werkt: Rentular kan met je app praten.\""
+      },
+      "s5": {
+        "title": "Je eigen rekening koppelen in Enable Banking",
+        "paras": [
+          "Open je app in het Control Panel en klik op \"Activate by linking accounts\".",
+          "Kies je bank, log in met je bankapp of kaartlezer en kies de rekening waarop de huur binnenkomt. Je mag er meer dan één kiezen.",
+          "Zo zet je de app in de beperkte modus: ze kan alleen de rekeningen lezen die je hier koppelt. Rentular krijgt hiermee nog geen toegang. Dat vraag je in stap 6 apart aan je bank.",
+          "Ga terug naar Rentular en klik op \"Opnieuw testen\"."
+        ],
+        "expect": "In het Control Panel staat je app als actief, met je rekening erbij."
+      },
+      "s6": {
+        "title": "Inloggen bij je bank via Rentular",
+        "paras": [
+          "Kies het soort rekening. Een gewone rekening op je eigen naam is een privérekening, ook als je er huur op ontvangt. Een zakelijke rekening is de rekening van een vennootschap.",
+          "Zoek je bank in de lijst, kies ze en klik op \"Inloggen bij je bank\". Je komt bij je bank terecht. Keur de vraag goed in je bankapp.",
+          "Je bank stuurt je daarna terug naar Rentular. Heeft je bank meer dan één rekening gedeeld, vink dan aan welke Rentular moet volgen."
+        ],
+        "expect": "Je bent terug in Rentular en ziet de rekening die je net gekoppeld hebt."
+      },
+      "s7": {
+        "title": "Klaar",
+        "paras": [
+          "Rentular toont welke rekening gekoppeld is en tot wanneer je bank dat toelaat, bijvoorbeeld \"Je bank laat dit toe tot 08/05/2027\".",
+          "De eerste synchronisatie loopt meteen. Daarna haalt Rentular je verrichtingen drie keer per dag op en ziet het zelf welke huur betaald is.",
+          "Voor die datum moet je één keer opnieuw inloggen bij je bank. Rentular stuurt je daarvoor een mail 14, 7, 3 en 1 dag op voorhand, met een link die je meteen naar de juiste pagina brengt."
+        ],
+        "expect": "Een groen vinkje met \"Klaar\" en de naam van je bank."
+      }
+    },
+    "trouble": {
+      "title": "Problemen oplossen",
+      "jwt": {
+        "q": "\"Invalid JWT\" of \"Enable Banking herkent de sleutel niet\"",
+        "a": "De application ID en het .pem-bestand horen niet bij elkaar. Kijk of je het bestand van de juiste app gekozen hebt en of de application ID klopt. Heb je meer dan één app aangemaakt, gebruik dan de ID van de app waarvan je het bestand downloadde. Op een eigen server kan ook de klok van de server verkeerd staan."
+      },
+      "noAccounts": {
+        "q": "\"Je bank gaf geen rekeningen terug\"",
+        "a": "Meestal is stap 5 nog niet gebeurd, of heb je daar een andere rekening gekoppeld. Koppel in het Control Panel de juiste rekening via \"Activate by linking accounts\" en log daarna opnieuw in via Rentular."
+      },
+      "bankMissing": {
+        "q": "Mijn bank staat niet in de lijst",
+        "a": "Kijk eerst of je het juiste soort rekening gekozen hebt: sommige banken staan alleen bij privé of alleen bij zakelijk. Staat ze er dan nog niet bij, dan ondersteunt Enable Banking die bank op dit moment niet. Je kan dan Ponto gebruiken, als dat voor jou beschikbaar is."
+      },
+      "expired": {
+        "q": "Mijn koppeling is verlopen, of ik moet opnieuw inloggen",
+        "a": "Klik in Rentular bij de koppeling op \"Opnieuw inloggen\" en keur de vraag goed in je bankapp. Je geschiedenis blijft bewaard. Zolang de koppeling verlopen is, stuurt Rentular geen automatische herinneringen aan huurders, omdat het dan niet kan zien wie betaald heeft."
+      },
+      "reconfirm": {
+        "q": "Mijn bank vraagt na 90 dagen opnieuw om te bevestigen",
+        "a": "Dat is normaal. Banken mogen na een tijd opnieuw vragen of de toegang mag blijven, en hoe lang dat is, bepaalt je bank. Rentular vraagt nooit meer dan 180 dagen. Je krijgt op tijd een mail met een link om opnieuw in te loggen."
+      },
+      "lostPem": {
+        "q": "Ik ben mijn .pem-bestand kwijt",
+        "a": "Het bestand kan je niet opnieuw downloaden. Maak in het Control Panel een nieuwe sleutel aan voor je app, laad dat nieuwe bestand op in stap 4 en test opnieuw. Gebruik je dezelfde app, dan hoef je meestal niet opnieuw in te loggen bij je bank."
+      }
+    },
+    "privacy": {
+      "title": "Privacy en veiligheid",
+      "paras": [
+        "Rentular bewaart de sleutel van je app versleuteld op de Rentular-server. Na het opladen toont Rentular hem nooit meer, ook niet aan jou.",
+        "Rentular kan je rekening alleen lezen. Het kan geen betalingen doen en ziet nooit je bankwachtwoord: je logt altijd in op de pagina of in de app van je bank.",
+        "Je kan de sleutel en de koppeling op elk moment verwijderen in Rentular."
+      ]
+    },
+    "selfHost": {
+      "title": "Zelf hosten",
+      "body": "Draai je Rentular op je eigen server? Dan werkt het op dezelfde manier, met het adres van je eigen installatie als redirect URL. De beheerder kan ook één app voor de hele installatie instellen, dan sla je stap 2 tot 5 over. Alles staat in <link>SELF-HOSTING.md</link> op GitHub."
+    },
+    "cta": {
+      "title": "Klaar om te beginnen?",
+      "body": "Log in bij Rentular en open de stappen. Deze pagina kan je ernaast openhouden.",
+      "button": "Start in Rentular",
+      "help": "Vragen? Mail naar <link>{email}</link>."
     }
   }
 }
