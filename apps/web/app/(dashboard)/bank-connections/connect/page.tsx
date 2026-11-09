@@ -44,7 +44,10 @@ export default function ConnectBankPage() {
         if (cancelled) return;
         setOptions(o);
         const providers = o?.providers ?? ["ponto"];
-        if (providers.length === 0) setStep("none");
+        // ?provider=ponto comes from the Enable Banking setup ("rather use Ponto").
+        const wanted = new URLSearchParams(window.location.search).get("provider");
+        if (wanted === "ponto" && providers.includes("ponto")) setStep("info");
+        else if (providers.length === 0) setStep("none");
         else if (providers.length > 1) setStep("choose");
         else if (providers[0] === "enable_banking") router.replace("/bank-connections/enable-banking");
         else setStep("info");

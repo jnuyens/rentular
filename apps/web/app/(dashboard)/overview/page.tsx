@@ -36,6 +36,7 @@ import TodoCard from "@/components/overview/TodoCard";
 import QuickActions from "@/components/overview/QuickActions";
 import BelgiumInfoCard from "@/components/overview/BelgiumInfoCard";
 import { BankReauthBanner } from "@/components/BankReauthBanner";
+import { EnableBankingEntryBanner } from "@/components/enableBanking/EnableBankingEntry";
 import { eur, pctOf } from "@/components/overview/format";
 import {
   MuteBadge,
@@ -429,6 +430,7 @@ export default function OverviewPage() {
       </div>
 
       <BankReauthBanner />
+      <EnableBankingEntryBanner />
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
