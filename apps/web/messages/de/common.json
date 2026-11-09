@@ -1457,7 +1457,8 @@
       "sms": "SMS",
       "whatsapp": "WhatsApp",
       "signal": "Signal",
-      "letter": "Brief"
+      "letter": "Brief",
+      "internal": "Intern"
     },
     "status": {
       "queued": "In Warteschlange",
@@ -1491,7 +1492,8 @@
       "due_date_sms": "Nachricht am Fälligkeitstag",
       "landlord_final_pending": "Hinweis vor der dritten Mahnung",
       "landlord_late": "Hinweis auf Zahlungsverzug",
-      "tenant_reply": "Antwort des Mieters"
+      "tenant_reply": "Antwort des Mieters",
+      "internal_note": "Interne Notiz"
     },
     "landlordKind": {
       "late": "Hinweis auf Zahlungsverzug",
@@ -1505,13 +1507,21 @@
       "if_unpaid_on_due_date": "Nur wenn sie am Fälligkeitstag nicht bezahlt ist",
       "if_unpaid_unless_held": "Nur wenn sie noch nicht bezahlt ist und Sie die Mahnung nicht zurückhalten",
       "if_index_published": "Sobald der neue Gesundheitsindex veröffentlicht ist, falls die Indexierung noch nicht angewendet wurde",
-      "on_hold_transfer_review": "Angehalten: Eine Überweisung wartet auf der Seite Abgleich auf Sie"
+      "on_hold_transfer_review": "Angehalten: Eine Überweisung wartet auf der Seite Abgleich auf Sie",
+      "if_unpaid_after_mute": "Nur wenn bis dahin noch nicht bezahlt"
     },
     "from": "Von",
     "unknownSender": "Unbekannter Absender",
     "unknownSenderHint": "Diese Adresse gehört zu keinem Mieter dieses Vertrags.",
     "autoReply": "Automatische Antwort, nicht weitergeleitet",
-    "attachments": "Anhänge"
+    "attachments": "Anhänge",
+    "internalNote": "Interne Notiz, an niemanden versendet",
+    "muteNote": {
+      "set": "Mahnungen pausiert bis {date}",
+      "changed": "Pause geändert: Mahnungen pausiert bis {date}",
+      "removed": "Pause beendet (war pausiert bis {date})",
+      "note": "Notiz: {note}"
+    }
   },
   "contractBalance": {
     "title": "Vertragssaldo",
@@ -1540,5 +1550,36 @@
     "loadError": "Der Vertragssaldo konnte nicht geladen werden",
     "showAll": "Alle {count} Zahlungen anzeigen",
     "showLess": "Weniger anzeigen"
+  },
+  "reminderMute": {
+    "button": "Mahnungen pausieren",
+    "change": "Ändern",
+    "title": "Mahnungen bei Zahlungsverzug pausieren bis",
+    "nextRent": "Nächste Miete",
+    "nextWeek": "Nächste Woche",
+    "pickDate": "Datum wählen",
+    "date": "Datum",
+    "note": "Notiz (optional)",
+    "notePlaceholder": "Zum Beispiel: zahlt den Rest zusammen mit der Miete für Dezember",
+    "hint": "Bis zu diesem Datum keine Mahnungen bei Zahlungsverzug für diesen Vertrag, weder an den Mieter noch an Sie. Die Beträge bleiben als Rückstand sichtbar.",
+    "afterHint": "Ist dann noch etwas offen, beginnen die Erinnerungen von vorn, zuerst mit einer freundlichen, in einer einzigen Nachricht für alles Offene.",
+    "save": "Pausieren",
+    "cancel": "Abbrechen",
+    "unmute": "Pause beenden",
+    "unmuteConfirm": "Pause beenden? Die Erinnerungen laufen ab heute Abend wieder normal.",
+    "saved": "Mahnungen pausiert bis {date}",
+    "unmuted": "Die Pause ist beendet",
+    "badge": "Pausiert bis {date}",
+    "status": "Mahnungen pausiert bis {date}",
+    "notMuted": "Die Mahnungen bei Zahlungsverzug laufen für diesen Vertrag normal.",
+    "recordedBy": "Festgelegt von {name} am {date}",
+    "recordedOn": "Festgelegt am {date}",
+    "remindConfirm": "Die Mahnungen für diesen Vertrag sind bis {date} pausiert. Trotzdem eine Erinnerung senden?",
+    "errors": {
+      "not_after_today": "Wählen Sie ein Datum nach heute.",
+      "too_far": "Mahnungen können höchstens 120 Tage pausiert werden.",
+      "invalid_date": "Das ist kein gültiges Datum.",
+      "failed": "Das hat nicht geklappt. Bitte versuchen Sie es erneut."
+    }
   }
 }

@@ -36,6 +36,14 @@ import TodoCard from "@/components/overview/TodoCard";
 import QuickActions from "@/components/overview/QuickActions";
 import BelgiumInfoCard from "@/components/overview/BelgiumInfoCard";
 import { eur, pctOf } from "@/components/overview/format";
+import {
+  MuteBadge,
+  MuteButton,
+  ReminderMuteDialog,
+  muteByLine,
+  shortDate,
+  type ReminderMuteInfo,
+} from "@/components/leases/ReminderMute";
 
 type ReminderLevel = "friendly" | "formal" | "final";
 
@@ -60,6 +68,10 @@ interface BucketItem {
   contractOwed?: number;
   /** What the tenant paid more than was due over the whole contract. */
   contractCredit?: number;
+  /** The contract's late-payment reminders are muted until a date. */
+  mute?: ReminderMuteInfo;
+  /** Due date of the lease's next rent. */
+  nextDueDate?: string;
 }
 
 interface Overview {
@@ -86,6 +98,8 @@ const COLLECTION_ROWS = 3;
 
 /** Colour of an item's amount: partly paid rent is never shown as fully paid green. */
 function amountColorFor(bucket: Bucket, item: BucketItem): string {
+  // Still owed, but the tenant has until the agreed date: calm, not red.
+  if (bucket !== "paid" && item.mute?.active) return "text-sky-800 dark:text-sky-300";
   if (bucket === "paid") {
     return item.shortfall
       ? "text-amber-700 dark:text-amber-400"
@@ -150,6 +164,7 @@ function useDayPart(): "morning" | "afternoon" | "evening" | null {
 export default function OverviewPage() {
   const t = useTranslations("overview");
   const tc = useTranslations("dashboard");
+  const tm = useTranslations("reminderMute");
   const { firstName } = useDashboardUser();
   const dayPart = useDayPart();
   const [data, setData] = useState<Overview | null>(null);
@@ -237,6 +252,11 @@ export default function OverviewPage() {
   };
 
   const sendReminder = async (leaseId: string, level: ReminderLevel, month?: string) => {
+    // A manual reminder stays possible on a muted contract, after a check.
+    const mute = [...(data?.overdueItems ?? []), ...(data?.toComeItems ?? [])].find(
+      (i) => i.leaseId === leaseId && i.mute?.active,
+    )?.mute;
+    if (mute && !window.confirm(tm("remindConfirm", { date: shortDate(mute.until) }))) return;
     const periodMonth = month ?? data?.month ?? monthInZone();
     try {
       const res = await fetch(`${apiUrl}/api/v1/payments/send-reminder`, {
@@ -466,6 +486,7 @@ export default function OverviewPage() {
                 t={t}
                 onRemind={sendReminder}
                 onMarkPaid={markPaid}
+                onReload={load}
               />
             </div>
           )}
@@ -708,6 +729,7 @@ function BucketBreakdown({
   t,
   onRemind,
   onMarkPaid,
+  onReload,
 }: {
   bucket: Bucket;
   config: { items: BucketItem[]; title: string; hint: string; showLastPayment: boolean };
@@ -718,10 +740,15 @@ function BucketBreakdown({
     method: "cash" | "bank_transfer" | "other",
     month?: string,
   ) => void;
+  onReload: () => void | Promise<void>;
 }) {
+  const ta = useTranslations("reminderMute");
+  const [muteFor, setMuteFor] = useState<BucketItem | null>(null);
   // Reminders and marking paid make sense for money still owed, not already-paid rent.
   const canAct = bucket !== "paid";
   const canRemind = canAct;
+  // Muting is offered on the late payments: the tenant asked for more time.
+  const canMute = bucket === "overdue";
   const accent =
     bucket === "overdue"
       ? "text-red-600"
@@ -760,10 +787,17 @@ function BucketBreakdown({
                         {t("contractCredit", { amount: eur(item.contractCredit) })}
                       </span>
                     )}
+                    {canAct && item.mute?.active && <MuteBadge mute={item.mute} />}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {item.tenantName} &middot; {t("dueLabel")} {formatDate(item.dueDate)}
                   </p>
+                  {canAct && item.mute?.active && (
+                    <p className="text-xs text-sky-800 dark:text-sky-300">
+                      {item.mute.note ? <>&ldquo;{item.mute.note}&rdquo; &middot; </> : null}
+                      {muteByLine(ta, item.mute)}
+                    </p>
+                  )}
                   {item.shortfall && (
                     <p className="text-xs text-muted-foreground">
                       {bucket === "paid"
@@ -811,6 +845,9 @@ function BucketBreakdown({
                       }
                     />
                   )}
+                  {canMute && (
+                    <MuteButton muted={!!item.mute?.active} onClick={() => setMuteFor(item)} />
+                  )}
                   <Link
                     href={`/ledger/${item.leaseId}`}
                     className="rounded-lg border border-input bg-white px-2 py-1 text-xs font-medium text-navy hover:bg-muted"
@@ -830,6 +867,17 @@ function BucketBreakdown({
         )}
         {config.items.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">{config.hint}</p>
+        )}
+        {muteFor && (
+          <ReminderMuteDialog
+            open={!!muteFor}
+            onOpenChange={(o) => !o && setMuteFor(null)}
+            leaseId={muteFor.leaseId}
+            label={`${muteFor.propertyName} · ${muteFor.tenantName}`}
+            nextDueDate={muteFor.nextDueDate}
+            mute={muteFor.mute?.active ? muteFor.mute : null}
+            onChanged={onReload}
+          />
         )}
       </CardContent>
     </Card>

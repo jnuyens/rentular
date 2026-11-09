@@ -1457,7 +1457,8 @@
       "sms": "SMS",
       "whatsapp": "WhatsApp",
       "signal": "Signal",
-      "letter": "Lettre"
+      "letter": "Lettre",
+      "internal": "Interne"
     },
     "status": {
       "queued": "En attente",
@@ -1491,7 +1492,8 @@
       "due_date_sms": "Message le jour de l'échéance",
       "landlord_final_pending": "Avis avant le troisième rappel",
       "landlord_late": "Avis de retard de paiement",
-      "tenant_reply": "Réponse du locataire"
+      "tenant_reply": "Réponse du locataire",
+      "internal_note": "Note interne"
     },
     "landlordKind": {
       "late": "Avis de retard de paiement",
@@ -1505,13 +1507,21 @@
       "if_unpaid_on_due_date": "Seulement s'il est impayé à l'échéance",
       "if_unpaid_unless_held": "Seulement s'il est toujours impayé et que vous ne le bloquez pas",
       "if_index_published": "Dès que le nouvel indice santé est publié, si l'indexation n'est pas encore appliquée",
-      "on_hold_transfer_review": "En pause : un virement vous attend sur la page Rapprochement"
+      "on_hold_transfer_review": "En pause : un virement vous attend sur la page Rapprochement",
+      "if_unpaid_after_mute": "Seulement s'il n'est toujours pas payé à cette date"
     },
     "from": "De",
     "unknownSender": "Expéditeur inconnu",
     "unknownSenderHint": "Cette adresse n'est pas celle d'un locataire de ce contrat.",
     "autoReply": "Réponse automatique, non transmise",
-    "attachments": "Pièces jointes"
+    "attachments": "Pièces jointes",
+    "internalNote": "Note interne, envoyée à personne",
+    "muteNote": {
+      "set": "Rappels suspendus jusqu'au {date}",
+      "changed": "Suspension modifiée : rappels suspendus jusqu'au {date}",
+      "removed": "Rappels réactivés (ils étaient suspendus jusqu'au {date})",
+      "note": "Note : {note}"
+    }
   },
   "contractBalance": {
     "title": "Solde du contrat",
@@ -1540,5 +1550,36 @@
     "loadError": "Impossible de charger le solde du contrat",
     "showAll": "Afficher les {count} paiements",
     "showLess": "Afficher moins"
+  },
+  "reminderMute": {
+    "button": "Suspendre les rappels",
+    "change": "Modifier",
+    "title": "Suspendre les rappels de retard jusqu'au",
+    "nextRent": "Prochain loyer",
+    "nextWeek": "Semaine prochaine",
+    "pickDate": "Choisir une date",
+    "date": "Date",
+    "note": "Note (facultatif)",
+    "notePlaceholder": "Par exemple : paie le solde avec le loyer de décembre",
+    "hint": "Aucun rappel de retard pour ce contrat jusqu'à cette date, ni au locataire ni à vous. Les montants restent visibles comme impayés.",
+    "afterHint": "Si quelque chose est encore impayé à cette date, les rappels reprennent, d'abord avec un rappel amical, en un seul message pour tout ce qui reste dû.",
+    "save": "Suspendre",
+    "cancel": "Annuler",
+    "unmute": "Réactiver les rappels",
+    "unmuteConfirm": "Réactiver les rappels ? Ils reprennent normalement dès ce soir.",
+    "saved": "Rappels suspendus jusqu'au {date}",
+    "unmuted": "Les rappels sont réactivés",
+    "badge": "Suspendu jusqu'au {date}",
+    "status": "Rappels suspendus jusqu'au {date}",
+    "notMuted": "Les rappels de retard fonctionnent normalement pour ce contrat.",
+    "recordedBy": "Défini par {name} le {date}",
+    "recordedOn": "Défini le {date}",
+    "remindConfirm": "Les rappels de ce contrat sont suspendus jusqu'au {date}. Envoyer quand même un rappel ?",
+    "errors": {
+      "not_after_today": "Choisissez une date après aujourd'hui.",
+      "too_far": "Les rappels peuvent être suspendus 120 jours au maximum.",
+      "invalid_date": "Cette date n'est pas valide.",
+      "failed": "Cela n'a pas fonctionné. Veuillez réessayer."
+    }
   }
 }

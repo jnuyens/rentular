@@ -1457,7 +1457,8 @@
       "sms": "SMS",
       "whatsapp": "WhatsApp",
       "signal": "Signal",
-      "letter": "Brief"
+      "letter": "Brief",
+      "internal": "Intern"
     },
     "status": {
       "queued": "In wachtrij",
@@ -1491,7 +1492,8 @@
       "due_date_sms": "Bericht op de vervaldag",
       "landlord_final_pending": "Melding vóór de derde herinnering",
       "landlord_late": "Melding van laattijdige betaling",
-      "tenant_reply": "Antwoord van huurder"
+      "tenant_reply": "Antwoord van huurder",
+      "internal_note": "Interne notitie"
     },
     "landlordKind": {
       "late": "Melding van laattijdige betaling",
@@ -1505,13 +1507,21 @@
       "if_unpaid_on_due_date": "Enkel als het op de vervaldag nog niet betaald is",
       "if_unpaid_unless_held": "Enkel als het nog niet betaald is en je het niet tegenhoudt",
       "if_index_published": "Zodra de nieuwe gezondheidsindex er is, als de indexering nog niet toegepast is",
-      "on_hold_transfer_review": "Gepauzeerd: een overschrijving wacht op jou op de pagina Reconciliatie"
+      "on_hold_transfer_review": "Gepauzeerd: een overschrijving wacht op jou op de pagina Reconciliatie",
+      "if_unpaid_after_mute": "Alleen als het dan nog niet betaald is"
     },
     "from": "Van",
     "unknownSender": "Onbekende afzender",
     "unknownSenderHint": "Dit adres hoort niet bij een huurder van dit contract.",
     "autoReply": "Automatisch antwoord, niet doorgestuurd",
-    "attachments": "Bijlagen"
+    "attachments": "Bijlagen",
+    "internalNote": "Interne notitie, naar niemand verstuurd",
+    "muteNote": {
+      "set": "Herinneringen gedempt tot {date}",
+      "changed": "Demping gewijzigd: herinneringen gedempt tot {date}",
+      "removed": "Herinneringen niet meer gedempt (waren gedempt tot {date})",
+      "note": "Notitie: {note}"
+    }
   },
   "contractBalance": {
     "title": "Saldo van het contract",
@@ -1540,5 +1550,36 @@
     "loadError": "Het saldo van het contract kon niet geladen worden",
     "showAll": "Toon alle {count} betalingen",
     "showLess": "Toon minder"
+  },
+  "reminderMute": {
+    "button": "Herinneringen dempen",
+    "change": "Wijzigen",
+    "title": "Herinneringen voor late betaling dempen tot",
+    "nextRent": "Volgende huur",
+    "nextWeek": "Volgende week",
+    "pickDate": "Kies een datum",
+    "date": "Datum",
+    "note": "Notitie (optioneel)",
+    "notePlaceholder": "Bijvoorbeeld: betaalt de rest samen met de huur van december",
+    "hint": "Tot die datum geen herinneringen voor late betaling op dit contract, niet aan de huurder en niet aan jou. De bedragen blijven zichtbaar als achterstallig.",
+    "afterHint": "Staat er dan nog iets open, dan starten de herinneringen opnieuw, eerst met een vriendelijke, in één bericht voor alles wat openstaat.",
+    "save": "Dempen",
+    "cancel": "Annuleren",
+    "unmute": "Niet meer dempen",
+    "unmuteConfirm": "Herinneringen niet meer dempen? Ze lopen vanaf vanavond weer gewoon.",
+    "saved": "Herinneringen gedempt tot {date}",
+    "unmuted": "Herinneringen worden niet meer gedempt",
+    "badge": "Gedempt tot {date}",
+    "status": "Herinneringen gedempt tot {date}",
+    "notMuted": "Herinneringen voor late betaling lopen gewoon voor dit contract.",
+    "recordedBy": "Ingesteld door {name} op {date}",
+    "recordedOn": "Ingesteld op {date}",
+    "remindConfirm": "De herinneringen voor dit contract zijn gedempt tot {date}. Toch een herinnering sturen?",
+    "errors": {
+      "not_after_today": "Kies een datum na vandaag.",
+      "too_far": "Herinneringen kunnen hoogstens 120 dagen gedempt worden.",
+      "invalid_date": "Dat is geen geldige datum.",
+      "failed": "Dat lukte niet. Probeer het nog eens."
+    }
   }
 }

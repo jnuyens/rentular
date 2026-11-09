@@ -17,6 +17,7 @@ import {
   Paperclip,
   Reply,
   Send,
+  StickyNote,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,12 +25,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, formatDateTime } from "@/lib/dateLocale";
 import { eur } from "@/components/overview/format";
 import { ContractBalanceCard } from "@/components/leases/ContractBalanceCard";
+import { ReminderMuteCard, type ReminderMuteInfo } from "@/components/leases/ReminderMute";
 
 const PAGE_SIZE = 100;
 
 interface PastItem {
   id: string;
-  audience: "tenant" | "landlord";
+  audience: "tenant" | "landlord" | "internal";
+  mute?: {
+    action: "set" | "changed" | "removed";
+    until: string | null;
+    previousUntil: string | null;
+    note: string | null;
+  } | null;
   channel: string;
   type: string;
   recipientName: string;
@@ -73,6 +81,8 @@ interface HistoryData {
   scheduled: ScheduledItem[];
   total: number;
   lastSevenDays: number;
+  mute: ReminderMuteInfo | null;
+  nextDueDate: string | null;
 }
 
 function ChannelIcon({ channel }: { channel: string }) {
@@ -134,6 +144,16 @@ export default function LeaseCommunicationPage() {
     };
   }, [fetchPage, t]);
 
+  // Reload the first page after a change (reminders muted or unmuted).
+  const reload = async () => {
+    try {
+      const d = await fetchPage(0);
+      if (d) setData(d);
+    } catch {
+      toast.error(t("loadError"));
+    }
+  };
+
   const loadMore = async () => {
     if (!data) return;
     setLoadingMore(true);
@@ -170,7 +190,8 @@ export default function LeaseCommunicationPage() {
   const channels = useMemo(() => [...new Set(past.map((p) => p.channel))].sort(), [past]);
   const kinds = useMemo(() => [...new Set(past.map((p) => p.type))].sort(), [past]);
   const matches = (p: PastItem) => (!channel || p.channel === channel) && (!kind || p.type === kind);
-  const tenantItems = past.filter((p) => p.audience === "tenant" && matches(p));
+  // Internal notes (muted reminders) sit in the contract's own timeline.
+  const tenantItems = past.filter((p) => (p.audience === "tenant" || p.audience === "internal") && matches(p));
   const landlordItems = past.filter((p) => p.audience === "landlord" && matches(p));
 
   const toggle = (id: string) =>
@@ -181,7 +202,40 @@ export default function LeaseCommunicationPage() {
       return next;
     });
 
+  const renderInternal = (item: PastItem) => {
+    const m = item.mute;
+    const title = m
+      ? m.action === "removed"
+        ? t("muteNote.removed", { date: formatDate(m.previousUntil ?? "") })
+        : t(m.action === "changed" ? "muteNote.changed" : "muteNote.set", { date: formatDate(m.until ?? "") })
+      : item.body;
+    return (
+      <li key={item.id} className="rounded-lg border border-dashed border-sky-300 bg-sky-50/60 p-3 dark:bg-sky-900/20">
+        <div className="flex items-start gap-2">
+          <StickyNote className="mt-0.5 h-4 w-4 text-sky-700" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              <span className="mr-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">
+                {t("kind.internal_note")}
+              </span>
+              {title}
+              <span className="ml-2 font-normal text-muted-foreground">
+                {formatDateTime(item.sentAt || item.createdAt)}
+              </span>
+            </p>
+            {m?.note && <p className="text-sm">{t("muteNote.note", { note: m.note })}</p>}
+            <p className="text-xs text-muted-foreground">
+              {item.triggeredByName ? <>{t("trigger.manualBy", { name: item.triggeredByName })} &middot; </> : null}
+              {t("internalNote")}
+            </p>
+          </div>
+        </div>
+      </li>
+    );
+  };
+
   const renderPast = (item: PastItem) => {
+    if (item.audience === "internal") return renderInternal(item);
     const isOpen = open.has(item.id);
     const inbound = item.direction === "inbound";
     const recipient = item.recipientEmail || item.recipientPhone || item.recipientName;
@@ -297,6 +351,16 @@ export default function LeaseCommunicationPage() {
           </p>
         )}
       </div>
+
+      {data && (
+        <ReminderMuteCard
+          leaseId={leaseId}
+          mute={data.mute}
+          nextDueDate={data.nextDueDate}
+          canEdit
+          onChanged={reload}
+        />
+      )}
 
       <ContractBalanceCard leaseId={leaseId} />
 
