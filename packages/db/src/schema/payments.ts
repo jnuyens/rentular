@@ -60,6 +60,13 @@ export const payments = mysqlTable("payments", {
   landlordFinalNotifiedAt: timestamp("landlord_final_notified_at"),
   // Landlord clicked "hold": the automatic third reminder is never sent
   finalReminderHeldAt: timestamp("final_reminder_held_at"),
+  // Agreement with the tenant: no reminders for this amount until this date
+  // (exclusive). The amount stays owed and visible. Ends by itself once paid.
+  agreementUntil: date("agreement_until", { mode: "string" }),
+  agreementNote: varchar("agreement_note", { length: 500 }),
+  // User id of the person who recorded the agreement, and when
+  agreementBy: varchar("agreement_by", { length: 255 }),
+  agreementAt: timestamp("agreement_at"),
   // Metadata
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

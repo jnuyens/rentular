@@ -26,6 +26,7 @@ export type ScheduledCondition =
   | "if_unpaid"
   | "if_unpaid_on_due_date"
   | "if_unpaid_unless_held"
+  | "if_unpaid_after_agreement"
   | "if_index_published"
   | "on_hold_transfer_review";
 
@@ -66,6 +67,11 @@ function noon(ymd: string): Date {
  * `firstRunDay` is the first evening run still to come: today when 19:15 has
  * not passed yet, else tomorrow. With `firstStepOnly` only the next step is
  * returned (used for rent that is not due yet).
+ *
+ * `referenceDate` replaces the due date after an agreement with the tenant:
+ * the ladder counts days from the agreed date, and the agreed date's own run
+ * already counts (the rent was overdue before), so a friendly reminder at 0
+ * days goes out on the agreed date itself.
  */
 export function projectReminderLadder(input: {
   dueDate: string;
@@ -77,13 +83,15 @@ export function projectReminderLadder(input: {
   landlordLateNotify?: boolean;
   landlordNotifiedAt?: Date | null;
   firstStepOnly?: boolean;
+  referenceDate?: string | null;
 }): ScheduledStep[] {
   const steps: ScheduledStep[] = [];
   const sent = [...input.remindersSent];
   let notifiedAt = input.landlordFinalNotifiedAt;
   let lateNotified = !!input.landlordNotifiedAt;
-  const due = input.dueDate.slice(0, 10);
-  const start = Math.max(dayNumber(input.firstRunDay), dayNumber(due) + 1);
+  const ref = input.referenceDate ? input.referenceDate.slice(0, 10) : null;
+  const due = ref ?? input.dueDate.slice(0, 10);
+  const start = Math.max(dayNumber(input.firstRunDay), dayNumber(due) + (ref ? 0 : 1));
   const at = (day: number) => new Date(day * 86_400_000).toISOString().slice(0, 10);
 
   for (let day = start; day <= start + HORIZON_DAYS; day++) {

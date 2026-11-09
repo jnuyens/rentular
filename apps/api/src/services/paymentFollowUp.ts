@@ -14,9 +14,11 @@ import {
 import type { LatePaymentFeeEnforcement, SupportedLanguage } from "@rentular/shared";
 import {
   amountContextText,
+  carriedAmountText,
   formatReminderAmount,
   formatReminderDate,
   renderReminderTemplate,
+  type CarriedAmount,
   type RemainderContext,
 } from "./reminderText";
 
@@ -42,6 +44,8 @@ interface OverduePayment {
   latePaymentFeeEnforcement: LatePaymentFeeEnforcement;
   // Set when the amount is only what is still missing for a partly paid month.
   remainder?: RemainderContext | null;
+  // Amounts of earlier months reminded together with this one, as agreed with the tenant.
+  carried?: CarriedAmount[] | null;
 }
 
 interface FollowUpSettings {
@@ -155,7 +159,12 @@ export function getTemplateVariables(
     adminFee: eur(adminFee),
     totalOwed: eur(totalOwed),
     ownerName: payment.ownerName,
-    amountContext: amountContextText(payment.remainder, lang, form),
+    amountContext: [
+      amountContextText(payment.remainder, lang, form),
+      carriedAmountText(payment.carried, lang, form),
+    ]
+      .filter(Boolean)
+      .join(" "),
   };
 }
 

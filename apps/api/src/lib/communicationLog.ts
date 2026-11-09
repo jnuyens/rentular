@@ -5,7 +5,7 @@ import { sendWhatsApp, type WhatsAppOptions } from "./whatsapp";
 import { sendEmail, type EmailOptions } from "./email";
 
 /** Every channel a message can go out on. */
-export type CommunicationChannel = "email" | "sms" | "letter" | "whatsapp" | "signal";
+export type CommunicationChannel = "email" | "sms" | "letter" | "whatsapp" | "signal" | "internal";
 
 /** Every kind of logged message. */
 export type CommunicationType =
@@ -22,7 +22,8 @@ export type CommunicationType =
   | "indexation_alert"
   | "landlord_notification"
   | "due_date_sms"
-  | "tenant_reply";
+  | "tenant_reply"
+  | "internal_note";
 
 /** Who set a message off. */
 export type CommunicationTrigger = "schedule" | "manual" | "magic_link" | "api";

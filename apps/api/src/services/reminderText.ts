@@ -1,5 +1,11 @@
 import type { SupportedLanguage } from "@rentular/shared";
-import { formatEur, formatLongDate, formatShortDate, letterLanguage } from "../lib/belgianFormat";
+import {
+  formatEur,
+  formatLongDate,
+  formatMonthName,
+  formatShortDate,
+  letterLanguage,
+} from "../lib/belgianFormat";
 
 /**
  * What a reminder for part of a month's rent needs to explain itself: what
@@ -99,6 +105,56 @@ export function amountContextText(
   };
   const useIndexation = context.oldRent != null && !!context.indexationDate;
   return fill(useIndexation ? copy.indexation : copy.partial, vars);
+}
+
+/**
+ * An amount from an earlier month that is reminded together with this one,
+ * because the landlord agreed with the tenant that it would be paid with this
+ * rent.
+ */
+export type CarriedAmount = { amount: number; dueDate: string };
+
+const CARRIED_COPY: Record<"long" | "short", Record<SupportedLanguage, string>> = {
+  long: {
+    en: "As agreed, this amount includes {{amount}} still open from {{months}}.",
+    nl: "Zoals afgesproken is dit bedrag inclusief {{amount}} van {{months}}.",
+    fr: "Comme convenu, ce montant comprend {{amount}} restant dû pour {{months}}.",
+    de: "Wie vereinbart enthält dieser Betrag {{amount}}, die für {{months}} noch offen waren.",
+  },
+  short: {
+    en: "Incl. {{amount}} from {{months}}, as agreed.",
+    nl: "Inclusief {{amount}} van {{months}}, zoals afgesproken.",
+    fr: "Dont {{amount}} pour {{months}}, comme convenu.",
+    de: "Inkl. {{amount}} für {{months}}, wie vereinbart.",
+  },
+};
+
+const AND: Record<SupportedLanguage, string> = { en: "and", nl: "en", fr: "et", de: "und" };
+
+/**
+ * The sentence that tells the tenant the amount also holds what was still
+ * open from earlier months ("inclusief € 25,00 van november"). Empty when
+ * nothing is carried.
+ */
+export function carriedAmountText(
+  carried: CarriedAmount[] | null | undefined,
+  lang: string,
+  form: "long" | "short",
+): string {
+  const items = (carried ?? []).filter((c) => c.amount > 0.005);
+  if (items.length === 0) return "";
+  const l = letterLanguage(lang);
+  const total = Math.round(items.reduce((s, c) => s + c.amount, 0) * 100) / 100;
+  const names = [
+    ...new Set(
+      [...items]
+        .sort((a, b) => (a.dueDate < b.dueDate ? -1 : 1))
+        .map((c) => formatMonthName(Number(String(c.dueDate).slice(5, 7)), l)),
+    ),
+  ];
+  const months =
+    names.length > 1 ? `${names.slice(0, -1).join(", ")} ${AND[l]} ${names[names.length - 1]}` : names[0]!;
+  return fill(CARRIED_COPY[form][l], { amount: formatReminderAmount(total, l), months });
 }
 
 /**

@@ -53,6 +53,60 @@ import { holdForWaitingTransfer, loadWaitingTransfer } from "../services/transfe
 import { autoAssignByIban } from "../services/ibanMatcher";
 import { autoAssignByAmount } from "../services/amountMatcher";
 import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
+import {
+  daysBetween,
+  hasAgreement,
+  isAgreementActive,
+  isOpenRentRow,
+  ladderState,
+  monthAgreement,
+  planForPayment,
+  ridersFor,
+} from "../services/paymentAgreement";
+import type { CarriedAmount } from "../services/reminderText";
+
+/** Every row of a lease, with what the agreement and reminder rules need. */
+async function loadLeaseRows(db: ReturnType<typeof getDb>, leaseId: string) {
+  return db
+    .select({
+      id: payments.id,
+      status: payments.status,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      paidDate: payments.paidDate,
+      notes: payments.notes,
+      isIgnored: payments.isIgnored,
+      agreementUntil: payments.agreementUntil,
+      agreementAt: payments.agreementAt,
+    })
+    .from(payments)
+    .where(eq(payments.leaseId, leaseId));
+}
+
+type LeaseRow = Awaited<ReturnType<typeof loadLeaseRows>>[number];
+
+/**
+ * The settlement of every open row that an agreement could involve: rows with
+ * an agreement and rows due on an agreed date. Other rows are not looked at.
+ */
+async function agreementSettlements(
+  db: ReturnType<typeof getDb>,
+  lease: Parameters<typeof periodSettlement>[1],
+  rows: LeaseRow[],
+  today: string,
+): Promise<Map<string, Awaited<ReturnType<typeof periodSettlement>>>> {
+  const out = new Map<string, Awaited<ReturnType<typeof periodSettlement>>>();
+  const agreedDates = new Set(
+    rows.filter(hasAgreement).map((r) => String(r.agreementUntil).slice(0, 10)),
+  );
+  if (agreedDates.size === 0) return out;
+  for (const r of rows) {
+    if (!isOpenRentRow(r)) continue;
+    if (!hasAgreement(r) && !agreedDates.has(String(r.dueDate).slice(0, 10))) continue;
+    out.set(r.id, await periodSettlement(db, lease, r.dueDate, today));
+  }
+  return out;
+}
 
 /**
  * Run the account-number and amount matchers over the transfers already
@@ -281,6 +335,20 @@ async function sendDueDateTenantSms(
       if (settlement.settled) continue;
       const amountDue = amountDueFor(settlement, p.amount);
 
+      // An agreement with the tenant pauses the due-date message too. And when
+      // an earlier amount was agreed to be paid with this rent, the evening
+      // reminder asks for both at once, so no separate nudge goes out.
+      const leaseRows = await loadLeaseRows(db, p.leaseId);
+      const monthIds = [
+        ...new Set([p.paymentId, ...rowIdsForMonth(leaseRows, String(p.dueDate).slice(0, 7), lease.paymentDay)]),
+      ];
+      const own = monthAgreement(leaseRows, monthIds);
+      if (own && isAgreementActive(own, today)) continue;
+      const settlements = await agreementSettlements(db, lease, leaseRows, today);
+      const riders = ridersFor(leaseRows, { id: p.paymentId, status: "pending", dueDate: String(p.dueDate) }, today)
+        .filter((r) => settlements.get(r.id)?.settled === false);
+      if (riders.length > 0) continue;
+
       const settings = (
         await db
           .select({ enabled: paymentFollowUpSettings.smsDueReminderEnabled })
@@ -485,7 +553,61 @@ const worker = new Worker(
         // the rent came in, only the rest is asked for.
         const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
-        const amountDue = amountDueFor(settlement, payment.amount);
+        const ownDue = amountDueFor(settlement, payment.amount);
+
+        // An agreement with the tenant (see paymentAgreement.ts). While it
+        // holds nothing goes out for this month: no tenant reminder, no
+        // landlord notice, no transfer-review hold. Once the agreed date has
+        // come the ladder starts over from that date, and when the next rent
+        // falls on it the tenant gets one reminder for both amounts.
+        const leaseRows = await loadLeaseRows(db, payment.leaseId);
+        const monthRowIds = [
+          ...new Set([
+            payment.paymentId,
+            ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
+          ]),
+        ];
+        const agreementSettled = await agreementSettlements(db, lease, leaseRows, today);
+        const plan = planForPayment({
+          payment: { id: payment.paymentId, status: payment.status, dueDate: String(payment.dueDate) },
+          leaseRows,
+          monthRowIds,
+          today,
+          isUnsettled: (r) => agreementSettled.get(r.id)?.settled === false,
+        });
+        if (plan.kind === "paused") {
+          console.log(`[PaymentCheck] agreement until ${plan.until}: nothing sent for ${payment.paymentId}`);
+          continue;
+        }
+        if (plan.kind === "rides_along") {
+          console.log(
+            `[PaymentCheck] ${payment.paymentId} is reminded together with ${plan.companion.id} (agreement)`,
+          );
+          continue;
+        }
+        let amountDue = ownDue;
+        let remainderContext = settlement.remainder;
+        const carried: CarriedAmount[] = [];
+        // Rows whose reminders and landlord notices are recorded with this one.
+        const alsoRecord: string[] = [];
+        const addRow = (row: LeaseRow, asCarried: boolean, ownAmount: number) => {
+          const s = agreementSettled.get(row.id);
+          if (!s) return;
+          const extra = amountDueFor(s, row.amount);
+          if (!(extra > 0)) return;
+          carried.push(asCarried ? { amount: extra, dueDate: String(row.dueDate) } : { amount: ownAmount, dueDate: String(payment.dueDate) });
+          alsoRecord.push(row.id);
+          amountDue += extra;
+        };
+        if (plan.kind === "resumed" && plan.companion) addRow(plan.companion, false, ownDue);
+        if (plan.kind === "normal") for (const r of plan.riders) addRow(r, true, 0);
+        if (carried.length > 0) {
+          // The month sentence would describe only part of the amount.
+          remainderContext = null;
+          amountDue = Math.round(amountDue * 100) / 100;
+          if (settlement.owed != null) amountDue = Math.min(amountDue, settlement.owed);
+        }
+        const stampRows = [payment.paymentId, ...alsoRecord];
 
         // Primary tenant addressed, co-tenants copied on the reminder email.
         const tenantRec = await getLeaseEmailRecipients(payment.leaseId);
@@ -541,9 +663,36 @@ const worker = new Worker(
           continue;
         }
 
+        // Reminders already sent for this rent month, on any of its rows: a
+        // remainder row continues the ladder of the month's paid rows, so the
+        // tenant never gets the same level twice for one month. After an
+        // agreement only what was sent from the agreed date on counts.
+        const existingReminders = await db
+          .select({
+            paymentId: paymentReminders.paymentId,
+            type: paymentReminders.type,
+            sentAt: paymentReminders.sentAt,
+          })
+          .from(paymentReminders)
+          .where(inArray(paymentReminders.paymentId, monthRowIds));
+        const ladder = ladderState({
+          dueDate: String(payment.dueDate),
+          agreement:
+            plan.kind === "resumed"
+              ? { until: String(plan.agreement.agreementUntil), at: plan.agreement.agreementAt }
+              : null,
+          reminders: existingReminders,
+          landlordNotifiedAt: payment.landlordNotifiedAt,
+          landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
+          finalReminderHeldAt: payment.finalReminderHeldAt,
+          tz: getScheduleTimezone(),
+        });
+        const stamp = (set: Partial<typeof payments.$inferInsert>) =>
+          db.update(payments).set(set).where(inArray(payments.id, stampRows));
+
         // Email the landlord (with one-click action links) the first time this
         // payment is seen late, if enabled for the contract. Once per payment.
-        if (lease.landlordLateNotify && !payment.landlordNotifiedAt) {
+        if (lease.landlordLateNotify && !ladder.landlordNotifiedAt) {
           const recipients = await getLandlordNotificationRecipients(
             lease.propertyId,
             ownerData[0]?.email,
@@ -569,10 +718,7 @@ const worker = new Worker(
                 daysPastDue: daysLate,
                 kind: "late",
               });
-              await db
-                .update(payments)
-                .set({ landlordNotifiedAt: new Date() })
-                .where(eq(payments.id, payment.paymentId));
+              await stamp({ landlordNotifiedAt: new Date() });
             } catch (err) {
               console.error("[PaymentCheck] landlord late email failed:", err);
             }
@@ -626,49 +772,17 @@ const worker = new Worker(
             }
           : DEFAULT_SETTINGS;
 
-        // Reminders already sent for this rent month, on any of its rows: a
-        // remainder row continues the ladder of the month's paid rows, so the
-        // tenant never gets the same level twice for one month.
-        const leaseRows = await db
-          .select({
-            id: payments.id,
-            status: payments.status,
-            amount: payments.amount,
-            dueDate: payments.dueDate,
-            paidDate: payments.paidDate,
-            notes: payments.notes,
-            isIgnored: payments.isIgnored,
-          })
-          .from(payments)
-          .where(eq(payments.leaseId, payment.leaseId));
-        const monthRowIds = [
-          ...new Set([
-            payment.paymentId,
-            ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
-          ]),
-        ];
-        const existingReminders = await db
-          .select({ type: paymentReminders.type })
-          .from(paymentReminders)
-          .where(inArray(paymentReminders.paymentId, monthRowIds));
-
-        const remindersSent = existingReminders.map(
-          (r) => r.type as "friendly" | "formal" | "final"
-        );
-
-        // Calculate days past due
-        const dueMs = new Date(payment.dueDate).getTime();
-        const todayMs = new Date(today).getTime();
-        const daysPastDue = Math.floor(
-          (todayMs - dueMs) / (1000 * 60 * 60 * 24)
-        );
+        // Days past due, counted from the agreed date after an agreement: by
+        // the agreement that is when the money became due.
+        const daysPastDue = daysBetween(ladder.referenceDate, today);
+        const remindersSent = ladder.remindersSent;
 
         // Build the OverduePayment info object
         const paymentInfo = {
           paymentId: payment.paymentId,
           leaseId: payment.leaseId,
           amount: amountDue,
-          dueDate: payment.dueDate,
+          dueDate: ladder.referenceDate,
           daysPastDue,
           tenantName: `${tenant.firstName} ${tenant.lastName}`,
           tenantEmail: tenantRec.to,
@@ -683,7 +797,8 @@ const worker = new Worker(
             lease.latePaymentFeeAmount || "15.00"
           ),
           latePaymentFeeEnforcement: lease.latePaymentFeeEnforcement,
-          remainder: settlement.remainder,
+          remainder: remainderContext,
+          carried,
         };
 
         const level = determineReminderLevel(paymentInfo, followUpSettings);
@@ -694,8 +809,8 @@ const worker = new Worker(
         // until the hold period is over. Manual reminders are not gated.
         if (level === "final") {
           const decision = decideFinalReminder({
-            landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
-            finalReminderHeldAt: payment.finalReminderHeldAt,
+            landlordFinalNotifiedAt: ladder.landlordFinalNotifiedAt,
+            finalReminderHeldAt: ladder.finalReminderHeldAt,
             now: new Date(),
           });
 
@@ -733,10 +848,7 @@ const worker = new Worker(
                 channel,
                 sendOn,
               });
-              await db
-                .update(payments)
-                .set({ landlordFinalNotifiedAt: new Date() })
-                .where(eq(payments.id, payment.paymentId));
+              await stamp({ landlordFinalNotifiedAt: new Date() });
               console.log(
                 `[PaymentCheck] Emailed landlord about pending third reminder for ${payment.paymentId} (sends ${sendOn} via ${channel})`,
               );
@@ -765,14 +877,18 @@ const worker = new Worker(
             cc: tenantRec.cc,
           });
 
-          // Record the reminder in paymentReminders table
-          await db.insert(paymentReminders).values({
-            id: crypto.randomUUID(),
-            paymentId: payment.paymentId,
-            type: level,
-            channel: usedChannel,
-            sentAt: new Date(),
-          });
+          // Record the reminder, also on the rows it covered, so each keeps
+          // its own ladder if the other gets paid.
+          const sentAt = new Date();
+          await db.insert(paymentReminders).values(
+            stampRows.map((paymentId) => ({
+              id: crypto.randomUUID(),
+              paymentId,
+              type: level,
+              channel: usedChannel,
+              sentAt,
+            })),
+          );
 
           sentCount++;
           console.log(
@@ -849,6 +965,16 @@ const worker = new Worker(
         const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
         const amountDue = amountDueFor(settlement, payment.amount);
+        // An agreement with the tenant for this month: the landlord knows.
+        const dueRows = await loadLeaseRows(db, payment.leaseId);
+        const dueMonthIds = [
+          ...new Set([
+            payment.paymentId,
+            ...rowIdsForMonth(dueRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
+          ]),
+        ];
+        const dueAgreement = monthAgreement(dueRows, dueMonthIds);
+        if (dueAgreement && isAgreementActive(dueAgreement, today)) continue;
 
         const tenantData = await db
           .select({ firstName: tenants.firstName, lastName: tenants.lastName })
