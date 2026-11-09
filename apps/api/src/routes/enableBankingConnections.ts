@@ -68,14 +68,22 @@ export function psuFromRequest(c: Context): PsuContext {
 /** Readable outcome of a verification call, with a hint the UI can translate. */
 async function verifyCredentials(
   creds: EnableBankingCredentials,
-): Promise<{ ok: true; banks: number } | { ok: false; error: string; hint?: "wrong_key_or_app" }> {
+): Promise<
+  { ok: true; banks: number } | { ok: false; error: string; hint?: "wrong_key_or_app" | "app_not_active" }
+> {
   try {
     const banks = await new EnableBankingClient(creds).listAspsps("BE");
     return { ok: true, banks: banks.length };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // 401: the JWT is rejected (wrong key, wrong id or clock). 403: the key is
+    // fine but the application is not activated yet (no linked accounts).
     const hint =
-      err instanceof EnableBankingApiError && err.status === 401 ? ("wrong_key_or_app" as const) : undefined;
+      err instanceof EnableBankingApiError && err.status === 401
+        ? ("wrong_key_or_app" as const)
+        : err instanceof EnableBankingApiError && err.status === 403
+          ? ("app_not_active" as const)
+          : undefined;
     return { ok: false, error: message, hint };
   }
 }
@@ -416,7 +424,10 @@ enableBankingRouter.get(
     }),
   ),
   async (c) => {
-    const back = (q: string) => c.redirect(`${webUrl()}/bank-connections/callback?${q}`);
+    // provider=enable_banking lets the web page send the landlord back to the
+    // right step of the Enable Banking setup.
+    const back = (q: string) =>
+      c.redirect(`${webUrl()}/bank-connections/callback?${q}&provider=enable_banking`);
     const { code, state, error } = c.req.valid("query");
     if (error) return back(`error=${encodeURIComponent(error)}`);
     if (!code || !state) return back("error=missing_params");
