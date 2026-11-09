@@ -171,7 +171,7 @@ describe("callback", () => {
     verifyOAuthState.mockRejectedValueOnce(new Error("signature verification failed"));
     const res = await makeApp(null).request("/eb/callback?code=abc&state=forged");
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("https://web.test/bank-connections/callback?error=expired_state");
+    expect(res.headers.get("location")).toBe("https://web.test/bank-connections/callback?error=expired_state&provider=enable_banking");
     expect(createSession).not.toHaveBeenCalled();
   });
 
@@ -180,6 +180,21 @@ describe("callback", () => {
     const res = await makeApp(null).request("/eb/callback?code=abc&state=ponto-state");
     expect(res.headers.get("location")).toContain("error=expired_state");
     expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it("sends an empty session back with the provider, so the web page can point to step 5", async () => {
+    verifyOAuthState.mockResolvedValueOnce({
+      ownerId: "owner-1",
+      connectionId: "c1",
+      provider: "enable_banking",
+      nonce: "n",
+    });
+    reads = [[{ id: "c1", ownerId: "owner-1", status: "pending", provider: "enable_banking", providerMetadata: {} }]];
+    createSession.mockResolvedValueOnce({ session_id: "sess-0", accounts: [], access: {} });
+    const res = await makeApp(null).request("/eb/callback?code=abc&state=good");
+    expect(res.headers.get("location")).toBe(
+      "https://web.test/bank-connections/callback?error=no_accounts&provider=enable_banking",
+    );
   });
 
   it("passes a bank error through", async () => {

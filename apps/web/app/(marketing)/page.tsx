@@ -258,6 +258,15 @@ export default function MarketingPage() {
             </div>
             <div className="mt-6 space-y-1 text-xs text-muted-foreground">
               <p>{t("pricingBankNote")}</p>
+              <p>
+                {t.rich("pricingBankFreeNote", {
+                  link: (chunks) => (
+                    <Link href="/help/enable-banking" className="underline underline-offset-2 hover:text-foreground">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </p>
               <p>{t("pricingSmsNote")}</p>
               <p>
                 {t.rich("pricingSelfHostNote", {
@@ -335,7 +344,10 @@ export default function MarketingPage() {
             <Image src="/brand/logo-mark.png" alt="Rentular" width={47} height={36} className="h-9 w-auto" />
             <span className="font-semibold text-white">Rentular</span>
           </div>
-          <div className="flex items-center gap-6 text-sm">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+            <Link href="/help/enable-banking" className="hover:text-white">
+              {t("footerHelpBank")}
+            </Link>
             <Link href="/privacy" className="hover:text-white">
               {t("privacy")}
             </Link>

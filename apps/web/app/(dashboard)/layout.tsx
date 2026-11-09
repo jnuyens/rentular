@@ -6,6 +6,7 @@ import SupportChat from "@/components/SupportChat";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import MobileNav from "@/components/MobileNav";
 import { DashboardUserProvider } from "@/components/DashboardUserContext";
+import { getSupportEmail } from "@/lib/site";
 
 const navigationItems = [
   { key: "overview" as const, href: "/overview", iconName: "LayoutDashboard" as const },
@@ -118,7 +119,11 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="relative flex-1 overflow-auto bg-transparent pt-14 md:pt-0 p-4 md:p-8">
-        <DashboardUserProvider userName={session.user?.name}>
+        <DashboardUserProvider
+          userName={session.user?.name}
+          userId={session.user?.id || session.user?.email}
+          supportEmail={getSupportEmail()}
+        >
           <div className="relative">{children}</div>
         </DashboardUserProvider>
       </main>

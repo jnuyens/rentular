@@ -13,3 +13,11 @@ export function getBaseUrl(): string {
     "https://www.rentular.com";
   return raw.replace(/\/+$/, "");
 }
+
+/** Contact shown under "Need help?" when SUPPORT_EMAIL is not set. */
+export const DEFAULT_SUPPORT_EMAIL = "privacy@rentular.com";
+
+/** Support address from SUPPORT_EMAIL, else the public contact address. Server only. */
+export function getSupportEmail(): string {
+  return process.env.SUPPORT_EMAIL?.trim() || DEFAULT_SUPPORT_EMAIL;
+}

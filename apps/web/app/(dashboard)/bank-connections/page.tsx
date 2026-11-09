@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
 import { BankReauthBanner } from "@/components/BankReauthBanner";
+import { EnableBankingEntryCard } from "@/components/enableBanking/EnableBankingEntry";
 import { formatDateTime } from "@/lib/dateLocale";
 
 interface BankConnection {
@@ -111,6 +112,10 @@ export default function BankConnectionsPage() {
           </Link>
         </Button>
       </div>
+
+      {!loading && !error && (
+        <EnableBankingEntryCard connectionCount={connections.filter((c) => c.status !== "revoked").length} />
+      )}
 
       {!loading && !error && connections.length > 0 && (
         <div className="mb-4 space-y-2">

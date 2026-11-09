@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BankConnectionStatusBadge } from "@/components/BankConnectionStatusBadge";
 import { BankReauthBanner } from "@/components/BankReauthBanner";
+import { EnableBankingDoneCard } from "@/components/enableBanking/EnableBankingDoneCard";
 import {
   BankTransactionsTable,
   type BankTransaction,
@@ -74,6 +75,13 @@ export default function BankConnectionDetailPage() {
   const [busy, setBusy] = useState(false);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
+  // Set when the landlord lands here straight from a bank login (?connected=1)
+  // or just picked the accounts to follow.
+  const [justConnected, setJustConnected] = useState(false);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("connected") === "1") setJustConnected(true);
+  }, []);
 
   const confirmAccounts = async () => {
     if (!id || picked.length === 0) return;
@@ -89,6 +97,7 @@ export default function BankConnectionDetailPage() {
         },
       );
       if (res.ok) {
+        setJustConnected(true);
         await fetchConnection();
         await fetchTransactions();
       } else {
@@ -265,6 +274,9 @@ export default function BankConnectionDetailPage() {
 
       <div className="mb-6 space-y-3">
         <BankReauthBanner connections={[connection]} />
+        {justConnected && connection.provider === "enable_banking" && connection.status === "active" && (
+          <EnableBankingDoneCard connection={connection} showDetailLink={false} />
+        )}
         {choices.length > 0 && (
           <Card>
             <CardHeader>

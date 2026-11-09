@@ -389,6 +389,12 @@ a self-hosted install, and it is the default bank option there. Set
 `RENTULAR_INSTANCE=self` (also the default when `WEB_URL` is not on
 rentular.com).
 
+The app walks each landlord through these steps one at a time. A longer
+public guide in English, Dutch, French and German lives at
+[rentular.com/help/enable-banking](https://www.rentular.com/help/enable-banking)
+and on your own install at `/help/enable-banking`. It is a good page to send
+to landlords on your instance.
+
 1. Create an account at [enablebanking.com](https://enablebanking.com).
 2. In the Control Panel, register a new application for the **production**
    environment.

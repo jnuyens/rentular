@@ -19,6 +19,7 @@ const ERROR_KEYS: Record<string, string> = {
 
 function CallbackContent() {
   const t = useTranslations("bankConnections");
+  const tw = useTranslations("ebWizard");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -59,18 +60,31 @@ function CallbackContent() {
 
   if (errorCode) {
     const messageKey = ERROR_KEYS[errorCode] || "errorUnknown";
+    // An Enable Banking login without accounts nearly always means the app
+    // was not activated in the Control Panel yet (step 5 of the setup).
+    const fromEnableBanking = searchParams.get("provider") === "enable_banking";
+    const ebNoAccounts = fromEnableBanking && errorCode === "no_accounts";
     return (
       <Card>
         <CardContent className="pt-6 flex flex-col items-center text-center space-y-3">
           <AlertCircle className="h-12 w-12 text-destructive" />
           <p className="text-sm text-muted-foreground max-w-md">
-            {t(messageKey)}
+            {ebNoAccounts ? tw("callback.noAccounts") : t(messageKey)}
           </p>
-          <Button asChild variant="outline">
-            <Link href="/bank-connections">
-              {t("backToConnections")}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            {fromEnableBanking && (
+              <Button asChild>
+                <Link href={`/bank-connections/enable-banking?step=${ebNoAccounts ? 5 : 6}`}>
+                  {ebNoAccounts ? tw("callback.toStep5") : tw("callback.toSteps")}
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <Link href="/bank-connections">
+                {t("backToConnections")}
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
