@@ -16,9 +16,20 @@ import { getScheduleTimezone, toUtcIso } from "../lib/timezone";
 import { isSmsConfigured } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
 import { isDepositNote } from "./expectedPayments";
+import { muteNames, muteView, nextRentDueDate, type MuteView } from "./reminderMuteStore";
 import { loadMonthStatus, rowIdsForMonth } from "./monthReceived";
 import { contractBalance, loadBalanceData, reminderAmountFor } from "./contractBalance";
 import { isReminderTestPhase, resolveReminderChannel } from "./reminderChannel";
+import {
+  combineReminder,
+  companionRow,
+  isMuteActive,
+  ladderState,
+  muteOf,
+  mutedRows,
+  planForPayment,
+  wasMuted,
+} from "./reminderMute";
 import { loadWaitingTransfer } from "./transferReview";
 import { nextAnniversaryAfter } from "./indexationAlerts";
 import type { ReminderLevel } from "./paymentFollowUp";
@@ -35,9 +46,20 @@ import {
 
 type Db = ReturnType<typeof getDb>;
 
+/** What an internal note about muting the reminders recorded. */
+export type MuteNote = {
+  action: "set" | "changed" | "removed";
+  until: string | null;
+  previousUntil: string | null;
+  note: string | null;
+};
+
 export type PastCommunication = {
   id: string;
-  audience: "tenant" | "landlord";
+  /** internal: a note for the contract history, never sent to anyone. */
+  audience: "tenant" | "landlord" | "internal";
+  /** Set on an internal note about muting the late-payment reminders. */
+  mute: MuteNote | null;
   channel: string;
   type: string;
   recipientName: string;
@@ -131,9 +153,25 @@ export function toPastCommunication(
   const triggeredBy = str(meta.triggeredBy);
   const cc = Array.isArray(meta.cc) ? meta.cc.filter((x): x is string => typeof x === "string") : [];
   const direction = row.direction === "inbound" ? "inbound" : "outbound";
+  const internal = row.type === "internal_note";
+  const action = str(meta.action);
+  const mute: MuteNote | null =
+    internal && meta.kind === "reminder_mute"
+      ? {
+          action: action === "changed" || action === "removed" ? action : "set",
+          until: str(meta.until),
+          previousUntil: str(meta.previousUntil),
+          note: str(meta.note),
+        }
+      : null;
   return {
     id: row.id,
-    audience: (LANDLORD_TYPES as readonly string[]).includes(row.type) ? "landlord" : "tenant",
+    audience: internal
+      ? "internal"
+      : (LANDLORD_TYPES as readonly string[]).includes(row.type)
+        ? "landlord"
+        : "tenant",
+    mute,
     channel: row.channel,
     type: row.type,
     recipientName: row.recipientName,
@@ -188,7 +226,7 @@ export async function loadPastCommunications(
   const totals = await db
     .select({
       total: sql<number>`COUNT(*)`,
-      recent: sql<number>`SUM(CASE WHEN ${communications.createdAt} >= ${new Date(Date.now() - 7 * 86_400_000)} AND ${communications.direction} = 'outbound' AND ${communications.type} NOT IN ('landlord_notification','landlord_report','indexation_alert') THEN 1 ELSE 0 END)`,
+      recent: sql<number>`SUM(CASE WHEN ${communications.createdAt} >= ${new Date(Date.now() - 7 * 86_400_000)} AND ${communications.direction} = 'outbound' AND ${communications.type} NOT IN ('landlord_notification','landlord_report','indexation_alert','internal_note') THEN 1 ELSE 0 END)`,
     })
     .from(communications)
     .where(where);
@@ -211,6 +249,31 @@ export async function loadPastCommunications(
     total: Number(totals[0]?.total ?? 0),
     lastSevenDays: Number(totals[0]?.recent ?? 0),
   };
+}
+
+/** The contract's reminder mute (while active) and its next rent due date. */
+export async function loadMuteState(
+  db: Db,
+  leaseId: string,
+  now: Date = new Date(),
+): Promise<{ mute: MuteView | null; nextDueDate: string } | null> {
+  const lease = (
+    await db
+      .select({
+        paymentDay: leases.paymentDay,
+        remindersMutedUntil: leases.remindersMutedUntil,
+        remindersMutedNote: leases.remindersMutedNote,
+        remindersMutedBy: leases.remindersMutedBy,
+        remindersMutedAt: leases.remindersMutedAt,
+      })
+      .from(leases)
+      .where(eq(leases.id, leaseId))
+      .limit(1)
+  )[0];
+  if (!lease) return null;
+  const today = wallClock(now, getScheduleTimezone()).ymd;
+  const names = await muteNames(db, [lease]);
+  return { mute: muteView(lease, today, names), nextDueDate: nextRentDueDate(lease.paymentDay, today) };
 }
 
 /**
@@ -280,27 +343,92 @@ export async function loadScheduledCommunications(
   // contract is even or in credit on the month's due date (or today, for rent
   // already due), and no month asks more than the contract owes.
   const balanceData = await loadBalanceData(db, lease);
+  const withRent = !!balanceData && Number(lease.monthlyRent || 0) > 0;
+
+  // What one row still asks for on its own, judged on `asOf`; null when its
+  // month is settled or the contract owes nothing then.
+  const statusCache = new Map<string, Awaited<ReturnType<typeof loadMonthStatus>>>();
+  const ownAmount = async (r: (typeof open)[number], asOf: string): Promise<number | null> => {
+    const month = String(r.dueDate).slice(0, 7);
+    let status = statusCache.get(month);
+    if (!status) {
+      status = await loadMonthStatus(db, lease, month);
+      statusCache.set(month, status);
+    }
+    if (status.settled) return null;
+    const amount = status.received > 0.01 ? status.shortfall : Number(r.amount);
+    if (!withRent) return amount;
+    return reminderAmountFor(contractBalance({ ...balanceData!, today: asOf }), month, amount);
+  };
+  // A reminder mute on the contract (see reminderMute.ts): nothing until the
+  // mute end date, then one reminder for every amount that was muted plus
+  // the rent due on that date, with the ladder restarted from that date.
+  const mute = muteOf(lease);
+  const paused = isMuteActive(mute, today);
+  const muteDay = mute && mute.until > today ? mute.until : today;
+  const muteAmounts = new Map<string, number>();
+  if (mute) {
+    for (const r of [...mutedRows(open, mute), companionRow(open, mute)]) {
+      if (!r || muteAmounts.has(r.id)) continue;
+      const a = await ownAmount(r, muteDay);
+      if (a != null) muteAmounts.set(r.id, a);
+    }
+  }
+  const unsettled = (r: (typeof open)[number]) => muteAmounts.has(r.id);
+  const owedOn = (asOf: string) => (withRent ? contractBalance({ ...balanceData!, today: asOf }).owed : null);
+  // Rows whose amount is part of another row's reminder.
+  const covered = new Set<string>();
 
   let futureSeen = false;
   for (const p of open) {
     const due = String(p.dueDate).slice(0, 10);
     const notDueYet = due >= runDay;
+    if (covered.has(p.id)) {
+      if (notDueYet) futureSeen = true;
+      continue;
+    }
     if (notDueYet && futureSeen) continue;
 
     const month = due.slice(0, 7);
-    const status = await loadMonthStatus(db, lease, month);
-    if (status.settled) continue;
-    let amount = status.received > 0.01 ? status.shortfall : Number(p.amount);
-    if (balanceData && Number(lease.monthlyRent || 0) > 0) {
-      const balance = contractBalance({ ...balanceData, today: due > today ? due : today });
-      // Nothing is planned for a month before the tracking window either.
-      const capped = reminderAmountFor(balance, month, amount);
-      if (capped == null) continue;
-      amount = capped;
+    const asOf = due > today ? due : today;
+    const own = await ownAmount(p, asOf);
+    // Nothing is planned for a settled month, or one before the tracking window.
+    if (own == null) continue;
+    const monthIds = [...new Set([p.id, ...rowIdsForMonth(rows, month, lease.paymentDay)])];
+    const muted = wasMuted(p, mute);
+    const rowPaused = paused && muted;
+    let plan = planForPayment({ payment: p, leaseRows: open, mute, today, isUnsettled: unsettled });
+    if (plan.kind === "paused") {
+      // While muted, the oldest muted amount shows the one step after the mute.
+      const lead = mutedRows(open, mute).filter(unsettled)[0];
+      if (!lead || lead.id !== p.id) continue;
+      const live = companionRow(open, mute);
+      plan = {
+        kind: "resumed",
+        mute: mute!,
+        extras: mutedRows(open, mute).filter((r) => unsettled(r) && r.id !== p.id),
+        companion: live && unsettled(live) ? live : null,
+      };
     }
+    if (plan.kind === "rides_along") continue;
+    const combinedReminder = combineReminder({
+      plan,
+      payment: { id: p.id, dueDate: due },
+      ownDue: muted ? muteAmounts.get(p.id) ?? own : own,
+      owed: owedOn(muted ? muteDay : asOf),
+      extraFor: (r) => muteAmounts.get(r.id) ?? 0,
+    });
+    const combined = combinedReminder.alsoRecord.length > 0;
+    const amount = combinedReminder.amount;
+    for (const id of combinedReminder.alsoRecord) covered.add(id);
+    const restart = plan.kind === "resumed" ? plan.mute : null;
 
-    // Due-date nudge at the evening run of the due date itself.
+    // Due-date nudge at the evening run of the due date itself. Not while the
+    // contract is muted, and not when the evening reminder already asks for
+    // this rent together with the muted amounts.
     if (
+      !paused &&
+      !combined &&
       due >= today &&
       (due > today || wallClock(now, tz).hm < REMINDER_RUN_TIME) &&
       settingsRow?.smsDueReminderEnabled &&
@@ -330,44 +458,56 @@ export async function loadScheduledCommunications(
       }
     }
 
-    const monthIds = [...new Set([p.id, ...rowIdsForMonth(rows, month, lease.paymentDay)])];
-    const sent = (
-      await db
-        .select({ type: paymentReminders.type })
-        .from(paymentReminders)
-        .where(inArray(paymentReminders.paymentId, monthIds))
-    ).map((r) => r.type as ReminderLevel);
+    const reminders = await db
+      .select({ paymentId: paymentReminders.paymentId, type: paymentReminders.type, sentAt: paymentReminders.sentAt })
+      .from(paymentReminders)
+      .where(inArray(paymentReminders.paymentId, monthIds));
+    const state = ladderState({
+      dueDate: due,
+      restart,
+      reminders,
+      landlordNotifiedAt: p.landlordNotifiedAt ?? null,
+      landlordFinalNotifiedAt: p.landlordFinalNotifiedAt ?? null,
+      finalReminderHeldAt: p.finalReminderHeldAt ?? null,
+      tz,
+    });
 
     const steps = projectReminderLadder({
       dueDate: due,
       firstRunDay: runDay,
-      remindersSent: sent,
+      remindersSent: state.remindersSent as ReminderLevel[],
       settings: ladder,
-      landlordFinalNotifiedAt: p.landlordFinalNotifiedAt ?? null,
-      finalReminderHeldAt: p.finalReminderHeldAt ?? null,
+      landlordFinalNotifiedAt: state.landlordFinalNotifiedAt,
+      finalReminderHeldAt: state.finalReminderHeldAt,
       landlordLateNotify: lease.landlordLateNotify && !!landlord.to,
-      landlordNotifiedAt: p.landlordNotifiedAt ?? null,
-      firstStepOnly: notDueYet,
+      landlordNotifiedAt: state.landlordNotifiedAt,
+      // While muted only the first step after the mute end date is shown.
+      firstStepOnly: notDueYet || rowPaused,
+      referenceDate: restart ? restart.until : null,
     });
 
     let held = false;
-    try {
-      held = !!(await loadWaitingTransfer(db, { leaseId, ownerId: lease.ownerId, dueDate: due, amount }));
-    } catch (err) {
-      console.warn(`[LeaseCommunications] waiting transfer check failed for ${p.id}:`, err);
+    if (!rowPaused) {
+      try {
+        held = !!(await loadWaitingTransfer(db, { leaseId, ownerId: lease.ownerId, dueDate: due, amount }));
+      } catch (err) {
+        console.warn(`[LeaseCommunications] waiting transfer check failed for ${p.id}:`, err);
+      }
     }
 
     for (const s of steps) {
       if (s.audience === "tenant" && !followUpEnabled) continue;
       // The late notice is only for the landlord; the third-reminder notice goes regardless.
       const isLandlord = s.audience === "landlord";
-      const condition: ScheduledCondition = held
-        ? "on_hold_transfer_review"
-        : notDueYet
-          ? "if_unpaid_on_due_date"
-          : s.kind === "payment_reminder_final"
-            ? "if_unpaid_unless_held"
-            : "if_unpaid";
+      const condition: ScheduledCondition = rowPaused
+        ? "if_unpaid_after_mute"
+        : held
+          ? "on_hold_transfer_review"
+          : notDueYet
+            ? "if_unpaid_on_due_date"
+            : s.kind === "payment_reminder_final"
+              ? "if_unpaid_unless_held"
+              : "if_unpaid";
       push({
         date: s.date,
         time: s.time,

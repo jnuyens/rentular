@@ -65,6 +65,21 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { todayInZone, addDaysYmd, monthEndYmd } from "@/lib/dateLocale";
+import {
+  MuteBadge,
+  ReminderMuteDialog,
+  type ReminderMuteInfo,
+} from "@/components/leases/ReminderMute";
+
+/** The next rent due date after today for a payment day (1..28). */
+function nextRentDue(paymentDay: number | null | undefined, today: string): string {
+  const day = String(Math.min(Math.max(1, Number(paymentDay) || 1), 28)).padStart(2, "0");
+  const thisMonth = `${today.slice(0, 7)}-${day}`;
+  if (thisMonth > today) return thisMonth;
+  const [y, m] = today.split("-").map(Number);
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+  return `${next}-${day}`;
+}
 
 interface Payment {
   id: string;
@@ -77,6 +92,11 @@ interface Payment {
   isIgnored: boolean;
   ignoreReason: string | null;
   reminders: Array<{ type: string; sentAt: string }>;
+  leaseId: string;
+  /** The contract's late-payment reminders are muted (only while active). */
+  mute: ReminderMuteInfo | null;
+  /** Due date of the contract's next rent, for the "next rent" choice. */
+  nextDueDate: string | null;
 }
 
 interface LeaseOption {
@@ -221,6 +241,8 @@ function StatusBadge({ status, isIgnored }: { status: string; isIgnored: boolean
 export default function PaymentsPage() {
   const t = useTranslations("payments");
   const tc = useTranslations("dashboard");
+  const tm = useTranslations("reminderMute");
+  const [muteFor, setMuteFor] = useState<Payment | null>(null);
   const searchParams = useSearchParams();
   const [showIgnored, setShowIgnored] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -307,6 +329,18 @@ export default function PaymentsPage() {
             tenantNames: (l.tenantIds || [])
               .map((id: string) => tenantMap.get(id) || id)
               .join(", "),
+            mute:
+              l.remindersMutedUntil && String(l.remindersMutedUntil).slice(0, 10) > todayIso
+                ? {
+                    until: String(l.remindersMutedUntil).slice(0, 10),
+                    note: l.remindersMutedNote ?? null,
+                    by: l.remindersMutedBy ?? null,
+                    byName: null,
+                    at: l.remindersMutedAt ?? null,
+                    active: true,
+                  }
+                : null,
+            nextDueDate: nextRentDue(l.paymentDay, todayIso),
           },
         ])
       );
@@ -321,9 +355,13 @@ export default function PaymentsPage() {
       );
       setPayments(
         paymentsData.map((p: any) => {
-          const info = (leaseInfo.get(p.leaseId) as { propertyName: string; tenantNames: string } | undefined) || {
+          const info = (leaseInfo.get(p.leaseId) as
+            | { propertyName: string; tenantNames: string; mute: ReminderMuteInfo | null; nextDueDate: string }
+            | undefined) || {
             propertyName: "-",
             tenantNames: "-",
+            mute: null,
+            nextDueDate: null,
           };
           return {
             id: p.id,
@@ -336,6 +374,9 @@ export default function PaymentsPage() {
             isIgnored: !!p.isIgnored,
             ignoreReason: p.ignoreReason ?? null,
             reminders: [],
+            leaseId: p.leaseId,
+            mute: info.mute,
+            nextDueDate: info.nextDueDate,
           } as Payment;
         })
       );
@@ -482,6 +523,9 @@ export default function PaymentsPage() {
     }
   };
 
+  const isOverdueRow = (p: Payment) =>
+    !p.isIgnored && (p.status === "pending" || p.status === "failed") && p.dueDate < todayIso;
+
   const renderRowActions = (payment: Payment) =>
     payment.isIgnored ? (
       <Button variant="link" size="sm" onClick={() => handleUnignore(payment.id)} title={payment.ignoreReason || ""}>
@@ -511,6 +555,11 @@ export default function PaymentsPage() {
           >
             {t("markIgnored")}
           </DropdownMenuItem>
+          {isOverdueRow(payment) && (
+            <DropdownMenuItem onClick={() => setMuteFor(payment)}>
+              {payment.mute ? tm("change") : tm("button")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -687,7 +736,12 @@ export default function PaymentsPage() {
                         <TableCell className="text-sm">{payment.propertyName}</TableCell>
                         <TableCell className="text-right text-sm font-medium">&euro;{payment.amount.toFixed(2)}</TableCell>
                         <TableCell className="text-sm">{payment.dueDate}</TableCell>
-                        <TableCell><StatusBadge status={payment.status} isIgnored={payment.isIgnored} /></TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <StatusBadge status={payment.status} isIgnored={payment.isIgnored} />
+                            {isOverdueRow(payment) && payment.mute && <MuteBadge mute={payment.mute} />}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm">{payment.reminders.length > 0 && <span className="text-xs text-muted-foreground">{payment.reminders.length} sent</span>}</TableCell>
                         <TableCell className="text-right">
                           {renderRowActions(payment)}
@@ -708,7 +762,10 @@ export default function PaymentsPage() {
                           <p className="font-medium">{payment.tenantName}</p>
                           <p className="text-sm text-muted-foreground">{payment.propertyName}</p>
                         </div>
-                        <StatusBadge status={payment.status} isIgnored={payment.isIgnored} />
+                        <div className="flex flex-col items-end gap-1">
+                          <StatusBadge status={payment.status} isIgnored={payment.isIgnored} />
+                          {isOverdueRow(payment) && payment.mute && <MuteBadge mute={payment.mute} />}
+                        </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                         <div>
@@ -972,6 +1029,18 @@ export default function PaymentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {muteFor && (
+        <ReminderMuteDialog
+          open={!!muteFor}
+          onOpenChange={(o) => !o && setMuteFor(null)}
+          leaseId={muteFor.leaseId}
+          label={`${muteFor.propertyName} · ${muteFor.tenantName}`}
+          nextDueDate={muteFor.nextDueDate}
+          mute={muteFor.mute}
+          onChanged={fetchLeases}
+        />
+      )}
     </div>
   );
 }

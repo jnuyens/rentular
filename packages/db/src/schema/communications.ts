@@ -21,7 +21,7 @@ export const communications = mysqlTable("communications", {
   leaseId: varchar("lease_id", { length: 36 })
     .references(() => leases.id),
   // Channel
-  channel: mysqlEnum("channel", ["email", "sms", "letter", "whatsapp", "signal"]).notNull(),
+  channel: mysqlEnum("channel", ["email", "sms", "letter", "whatsapp", "signal", "internal"]).notNull(),
   // Type of communication
   type: mysqlEnum("type", [
     "payment_reminder_friendly",
@@ -38,6 +38,7 @@ export const communications = mysqlTable("communications", {
     "landlord_notification", // Late-payment, due-date and review notices to the landlord
     "due_date_sms",     // Short nudge to the tenant on the due date
     "tenant_reply",     // Email the tenant sent back to the contract's reply address
+    "internal_note",    // Note for the contract history only, never sent to anyone
   ]).notNull(),
   // outbound: sent by the platform. inbound: received, e.g. a tenant reply.
   direction: mysqlEnum("direction", ["outbound", "inbound"]).default("outbound").notNull(),

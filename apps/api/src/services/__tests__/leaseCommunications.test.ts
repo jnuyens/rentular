@@ -114,5 +114,46 @@ describe("loadPastCommunications", () => {
     ]);
     expect(out.lastSevenDays).toBe(1);
     expect(totalsSql).toContain("'outbound'");
+    // Internal notes (agreements) never count as a message to the tenant.
+    expect(totalsSql).toContain("'internal_note'");
+  });
+});
+
+describe("internal notes about muted reminders", () => {
+  it("show as internal, with the mute end date, the note and who recorded it", () => {
+    const names = new Map([["user-1", "Jasper Nuyens"]]);
+    const out = toPastCommunication(
+      {
+        ...base,
+        channel: "internal",
+        type: "internal_note",
+        recipientName: "Jasper Nuyens",
+        recipientEmail: null,
+        subject: null,
+        body: "Internal note: late payment reminders muted until 04/12/2026.",
+        metadata: {
+          kind: "reminder_mute",
+          action: "set",
+          until: "2026-12-04",
+          previousUntil: null,
+          note: "pays with December",
+          trigger: "manual",
+          triggeredBy: "user-1",
+        },
+      },
+      names,
+    );
+    expect(out.audience).toBe("internal");
+    expect(out.triggeredByName).toBe("Jasper Nuyens");
+    expect(out.mute).toEqual({
+      action: "set",
+      until: "2026-12-04",
+      previousUntil: null,
+      note: "pays with December",
+    });
+  });
+
+  it("a normal message has no mute note", () => {
+    expect(toPastCommunication({ ...base, metadata: null }, new Map()).mute).toBeNull();
   });
 });

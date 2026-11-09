@@ -6,6 +6,7 @@ import { getDb, leases, leaseTenants, payments, properties, propertyManagers } f
 import { getRequiredUserId } from "../lib/routeAuth";
 import { ensureExpectedPayments, depositNoteLike, isDepositNote } from "../services/expectedPayments";
 import {
+  loadMuteState,
   loadPastCommunications,
   loadScheduledCommunications,
 } from "../services/leaseCommunications";
@@ -141,6 +142,12 @@ leasesRouter.get("/:id/communications", async (c) => {
     } catch (err) {
       console.error("[Leases] scheduled communications failed:", err);
     }
+    let muteState: Awaited<ReturnType<typeof loadMuteState>> = null;
+    try {
+      muteState = await loadMuteState(db, id);
+    } catch (err) {
+      console.error("[Leases] reminder mute state failed:", err);
+    }
     const prop = await db
       .select({ name: properties.name })
       .from(properties)
@@ -153,6 +160,8 @@ leasesRouter.get("/:id/communications", async (c) => {
         lease: { id, propertyName: prop[0]?.name ?? "", tenantName },
         past: past.items,
         scheduled,
+        mute: muteState?.mute ?? null,
+        nextDueDate: muteState?.nextDueDate ?? null,
         total: past.total,
         lastSevenDays: past.lastSevenDays,
         limit,

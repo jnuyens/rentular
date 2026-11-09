@@ -91,6 +91,14 @@ export const leases = mysqlTable("leases", {
   ]).default("soft").notNull(),
   // Email the landlord (with action links) when rent on this contract is late
   landlordLateNotify: boolean("landlord_late_notify").default(true).notNull(),
+  // Late-payment reminders muted for the whole contract until this date
+  // (exclusive), e.g. the landlord agreed the tenant pays with the next rent.
+  // Amounts stay owed and visible; from this date the reminders start over.
+  remindersMutedUntil: date("reminders_muted_until", { mode: "string" }),
+  remindersMutedNote: varchar("reminders_muted_note", { length: 500 }),
+  // User id of the person who muted, and when
+  remindersMutedBy: varchar("reminders_muted_by", { length: 255 }),
+  remindersMutedAt: timestamp("reminders_muted_at"),
   // Older contract (start before it was added here): deposit and rent up to
   // then are presumed already paid. Asked on create, default yes. Kept on the
   // lease rather than applied once, because the deposit row is generated

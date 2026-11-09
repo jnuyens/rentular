@@ -53,6 +53,69 @@ import { holdForWaitingTransfer, loadWaitingTransfer } from "../services/transfe
 import { autoAssignByIban } from "../services/ibanMatcher";
 import { autoAssignByAmount } from "../services/amountMatcher";
 import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
+import {
+  combineReminder,
+  companionRow,
+  daysBetween,
+  isMuteActive,
+  isOpenRentRow,
+  ladderState,
+  muteOf,
+  mutedRows,
+  planForPayment,
+  type Mute,
+} from "../services/reminderMute";
+import type { CarriedAmount } from "../services/reminderText";
+
+/** Every row of a lease, with what the mute and reminder rules need. */
+async function loadLeaseRows(db: ReturnType<typeof getDb>, leaseId: string) {
+  return db
+    .select({
+      id: payments.id,
+      status: payments.status,
+      amount: payments.amount,
+      dueDate: payments.dueDate,
+      paidDate: payments.paidDate,
+      notes: payments.notes,
+      isIgnored: payments.isIgnored,
+    })
+    .from(payments)
+    .where(eq(payments.leaseId, leaseId));
+}
+
+type LeaseRow = Awaited<ReturnType<typeof loadLeaseRows>>[number];
+
+/** The contract's reminder mute, or null. */
+async function loadMute(db: ReturnType<typeof getDb>, leaseId: string): Promise<Mute | null> {
+  const row = (
+    await db
+      .select({ remindersMutedUntil: leases.remindersMutedUntil, remindersMutedAt: leases.remindersMutedAt })
+      .from(leases)
+      .where(eq(leases.id, leaseId))
+      .limit(1)
+  )[0];
+  return row ? muteOf(row) : null;
+}
+
+/**
+ * The settlement of every open row a mute involves: the rows that were muted
+ * and the rent due on the mute end date. Other rows are not looked at.
+ */
+async function muteSettlements(
+  db: ReturnType<typeof getDb>,
+  lease: Parameters<typeof periodSettlement>[1],
+  rows: LeaseRow[],
+  mute: Mute | null,
+  today: string,
+): Promise<Map<string, Awaited<ReturnType<typeof periodSettlement>>>> {
+  const out = new Map<string, Awaited<ReturnType<typeof periodSettlement>>>();
+  if (!mute) return out;
+  const involved = [...mutedRows(rows, mute), companionRow(rows, mute)].filter(
+    (r): r is LeaseRow => !!r && isOpenRentRow(r),
+  );
+  for (const r of involved) out.set(r.id, await periodSettlement(db, lease, r.dueDate, today));
+  return out;
+}
 
 /**
  * Run the account-number and amount matchers over the transfers already
@@ -281,6 +344,18 @@ async function sendDueDateTenantSms(
       if (settlement.settled) continue;
       const amountDue = amountDueFor(settlement, p.amount);
 
+      // A muted contract gets no due-date message either. And on the mute end
+      // date the evening reminder asks for this rent together with the muted
+      // amounts, so no separate nudge goes out.
+      const mute = await loadMute(db, p.leaseId);
+      if (isMuteActive(mute, today)) continue;
+      if (mute && mute.until === String(p.dueDate).slice(0, 10)) {
+        const leaseRows = await loadLeaseRows(db, p.leaseId);
+        const settlements = await muteSettlements(db, lease, leaseRows, mute, today);
+        const muted = mutedRows(leaseRows, mute).filter((r) => settlements.get(r.id)?.settled === false);
+        if (muted.length > 0) continue;
+      }
+
       const settings = (
         await db
           .select({ enabled: paymentFollowUpSettings.smsDueReminderEnabled })
@@ -485,7 +560,53 @@ const worker = new Worker(
         // the rent came in, only the rest is asked for.
         const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
-        const amountDue = amountDueFor(settlement, payment.amount);
+        const ownDue = amountDueFor(settlement, payment.amount);
+
+        // Reminders muted for the contract (see reminderMute.ts). While muted
+        // nothing goes out for any open amount: no tenant reminder, no
+        // landlord notice, no transfer-review hold. From the mute end date the
+        // ladder starts over from that date, with one reminder covering all
+        // amounts that were muted plus the rent due on that date.
+        const leaseRows = await loadLeaseRows(db, payment.leaseId);
+        const monthRowIds = [
+          ...new Set([
+            payment.paymentId,
+            ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
+          ]),
+        ];
+        const mute = await loadMute(db, payment.leaseId);
+        const muteSettled = await muteSettlements(db, lease, leaseRows, mute, today);
+        const plan = planForPayment({
+          payment: { id: payment.paymentId, status: payment.status, dueDate: String(payment.dueDate) },
+          leaseRows,
+          mute,
+          today,
+          isUnsettled: (r) => muteSettled.get(r.id)?.settled === false,
+        });
+        if (plan.kind === "paused") {
+          console.log(`[PaymentCheck] reminders muted until ${plan.until}: nothing sent for ${payment.paymentId}`);
+          continue;
+        }
+        if (plan.kind === "rides_along") {
+          console.log(`[PaymentCheck] ${payment.paymentId} is reminded together with ${plan.lead.id} (mute ended)`);
+          continue;
+        }
+        const combined = combineReminder({
+          plan,
+          payment: { id: payment.paymentId, dueDate: String(payment.dueDate) },
+          ownDue,
+          owed: settlement.owed,
+          extraFor: (row) => {
+            const s = muteSettled.get(row.id);
+            return s ? amountDueFor(s, row.amount) : 0;
+          },
+        });
+        const amountDue = combined.amount;
+        const carried: CarriedAmount[] = combined.carried;
+        // The month sentence would describe only part of a combined amount.
+        const remainderContext = carried.length > 0 ? null : settlement.remainder;
+        // Rows whose reminders and landlord notices are recorded with this one.
+        const stampRows = [payment.paymentId, ...combined.alsoRecord];
 
         // Primary tenant addressed, co-tenants copied on the reminder email.
         const tenantRec = await getLeaseEmailRecipients(payment.leaseId);
@@ -541,9 +662,33 @@ const worker = new Worker(
           continue;
         }
 
+        // Reminders already sent for this rent month, on any of its rows: a
+        // remainder row continues the ladder of the month's paid rows, so the
+        // tenant never gets the same level twice for one month. After a mute
+        // only what was sent from the mute end date on counts.
+        const existingReminders = await db
+          .select({
+            paymentId: paymentReminders.paymentId,
+            type: paymentReminders.type,
+            sentAt: paymentReminders.sentAt,
+          })
+          .from(paymentReminders)
+          .where(inArray(paymentReminders.paymentId, monthRowIds));
+        const ladder = ladderState({
+          dueDate: String(payment.dueDate),
+          restart: plan.kind === "resumed" ? plan.mute : null,
+          reminders: existingReminders,
+          landlordNotifiedAt: payment.landlordNotifiedAt,
+          landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
+          finalReminderHeldAt: payment.finalReminderHeldAt,
+          tz: getScheduleTimezone(),
+        });
+        const stamp = (set: Partial<typeof payments.$inferInsert>) =>
+          db.update(payments).set(set).where(inArray(payments.id, stampRows));
+
         // Email the landlord (with one-click action links) the first time this
         // payment is seen late, if enabled for the contract. Once per payment.
-        if (lease.landlordLateNotify && !payment.landlordNotifiedAt) {
+        if (lease.landlordLateNotify && !ladder.landlordNotifiedAt) {
           const recipients = await getLandlordNotificationRecipients(
             lease.propertyId,
             ownerData[0]?.email,
@@ -569,10 +714,7 @@ const worker = new Worker(
                 daysPastDue: daysLate,
                 kind: "late",
               });
-              await db
-                .update(payments)
-                .set({ landlordNotifiedAt: new Date() })
-                .where(eq(payments.id, payment.paymentId));
+              await stamp({ landlordNotifiedAt: new Date() });
             } catch (err) {
               console.error("[PaymentCheck] landlord late email failed:", err);
             }
@@ -626,49 +768,17 @@ const worker = new Worker(
             }
           : DEFAULT_SETTINGS;
 
-        // Reminders already sent for this rent month, on any of its rows: a
-        // remainder row continues the ladder of the month's paid rows, so the
-        // tenant never gets the same level twice for one month.
-        const leaseRows = await db
-          .select({
-            id: payments.id,
-            status: payments.status,
-            amount: payments.amount,
-            dueDate: payments.dueDate,
-            paidDate: payments.paidDate,
-            notes: payments.notes,
-            isIgnored: payments.isIgnored,
-          })
-          .from(payments)
-          .where(eq(payments.leaseId, payment.leaseId));
-        const monthRowIds = [
-          ...new Set([
-            payment.paymentId,
-            ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
-          ]),
-        ];
-        const existingReminders = await db
-          .select({ type: paymentReminders.type })
-          .from(paymentReminders)
-          .where(inArray(paymentReminders.paymentId, monthRowIds));
-
-        const remindersSent = existingReminders.map(
-          (r) => r.type as "friendly" | "formal" | "final"
-        );
-
-        // Calculate days past due
-        const dueMs = new Date(payment.dueDate).getTime();
-        const todayMs = new Date(today).getTime();
-        const daysPastDue = Math.floor(
-          (todayMs - dueMs) / (1000 * 60 * 60 * 24)
-        );
+        // Days past due, counted from the mute end date after a mute: the
+        // landlord gave the tenant until then.
+        const daysPastDue = daysBetween(ladder.referenceDate, today);
+        const remindersSent = ladder.remindersSent;
 
         // Build the OverduePayment info object
         const paymentInfo = {
           paymentId: payment.paymentId,
           leaseId: payment.leaseId,
           amount: amountDue,
-          dueDate: payment.dueDate,
+          dueDate: ladder.referenceDate,
           daysPastDue,
           tenantName: `${tenant.firstName} ${tenant.lastName}`,
           tenantEmail: tenantRec.to,
@@ -683,7 +793,8 @@ const worker = new Worker(
             lease.latePaymentFeeAmount || "15.00"
           ),
           latePaymentFeeEnforcement: lease.latePaymentFeeEnforcement,
-          remainder: settlement.remainder,
+          remainder: remainderContext,
+          carried,
         };
 
         const level = determineReminderLevel(paymentInfo, followUpSettings);
@@ -694,8 +805,8 @@ const worker = new Worker(
         // until the hold period is over. Manual reminders are not gated.
         if (level === "final") {
           const decision = decideFinalReminder({
-            landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
-            finalReminderHeldAt: payment.finalReminderHeldAt,
+            landlordFinalNotifiedAt: ladder.landlordFinalNotifiedAt,
+            finalReminderHeldAt: ladder.finalReminderHeldAt,
             now: new Date(),
           });
 
@@ -733,10 +844,7 @@ const worker = new Worker(
                 channel,
                 sendOn,
               });
-              await db
-                .update(payments)
-                .set({ landlordFinalNotifiedAt: new Date() })
-                .where(eq(payments.id, payment.paymentId));
+              await stamp({ landlordFinalNotifiedAt: new Date() });
               console.log(
                 `[PaymentCheck] Emailed landlord about pending third reminder for ${payment.paymentId} (sends ${sendOn} via ${channel})`,
               );
@@ -765,14 +873,18 @@ const worker = new Worker(
             cc: tenantRec.cc,
           });
 
-          // Record the reminder in paymentReminders table
-          await db.insert(paymentReminders).values({
-            id: crypto.randomUUID(),
-            paymentId: payment.paymentId,
-            type: level,
-            channel: usedChannel,
-            sentAt: new Date(),
-          });
+          // Record the reminder, also on the rows it covered, so each keeps
+          // its own ladder if the other gets paid.
+          const sentAt = new Date();
+          await db.insert(paymentReminders).values(
+            stampRows.map((paymentId) => ({
+              id: crypto.randomUUID(),
+              paymentId,
+              type: level,
+              channel: usedChannel,
+              sentAt,
+            })),
+          );
 
           sentCount++;
           console.log(

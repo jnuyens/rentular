@@ -1457,7 +1457,8 @@
       "sms": "SMS",
       "whatsapp": "WhatsApp",
       "signal": "Signal",
-      "letter": "Letter"
+      "letter": "Letter",
+      "internal": "Internal"
     },
     "status": {
       "queued": "Queued",
@@ -1491,7 +1492,8 @@
       "due_date_sms": "Due-date message",
       "landlord_final_pending": "Notice before the third reminder",
       "landlord_late": "Late payment notice",
-      "tenant_reply": "Reply from tenant"
+      "tenant_reply": "Reply from tenant",
+      "internal_note": "Internal note"
     },
     "landlordKind": {
       "late": "Late payment notice",
@@ -1505,13 +1507,21 @@
       "if_unpaid_on_due_date": "Only if it is unpaid on the due date",
       "if_unpaid_unless_held": "Only if it is still unpaid and you do not hold it",
       "if_index_published": "Once the new health index is out, if the indexation is not applied yet",
-      "on_hold_transfer_review": "On hold: a transfer is waiting for you on the Reconciliation page"
+      "on_hold_transfer_review": "On hold: a transfer is waiting for you on the Reconciliation page",
+      "if_unpaid_after_mute": "Only if it is still unpaid by then"
     },
     "from": "From",
     "unknownSender": "Unknown sender",
     "unknownSenderHint": "This address is not one of the tenants on this contract.",
     "autoReply": "Automatic reply, not passed on",
-    "attachments": "Attachments"
+    "attachments": "Attachments",
+    "internalNote": "Internal note, never sent to anyone",
+    "muteNote": {
+      "set": "Reminders muted until {date}",
+      "changed": "Mute changed: reminders muted until {date}",
+      "removed": "Reminders no longer muted (were muted until {date})",
+      "note": "Note: {note}"
+    }
   },
   "contractBalance": {
     "title": "Contract balance",
@@ -1540,5 +1550,36 @@
     "loadError": "Could not load the contract balance",
     "showAll": "Show all {count} payments",
     "showLess": "Show fewer"
+  },
+  "reminderMute": {
+    "button": "Mute reminders",
+    "change": "Change",
+    "title": "Mute late payment reminders until",
+    "nextRent": "Next rent",
+    "nextWeek": "Next week",
+    "pickDate": "Pick a date",
+    "date": "Date",
+    "note": "Note (optional)",
+    "notePlaceholder": "For example: pays the rest together with the December rent",
+    "hint": "No late payment reminders for this contract until that date, to the tenant or to you. The amounts stay visible as overdue.",
+    "afterHint": "If something is still unpaid by then, reminders start again, beginning with a friendly one, in one message for everything that is open.",
+    "save": "Mute",
+    "cancel": "Cancel",
+    "unmute": "Unmute",
+    "unmuteConfirm": "Unmute the reminders? They run as usual again from this evening.",
+    "saved": "Reminders muted until {date}",
+    "unmuted": "Reminders are no longer muted",
+    "badge": "Muted until {date}",
+    "status": "Reminders muted until {date}",
+    "notMuted": "Late payment reminders run as usual for this contract.",
+    "recordedBy": "Set by {name} on {date}",
+    "recordedOn": "Set on {date}",
+    "remindConfirm": "Reminders for this contract are muted until {date}. Send a reminder anyway?",
+    "errors": {
+      "not_after_today": "Pick a date after today.",
+      "too_far": "Reminders can be muted for at most 120 days.",
+      "invalid_date": "That is not a valid date.",
+      "failed": "That did not work. Please try again."
+    }
   }
 }

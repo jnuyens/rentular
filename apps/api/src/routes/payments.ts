@@ -11,7 +11,13 @@ import {
   isGoCardlessConfigured,
 } from "../lib/gocardless";
 import { transitionPayment } from "../services/paymentStateMachine";
-import { ensureExpectedPaymentsForAllActive, ensureCurrentMonthPayment, isDepositNote, keepDepositMarker } from "../services/expectedPayments";
+import {
+  ensureExpectedPaymentsForAllActive,
+  ensureCurrentMonthPayment,
+  isDepositNote,
+  keepDepositMarker,
+} from "../services/expectedPayments";
+import { muteNames, muteView, nextRentDueDate, type MuteView } from "../services/reminderMuteStore";
 import {
   dueDateForMonth,
   loadIndexRecords,
@@ -489,6 +495,17 @@ paymentsRouter.get("/dashboard", async (c) => {
     const b = balanceByLease.get(leaseId);
     return !!b && beforeTrackingWindow(b, m);
   };
+  // The contract's reminder mute and the due date of its next rent (for the
+  // "next rent" choice). A mute changes nothing in the figures: the amount
+  // stays overdue, only reminders are paused.
+  const mutePeople = await muteNames(db, activeLeaseRows);
+  const leaseById = new Map(activeLeaseRows.map((l) => [l.id, l]));
+  const muteFields = (leaseId: string) => {
+    const l = leaseById.get(leaseId);
+    if (!l) return {};
+    const mute = muteView(l, todayStr, mutePeople);
+    return { nextDueDate: nextRentDueDate(l.paymentDay, todayStr), ...(mute ? { mute } : {}) };
+  };
   // Overdue per lease, so the total never exceeds what each contract owes.
   const overdueByLease = new Map<string, number>();
   const addOverdue = (leaseId: string, amount: number) =>
@@ -547,6 +564,10 @@ paymentsRouter.get("/dashboard", async (c) => {
     contractOwed?: number;
     /** What the tenant paid more than was due over the whole contract. */
     contractCredit?: number;
+    /** The contract's late-payment reminders are muted until a date. */
+    mute?: MuteView;
+    /** Due date of the lease's next rent, for the "next rent" choice. */
+    nextDueDate?: string;
   };
   const recentPaymentsFor = (leaseId: string) =>
     (byLease.get(leaseId) ?? [])
@@ -586,6 +607,7 @@ paymentsRouter.get("/dashboard", async (c) => {
       dueDate: r.due,
       recentPayments: recentPaymentsFor(l.id),
       ...balanceFields(l.id),
+      ...(r.status === "paid" ? {} : muteFields(l.id)),
     };
     if (r.status === "paid") {
       // The paid list shows what was due and received, so it adds up to paidThisMonth.
@@ -686,6 +708,7 @@ paymentsRouter.get("/dashboard", async (c) => {
         recentPayments: recentPaymentsFor(cand.lease.id),
         ...shortfallFields(s),
         ...balanceFields(cand.lease.id),
+        ...muteFields(cand.lease.id),
       });
     } else {
       addOverdue(cand.lease.id, cand.pendingSum);
