@@ -120,6 +120,8 @@ for (const prefix of protectedPrefixes) {
     // no session-Cookie context. The state JWT signature gate (T-09-03-01)
     // replaces requireAuth on this single path.
     if (c.req.path.endsWith("/bank-connections/callback")) return next();
+    // Same for the Enable Banking callback (state JWT bound to the landlord).
+    if (c.req.path.endsWith("/bank-connections/enable-banking/callback")) return next();
     return requireAuth(c, next);
   });
   // A read-scoped PAT gets 403 on any state-changing method under a protected
