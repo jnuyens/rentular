@@ -15,10 +15,9 @@ import {
   ensureExpectedPaymentsForAllActive,
   ensureCurrentMonthPayment,
   isDepositNote,
-  isRemainderNote,
   keepDepositMarker,
 } from "../services/expectedPayments";
-import { agreementNames, agreementView, type AgreementView } from "../services/paymentAgreementStore";
+import { muteNames, muteView, nextRentDueDate, type MuteView } from "../services/reminderMuteStore";
 import {
   dueDateForMonth,
   loadIndexRecords,
@@ -385,10 +384,6 @@ paymentsRouter.get("/dashboard", async (c) => {
       paidDate: payments.paidDate,
       isIgnored: payments.isIgnored,
       notes: payments.notes,
-      agreementUntil: payments.agreementUntil,
-      agreementNote: payments.agreementNote,
-      agreementBy: payments.agreementBy,
-      agreementAt: payments.agreementAt,
       propertyId: leases.propertyId,
       monthlyRent: leases.monthlyRent,
       monthlyCharges: leases.monthlyCharges,
@@ -500,21 +495,16 @@ paymentsRouter.get("/dashboard", async (c) => {
     const b = balanceByLease.get(leaseId);
     return !!b && beforeTrackingWindow(b, m);
   };
-  // The open row of a lease month, which the overview acts on, and the
-  // agreement with the tenant recorded on it. An agreement changes nothing in
-  // the figures: the amount stays overdue, only reminders are paused.
-  const agreementPeople = await agreementNames(db, rows);
-  const openRowFields = (leaseId: string, m: string) => {
-    const monthRows = (byLease.get(leaseId) ?? []).filter(
-      (r) => r.status === "pending" && !isDepositNote(r.notes) && String(r.dueDate).slice(0, 7) === m,
-    );
-    const pick =
-      monthRows.find((r) => !!r.agreementUntil) ??
-      monthRows.find((r) => isRemainderNote(r.notes)) ??
-      monthRows[0];
-    if (!pick) return {};
-    const agreement = agreementView(pick, todayStr, agreementPeople);
-    return { paymentId: pick.id, ...(agreement ? { agreement } : {}) };
+  // The contract's reminder mute and the due date of its next rent (for the
+  // "next rent" choice). A mute changes nothing in the figures: the amount
+  // stays overdue, only reminders are paused.
+  const mutePeople = await muteNames(db, activeLeaseRows);
+  const leaseById = new Map(activeLeaseRows.map((l) => [l.id, l]));
+  const muteFields = (leaseId: string) => {
+    const l = leaseById.get(leaseId);
+    if (!l) return {};
+    const mute = muteView(l, todayStr, mutePeople);
+    return { nextDueDate: nextRentDueDate(l.paymentDay, todayStr), ...(mute ? { mute } : {}) };
   };
   // Overdue per lease, so the total never exceeds what each contract owes.
   const overdueByLease = new Map<string, number>();
@@ -574,10 +564,10 @@ paymentsRouter.get("/dashboard", async (c) => {
     contractOwed?: number;
     /** What the tenant paid more than was due over the whole contract. */
     contractCredit?: number;
-    /** The open row of the month (target of the agreement action). */
-    paymentId?: string;
-    /** The agreement with the tenant on that row, if any. */
-    agreement?: AgreementView;
+    /** The contract's late-payment reminders are muted until a date. */
+    mute?: MuteView;
+    /** Due date of the lease's next rent, for the "next rent" choice. */
+    nextDueDate?: string;
   };
   const recentPaymentsFor = (leaseId: string) =>
     (byLease.get(leaseId) ?? [])
@@ -617,7 +607,7 @@ paymentsRouter.get("/dashboard", async (c) => {
       dueDate: r.due,
       recentPayments: recentPaymentsFor(l.id),
       ...balanceFields(l.id),
-      ...(r.status === "paid" ? {} : openRowFields(l.id, month)),
+      ...(r.status === "paid" ? {} : muteFields(l.id)),
     };
     if (r.status === "paid") {
       // The paid list shows what was due and received, so it adds up to paidThisMonth.
@@ -718,7 +708,7 @@ paymentsRouter.get("/dashboard", async (c) => {
         recentPayments: recentPaymentsFor(cand.lease.id),
         ...shortfallFields(s),
         ...balanceFields(cand.lease.id),
-        ...openRowFields(cand.lease.id, pm),
+        ...muteFields(cand.lease.id),
       });
     } else {
       addOverdue(cand.lease.id, cand.pendingSum);

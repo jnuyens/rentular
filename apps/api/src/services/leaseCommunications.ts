@@ -15,18 +15,21 @@ import { getLandlordNotificationRecipients } from "../lib/notificationRecipients
 import { getScheduleTimezone, toUtcIso } from "../lib/timezone";
 import { isSmsConfigured } from "../lib/sms";
 import { isWhatsAppConfigured } from "../lib/whatsapp";
-import { isDepositNote, isRemainderNote } from "./expectedPayments";
-import { agreementNames, agreementView, type AgreementView } from "./paymentAgreementStore";
+import { isDepositNote } from "./expectedPayments";
+import { muteNames, muteView, nextRentDueDate, type MuteView } from "./reminderMuteStore";
 import { loadMonthStatus, rowIdsForMonth } from "./monthReceived";
 import { contractBalance, loadBalanceData, reminderAmountFor } from "./contractBalance";
 import { isReminderTestPhase, resolveReminderChannel } from "./reminderChannel";
 import {
+  combineReminder,
   companionRow,
-  isAgreementActive,
+  isMuteActive,
   ladderState,
-  monthAgreement,
-  ridersFor,
-} from "./paymentAgreement";
+  muteOf,
+  mutedRows,
+  planForPayment,
+  wasMuted,
+} from "./reminderMute";
 import { loadWaitingTransfer } from "./transferReview";
 import { nextAnniversaryAfter } from "./indexationAlerts";
 import type { ReminderLevel } from "./paymentFollowUp";
@@ -43,22 +46,20 @@ import {
 
 type Db = ReturnType<typeof getDb>;
 
-/** What an internal "agreement noted" entry recorded. */
-export type AgreementNote = {
+/** What an internal note about muting the reminders recorded. */
+export type MuteNote = {
   action: "set" | "changed" | "removed";
   until: string | null;
   previousUntil: string | null;
   note: string | null;
-  dueDate: string | null;
-  amount: number | null;
 };
 
 export type PastCommunication = {
   id: string;
   /** internal: a note for the contract history, never sent to anyone. */
   audience: "tenant" | "landlord" | "internal";
-  /** Set on an internal note about an agreement with the tenant. */
-  agreement: AgreementNote | null;
+  /** Set on an internal note about muting the late-payment reminders. */
+  mute: MuteNote | null;
   channel: string;
   type: string;
   recipientName: string;
@@ -154,15 +155,13 @@ export function toPastCommunication(
   const direction = row.direction === "inbound" ? "inbound" : "outbound";
   const internal = row.type === "internal_note";
   const action = str(meta.action);
-  const agreement: AgreementNote | null =
-    internal && meta.kind === "payment_agreement"
+  const mute: MuteNote | null =
+    internal && meta.kind === "reminder_mute"
       ? {
           action: action === "changed" || action === "removed" ? action : "set",
           until: str(meta.until),
           previousUntil: str(meta.previousUntil),
           note: str(meta.note),
-          dueDate: str(meta.dueDate),
-          amount: typeof meta.amount === "number" ? meta.amount : null,
         }
       : null;
   return {
@@ -172,7 +171,7 @@ export function toPastCommunication(
       : (LANDLORD_TYPES as readonly string[]).includes(row.type)
         ? "landlord"
         : "tenant",
-    agreement,
+    mute,
     channel: row.channel,
     type: row.type,
     recipientName: row.recipientName,
@@ -252,70 +251,29 @@ export async function loadPastCommunications(
   };
 }
 
-/** An amount the tenant still owes for one rent month, with its agreement. */
-export type OpenAmount = {
-  paymentId: string;
-  dueDate: string;
-  amount: number;
-  agreement: AgreementView | null;
-};
-
-/**
- * The rent months of a lease that are due and still miss money, one entry per
- * month (the row that carries the agreement, else the remainder row, else the
- * month's first open row), oldest first. An agreement is recorded on that row.
- */
-export async function loadOpenAmounts(db: Db, leaseId: string, now: Date = new Date()): Promise<OpenAmount[]> {
-  const lease = (await db.select().from(leases).where(eq(leases.id, leaseId)).limit(1))[0];
-  if (!lease) return [];
+/** The contract's reminder mute (while active) and its next rent due date. */
+export async function loadMuteState(
+  db: Db,
+  leaseId: string,
+  now: Date = new Date(),
+): Promise<{ mute: MuteView | null; nextDueDate: string } | null> {
+  const lease = (
+    await db
+      .select({
+        paymentDay: leases.paymentDay,
+        remindersMutedUntil: leases.remindersMutedUntil,
+        remindersMutedNote: leases.remindersMutedNote,
+        remindersMutedBy: leases.remindersMutedBy,
+        remindersMutedAt: leases.remindersMutedAt,
+      })
+      .from(leases)
+      .where(eq(leases.id, leaseId))
+      .limit(1)
+  )[0];
+  if (!lease) return null;
   const today = wallClock(now, getScheduleTimezone()).ymd;
-  const rows = await db
-    .select({
-      id: payments.id,
-      status: payments.status,
-      amount: payments.amount,
-      dueDate: payments.dueDate,
-      notes: payments.notes,
-      isIgnored: payments.isIgnored,
-      agreementUntil: payments.agreementUntil,
-      agreementNote: payments.agreementNote,
-      agreementBy: payments.agreementBy,
-      agreementAt: payments.agreementAt,
-    })
-    .from(payments)
-    .where(eq(payments.leaseId, leaseId));
-  const byMonth = new Map<string, typeof rows>();
-  for (const r of rows) {
-    const due = String(r.dueDate).slice(0, 10);
-    if (r.status !== "pending" || r.isIgnored || isDepositNote(r.notes) || due > today) continue;
-    const m = due.slice(0, 7);
-    byMonth.set(m, [...(byMonth.get(m) ?? []), r]);
-  }
-  const balanceData = Number(lease.monthlyRent || 0) > 0 ? await loadBalanceData(db, lease) : null;
-  const balance = balanceData ? contractBalance({ ...balanceData, today }) : null;
-  const names = await agreementNames(db, rows);
-  const out: OpenAmount[] = [];
-  for (const [month, monthRows] of [...byMonth].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
-    const status = await loadMonthStatus(db, lease, month);
-    if (status.settled) continue;
-    const pick =
-      monthRows.find((r) => !!r.agreementUntil) ??
-      monthRows.find((r) => isRemainderNote(r.notes)) ??
-      monthRows[0]!;
-    let amount = status.received > 0.01 ? status.shortfall : Number(pick.amount);
-    if (balance) {
-      const capped = reminderAmountFor(balance, month, amount);
-      if (capped == null) continue;
-      amount = capped;
-    }
-    out.push({
-      paymentId: pick.id,
-      dueDate: String(pick.dueDate).slice(0, 10),
-      amount,
-      agreement: agreementView(pick, today, names),
-    });
-  }
-  return out;
+  const names = await muteNames(db, [lease]);
+  return { mute: muteView(lease, today, names), nextDueDate: nextRentDueDate(lease.paymentDay, today) };
 }
 
 /**
@@ -370,8 +328,6 @@ export async function loadScheduledCommunications(
       landlordNotifiedAt: payments.landlordNotifiedAt,
       landlordFinalNotifiedAt: payments.landlordFinalNotifiedAt,
       finalReminderHeldAt: payments.finalReminderHeldAt,
-      agreementUntil: payments.agreementUntil,
-      agreementAt: payments.agreementAt,
     })
     .from(payments)
     .where(eq(payments.leaseId, leaseId));
@@ -404,13 +360,23 @@ export async function loadScheduledCommunications(
     if (!withRent) return amount;
     return reminderAmountFor(contractBalance({ ...balanceData!, today: asOf }), month, amount);
   };
-  const capAt = (amount: number, asOf: string): number => {
-    const rounded = Math.round(amount * 100) / 100;
-    if (!withRent) return rounded;
-    const owed = contractBalance({ ...balanceData!, today: asOf }).owed;
-    return Math.min(rounded, owed);
-  };
-  // Rows reminded together with an earlier month under an agreement.
+  // A reminder mute on the contract (see reminderMute.ts): nothing until the
+  // mute end date, then one reminder for every amount that was muted plus
+  // the rent due on that date, with the ladder restarted from that date.
+  const mute = muteOf(lease);
+  const paused = isMuteActive(mute, today);
+  const muteDay = mute && mute.until > today ? mute.until : today;
+  const muteAmounts = new Map<string, number>();
+  if (mute) {
+    for (const r of [...mutedRows(open, mute), companionRow(open, mute)]) {
+      if (!r || muteAmounts.has(r.id)) continue;
+      const a = await ownAmount(r, muteDay);
+      if (a != null) muteAmounts.set(r.id, a);
+    }
+  }
+  const unsettled = (r: (typeof open)[number]) => muteAmounts.has(r.id);
+  const owedOn = (asOf: string) => (withRent ? contractBalance({ ...balanceData!, today: asOf }).owed : null);
+  // Rows whose amount is part of another row's reminder.
   const covered = new Set<string>();
 
   let futureSeen = false;
@@ -428,39 +394,38 @@ export async function loadScheduledCommunications(
     const own = await ownAmount(p, asOf);
     // Nothing is planned for a settled month, or one before the tracking window.
     if (own == null) continue;
-    let amount = own;
-
-    // An agreement with the tenant (see paymentAgreement.ts): nothing until the
-    // agreed date, then the ladder from that date, with the next rent added
-    // when it falls on the agreed date.
     const monthIds = [...new Set([p.id, ...rowIdsForMonth(rows, month, lease.paymentDay)])];
-    const agreement = monthAgreement(rows, monthIds);
-    const until = agreement ? String(agreement.agreementUntil).slice(0, 10) : null;
-    const paused = !!agreement && isAgreementActive(agreement, today);
-    let combined = false;
-    if (agreement && until) {
-      const companion = companionRow(open, agreement);
-      const extra = companion ? await ownAmount(companion, until > today ? until : today) : null;
-      if (companion && extra != null) {
-        // The next rent is already overdue: it carries this amount.
-        if (!paused && String(companion.dueDate).slice(0, 10) < today) continue;
-        amount = capAt(amount + extra, until > today ? until : today);
-        covered.add(companion.id);
-        combined = true;
-      }
-    } else {
-      for (const r of ridersFor(open, p, today)) {
-        const extra = await ownAmount(r, asOf);
-        if (extra == null) continue;
-        amount += extra;
-        combined = true;
-      }
-      if (combined) amount = capAt(amount, asOf);
+    const muted = wasMuted(p, mute);
+    const rowPaused = paused && muted;
+    let plan = planForPayment({ payment: p, leaseRows: open, mute, today, isUnsettled: unsettled });
+    if (plan.kind === "paused") {
+      // While muted, the oldest muted amount shows the one step after the mute.
+      const lead = mutedRows(open, mute).filter(unsettled)[0];
+      if (!lead || lead.id !== p.id) continue;
+      const live = companionRow(open, mute);
+      plan = {
+        kind: "resumed",
+        mute: mute!,
+        extras: mutedRows(open, mute).filter((r) => unsettled(r) && r.id !== p.id),
+        companion: live && unsettled(live) ? live : null,
+      };
     }
+    if (plan.kind === "rides_along") continue;
+    const combinedReminder = combineReminder({
+      plan,
+      payment: { id: p.id, dueDate: due },
+      ownDue: muted ? muteAmounts.get(p.id) ?? own : own,
+      owed: owedOn(muted ? muteDay : asOf),
+      extraFor: (r) => muteAmounts.get(r.id) ?? 0,
+    });
+    const combined = combinedReminder.alsoRecord.length > 0;
+    const amount = combinedReminder.amount;
+    for (const id of combinedReminder.alsoRecord) covered.add(id);
+    const restart = plan.kind === "resumed" ? plan.mute : null;
 
-    // Due-date nudge at the evening run of the due date itself. Not while an
-    // agreement holds, and not when the evening reminder already asks for
-    // this rent together with an earlier amount.
+    // Due-date nudge at the evening run of the due date itself. Not while the
+    // contract is muted, and not when the evening reminder already asks for
+    // this rent together with the muted amounts.
     if (
       !paused &&
       !combined &&
@@ -499,7 +464,7 @@ export async function loadScheduledCommunications(
       .where(inArray(paymentReminders.paymentId, monthIds));
     const state = ladderState({
       dueDate: due,
-      agreement: agreement && until ? { until, at: agreement.agreementAt } : null,
+      restart,
       reminders,
       landlordNotifiedAt: p.landlordNotifiedAt ?? null,
       landlordFinalNotifiedAt: p.landlordFinalNotifiedAt ?? null,
@@ -516,13 +481,13 @@ export async function loadScheduledCommunications(
       finalReminderHeldAt: state.finalReminderHeldAt,
       landlordLateNotify: lease.landlordLateNotify && !!landlord.to,
       landlordNotifiedAt: state.landlordNotifiedAt,
-      // While an agreement holds only the first step after the agreed date is shown.
-      firstStepOnly: notDueYet || paused,
-      referenceDate: agreement ? until : null,
+      // While muted only the first step after the mute end date is shown.
+      firstStepOnly: notDueYet || rowPaused,
+      referenceDate: restart ? restart.until : null,
     });
 
     let held = false;
-    if (!paused) {
+    if (!rowPaused) {
       try {
         held = !!(await loadWaitingTransfer(db, { leaseId, ownerId: lease.ownerId, dueDate: due, amount }));
       } catch (err) {
@@ -534,8 +499,8 @@ export async function loadScheduledCommunications(
       if (s.audience === "tenant" && !followUpEnabled) continue;
       // The late notice is only for the landlord; the third-reminder notice goes regardless.
       const isLandlord = s.audience === "landlord";
-      const condition: ScheduledCondition = paused
-        ? "if_unpaid_after_agreement"
+      const condition: ScheduledCondition = rowPaused
+        ? "if_unpaid_after_mute"
         : held
           ? "on_hold_transfer_review"
           : notDueYet

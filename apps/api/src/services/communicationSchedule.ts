@@ -26,7 +26,7 @@ export type ScheduledCondition =
   | "if_unpaid"
   | "if_unpaid_on_due_date"
   | "if_unpaid_unless_held"
-  | "if_unpaid_after_agreement"
+  | "if_unpaid_after_mute"
   | "if_index_published"
   | "on_hold_transfer_review";
 

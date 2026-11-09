@@ -55,18 +55,19 @@ import { autoAssignByAmount } from "../services/amountMatcher";
 import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
 import {
   combineReminder,
+  companionRow,
   daysBetween,
-  hasAgreement,
-  isAgreementActive,
+  isMuteActive,
   isOpenRentRow,
   ladderState,
-  monthAgreement,
+  muteOf,
+  mutedRows,
   planForPayment,
-  ridersFor,
-} from "../services/paymentAgreement";
+  type Mute,
+} from "../services/reminderMute";
 import type { CarriedAmount } from "../services/reminderText";
 
-/** Every row of a lease, with what the agreement and reminder rules need. */
+/** Every row of a lease, with what the mute and reminder rules need. */
 async function loadLeaseRows(db: ReturnType<typeof getDb>, leaseId: string) {
   return db
     .select({
@@ -77,8 +78,6 @@ async function loadLeaseRows(db: ReturnType<typeof getDb>, leaseId: string) {
       paidDate: payments.paidDate,
       notes: payments.notes,
       isIgnored: payments.isIgnored,
-      agreementUntil: payments.agreementUntil,
-      agreementAt: payments.agreementAt,
     })
     .from(payments)
     .where(eq(payments.leaseId, leaseId));
@@ -86,26 +85,35 @@ async function loadLeaseRows(db: ReturnType<typeof getDb>, leaseId: string) {
 
 type LeaseRow = Awaited<ReturnType<typeof loadLeaseRows>>[number];
 
+/** The contract's reminder mute, or null. */
+async function loadMute(db: ReturnType<typeof getDb>, leaseId: string): Promise<Mute | null> {
+  const row = (
+    await db
+      .select({ remindersMutedUntil: leases.remindersMutedUntil, remindersMutedAt: leases.remindersMutedAt })
+      .from(leases)
+      .where(eq(leases.id, leaseId))
+      .limit(1)
+  )[0];
+  return row ? muteOf(row) : null;
+}
+
 /**
- * The settlement of every open row that an agreement could involve: rows with
- * an agreement and rows due on an agreed date. Other rows are not looked at.
+ * The settlement of every open row a mute involves: the rows that were muted
+ * and the rent due on the mute end date. Other rows are not looked at.
  */
-async function agreementSettlements(
+async function muteSettlements(
   db: ReturnType<typeof getDb>,
   lease: Parameters<typeof periodSettlement>[1],
   rows: LeaseRow[],
+  mute: Mute | null,
   today: string,
 ): Promise<Map<string, Awaited<ReturnType<typeof periodSettlement>>>> {
   const out = new Map<string, Awaited<ReturnType<typeof periodSettlement>>>();
-  const agreedDates = new Set(
-    rows.filter(hasAgreement).map((r) => String(r.agreementUntil).slice(0, 10)),
+  if (!mute) return out;
+  const involved = [...mutedRows(rows, mute), companionRow(rows, mute)].filter(
+    (r): r is LeaseRow => !!r && isOpenRentRow(r),
   );
-  if (agreedDates.size === 0) return out;
-  for (const r of rows) {
-    if (!isOpenRentRow(r)) continue;
-    if (!hasAgreement(r) && !agreedDates.has(String(r.dueDate).slice(0, 10))) continue;
-    out.set(r.id, await periodSettlement(db, lease, r.dueDate, today));
-  }
+  for (const r of involved) out.set(r.id, await periodSettlement(db, lease, r.dueDate, today));
   return out;
 }
 
@@ -336,19 +344,17 @@ async function sendDueDateTenantSms(
       if (settlement.settled) continue;
       const amountDue = amountDueFor(settlement, p.amount);
 
-      // An agreement with the tenant pauses the due-date message too. And when
-      // an earlier amount was agreed to be paid with this rent, the evening
-      // reminder asks for both at once, so no separate nudge goes out.
-      const leaseRows = await loadLeaseRows(db, p.leaseId);
-      const monthIds = [
-        ...new Set([p.paymentId, ...rowIdsForMonth(leaseRows, String(p.dueDate).slice(0, 7), lease.paymentDay)]),
-      ];
-      const own = monthAgreement(leaseRows, monthIds);
-      if (own && isAgreementActive(own, today)) continue;
-      const settlements = await agreementSettlements(db, lease, leaseRows, today);
-      const riders = ridersFor(leaseRows, { id: p.paymentId, status: "pending", dueDate: String(p.dueDate) }, today)
-        .filter((r) => settlements.get(r.id)?.settled === false);
-      if (riders.length > 0) continue;
+      // A muted contract gets no due-date message either. And on the mute end
+      // date the evening reminder asks for this rent together with the muted
+      // amounts, so no separate nudge goes out.
+      const mute = await loadMute(db, p.leaseId);
+      if (isMuteActive(mute, today)) continue;
+      if (mute && mute.until === String(p.dueDate).slice(0, 10)) {
+        const leaseRows = await loadLeaseRows(db, p.leaseId);
+        const settlements = await muteSettlements(db, lease, leaseRows, mute, today);
+        const muted = mutedRows(leaseRows, mute).filter((r) => settlements.get(r.id)?.settled === false);
+        if (muted.length > 0) continue;
+      }
 
       const settings = (
         await db
@@ -556,11 +562,11 @@ const worker = new Worker(
         if (settlement.settled) continue;
         const ownDue = amountDueFor(settlement, payment.amount);
 
-        // An agreement with the tenant (see paymentAgreement.ts). While it
-        // holds nothing goes out for this month: no tenant reminder, no
-        // landlord notice, no transfer-review hold. Once the agreed date has
-        // come the ladder starts over from that date, and when the next rent
-        // falls on it the tenant gets one reminder for both amounts.
+        // Reminders muted for the contract (see reminderMute.ts). While muted
+        // nothing goes out for any open amount: no tenant reminder, no
+        // landlord notice, no transfer-review hold. From the mute end date the
+        // ladder starts over from that date, with one reminder covering all
+        // amounts that were muted plus the rent due on that date.
         const leaseRows = await loadLeaseRows(db, payment.leaseId);
         const monthRowIds = [
           ...new Set([
@@ -568,22 +574,21 @@ const worker = new Worker(
             ...rowIdsForMonth(leaseRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
           ]),
         ];
-        const agreementSettled = await agreementSettlements(db, lease, leaseRows, today);
+        const mute = await loadMute(db, payment.leaseId);
+        const muteSettled = await muteSettlements(db, lease, leaseRows, mute, today);
         const plan = planForPayment({
           payment: { id: payment.paymentId, status: payment.status, dueDate: String(payment.dueDate) },
           leaseRows,
-          monthRowIds,
+          mute,
           today,
-          isUnsettled: (r) => agreementSettled.get(r.id)?.settled === false,
+          isUnsettled: (r) => muteSettled.get(r.id)?.settled === false,
         });
         if (plan.kind === "paused") {
-          console.log(`[PaymentCheck] agreement until ${plan.until}: nothing sent for ${payment.paymentId}`);
+          console.log(`[PaymentCheck] reminders muted until ${plan.until}: nothing sent for ${payment.paymentId}`);
           continue;
         }
         if (plan.kind === "rides_along") {
-          console.log(
-            `[PaymentCheck] ${payment.paymentId} is reminded together with ${plan.companion.id} (agreement)`,
-          );
+          console.log(`[PaymentCheck] ${payment.paymentId} is reminded together with ${plan.lead.id} (mute ended)`);
           continue;
         }
         const combined = combineReminder({
@@ -592,7 +597,7 @@ const worker = new Worker(
           ownDue,
           owed: settlement.owed,
           extraFor: (row) => {
-            const s = agreementSettled.get(row.id);
+            const s = muteSettled.get(row.id);
             return s ? amountDueFor(s, row.amount) : 0;
           },
         });
@@ -659,8 +664,8 @@ const worker = new Worker(
 
         // Reminders already sent for this rent month, on any of its rows: a
         // remainder row continues the ladder of the month's paid rows, so the
-        // tenant never gets the same level twice for one month. After an
-        // agreement only what was sent from the agreed date on counts.
+        // tenant never gets the same level twice for one month. After a mute
+        // only what was sent from the mute end date on counts.
         const existingReminders = await db
           .select({
             paymentId: paymentReminders.paymentId,
@@ -671,10 +676,7 @@ const worker = new Worker(
           .where(inArray(paymentReminders.paymentId, monthRowIds));
         const ladder = ladderState({
           dueDate: String(payment.dueDate),
-          agreement:
-            plan.kind === "resumed"
-              ? { until: String(plan.agreement.agreementUntil), at: plan.agreement.agreementAt }
-              : null,
+          restart: plan.kind === "resumed" ? plan.mute : null,
           reminders: existingReminders,
           landlordNotifiedAt: payment.landlordNotifiedAt,
           landlordFinalNotifiedAt: payment.landlordFinalNotifiedAt,
@@ -766,8 +768,8 @@ const worker = new Worker(
             }
           : DEFAULT_SETTINGS;
 
-        // Days past due, counted from the agreed date after an agreement: by
-        // the agreement that is when the money became due.
+        // Days past due, counted from the mute end date after a mute: the
+        // landlord gave the tenant until then.
         const daysPastDue = daysBetween(ladder.referenceDate, today);
         const remindersSent = ladder.remindersSent;
 
@@ -959,16 +961,6 @@ const worker = new Worker(
         const settlement = await periodSettlement(db, lease, payment.dueDate, today);
         if (settlement.settled) continue;
         const amountDue = amountDueFor(settlement, payment.amount);
-        // An agreement with the tenant for this month: the landlord knows.
-        const dueRows = await loadLeaseRows(db, payment.leaseId);
-        const dueMonthIds = [
-          ...new Set([
-            payment.paymentId,
-            ...rowIdsForMonth(dueRows, String(payment.dueDate).slice(0, 7), lease.paymentDay),
-          ]),
-        ];
-        const dueAgreement = monthAgreement(dueRows, dueMonthIds);
-        if (dueAgreement && isAgreementActive(dueAgreement, today)) continue;
 
         const tenantData = await db
           .select({ firstName: tenants.firstName, lastName: tenants.lastName })

@@ -12,7 +12,7 @@ import { propertiesRouter } from "./routes/properties";
 import { tenantsRouter } from "./routes/tenants";
 import { leasesRouter } from "./routes/leases";
 import { paymentsRouter } from "./routes/payments";
-import { paymentAgreementsRouter } from "./routes/paymentAgreements";
+import { reminderMuteRouter } from "./routes/reminderMute";
 import { indexationRouter } from "./routes/indexation";
 import { webhooksRouter } from "./routes/webhooks";
 import { settingsRouter } from "./routes/settings";
@@ -177,8 +177,8 @@ app.route("/app", appVersionRouter);
 // Routes
 app.route("/properties", propertiesRouter);
 app.route("/tenants", tenantsRouter);
+app.route("/leases", reminderMuteRouter);
 app.route("/leases", leasesRouter);
-app.route("/payments", paymentAgreementsRouter);
 app.route("/payments", paymentsRouter);
 app.route("/indexation", indexationRouter);
 app.route("/webhooks", webhooksRouter);

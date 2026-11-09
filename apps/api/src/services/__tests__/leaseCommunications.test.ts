@@ -119,8 +119,8 @@ describe("loadPastCommunications", () => {
   });
 });
 
-describe("internal agreement notes", () => {
-  it("show as internal, with the agreed date, the note and who recorded it", () => {
+describe("internal notes about muted reminders", () => {
+  it("show as internal, with the mute end date, the note and who recorded it", () => {
     const names = new Map([["user-1", "Jasper Nuyens"]]);
     const out = toPastCommunication(
       {
@@ -130,13 +130,10 @@ describe("internal agreement notes", () => {
         recipientName: "Jasper Nuyens",
         recipientEmail: null,
         subject: null,
-        body: "Agreement with the tenant",
+        body: "Internal note: late payment reminders muted until 04/12/2026.",
         metadata: {
-          kind: "payment_agreement",
+          kind: "reminder_mute",
           action: "set",
-          paymentId: "pay-1",
-          dueDate: "2026-11-04",
-          amount: 25,
           until: "2026-12-04",
           previousUntil: null,
           note: "pays with December",
@@ -148,17 +145,15 @@ describe("internal agreement notes", () => {
     );
     expect(out.audience).toBe("internal");
     expect(out.triggeredByName).toBe("Jasper Nuyens");
-    expect(out.agreement).toEqual({
+    expect(out.mute).toEqual({
       action: "set",
       until: "2026-12-04",
       previousUntil: null,
       note: "pays with December",
-      dueDate: "2026-11-04",
-      amount: 25,
     });
   });
 
-  it("a normal message has no agreement", () => {
-    expect(toPastCommunication({ ...base, metadata: null }, new Map()).agreement).toBeNull();
+  it("a normal message has no mute note", () => {
+    expect(toPastCommunication({ ...base, metadata: null }, new Map()).mute).toBeNull();
   });
 });
