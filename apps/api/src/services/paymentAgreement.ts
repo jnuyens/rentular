@@ -204,6 +204,48 @@ export function ladderState(input: {
   };
 }
 
+/**
+ * The amount one reminder asks for when amounts are combined: this row's own
+ * amount plus the next rent (agreement row on its agreed date) or plus the
+ * earlier amounts riding along (the next rent once overdue). `extraFor` gives
+ * what another row still asks on its own. Capped at what the contract owes.
+ */
+export function combineReminder<T extends AgreementRowLike>(input: {
+  plan: AgreementPlan<T>;
+  payment: { id: string; dueDate: string };
+  ownDue: number;
+  owed: number | null;
+  extraFor: (row: T) => number;
+}): {
+  amount: number;
+  carried: Array<{ amount: number; dueDate: string }>;
+  /** Other rows that get the same reminder and landlord stamps. */
+  alsoRecord: string[];
+} {
+  const carried: Array<{ amount: number; dueDate: string }> = [];
+  const alsoRecord: string[] = [];
+  let amount = input.ownDue;
+  const add = (row: T, carriedEntry: (extra: number) => { amount: number; dueDate: string }) => {
+    const extra = input.extraFor(row);
+    if (!(extra > 0)) return;
+    carried.push(carriedEntry(extra));
+    alsoRecord.push(row.id);
+    amount += extra;
+  };
+  const { plan } = input;
+  if (plan.kind === "resumed" && plan.companion) {
+    add(plan.companion, () => ({ amount: input.ownDue, dueDate: ymd(input.payment.dueDate)! }));
+  }
+  if (plan.kind === "normal") {
+    for (const r of plan.riders) add(r, (extra) => ({ amount: extra, dueDate: ymd(r.dueDate)! }));
+  }
+  if (carried.length > 0) {
+    amount = Math.round(amount * 100) / 100;
+    if (input.owed != null) amount = Math.min(amount, input.owed);
+  }
+  return { amount, carried, alsoRecord };
+}
+
 /** What the evening run does with one overdue payment, as far as agreements go. */
 export type AgreementPlan<T extends AgreementRowLike> =
   /** No agreement for the month: the normal ladder, plus any earlier amounts riding along. */

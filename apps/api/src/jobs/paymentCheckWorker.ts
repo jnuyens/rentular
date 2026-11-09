@@ -54,6 +54,7 @@ import { autoAssignByIban } from "../services/ibanMatcher";
 import { autoAssignByAmount } from "../services/amountMatcher";
 import { beforeTrackingWindow, cappedReminderAmount, loadContractBalance } from "../services/contractBalance";
 import {
+  combineReminder,
   daysBetween,
   hasAgreement,
   isAgreementActive,
@@ -585,29 +586,22 @@ const worker = new Worker(
           );
           continue;
         }
-        let amountDue = ownDue;
-        let remainderContext = settlement.remainder;
-        const carried: CarriedAmount[] = [];
+        const combined = combineReminder({
+          plan,
+          payment: { id: payment.paymentId, dueDate: String(payment.dueDate) },
+          ownDue,
+          owed: settlement.owed,
+          extraFor: (row) => {
+            const s = agreementSettled.get(row.id);
+            return s ? amountDueFor(s, row.amount) : 0;
+          },
+        });
+        const amountDue = combined.amount;
+        const carried: CarriedAmount[] = combined.carried;
+        // The month sentence would describe only part of a combined amount.
+        const remainderContext = carried.length > 0 ? null : settlement.remainder;
         // Rows whose reminders and landlord notices are recorded with this one.
-        const alsoRecord: string[] = [];
-        const addRow = (row: LeaseRow, asCarried: boolean, ownAmount: number) => {
-          const s = agreementSettled.get(row.id);
-          if (!s) return;
-          const extra = amountDueFor(s, row.amount);
-          if (!(extra > 0)) return;
-          carried.push(asCarried ? { amount: extra, dueDate: String(row.dueDate) } : { amount: ownAmount, dueDate: String(payment.dueDate) });
-          alsoRecord.push(row.id);
-          amountDue += extra;
-        };
-        if (plan.kind === "resumed" && plan.companion) addRow(plan.companion, false, ownDue);
-        if (plan.kind === "normal") for (const r of plan.riders) addRow(r, true, 0);
-        if (carried.length > 0) {
-          // The month sentence would describe only part of the amount.
-          remainderContext = null;
-          amountDue = Math.round(amountDue * 100) / 100;
-          if (settlement.owed != null) amountDue = Math.min(amountDue, settlement.owed);
-        }
-        const stampRows = [payment.paymentId, ...alsoRecord];
+        const stampRows = [payment.paymentId, ...combined.alsoRecord];
 
         // Primary tenant addressed, co-tenants copied on the reminder email.
         const tenantRec = await getLeaseEmailRecipients(payment.leaseId);
