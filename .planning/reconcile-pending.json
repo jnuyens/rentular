@@ -1,0 +1,448 @@
+{
+  "version": 1,
+  "entries": {
+    "02ed904b68ff21ee": {
+      "decisionText": "Used Hono built-in csrf() middleware with ALLOWED_ORIGINS env var shared by both CORS and CSRF",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Context attachment: userId attached to Hono context via middleware"
+        }
+      ]
+    },
+    "1d2278b8d63f48de": {
+      "decisionText": "Health check verifies DB and Redis but skips SMTP (email is async via BullMQ)",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Redis (for BullMQ queue processing)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "SMTP server or Mailpit for email"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ BullMQ email and SMS queue infrastructure — existing"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Health check endpoint (DB + Redis) — Phase 1"
+        }
+      ]
+    },
+    "d057d8255b421382": {
+      "decisionText": "Used object-return callback format for Drizzle index definitions matching existing propertyManagers.ts convention",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Used by: Both apps for consistent data definitions"
+        }
+      ]
+    },
+    "ef4c7f73f8ac1eff": {
+      "decisionText": "Removed memoryStore fallback from properties, tenants, bankAccounts routes -- fail-fast on DB errors instead of silent degradation",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Throws error in `getRequiredUserId()` for convenience routes"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ In-memory store fallbacks removed (fail fast on DB errors) — Phase 1"
+        }
+      ]
+    },
+    "c4872e37a6da809c": {
+      "decisionText": "eventId unique constraint for DB-level webhook idempotency",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ GoCardless webhook persistence with idempotent event processing — Phase 2"
+        }
+      ]
+    },
+    "07adcdbd304bb844": {
+      "decisionText": "Forward-jump state transitions allowed to handle out-of-order GoCardless webhook events",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ GoCardless webhook persistence with idempotent event processing — Phase 2"
+        }
+      ]
+    },
+    "28cf2af366455711": {
+      "decisionText": "Manual payments immediately marked as paid (no state machine transition needed)",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Payment state machine enforcing valid status transitions — Phase 2"
+        }
+      ]
+    },
+    "c563c3022f312198": {
+      "decisionText": "Webhook events inserted as processing before handler runs, updated to processed/failed after -- ensures audit trail even on crash",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ GoCardless webhook persistence with idempotent event processing — Phase 2"
+        }
+      ]
+    },
+    "b84a0e250520c6bb": {
+      "decisionText": "Transaction matching: digits-only normalization of structured communications for tolerance",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Transaction matching by Belgian structured communication — Phase 2"
+        }
+      ]
+    },
+    "7ddf9d7c94893728": {
+      "decisionText": "CommunicationMeta is optional third parameter on queueEmail/queueSms for backward compatibility",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Optional: SMS provider (Twilio, MessageBird, OVH) for SMS communications"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "`...Options` suffix for function parameters: `EmailOptions`"
+        }
+      ]
+    },
+    "8aeeca5aa10117a9": {
+      "decisionText": "ownerId passed through email queue job data for per-landlord SMTP transport selection at send time",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "SMTP server or Mailpit for email"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Queue operations: `await emailQueue.add(\"send-email\", options, {...})`"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ BullMQ email and SMS queue infrastructure — existing"
+        }
+      ]
+    },
+    "399b2674626a5ede": {
+      "decisionText": "Properties PATCH requires manager+ role, DELETE requires co_owner+ role -- graduated access replacing ownerId checks",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Null/undefined checks required"
+        }
+      ]
+    },
+    "06b56ed9efb18a9c": {
+      "decisionText": "Removed memoryStore fallback from properties.ts -- fail-fast with typed DB imports",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ In-memory store fallbacks removed (fail fast on DB errors) — Phase 1"
+        }
+      ]
+    },
+    "683914a2481efecf": {
+      "decisionText": "Lease ownerId on creation set to property owner (not current user) so managers can create leases that belong to the property owner",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Purpose: Server-side rendered Next.js app providing user interface for property and lease management"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Lease creation and tracking (linking tenants to properties) — existing"
+        }
+      ]
+    },
+    "e9cd2af2347e8f6c": {
+      "decisionText": "Costs with no propertyId remain accessible only to ownerId user (general costs not property-scoped)",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile."
+        }
+      ]
+    },
+    "e80ec06d6058f34a": {
+      "decisionText": "Tenant POST does not require property check; tenants linked to properties via leases",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "A Belgian rental property management platform for landlords and property managers. Rentular handles property listings, tenant management, lease tracking (residential and commercial), automated rent collection via SEPA direct debit (GoCardless), payment follow-up with email and SMS reminders, Belgian rent indexation, and payment reporting. It competes on price against existing Belgian tools like Smovin and Rentila."
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Null/undefined checks required"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "A Belgian rental property management platform for landlords and property managers. Rentular handles property listings, tenant management, lease tracking (residential and commercial), automated rent collection via SEPA direct debit (GoCardless), payment follow-up with email and SMS reminders, Belgian rent indexation, and payment reporting. It competes on price against existing Belgian tools like Smovin and Rentila."
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Lease creation and tracking (linking tenants to properties) — existing"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Guided onboarding wizard: add property, tenant, lease, payment collection setup — Phase 7"
+        }
+      ]
+    },
+    "41c4c83c23efbfac": {
+      "decisionText": "Payments linked to first lease of property; skipped if no leases exist",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "A Belgian rental property management platform for landlords and property managers. Rentular handles property listings, tenant management, lease tracking (residential and commercial), automated rent collection via SEPA direct debit (GoCardless), payment follow-up with email and SMS reminders, Belgian rent indexation, and payment reporting. It competes on price against existing Belgian tools like Smovin and Rentila."
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "A Belgian rental property management platform for landlords and property managers. Rentular handles property listings, tenant management, lease tracking (residential and commercial), automated rent collection via SEPA direct debit (GoCardless), payment follow-up with email and SMS reminders, Belgian rent indexation, and payment reporting. It competes on price against existing Belgian tools like Smovin and Rentila."
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Lease creation and tracking (linking tenants to properties) — existing"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Payment overview report with period/property/lease filtering — Phase 2"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Guided onboarding wizard: add property, tenant, lease, payment collection setup — Phase 7"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "[ ] Basic auto-generated maintenance reminders based on property/lease type — *route logic exists (Phase 1), needs end-to-end testing*"
+        }
+      ]
+    },
+    "5537b7e29456971e": {
+      "decisionText": "NAV_VISIBILITY blocking pattern added to layout to restrict import and settings sidebar items to owner role",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Dashboard layout with sidebar navigation — existing"
+        }
+      ]
+    },
+    "2cff079a4290d5c5": {
+      "decisionText": "All 9 dashboard pages now use shadcn/ui exclusively; i18n audit confirms 751 keys per locale with 0 missing",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Complete GoCardless/mandate i18n keys in all 4 locales — Phase 8"
+        }
+      ]
+    },
+    "5d94b0ea5cf42faa": {
+      "decisionText": "next.config.ts uses output standalone + outputFileTracingRoot at monorepo root; build emits apps/web/server.js for Docker runner",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Next.js configuration (if exists, not explicitly read)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Tool: Prettier 3.2.0 (configured at workspace root)"
+        }
+      ]
+    },
+    "d5616440e9d40476": {
+      "decisionText": "[Phase 10]: Bootstrap CLI guarded by import.meta.url entrypoint check so the unit test imports createOwnerIfMissing without triggering drizzle-kit push or a DB connection",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Health check endpoint (DB + Redis) — Phase 1"
+        }
+      ]
+    },
+    "253ffcd02eaa34e6": {
+      "decisionText": "[Phase 10]: tsup bundles first-party @rentular/* (main points at raw .ts) + createRequire banner for CJS deps so the API ESM entry dist/index.mjs is actually runnable — verified by booting it locally",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Use these entry points:"
+        }
+      ]
+    },
+    "dd8e13d8cd9e7b00": {
+      "decisionText": "[Phase 10]: NEXT_PUBLIC_API_URL baked as a Docker build ARG (ENV before next build) in apps/web/Dockerfile; runtime injection is ignored by the compiled browser bundle",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "tsup 8.3.0 - TypeScript bundler for API builds (`apps/api/package.json`)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "**API & Web URLs:** API_PORT, API_URL, WEB_URL, NEXT_PUBLIC_API_URL"
+        }
+      ]
+    },
+    "83c43c403048ceb6": {
+      "decisionText": "[Phase 10]: docker-compose.prod.yml publishes every port on 127.0.0.1 loopback only (host nginx sole ingress); mariadb/redis loopback-published so deploy.sh host-shell bootstrap reaches DB at 127.0.0.1:3306 while off the public interface",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "**Redis:** REDIS_URL (or REDIS_HOST/REDIS_PORT)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "**API & Web URLs:** API_PORT, API_URL, WEB_URL, NEXT_PUBLIC_API_URL"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Health check endpoint (DB + Redis) — Phase 1"
+        }
+      ]
+    },
+    "f80e8c02e4e94eb0": {
+      "decisionText": "[Phase 11]: record-payment and send-reminder hardened to manager+ via the mark-month-paid gate (getUserPropertyRole + hasMinimumRole); send-reminder keeps the access check so writeGuards can distinguish not-accessible from accessible-manager",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Health check endpoint (DB + Redis) — Phase 1"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Automated payment reminders (configurable per language, per reminder level) — Phase 4"
+        }
+      ]
+    },
+    "14fdb5c1f382f702": {
+      "decisionText": "[Phase 11]: one shared reminderChannel.sendReminderViaPreferredChannel dispatch used by both the 19:15 worker and the manual send-reminder path; channel used is recorded in payment_reminders, email is the fallback",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Automated payment reminders (configurable per language, per reminder level) — Phase 4"
+        }
+      ]
+    },
+    "214a759b095c0210": {
+      "decisionText": "11-04: Bearer PAT branch is exclusive and fail-closed at the top of authMiddleware; a non-rtl or unresolved Bearer sets userId null and returns before any cookie read",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Missing/invalid JWT: authMiddleware sets userId to null"
+        }
+      ]
+    },
+    "09316c3a8f3faa58": {
+      "decisionText": "[Phase 11]: 11-05 Settings API-tokens UI keeps the plaintext rtl_ token only in React newToken state (show-once dialog, cleared on close), scope defaults to read, revoke needs a naming confirmation; 34 keys added across en/nl/fr/de",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Next.js configuration (if exists, not explicitly read)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "`...Settings` suffix for configuration objects: `PaymentFollowUpSettings`"
+        }
+      ]
+    },
+    "8089d9b20fb5ed92": {
+      "decisionText": "11-06 MCP server is a standalone ESM package (apps/mcp-server) holding a PAT and calling the HTTP API; 7 read + 4 write tools, Bearer rtl_ + X-Rentular-Tool, transport confined to index.ts so remote/OpenAPI stay a clean follow-on",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Hono 4.6.0 - Lightweight HTTP server framework for API (`apps/api/package.json`)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "PostCSS 8.4.49 - CSS transformation tool"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "tsx 4.19.0 - TypeScript executor for development server (`apps/api/package.json`)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Drizzle ORM configuration in `packages/db/drizzle.config.ts` for MySQL dialect"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Next.js configuration (if exists, not explicitly read)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Tool: Prettier 3.2.0 (configured at workspace root)"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Location: `apps/api/src/index.ts`"
+        }
+      ]
+    },
+    "2de9cb57586c6d25": {
+      "decisionText": "Used static imports for DB access in route files instead of dynamic require() with memory-store fallback",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Graceful fallback to in-memory store when database is unavailable"
+        },
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "Used by: Both API and web app for data access"
+        }
+      ]
+    },
+    "18ae269faabefd52": {
+      "decisionText": "Phase marker format established: // Phase N: brief description of deferred work",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "`/gsd:execute-phase` for planned phase work"
+        }
+      ]
+    },
+    "17612a9e45e0dc0c": {
+      "decisionText": "[Phase 10]: prod DB passwords required via VAR-colon-question form (no default fallbacks/literals); api+web secrets via env_file /opt/rentular/.env (root:600); web NEXT_PUBLIC_API_URL baked via compose build.args",
+      "candidates": [
+        {
+          "file": "CLAUDE.md",
+          "ruleText": "**API & Web URLs:** API_PORT, API_URL, WEB_URL, NEXT_PUBLIC_API_URL"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "2. Requirements validated? -> Move to Validated with phase reference"
+        }
+      ]
+    },
+    "c2669a0e10f87bde": {
+      "decisionText": "Marketing page uses useEffect fetch for pricing with static fallback for resilience",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Landing page with marketing content and pricing — existing"
+        }
+      ]
+    },
+    "b16b15de2078d643": {
+      "decisionText": "DashboardSidebar/MobileNav split: server layout passes data as props to client components for responsive sidebar/drawer",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Dashboard layout with sidebar navigation — existing"
+        },
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Responsive dashboard with mobile hamburger drawer, shadcn/ui components across all pages — Phase 7"
+        }
+      ]
+    },
+    "2573f92b72fb3c09": {
+      "decisionText": "Table-to-Card responsive pattern (hidden md:block / md:hidden) for properties, tenants, leases pages",
+      "candidates": [
+        {
+          "file": ".planning/PROJECT.md",
+          "ruleText": "✓ Lease creation and tracking (linking tenants to properties) — existing"
+        }
+      ]
+    }
+  }
+}

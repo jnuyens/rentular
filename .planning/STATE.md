@@ -229,6 +229,7 @@ None yet.
 | 261106-bal | Reminders follow the contract balance (credit, arrears marking), every known-tenant transfer booked oldest month first | 2026-11-06 | f7713e3 | [261106-bal-contract-balance-reminders-and-odd-amounts](./quick/261106-bal-contract-balance-reminders-and-odd-amounts/) |
 | 261107-rpl | Per-contract reply address: tenant replies filed on the contract and forwarded to the managers, Cloudflare email worker | 2026-11-08 | 81cdf11 | [261107-rpl-tenant-reply-address](./quick/261107-rpl-tenant-reply-address/) |
 | 261108-shd | Current self-hosting docs (SELF-HOSTING.md, CONTRIBUTING.md, README, env templates), SMTP auth, turbo env and compose fixes, stray worktree copy untracked | 2026-11-08 | 84e0764 | [261108-shd-self-hosting-docs](./quick/261108-shd-self-hosting-docs/) |
+| 261109-agr | Per-contract "mute late payment reminders until" (next rent, next week, date) on overview, payments and contract page, internal notes in the contract history | 2026-11-09 | 4222cbc | [261109-agr-payment-agreement-pause-reminders](./quick/261109-agr-payment-agreement-pause-reminders/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
