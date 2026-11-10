@@ -257,7 +257,6 @@ export default function MarketingPage() {
               </div>
             </div>
             <div className="mt-6 space-y-1 text-xs text-muted-foreground">
-              <p>{t("pricingBankNote")}</p>
               <p>
                 {t.rich("pricingBankFreeNote", {
                   link: (chunks) => (
