@@ -104,8 +104,11 @@ const core = {
   currentIndexPublished: true,
 };
 
+const computeIndexationCore = vi.fn(async (): Promise<Record<string, unknown>> => ({ ...core }));
 vi.mock("../../services/indexationCalc", () => ({
-  computeIndexationCore: vi.fn(async () => ({ ...core })),
+  computeIndexationCore: () => computeIndexationCore(),
+  localYmd: (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
 }));
 
 const generateDefaultIndexationEmail = vi.fn((_params: { effectiveDate: string }) => ({
@@ -214,6 +217,8 @@ beforeEach(() => {
   updateSets.length = 0;
   generateDefaultIndexationEmail.mockClear();
   queueEmail.mockClear();
+  computeIndexationCore.mockReset();
+  computeIndexationCore.mockImplementation(async () => ({ ...core }));
 });
 
 describe("POST /indexation/apply/:leaseId effectiveDate", () => {
@@ -304,5 +309,73 @@ describe("GET /indexation/calculate/:leaseId", () => {
     const json = (await res.json()) as { indexationDate: string; effectiveDateOptions: string[] };
     expect(json.indexationDate).toBe("2026-05-01");
     expect(json.effectiveDateOptions).toHaveLength(4);
+  });
+});
+
+describe("Brussels EPB correction factor on apply", () => {
+  const brusselsLease = { ...leaseRow, region: "brussels", startDate: "2021-11-10", brusselsEpcFactor: null, leaseRegistered: true };
+  const corrected = {
+    ...core,
+    unrestrictedNewRent: 740.47,
+    newRent: 700,
+    epcIndexationFactor: 0.945356473,
+    epcRestricted: true,
+    correctionApplied: true,
+    brussels: { label: "E", beforeCutoff: true, anniversaryPeriod: "11", factor: 0.945356473, factorFromLease: false },
+    indexationBlocked: null,
+  };
+
+  it("stores the factor on the lease the first time it is applied", async () => {
+    computeIndexationCore.mockImplementation(async () => ({ ...corrected }));
+    const app = await buildApp();
+    selectQueue.push([brusselsLease], [propertyRow], [ownerRow]);
+    const res = await post(app, "/indexation/apply/lease-1", applyBody);
+    expect(res.status).toBe(200);
+    expect(updateSets[0]).toMatchObject({ brusselsEpcFactor: "0.945356473", brusselsEpcFactorLabel: "E" });
+    expect((updateSets[0] as Record<string, unknown>).brusselsEpcFactorSetAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("does not overwrite a factor already stored", async () => {
+    computeIndexationCore.mockImplementation(async () => ({
+      ...corrected,
+      brussels: { ...corrected.brussels, factorFromLease: true },
+    }));
+    const app = await buildApp();
+    selectQueue.push([{ ...brusselsLease, brusselsEpcFactor: "0.945356473" }], [propertyRow], [ownerRow]);
+    const res = await post(app, "/indexation/apply/lease-1", applyBody);
+    expect(res.status).toBe(200);
+    expect(updateSets[0]).not.toHaveProperty("brusselsEpcFactor");
+  });
+
+  it("refuses to apply or preview when indexation is blocked", async () => {
+    computeIndexationCore.mockImplementation(async () => ({
+      ...core,
+      newRent: 675,
+      indexationBlocked: "brussels_not_registered",
+    }));
+    const app = await buildApp();
+    selectQueue.push([brusselsLease], [propertyRow], [ownerRow]);
+    const res = await post(app, "/indexation/apply/lease-1", { ...applyBody, newRent: 675 });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("unregistered");
+    expect(insertValues).toHaveLength(0);
+    expect(updateSets).toHaveLength(0);
+
+    selectQueue.push([brusselsLease], [propertyRow], [ownerRow]);
+    const prev = await post(app, "/indexation/preview/lease-1", {});
+    expect(prev.status).toBe(400);
+  });
+});
+
+describe("apply waits for the legal index month", () => {
+  it("refuses when the index of the month before the anniversary is not published", async () => {
+    computeIndexationCore.mockImplementation(async () => ({ ...core, currentIndexPublished: false }));
+    const app = await buildApp();
+    queueLeaseRows();
+    const res = await post(app, "/indexation/apply/lease-1", applyBody);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("2026-04");
+    expect(insertValues).toHaveLength(0);
+    expect(updateSets).toHaveLength(0);
   });
 });

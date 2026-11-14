@@ -5,7 +5,6 @@ vi.mock("../healthIndex", () => ({
   getLatestHealthIndex: vi.fn(),
 }));
 
-import { BRUSSELS_EPC_INDEXATION_FACTOR } from "@rentular/shared/constants";
 import { getHealthIndexValue, getLatestHealthIndex } from "../healthIndex";
 import {
   firstDueOnOrAfter,
@@ -13,6 +12,8 @@ import {
   computeIndexationCore,
   getFlandersCorrectionFactor,
   getIndexationApplicability,
+  brusselsAnniversaryPeriod,
+  isBrusselsLabelBetterThanE,
 } from "../indexationCalc";
 import { alertCycleDate } from "../indexationAlerts";
 
@@ -165,24 +166,200 @@ describe("computeIndexationCore: Flemish EPC correction after the freeze", () =>
     expect(r.correctionMonth).toBeNull();
   });
 
-  it("leaves the Brussels rule unchanged", async () => {
-    vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
-    mockIndices({ "2026-04": 139.33 });
-    const r = await computeIndexationCore({ ...realLease, region: "brussels" });
-    const factor = BRUSSELS_EPC_INDEXATION_FACTOR["E"]!;
-    const expected = factor >= 1 ? 862.98 : round2(675 + (862.98 - 675) * factor);
-    expect(r.newRent).toBe(expected);
-    expect(r.correctionApplied).toBe(false);
-    expect(r.correctionMonth).toBeNull();
-    expect(r.formulaNote ?? "").not.toContain("anniversary");
-  });
-
   it("keeps the freeze-period rule (EPC D gets 50% of the increase)", async () => {
     vi.setSystemTime(new Date("2023-06-01T12:00:00Z"));
     mockIndices({ "2023-04": 128.5 });
     const r = await computeIndexationCore({ ...realLease, epcLabel: "D" });
     expect(r.newRent).toBe(round2(675 + (r.unrestrictedNewRent - 675) * 0.5));
     expect(r.correctionApplied).toBe(false);
+  });
+});
+
+// Brussels correction factor (Housing Code art. 224/2). Expected rents are
+// worked out by hand from the official table, never read from the constants.
+// Every case uses base rent 1000 and base index 110.11, and a new index of
+// 140.00, so the standard indexed rent is 1000 x 140.00 / 110.11 = 1271.4558,
+// rounded 1271.46.
+describe("computeIndexationCore: Brussels EPB correction factor", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.mocked(getHealthIndexValue).mockReset();
+    vi.mocked(getLatestHealthIndex).mockReset();
+  });
+
+  const bxl = {
+    baseRent: 1000,
+    baseIndex: 110.11,
+    region: "brussels",
+    leaseType: "residential_long",
+    leaseRegistered: true,
+  };
+
+  // November anniversary: indexation in November 2026 uses the October 2026 index.
+  async function november(startDate: string, epcLabel: string | null, extra: Record<string, unknown> = {}) {
+    vi.setSystemTime(new Date("2026-11-20T12:00:00Z"));
+    mockIndices({ "2026-10": 140.0 });
+    return computeIndexationCore({ ...bxl, startDate, epcLabel, ...extra });
+  }
+
+  it("indexes EPB C in full, old or new lease", async () => {
+    for (const start of ["2021-11-10", "2023-11-10"]) {
+      const r = await november(start, "C");
+      expect(r.unrestrictedNewRent).toBe(1271.46);
+      expect(r.newRent).toBe(1271.46);
+      expect(r.epcIndexationFactor).toBe(1);
+      expect(r.epcRestricted).toBe(false);
+      expect(r.indexationBlocked).toBeNull();
+    }
+  });
+
+  it("indexes EPB D in full, old or new lease", async () => {
+    for (const start of ["2021-11-10", "2023-11-10"]) {
+      const r = await november(start, "D");
+      expect(r.newRent).toBe(1271.46);
+      expect(r.epcIndexationFactor).toBe(1);
+      expect(r.epcRestricted).toBe(false);
+    }
+  });
+
+  it("multiplies the whole indexed rent for an old E lease (November)", async () => {
+    // 1271.46 x 0.945356473 = 1201.9829 -> 1201.98
+    const r = await november("2021-11-10", "E");
+    expect(r.newRent).toBe(1201.98);
+    expect(r.epcIndexationFactor).toBe(0.945356473);
+    expect(r.epcRestricted).toBe(true);
+    expect(r.correctionApplied).toBe(true);
+    expect(r.brussels?.anniversaryPeriod).toBe("11");
+    expect(r.brussels?.factorFromLease).toBe(false);
+  });
+
+  it("does not floor below the base rent beyond the standard indexed rent", async () => {
+    // Index 112.00: 1000 x 112 / 110.11 = 1017.16; x 0.890712946 (F, November)
+    // = 906.00, below the base rent 1000, so the result is the base rent.
+    vi.setSystemTime(new Date("2026-11-20T12:00:00Z"));
+    mockIndices({ "2026-10": 112.0 });
+    const r = await computeIndexationCore({ ...bxl, startDate: "2021-11-10", epcLabel: "F" });
+    expect(r.unrestrictedNewRent).toBe(1017.16);
+    expect(r.newRent).toBe(1000);
+  });
+
+  it("applies the F/G factor for a February anniversary (not zero)", async () => {
+    // 1271.46 x 0.923515625 = 1174.2132 -> 1174.21
+    vi.setSystemTime(new Date("2026-02-20T12:00:00Z"));
+    mockIndices({ "2026-01": 140.0 });
+    for (const label of ["F", "G"]) {
+      const r = await computeIndexationCore({ ...bxl, startDate: "2021-02-10", epcLabel: label });
+      expect(r.unrestrictedNewRent).toBe(1271.46);
+      expect(r.newRent).toBe(1174.21);
+      expect(r.epcIndexationFactor).toBe(0.923515625);
+    }
+  });
+
+  it("indexes a G lease that took effect on or after 14 October 2022 in full", async () => {
+    vi.setSystemTime(new Date("2026-11-20T12:00:00Z"));
+    mockIndices({ "2026-09": 140.0, "2026-02": 140.0 });
+    const a = await computeIndexationCore({ ...bxl, startDate: "2022-10-14", epcLabel: "G", today: new Date(2026, 9, 20) });
+    expect(a.newRent).toBe(1271.46);
+    expect(a.epcRestricted).toBe(false);
+    const b = await computeIndexationCore({ ...bxl, startDate: "2023-03-01", epcLabel: "G", today: new Date(2026, 2, 20) });
+    expect(b.newRent).toBe(1271.46);
+    expect(b.epcRestricted).toBe(false);
+  });
+
+  it("splits at 14 October 2022: the 13th is corrected, the 14th is not", async () => {
+    mockIndices({ "2026-09": 140.0 });
+    const today = new Date(2026, 9, 20);
+    // 2022-10-13, F, anniversary 1 to 13 October: 1271.46 x 0.979611041 = 1245.5363 -> 1245.54
+    const before = await computeIndexationCore({ ...bxl, startDate: "2022-10-13", epcLabel: "F", today });
+    expect(before.newRent).toBe(1245.54);
+    expect(before.epcRestricted).toBe(true);
+    expect(before.brussels?.anniversaryPeriod).toBe("10a");
+    const on = await computeIndexationCore({ ...bxl, startDate: "2022-10-14", epcLabel: "F", today });
+    expect(on.newRent).toBe(1271.46);
+    expect(on.epcRestricted).toBe(false);
+  });
+
+  it("uses the 1 to 13 October row for an early October anniversary", async () => {
+    mockIndices({ "2026-09": 140.0 });
+    const today = new Date(2026, 9, 20);
+    // E: 1271.46 x 0.989805521 = 1258.4981 -> 1258.50
+    const e = await computeIndexationCore({ ...bxl, startDate: "2021-10-05", epcLabel: "E", today });
+    expect(e.newRent).toBe(1258.5);
+    expect(e.epcIndexationFactor).toBe(0.989805521);
+    // G: 1271.46 x 0.979611041 = 1245.5363 -> 1245.54
+    const g = await computeIndexationCore({ ...bxl, startDate: "2021-10-05", epcLabel: "G", today });
+    expect(g.newRent).toBe(1245.54);
+    expect(g.epcIndexationFactor).toBe(0.979611041);
+  });
+
+  it("uses the 14 to 31 October row for a late October anniversary", async () => {
+    mockIndices({ "2026-09": 140.0 });
+    const today = new Date(2026, 9, 25);
+    // E: 1271.46 x 0.949447646 = 1207.1847 -> 1207.18
+    const e = await computeIndexationCore({ ...bxl, startDate: "2021-10-20", epcLabel: "E", today });
+    expect(e.newRent).toBe(1207.18);
+    expect(e.epcIndexationFactor).toBe(0.949447646);
+    expect(e.brussels?.anniversaryPeriod).toBe("10b");
+    // F: 1271.46 x 0.898895293 = 1142.9094 -> 1142.91
+    const f = await computeIndexationCore({ ...bxl, startDate: "2021-10-20", epcLabel: "F", today });
+    expect(f.newRent).toBe(1142.91);
+    expect(f.epcIndexationFactor).toBe(0.898895293);
+  });
+
+  it("blocks indexation without an EPB certificate", async () => {
+    const r = await november("2021-11-10", null, { currentRent: 1100 });
+    expect(r.indexationBlocked).toBe("brussels_no_epc");
+    expect(r.newRent).toBe(1100);
+    expect(r.epcRestricted).toBe(true);
+  });
+
+  it("blocks indexation of a lease that is not registered", async () => {
+    const r = await november("2021-11-10", "B", { leaseRegistered: false, currentRent: 1100 });
+    expect(r.indexationBlocked).toBe("brussels_not_registered");
+    expect(r.newRent).toBe(1100);
+    const unknown = await november("2023-11-10", "A", { leaseRegistered: undefined });
+    expect(unknown.indexationBlocked).toBe("brussels_not_registered");
+    expect(unknown.newRent).toBe(1000);
+  });
+
+  it("keeps using a stored factor after the label changed to D", async () => {
+    // Factor stored at an earlier indexation while the label was E (November).
+    // The property now shows D, but no better certificate cleared the factor.
+    // 1271.46 x 0.945356473 -> 1201.98
+    const r = await november("2021-11-10", "D", { brusselsEpcFactor: 0.945356473 });
+    expect(r.newRent).toBe(1201.98);
+    expect(r.brussels?.factorFromLease).toBe(true);
+  });
+
+  it("indexes in full once a better certificate cleared the stored factor", async () => {
+    expect(isBrusselsLabelBetterThanE("C")).toBe(true);
+    expect(isBrusselsLabelBetterThanE("D")).toBe(true);
+    expect(isBrusselsLabelBetterThanE("E")).toBe(false);
+    expect(isBrusselsLabelBetterThanE("G")).toBe(false);
+    expect(isBrusselsLabelBetterThanE(null)).toBe(false);
+    const r = await november("2021-11-10", "C", { brusselsEpcFactor: null });
+    expect(r.newRent).toBe(1271.46);
+    expect(r.epcRestricted).toBe(false);
+  });
+
+  it("never lets a stored factor raise the rent above the standard indexed rent", async () => {
+    const r = await november("2021-11-10", "E", { brusselsEpcFactor: 1.5 });
+    // An out-of-range stored value is ignored and the table value is used.
+    expect(r.newRent).toBe(1201.98);
+  });
+});
+
+describe("brusselsAnniversaryPeriod", () => {
+  it("splits October at the 14th", () => {
+    expect(brusselsAnniversaryPeriod("2021-10-13")).toBe("10a");
+    expect(brusselsAnniversaryPeriod("2021-10-14")).toBe("10b");
+    expect(brusselsAnniversaryPeriod("2021-10-01")).toBe("10a");
+    expect(brusselsAnniversaryPeriod("2021-10-31")).toBe("10b");
+    expect(brusselsAnniversaryPeriod("2021-01-01")).toBe("1");
+    expect(brusselsAnniversaryPeriod("2021-12-31")).toBe("12");
   });
 });
 

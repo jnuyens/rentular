@@ -507,6 +507,9 @@ export async function runIndexationAlerts(now: Date = new Date()): Promise<Index
         epcLabel: row.epcLabel ?? null,
         leaseType: lease.type,
         lastIndexationDate: lease.lastIndexationDate,
+        brusselsEpcFactor: lease.brusselsEpcFactor != null ? Number(lease.brusselsEpcFactor) : null,
+        leaseRegistered: lease.leaseRegistered,
+        currentRent: Number(lease.monthlyRent),
       });
       if (!isAlertDue(lease, core)) continue;
       const cycle = alertCycleDate(lease.startDate, core.applicableFrom);

@@ -4,7 +4,7 @@ import { getDb, healthIndexValues } from "@rentular/db";
 
 // Statbel open-data dump with every CPI and health index value for all base
 // years. Statbel refreshes this file every month.
-const STATBEL_OPENDATA_URL =
+export const STATBEL_OPENDATA_URL =
   "https://statbel.fgov.be/sites/default/files/files/opendata/Consumptieprijsindex%20en%20gezondheidsindex/CPI%20All%20base%20years.zip";
 
 const STATBEL_TXT_NAME = "CPI All base years.txt";
@@ -139,8 +139,9 @@ export async function fetchAndCacheHealthIndex(): Promise<HealthIndexFetchResult
 }
 
 // From this day of the month on, the previous month's index must be cached.
-// Statbel publishes near the end of the month itself, so day 5 leaves margin.
-export const HEALTH_INDEX_DUE_DAY = 5;
+// Statbel publishes month M near the end of month M itself, so by the 3rd of
+// month M+1 it is overdue.
+export const HEALTH_INDEX_DUE_DAY = 3;
 
 function localDateParts(now: Date, tz: string): { year: number; month: number; day: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -155,8 +156,8 @@ function localDateParts(now: Date, tz: string): { year: number; month: number; d
 
 /**
  * The month whose health index must already be cached at `now`, judged in the
- * given timezone. From the 5th, that is the previous month (January asks for
- * December of the year before). Before the 5th there is no requirement yet.
+ * given timezone. From the 3rd, that is the previous month (January asks for
+ * December of the year before). Before the 3rd there is no requirement yet.
  */
 export function expectedLatestMonth(
   now: Date,
@@ -199,12 +200,17 @@ export interface HealthIndexCheckDeps {
   sendEmail(to: string, subject: string, body: string): Promise<void>;
 }
 
-// Slightly under a day so the next daily run can alert again if still broken.
-const ALERT_DEDUPE_TTL_SECONDS = 82800;
+// A failed fetch alerts at most once a day: slightly under a day so the next
+// daily run can alert again if still broken.
+const FETCH_FAILED_DEDUPE_TTL_SECONDS = 82800;
+// A missing month alerts once per month: the key holds the month and lives
+// longer than any month, so the alert is not repeated while it stays missing.
+const STALE_DEDUPE_TTL_SECONDS = 40 * 86400;
 
 /**
- * After a refresh run, warn the admin by email when the fetch failed or the
- * index is overdue. Sends at most once per problem per day (Redis dedupe key).
+ * After a refresh run, warn the admin by email when the fetch failed (at most
+ * once a day) or the index of last month is still missing from the 3rd on (once
+ * per missing month). Redis dedupe keys hold the problem and the month.
  * If Redis is unavailable the alert is still sent: a duplicate mail is better
  * than a silent stale index.
  */
@@ -229,9 +235,10 @@ export async function checkHealthIndexAndAlert(
 
   const key = `healthindex:alert:${kind}:${expectedKey}`;
   try {
-    const claimed = await deps.claimOnce(key, ALERT_DEDUPE_TTL_SECONDS);
+    const ttl = kind === "stale" ? STALE_DEDUPE_TTL_SECONDS : FETCH_FAILED_DEDUPE_TTL_SECONDS;
+    const claimed = await deps.claimOnce(key, ttl);
     if (!claimed) {
-      console.log(`[HealthIndex] ${kind} alert already sent today (${key})`);
+      console.log(`[HealthIndex] ${kind} alert already sent (${key})`);
       return { kind, sent: false };
     }
   } catch (err: unknown) {
@@ -250,6 +257,9 @@ export async function checkHealthIndexAndAlert(
     `Latest month in database: ${latest ?? "none"}`,
     `Rows fetched: ${result.fetched}, new: ${result.inserted}`,
     `Checked at: ${deps.now.toISOString()} (${deps.tz})`,
+    `Statbel source: ${STATBEL_OPENDATA_URL}`,
+    "",
+    "Indexations that need the missing month stay on hold (they are not computed with an older month).",
   ].join("\n");
 
   try {
@@ -345,20 +355,42 @@ export async function getLatestHealthIndex(): Promise<{
   return rows.length > 0 ? rows[0]! : null;
 }
 
+export interface HealthIndexStatus {
+  // True when nothing is cached, or last month's index is still missing from the 3rd on.
+  stale: boolean;
+  // Month (YYYY-MM) that must be cached by now, or null before the 3rd.
+  expectedMonth: string | null;
+  // Newest cached month (YYYY-MM), or null when nothing is cached.
+  latestMonth: string | null;
+}
+
 /**
- * Check whether the health index cache is stale.
- * Per D-04, values older than 7 days are considered stale.
- * Returns true if no values exist or if the latest value is older than 7 days.
+ * Month-based staleness, decided from what is cached rather than from when it
+ * was fetched: the daily refresh keeps running even when Statbel publishes
+ * nothing new, so a fetch timestamp cannot show a missing month.
  */
-export async function isHealthIndexStale(): Promise<boolean> {
+export function healthIndexStatusFor(
+  latest: { year: string; month: string } | null,
+  now: Date,
+  tz: string
+): HealthIndexStatus {
+  const expected = expectedLatestMonth(now, tz);
+  const expectedMonth = expected ? `${expected.year}-${expected.month}` : null;
+  const latestMonth = latest ? `${latest.year}-${latest.month}` : null;
+  const stale = !latestMonth || (expectedMonth !== null && latestMonth < expectedMonth);
+  return { stale, expectedMonth, latestMonth };
+}
+
+/** Current month-based health index status, judged in the given timezone. */
+export async function getHealthIndexStatus(tz: string, now: Date = new Date()): Promise<HealthIndexStatus> {
   const latest = await getLatestHealthIndex();
+  return healthIndexStatusFor(latest, now, tz);
+}
 
-  if (!latest) {
-    return true;
-  }
-
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-  const age = Date.now() - latest.fetchedAt.getTime();
-
-  return age > sevenDaysMs;
+/**
+ * Whether the health index cache is stale: nothing cached, or last month's
+ * index still missing from the 3rd of this month on.
+ */
+export async function isHealthIndexStale(tz: string, now: Date = new Date()): Promise<boolean> {
+  return (await getHealthIndexStatus(tz, now)).stale;
 }

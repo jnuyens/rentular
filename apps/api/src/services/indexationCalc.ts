@@ -1,5 +1,8 @@
 import {
-  BRUSSELS_EPC_INDEXATION_FACTOR,
+  BRUSSELS_EPC_CORRECTED_LABELS,
+  BRUSSELS_EPC_CORRECTION_FACTORS,
+  BRUSSELS_EPC_CUTOFF,
+  type BrusselsAnniversaryPeriod,
   FLANDERS_EPC_FREEZE_START,
   FLANDERS_EPC_FREEZE_END,
   FLANDERS_EPC_FREEZE_FACTOR,
@@ -137,6 +140,14 @@ export async function computeIndexationCore(input: {
   lastIndexationDate?: string | null;
   // Reference date for "today". Defaults to the current time.
   today?: Date;
+  // Brussels: correction factor stored on the lease at an earlier indexation.
+  // It is reused as is until it is cleared (better EPB certificate or new lease).
+  brusselsEpcFactor?: number | null;
+  // Brussels: whether the lease is registered. Undefined means unknown and is
+  // treated as not registered, so an unregistered lease is never indexed.
+  leaseRegistered?: boolean | null;
+  // Current rent, used as the result when indexation is blocked. Defaults to baseRent.
+  currentRent?: number | null;
 }): Promise<{
   currentIndex: number;
   currentIndexMonth: string;
@@ -148,6 +159,10 @@ export async function computeIndexationCore(input: {
   // Anniversary month (1..12) whose Flemish correction factor was applied, else null.
   correctionMonth: number | null;
   formulaNote: string | undefined;
+  // Brussels details for the landlord (factor, label, anniversary period), else null.
+  brussels: BrusselsEpcInfo | null;
+  // Set when the rent may not be indexed at all; newRent then equals the current rent.
+  indexationBlocked: IndexationBlockReason | null;
   effectiveDate: string;
   // Legal anniversary date: drives the EPC rules and next year's applicability.
   indexationDate: string;
@@ -228,8 +243,17 @@ export async function computeIndexationCore(input: {
   const applyEpc = (atIndex: number) => {
     const unrestricted = calculateIndexedRent(input.baseRent, input.baseIndex, atIndex);
     if (input.region === "brussels") {
-      const r = applyBrusselsEpcRestriction(input.baseRent, unrestricted, input.epcLabel);
-      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: false, correctionMonth: null as number | null, note: r.note };
+      const r = applyBrusselsEpcRestriction({
+        baseRent: input.baseRent,
+        unrestrictedNewRent: unrestricted,
+        epcLabel: input.epcLabel,
+        startDate: input.startDate,
+        anniversaryDate: indexationDateStr,
+        persistedFactor: input.brusselsEpcFactor ?? null,
+        registered: input.leaseRegistered ?? false,
+        currentRent: input.currentRent ?? input.baseRent,
+      });
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, correctionMonth: null as number | null, note: r.note, brussels: r.info, blocked: r.blocked };
     }
     if (input.region === "flanders") {
       const r = applyFlandersEpcRestriction(
@@ -240,10 +264,10 @@ export async function computeIndexationCore(input: {
         indexationDateStr,
         input.leaseType
       );
-      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, correctionMonth: r.correctionMonth, note: r.note };
+      return { unrestricted, newRent: r.newRent, factor: r.factor, epcRestricted: r.restricted, correctionApplied: r.correctionApplied, correctionMonth: r.correctionMonth, note: r.note, brussels: null as BrusselsEpcInfo | null, blocked: null as IndexationBlockReason | null };
     }
     // Wallonia: no EPC restrictions.
-    return { unrestricted, newRent: unrestricted, factor: 1.0, epcRestricted: false, correctionApplied: false, correctionMonth: null as number | null, note: undefined as string | undefined };
+    return { unrestricted, newRent: unrestricted, factor: 1.0, epcRestricted: false, correctionApplied: false, correctionMonth: null as number | null, note: undefined as string | undefined, brussels: null as BrusselsEpcInfo | null, blocked: null as IndexationBlockReason | null };
   };
 
   const legal = applyEpc(currentIndex);
@@ -285,6 +309,8 @@ export async function computeIndexationCore(input: {
     correctionApplied: legal.correctionApplied,
     correctionMonth: legal.correctionMonth,
     formulaNote: legal.note,
+    brussels: legal.brussels,
+    indexationBlocked: legal.blocked,
     effectiveDate: effectiveDateStr,
     indexationDate: indexationDateStr,
     effectiveDateOptions,
@@ -302,29 +328,139 @@ export async function computeIndexationCore(input: {
 // EPC restriction helper functions
 // =====================================================================
 
-/**
- * Apply EPC-based indexation restrictions for Brussels.
- * Brussels restrictions are permanent and apply to all residential leases.
- */
-function applyBrusselsEpcRestriction(
-  baseRent: number,
-  unrestrictedNewRent: number,
-  epcLabel: string | null
-): { newRent: number; factor: number; restricted: boolean; note: string | undefined } {
-  const label = epcLabel || "none";
-  const factor = BRUSSELS_EPC_INDEXATION_FACTOR[label] ?? 0.0;
+export type IndexationBlockReason = "brussels_no_epc" | "brussels_not_registered";
 
-  if (factor >= 1.0) {
-    return { newRent: unrestrictedNewRent, factor: 1.0, restricted: false, note: undefined };
+export type BrusselsEpcInfo = {
+  // EPB label used for the decision ("none" without a certificate).
+  label: string;
+  // Lease took effect before 14 October 2022.
+  beforeCutoff: boolean;
+  // Anniversary period of the lease (see BRUSSELS_EPC_CORRECTION_FACTORS).
+  anniversaryPeriod: BrusselsAnniversaryPeriod;
+  // Correction factor applied, or null when the rent indexes in full or is blocked.
+  factor: number | null;
+  // True when the factor came from the lease (stored at an earlier indexation).
+  factorFromLease: boolean;
+};
+
+/**
+ * Anniversary period of a lease for the Brussels table: the start month, with
+ * October split into 1 to 13 ("10a") and 14 to 31 ("10b"). Read from the
+ * YYYY-MM-DD string so no timezone can shift the day.
+ */
+export function brusselsAnniversaryPeriod(startDate: string): BrusselsAnniversaryPeriod {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(startDate);
+  const d = m ? null : new Date(startDate);
+  const month = m ? Number(m[2]) : d!.getMonth() + 1;
+  const day = m ? Number(m[3]) : d!.getDate();
+  if (month === 10) return day >= 14 ? "10b" : "10a";
+  return String(month) as BrusselsAnniversaryPeriod;
+}
+
+/** Official Brussels correction factor for a label and anniversary period, or 1 when none applies. */
+export function getBrusselsCorrectionFactor(epcLabel: string | null, period: BrusselsAnniversaryPeriod): number {
+  const label = epcLabel || "none";
+  if (!BRUSSELS_EPC_CORRECTED_LABELS.includes(label)) return 1;
+  const row = BRUSSELS_EPC_CORRECTION_FACTORS[period];
+  return label === "E" ? row.e : row.fg;
+}
+
+/** EPB labels A++ to D: a certificate this good ends a stored Brussels correction factor. */
+export function isBrusselsLabelBetterThanE(epcLabel: string | null): boolean {
+  if (!epcLabel || epcLabel === "none") return false;
+  return ["A++", "A+", "A", "B", "C", "D"].includes(epcLabel);
+}
+
+/**
+ * Apply the Brussels EPB rules to an indexation (Brussels Housing Code
+ * art. 224/2, ordinance of 13 October 2023).
+ *
+ * - Not registered, or no EPB certificate: no indexation. The rent stays as it is.
+ * - Lease took effect on or after 14 October 2022: full indexation, any label.
+ * - Older lease with EPB A++ to D and no stored factor: full indexation.
+ * - Older lease with EPB E, F or G: new rent = round2(standard indexed rent x
+ *   correction factor). The factor multiplies the whole indexed rent. A factor
+ *   stored on the lease at an earlier indexation is reused, even if the label
+ *   changed since, until it is cleared by recording a better certificate.
+ *
+ * Guards: the result never exceeds the standard indexed rent. Like Flanders,
+ * a corrected rent does not go below the base rent, unless the standard indexed
+ * rent itself is lower (a falling index).
+ */
+export function applyBrusselsEpcRestriction(input: {
+  baseRent: number;
+  unrestrictedNewRent: number;
+  epcLabel: string | null;
+  startDate: string;
+  anniversaryDate: string;
+  persistedFactor?: number | null;
+  registered: boolean;
+  currentRent?: number;
+}): {
+  newRent: number;
+  factor: number;
+  restricted: boolean;
+  correctionApplied: boolean;
+  note: string | undefined;
+  info: BrusselsEpcInfo;
+  blocked: IndexationBlockReason | null;
+} {
+  const label = input.epcLabel || "none";
+  const period = brusselsAnniversaryPeriod(input.startDate);
+  const beforeCutoff = input.startDate.slice(0, 10) < BRUSSELS_EPC_CUTOFF;
+  const unchangedRent = input.currentRent ?? input.baseRent;
+  const info: BrusselsEpcInfo = { label, beforeCutoff, anniversaryPeriod: period, factor: null, factorFromLease: false };
+
+  if (!input.registered) {
+    return {
+      newRent: unchangedRent,
+      factor: 0,
+      restricted: true,
+      correctionApplied: false,
+      note: "Brussels: the lease is not registered, so the rent may not be indexed",
+      info,
+      blocked: "brussels_not_registered",
+    };
+  }
+  if (label === "none") {
+    return {
+      newRent: unchangedRent,
+      factor: 0,
+      restricted: true,
+      correctionApplied: false,
+      note: "Brussels: no EPB certificate was given to the tenant, so the rent may not be indexed",
+      info,
+      blocked: "brussels_no_epc",
+    };
   }
 
-  const increase = unrestrictedNewRent - baseRent;
-  const newRent = Number((baseRent + increase * factor).toFixed(2));
+  const full = {
+    newRent: input.unrestrictedNewRent,
+    factor: 1.0,
+    restricted: false,
+    correctionApplied: false,
+    note: undefined as string | undefined,
+    info,
+    blocked: null as IndexationBlockReason | null,
+  };
+  // Leases that took effect on or after 14 October 2022 index in full.
+  if (!beforeCutoff) return full;
+
+  const stored = input.persistedFactor;
+  const hasStored = typeof stored === "number" && Number.isFinite(stored) && stored > 0 && stored < 1;
+  if (!hasStored && !BRUSSELS_EPC_CORRECTED_LABELS.includes(label)) return full;
+
+  const factor = hasStored ? stored! : getBrusselsCorrectionFactor(label, period);
+  const corrected = Math.round(input.unrestrictedNewRent * factor * 100) / 100;
+  const newRent = Math.min(input.unrestrictedNewRent, Math.max(corrected, input.baseRent));
   return {
     newRent,
     factor,
     restricted: true,
-    note: `Brussels EPC restriction: only ${factor * 100}% of the increase allowed for EPC label ${label}`,
+    correctionApplied: true,
+    note: `Brussels correction factor ${factor} applied (EPB ${label}, lease effective before 14/10/2022, anniversary period ${period}${hasStored ? ", factor stored on the lease" : ""})`,
+    info: { ...info, factor, factorFromLease: hasStored },
+    blocked: null,
   };
 }
 

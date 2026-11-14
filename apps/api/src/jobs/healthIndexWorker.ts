@@ -6,7 +6,7 @@ import {
   getHealthIndexValue,
   getLatestHealthIndex,
 } from "../services/healthIndex";
-import { queueEmail } from "./emailQueueWorker";
+import { sendAdminEmail } from "../lib/adminNotify";
 
 const QUEUE_NAME = "health-index-refresh";
 
@@ -43,9 +43,7 @@ const worker = new Worker(
           const redis = await healthIndexQueue.client;
           await redis.del(key);
         },
-        sendEmail: async (to, subject, body) => {
-          await queueEmail({ to, subject, body });
-        },
+        sendEmail: sendAdminEmail,
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -73,8 +71,8 @@ worker.on("completed", (job) => {
  * (getScheduleTimezone(), Europe/Brussels by default).
  * Statbel publishes on the penultimate business day of the month.
  * Running daily ensures we pick up new values promptly. Each run also checks
- * that the previous month is cached from the 5th on and mails ADMIN_EMAIL if
- * the fetch failed or the index is overdue.
+ * that the previous month is cached from the 3rd on and mails ADMIN_EMAIL if
+ * the fetch failed (once a day) or the month is overdue (once per month).
  */
 export async function setupHealthIndexSchedule(): Promise<void> {
   const existing = await healthIndexQueue.getRepeatableJobs();

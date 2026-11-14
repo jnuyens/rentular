@@ -294,7 +294,9 @@
     "depositTwoMonths": "Mettre a 2x le loyer mensuel",
     "priorPaymentsSettled": "Garantie et paiements antérieurs déjà réglés",
     "priorPaymentsSettledHelp": "Ce contrat a commencé avant son ajout ici. Laissez cette option activée si la garantie et les loyers jusqu'à présent ont déjà été payés, pour que rien d'antérieur ne soit considéré comme ouvert.",
-    "communication": "Communication"
+    "communication": "Communication",
+    "leaseRegistered": "Bail enregistré",
+    "leaseRegisteredDescription": "À Bruxelles, le loyer d'un bail non enregistré ne peut pas être indexé."
   },
   "indexation": {
     "title": "Indexation des loyers",
@@ -360,7 +362,9 @@
     "emailPrepareFailed": "Impossible de preparer le-mail",
     "overrideNoteLabel": "Loyer indexé {indexed}, appliqué {applied}",
     "newRentFromLabel": "Nouveau loyer à partir du",
-    "backdatedNote": "Le loyer déjà payé pour les mois passés n'est pas encore ajusté automatiquement."
+    "backdatedNote": "Le loyer déjà payé pour les mois passés n'est pas encore ajusté automatiquement.",
+    "healthIndexOverdue": "L'indice santé de {month} n'est pas encore dans Rentular (dernier : {latest}). Les indexations qui en ont besoin attendent sa publication par Statbel.",
+    "healthIndexMissing": "Aucune valeur de l'indice santé n'est encore disponible. Les indexations attendent leur récupération auprès de Statbel."
   },
   "communications": {
     "title": "Communications",
@@ -1903,5 +1907,16 @@
       "button": "Commencer dans Rentular",
       "help": "Des questions ? Écrivez à <link>{email}</link>."
     }
+  },
+  "brusselsEpc": {
+    "factorApplies": "Facteur de correction {factor} (PEB {label}, bail en vigueur avant le 14/10/2022, anniversaire {period}), fixé pour les indexations suivantes.",
+    "factorStored": "Facteur de correction {factor} enregistré sur ce contrat lors d'une indexation précédente. Il reste d'application jusqu'à un meilleur certificat PEB (A++ à D) ou un nouveau bail.",
+    "fullAllowed": "PEB {label} : indexation complète autorisée à Bruxelles.",
+    "fullNewLease": "Bail en vigueur depuis le 14/10/2022 ou plus tard : indexation complète autorisée à Bruxelles.",
+    "blockedNoEpc": "Pas de certificat PEB : à Bruxelles, le loyer ne peut pas être indexé. Ajoutez le label PEB sur le bien.",
+    "blockedNotRegistered": "Bail non enregistré : à Bruxelles, le loyer ne peut pas être indexé. Enregistrez le bail et cochez « Bail enregistré » sur le contrat.",
+    "periodMonth": "en {month}",
+    "period10a": "du 1er au 13 octobre",
+    "period10b": "du 14 au 31 octobre"
   }
 }

@@ -68,6 +68,8 @@ const createLeaseSchema = z.object({
   status: z.enum(["active", "draft", "terminated", "expired"]).optional().default("active"),
   indexationEnabled: z.boolean().optional().default(true),
   landlordLateNotify: z.boolean().optional().default(true),
+  // The lease is registered (required for indexation in Brussels).
+  leaseRegistered: z.boolean().optional().default(false),
   priorPaymentsSettled: z.boolean().optional().default(true),
   paymentDay: z.number().int().min(1).max(28).optional().default(1),
 });
@@ -217,6 +219,7 @@ leasesRouter.post("/",zValidator("json", createLeaseSchema), async (c) => {
     // Student leases are never indexed (see indexation route).
     indexationEnabled: leaseType === "student" ? false : data.indexationEnabled,
     landlordLateNotify: data.landlordLateNotify,
+    leaseRegistered: data.leaseRegistered,
     priorPaymentsSettled: data.priorPaymentsSettled,
     paymentDay: data.paymentDay,
   });
@@ -289,6 +292,7 @@ leasesRouter.put("/:id", zValidator("json", createLeaseSchema.partial()), async 
   if (data.bankAccountId !== undefined) updates.bankAccountId = data.bankAccountId || null;
   if (data.indexationEnabled !== undefined) updates.indexationEnabled = data.indexationEnabled;
   if (data.landlordLateNotify !== undefined) updates.landlordLateNotify = data.landlordLateNotify;
+  if (data.leaseRegistered !== undefined) updates.leaseRegistered = data.leaseRegistered;
   if (data.priorPaymentsSettled !== undefined) updates.priorPaymentsSettled = data.priorPaymentsSettled;
   if (data.paymentDay !== undefined) updates.paymentDay = data.paymentDay;
 

@@ -294,7 +294,9 @@
     "depositTwoMonths": "Auf 2x die Monatsmiete setzen",
     "priorPaymentsSettled": "Kaution und frühere Zahlungen bereits geleistet",
     "priorPaymentsSettledHelp": "Dieser Vertrag begann, bevor er hier angelegt wurde. Lassen Sie dies aktiviert, wenn die Kaution und die Miete bis heute bereits bezahlt wurden, damit nichts aus der Vergangenheit als offen gilt.",
-    "communication": "Kommunikation"
+    "communication": "Kommunikation",
+    "leaseRegistered": "Mietvertrag registriert",
+    "leaseRegisteredDescription": "In Brüssel darf die Miete eines nicht registrierten Mietvertrags nicht indexiert werden."
   },
   "indexation": {
     "title": "Mietindexierung",
@@ -360,7 +362,9 @@
     "emailPrepareFailed": "E-Mail konnte nicht vorbereitet werden",
     "overrideNoteLabel": "Indexierte Miete {indexed}, angewendet {applied}",
     "newRentFromLabel": "Neue Miete ab",
-    "backdatedNote": "Bereits gezahlte Miete für vergangene Monate wird noch nicht automatisch angepasst."
+    "backdatedNote": "Bereits gezahlte Miete für vergangene Monate wird noch nicht automatisch angepasst.",
+    "healthIndexOverdue": "Der Gesundheitsindex für {month} ist noch nicht in Rentular (zuletzt: {latest}). Indexierungen, die ihn brauchen, warten, bis Statbel ihn veröffentlicht.",
+    "healthIndexMissing": "Es sind noch keine Gesundheitsindexwerte verfügbar. Indexierungen warten, bis sie bei Statbel abgerufen sind."
   },
   "communications": {
     "title": "Kommunikation",
@@ -1903,5 +1907,16 @@
       "button": "In Rentular starten",
       "help": "Fragen? Schreiben Sie an <link>{email}</link>."
     }
+  },
+  "brusselsEpc": {
+    "factorApplies": "Korrekturfaktor {factor} (Energieausweis {label}, Mietvertrag vor dem 14.10.2022 in Kraft, Jahrestag {period}), festgelegt für die nächsten Indexierungen.",
+    "factorStored": "Korrekturfaktor {factor} bei einer früheren Indexierung auf diesem Vertrag gespeichert. Er gilt weiter bis zu einem besseren Energieausweis (A++ bis D) oder einem neuen Mietvertrag.",
+    "fullAllowed": "Energieausweis {label}: volle Indexierung in Brüssel erlaubt.",
+    "fullNewLease": "Mietvertrag seit dem 14.10.2022 oder später in Kraft: volle Indexierung in Brüssel erlaubt.",
+    "blockedNoEpc": "Kein Energieausweis: In Brüssel darf die Miete nicht indexiert werden. Tragen Sie die Energieklasse bei der Immobilie ein.",
+    "blockedNotRegistered": "Mietvertrag nicht registriert: In Brüssel darf die Miete nicht indexiert werden. Registrieren Sie den Vertrag und setzen Sie das Häkchen bei „Mietvertrag registriert“.",
+    "periodMonth": "im {month}",
+    "period10a": "vom 1. bis 13. Oktober",
+    "period10b": "vom 14. bis 31. Oktober"
   }
 }

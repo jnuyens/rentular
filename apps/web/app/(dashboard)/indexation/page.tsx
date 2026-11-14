@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { epcBadgeClass } from "@/lib/epc";
 import { formatDate } from "@/lib/dateLocale";
+import { BrusselsEpcNote, type BrusselsEpcInfo } from "@/components/BrusselsEpcNote";
 import {
   Table,
   TableHeader,
@@ -80,6 +81,8 @@ interface CalcResult {
   epcIndexationFactor?: number;
   correctionMonth?: number | null;
   formulaNote?: string;
+  brussels?: BrusselsEpcInfo | null;
+  indexationBlocked?: string | null;
   latestIndex: number;
   latestIndexMonth: string;
   newRentAtLatest: number;
@@ -202,6 +205,25 @@ export default function IndexationPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Month-based health index status: warn when last month's index is overdue.
+  const [indexStatus, setIndexStatus] = useState<{
+    isStale: boolean;
+    expectedMonth: string | null;
+    latestMonth: string | null;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiUrl}/api/v1/indexation/health-index`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json) setIndexStatus(json);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl]);
 
   // Bring the deep-linked lease into view once the list has rendered.
   useEffect(() => {
@@ -388,6 +410,18 @@ export default function IndexationPage() {
           {t("calculate")}
         </Button>
       </div>
+
+      {indexStatus?.isStale && (
+        <p className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {indexStatus.expectedMonth
+            ? t("healthIndexOverdue", {
+                month: indexStatus.expectedMonth,
+                latest: indexStatus.latestMonth ?? "-",
+              })
+            : t("healthIndexMissing")}
+        </p>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -792,7 +826,17 @@ export default function IndexationPage() {
                     })()}
                   </div>
 
-                  {["flanders", "brussels"].includes(calc.region) && !calc.epcLabel && (
+                  {calc.region === "brussels" && (
+                    <div className="rounded-lg border p-4">
+                      <BrusselsEpcNote
+                        brussels={calc.brussels}
+                        blocked={calc.indexationBlocked}
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {calc.region === "flanders" && !calc.epcLabel && (
                     <div className="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
                       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
                       <div>
@@ -802,7 +846,7 @@ export default function IndexationPage() {
                     </div>
                   )}
 
-                  {(calc.epcLabel || calc.correctionApplied) && calc.epcRestricted && (
+                  {calc.region !== "brussels" && (calc.epcLabel || calc.correctionApplied) && calc.epcRestricted && (
                     <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900 dark:bg-orange-950">
                       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
                       <div>
@@ -826,7 +870,7 @@ export default function IndexationPage() {
                   )}
 
                   {/* Step 1: the landlord can round the new rent down manually. */}
-                  {calc.canApply && step === "preview" && (
+                  {calc.canApply && !calc.indexationBlocked && step === "preview" && (
                     <div className="space-y-2 rounded-lg border p-4">
                       <label className="text-sm font-medium">{t("newRentFromLabel")}</label>
                       <Select value={effectiveDate} onValueChange={setEffectiveDate}>
@@ -916,7 +960,7 @@ export default function IndexationPage() {
                   </Button>
                   <Button
                     onClick={() => previewLease && handlePrepareEmail(previewLease.id)}
-                    disabled={!calc || calcLoading || !calc.canApply || !customRentValid || emailBusy}
+                    disabled={!calc || calcLoading || !calc.canApply || !!calc.indexationBlocked || !customRentValid || emailBusy}
                   >
                     {t("prepareEmail")}
                   </Button>

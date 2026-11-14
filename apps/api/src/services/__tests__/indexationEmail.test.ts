@@ -250,3 +250,46 @@ describe("buildIndexationTemplateVars", () => {
     expect(vars.legalReference).toContain("Vlaams Woninghuurdecreet");
   });
 });
+
+describe("Brussels correction factor in the letter", () => {
+  // Base 1000, index 110.11 -> 140.00: 1271.46; x 0.945356473 = 1201.98.
+  const brussels = (overrides: Partial<IndexationEmailParams> = {}) =>
+    reference({
+      region: "brussels",
+      startDate: "2021-11-10",
+      signingDate: "2021-11-01",
+      baseRent: 1000,
+      baseIndex: 110.11,
+      currentIndex: 140,
+      unrestrictedNewRent: 1271.46,
+      calculatedNewRent: 1201.98,
+      appliedNewRent: 1201.98,
+      epcLabel: "E",
+      correctionMonth: null,
+      brusselsPeriod: "11",
+      epcIndexationFactor: 0.945356473,
+      ...overrides,
+    });
+
+  it("multiplies the indexed rent by the factor, in Dutch", () => {
+    const { body } = generateDefaultIndexationEmail(brussels());
+    expect(body).toContain("vóór 14 oktober 2022");
+    expect(body).toContain("artikel 224/2");
+    expect(body).toContain("verjaardag in november bedraagt die 0,945356473");
+    expect(body).toContain("€ 1.271,46 × 0,945356473 = € 1.201,98");
+    expect(body).not.toContain("van de stijging");
+  });
+
+  it("names the October split in each language", () => {
+    expect(generateDefaultIndexationEmail(brussels({ brusselsPeriod: "10a" })).body).toContain("van 1 tot 13 oktober");
+    expect(generateDefaultIndexationEmail(brussels({ tenantLanguage: "en", brusselsPeriod: "10b" })).body).toContain(
+      "between 14 and 31 October"
+    );
+    expect(generateDefaultIndexationEmail(brussels({ tenantLanguage: "fr", brusselsPeriod: "10a" })).body).toContain(
+      "du 1er au 13 octobre"
+    );
+    expect(generateDefaultIndexationEmail(brussels({ tenantLanguage: "de", brusselsPeriod: "10b" })).body).toContain(
+      "vom 14. bis 31. Oktober"
+    );
+  });
+});

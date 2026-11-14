@@ -29,3 +29,11 @@ export function notifyNewUserSignup(
     console.error("[AdminNotify] Failed to send new user notification:", err);
   });
 }
+
+/**
+ * Send an operational alert to the admin. Unlike the signup notice this
+ * rejects on failure, so a caller can retry later.
+ */
+export async function sendAdminEmail(to: string, subject: string, body: string): Promise<void> {
+  await sendEmail({ to, subject, body });
+}
