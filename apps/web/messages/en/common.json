@@ -294,7 +294,9 @@
     "depositTwoMonths": "Set to 2x the monthly rent",
     "priorPaymentsSettled": "Deposit and earlier payments already made",
     "priorPaymentsSettledHelp": "This contract started before you added it here. Leave this on if the deposit and the rent up to now were already paid, so nothing from before is treated as open.",
-    "communication": "Communication"
+    "communication": "Communication",
+    "leaseRegistered": "Lease registered",
+    "leaseRegisteredDescription": "In Brussels the rent of an unregistered lease may not be indexed."
   },
   "indexation": {
     "title": "Rent Indexation",
@@ -1903,5 +1905,16 @@
       "button": "Start in Rentular",
       "help": "Questions? Email <link>{email}</link>."
     }
+  },
+  "brusselsEpc": {
+    "factorApplies": "Correction factor {factor} (EPB {label}, lease in force before 14/10/2022, anniversary {period}), fixed for later indexations.",
+    "factorStored": "Correction factor {factor} stored on this contract at an earlier indexation. It keeps applying until a better EPB certificate (A++ to D) or a new lease.",
+    "fullAllowed": "EPB {label}: full indexation allowed in Brussels.",
+    "fullNewLease": "Lease in force since 14/10/2022 or later: full indexation allowed in Brussels.",
+    "blockedNoEpc": "No EPB certificate: in Brussels the rent may not be indexed. Add the EPB label on the property.",
+    "blockedNotRegistered": "Lease not registered: in Brussels the rent may not be indexed. Register the lease and tick 'Lease registered' on the contract.",
+    "periodMonth": "in {month}",
+    "period10a": "between 1 and 13 October",
+    "period10b": "between 14 and 31 October"
   }
 }

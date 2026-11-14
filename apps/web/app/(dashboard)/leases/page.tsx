@@ -47,6 +47,7 @@ import { MandateStatusBadge } from "@/components/MandateStatusBadge";
 import { MandateSetupModal } from "@/components/MandateSetupModal";
 import { CancelMandateDialog } from "@/components/CancelMandateDialog";
 import LocaleDateInput from "@/components/LocaleDateInput";
+import { BrusselsEpcNote, type BrusselsEpcInfo } from "@/components/BrusselsEpcNote";
 import { formatDate } from "@/lib/dateLocale";
 
 interface Property {
@@ -85,6 +86,8 @@ interface Lease {
   tenantIds?: string[];
   indexationEnabled?: boolean;
   landlordLateNotify?: boolean;
+  leaseRegistered?: boolean;
+  brusselsEpcFactor?: string | null;
   priorPaymentsSettled?: boolean;
   paymentMethod?: string;
   gocardlessMandateId?: string;
@@ -113,6 +116,7 @@ export default function LeasesPage() {
   const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [indexationEnabled, setIndexationEnabled] = useState(true);
   const [landlordLateNotify, setLandlordLateNotify] = useState(true);
+  const [leaseRegistered, setLeaseRegistered] = useState(false);
   const [priorPaymentsSettled, setPriorPaymentsSettled] = useState(true);
   const [baseRent, setBaseRent] = useState("");
   const [baseIndex, setBaseIndex] = useState("");
@@ -149,6 +153,8 @@ export default function LeasesPage() {
     estimatedLastIndexMonth?: string | null;
     monthsSinceEstimated?: number | null;
     yearPassed?: boolean | null;
+    brussels?: BrusselsEpcInfo | null;
+    indexationBlocked?: string | null;
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -189,6 +195,7 @@ export default function LeasesPage() {
     setEditingLease(null);
     setSelectedTenants([]);
     setIndexationEnabled(true);
+    setLeaseRegistered(false);
     setPaymentMethod(
       typeof window !== "undefined"
         ? localStorage.getItem("rentular_default_payment_method") || "bank_transfer"
@@ -205,6 +212,7 @@ export default function LeasesPage() {
     setSelectedTenants(lease.tenantIds || []);
     setIndexationEnabled(lease.indexationEnabled !== false);
     setLandlordLateNotify(lease.landlordLateNotify !== false);
+    setLeaseRegistered(lease.leaseRegistered === true);
     setPaymentMethod(lease.paymentMethod || "bank_transfer");
     setSelectedBankAccountId(lease.bankAccountId || "");
     setError("");
@@ -365,6 +373,8 @@ export default function LeasesPage() {
       if (epcLabel) params.set("epcLabel", epcLabel);
       if (editingLease?.monthlyRent) params.set("currentRent", String(editingLease.monthlyRent));
       if (lastIndexationDateState) params.set("lastIndexationDate", lastIndexationDateState);
+      params.set("leaseRegistered", leaseRegistered ? "true" : "false");
+      if (editingLease?.brusselsEpcFactor) params.set("brusselsEpcFactor", String(editingLease.brusselsEpcFactor));
       fetch(`${apiUrl}/api/v1/indexation/preview?${params.toString()}`, {
         credentials: "include",
         signal: controller.signal,
@@ -401,6 +411,7 @@ export default function LeasesPage() {
     properties,
     apiUrl,
     lastIndexationDateState,
+    leaseRegistered,
   ]);
 
   // Is indexation available again? Prefer the manual last-indexation date; fall
@@ -477,6 +488,7 @@ export default function LeasesPage() {
       tenantIds: selectedTenants,
       indexationEnabled,
       landlordLateNotify,
+      leaseRegistered,
       priorPaymentsSettled,
       baseRent,
       indexationBaseMonth: refMonth,
@@ -1353,7 +1365,14 @@ export default function LeasesPage() {
                         )}
                       </p>
                     )}
-                    {["flanders", "brussels"].includes(preview.region) && !preview.epcLabel && (
+                    {preview.region === "brussels" && (
+                      <BrusselsEpcNote
+                        brussels={preview.brussels}
+                        blocked={preview.indexationBlocked}
+                        className="mt-2 text-xs"
+                      />
+                    )}
+                    {preview.region === "flanders" && !preview.epcLabel && (
                       <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-500">
                         {t("epcNeededShort")}
                       </p>
@@ -1363,6 +1382,29 @@ export default function LeasesPage() {
                 )}
               </div>
             )}
+            {/* Lease registration (Brussels: no indexation without it) */}
+            <div className="flex items-center justify-between rounded-lg border border-input px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">{t("leaseRegistered")}</p>
+                <p className="text-xs text-muted-foreground">{t("leaseRegisteredDescription")}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={leaseRegistered}
+                aria-label={t("leaseRegistered")}
+                onClick={() => setLeaseRegistered(!leaseRegistered)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  leaseRegistered ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    leaseRegistered ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
             {/* Late-payment landlord email toggle */}
             <div className="flex items-center justify-between rounded-lg border border-input px-4 py-3">
               <div>

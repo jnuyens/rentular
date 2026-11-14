@@ -294,7 +294,9 @@
     "depositTwoMonths": "Zet op 2x de maandhuur",
     "priorPaymentsSettled": "Waarborg en eerdere betalingen al voldaan",
     "priorPaymentsSettledHelp": "Dit contract is gestart voor u het hier toevoegde. Laat dit aan staan als de waarborg en de huur tot nu al betaald zijn, zodat niets van vroeger als openstaand wordt beschouwd.",
-    "communication": "Communicatie"
+    "communication": "Communicatie",
+    "leaseRegistered": "Huurovereenkomst geregistreerd",
+    "leaseRegisteredDescription": "In Brussel mag de huur van een niet-geregistreerde huurovereenkomst niet geïndexeerd worden."
   },
   "indexation": {
     "title": "Huurindexatie",
@@ -1903,5 +1905,16 @@
       "button": "Start in Rentular",
       "help": "Vragen? Mail naar <link>{email}</link>."
     }
+  },
+  "brusselsEpc": {
+    "factorApplies": "Correctiefactor {factor} (EPB {label}, huurovereenkomst vóór 14/10/2022, verjaardag {period}), vastgelegd voor volgende indexaties.",
+    "factorStored": "Correctiefactor {factor} vastgelegd op dit contract bij een vorige indexatie. Die blijft gelden tot een beter EPB-certificaat (A++ tot D) of een nieuwe huurovereenkomst.",
+    "fullAllowed": "EPB {label}: volledige indexatie toegelaten in Brussel.",
+    "fullNewLease": "Huurovereenkomst in werking vanaf 14/10/2022: volledige indexatie toegelaten in Brussel.",
+    "blockedNoEpc": "Geen EPB-certificaat: in Brussel mag de huur niet geïndexeerd worden. Voeg het EPB-label toe bij het pand.",
+    "blockedNotRegistered": "Huurovereenkomst niet geregistreerd: in Brussel mag de huur niet geïndexeerd worden. Registreer het contract en vink 'Huurovereenkomst geregistreerd' aan.",
+    "periodMonth": "in {month}",
+    "period10a": "van 1 tot 13 oktober",
+    "period10b": "van 14 tot 31 oktober"
   }
 }
