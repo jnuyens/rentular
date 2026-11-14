@@ -232,6 +232,7 @@ None yet.
 | 261109-agr | Per-contract "mute late payment reminders until" (next rent, next week, date) on overview, payments and contract page, internal notes in the contract history | 2026-11-09 | 4222cbc | [261109-agr-payment-agreement-pause-reminders](./quick/261109-agr-payment-agreement-pause-reminders/) |
 | 261109-ebk | Enable Banking provider (own app, free) for self-hosted and free users next to Ponto, re-login warnings at 14/7/3/1/0 days, no automatic reminders on stale bank data | 2026-11-09 | c021d86 | [261109-ebk-enable-banking-provider](./quick/261109-ebk-enable-banking-provider/) |
 | 261110-ebw | Enable Banking step-by-step wizard in the app and public tutorial at /help/enable-banking (EN/NL/FR/DE) | 2026-11-10 | worktree-agent-a0fd4d82bc3a65f0f | [261110-ebw-enable-banking-wizard-and-tutorial](./quick/261110-ebw-enable-banking-wizard-and-tutorial/) |
+| 261114-bru | Brussels EPC indexation per be.brussels (E/F/G only, pre-14/10/2022 leases, monthly factor on the whole rent, persisted per lease, registration required) + month-based health index alert | 2026-11-14 | 7f2df3f | [261114-bru-brussels-epc-indexation-fix](./quick/261114-bru-brussels-epc-indexation-fix/) |
 | 2026-10-29 | fast | sendWhatsApp can send a picture, video or document through the bridge (bridge on muncher updated too) | ✅ |
 
 ## Session Continuity
