@@ -357,6 +357,7 @@ function buildIndexationEmailParams(input: {
     epcRestricted: calc.epcRestricted,
     correctionApplied: calc.correctionApplied,
     correctionMonth: calc.correctionMonth,
+    brusselsPeriod: calc.brussels?.factor ? calc.brussels.anniversaryPeriod : null,
     epcIndexationFactor: calc.epcIndexationFactor,
     paymentMethod: calc.lease.paymentMethod,
     ownerName: owner.name || owner.email || "Your landlord",

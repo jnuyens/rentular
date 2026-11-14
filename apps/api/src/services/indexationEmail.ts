@@ -43,6 +43,9 @@ export interface IndexationEmailParams {
   epcRestricted: boolean;
   correctionApplied: boolean;
   correctionMonth: number | null; // 1..12
+  // Brussels anniversary period whose correction factor applied ("1".."12",
+  // "10a" = 1 to 13 October, "10b" = 14 to 31 October), else null.
+  brusselsPeriod?: string | null;
   epcIndexationFactor: number;
   paymentMethod: string | null;
   ownerName: string;
@@ -78,6 +81,8 @@ interface LetterCopy {
   healthIndexSentence: string;
   epcLabelPhrase(label: string | null): string;
   flandersCorrection(labelPhrase: string, month: string, factor: string): string;
+  brusselsPeriod(period: string, monthName: string): string;
+  brusselsCorrection(labelPhrase: string, period: string, factor: string): string;
   restrictedIncrease(region: string, labelPhrase: string, pct: string | null): string;
   rounding(applied: string): string;
   standingOrder: string;
@@ -94,6 +99,10 @@ const COPY: Record<LetterLanguage, LetterCopy> = {
     epcLabelPhrase: (label) => (label ? `met EPC-label ${label}` : "zonder EPC"),
     flandersCorrection: (labelPhrase, month, factor) =>
       `Voor woningen ${labelPhrase} beperkt de Vlaamse Regering de indexering sinds haar besluit van 3 oktober 2022. Voor huurovereenkomsten met verjaardagsmaand ${month} geldt daarom een correctiefactor van ${factor}:`,
+    brusselsPeriod: (period, monthName) =>
+      period === "10a" ? "van 1 tot 13 oktober" : period === "10b" ? "van 14 tot 31 oktober" : `in ${monthName}`,
+    brusselsCorrection: (labelPhrase, period, factor) =>
+      `Voor woningen ${labelPhrase} waarvan de huurovereenkomst vóór 14 oktober 2022 in werking trad, legt de Brusselse Huisvestingscode (artikel 224/2, ordonnantie van 13 oktober 2023) een correctiefactor op. Voor een verjaardag ${period} bedraagt die ${factor}:`,
     restrictedIncrease: (region, labelPhrase, pct) => {
       const where =
         region === "brussels"
@@ -120,6 +129,10 @@ const COPY: Record<LetterLanguage, LetterCopy> = {
     epcLabelPhrase: (label) => (label ? `with EPC label ${label}` : "without an EPC"),
     flandersCorrection: (labelPhrase, month, factor) =>
       `For homes ${labelPhrase}, the Flemish Government has limited indexation since its decision of 3 October 2022. For leases with ${month} as anniversary month, a correction factor of ${factor} therefore applies:`,
+    brusselsPeriod: (period, monthName) =>
+      period === "10a" ? "between 1 and 13 October" : period === "10b" ? "between 14 and 31 October" : `in ${monthName}`,
+    brusselsCorrection: (labelPhrase, period, factor) =>
+      `For homes ${labelPhrase} whose lease took effect before 14 October 2022, the Brussels Housing Code (Article 224/2, Ordinance of 13 October 2023) requires a correction factor. For an anniversary ${period} it is ${factor}:`,
     restrictedIncrease: (region, labelPhrase, pct) => {
       const where =
         region === "brussels"
@@ -146,6 +159,10 @@ const COPY: Record<LetterLanguage, LetterCopy> = {
     epcLabelPhrase: (label) => (label ? `avec un certificat PEB ${label}` : "sans certificat PEB"),
     flandersCorrection: (labelPhrase, month, factor) =>
       `Pour les logements ${labelPhrase}, le Gouvernement flamand limite l'indexation depuis sa décision du 3 octobre 2022. Pour les baux dont le mois anniversaire est ${month}, un facteur de correction de ${factor} s'applique donc :`,
+    brusselsPeriod: (period, monthName) =>
+      period === "10a" ? "du 1er au 13 octobre" : period === "10b" ? "du 14 au 31 octobre" : `en ${monthName}`,
+    brusselsCorrection: (labelPhrase, period, factor) =>
+      `Pour les logements ${labelPhrase} dont le bail est entré en vigueur avant le 14 octobre 2022, le Code bruxellois du Logement (article 224/2, ordonnance du 13 octobre 2023) impose un facteur de correction. Pour un anniversaire ${period}, il est de ${factor} :`,
     restrictedIncrease: (region, labelPhrase, pct) => {
       const where =
         region === "brussels"
@@ -172,6 +189,10 @@ const COPY: Record<LetterLanguage, LetterCopy> = {
     epcLabelPhrase: (label) => (label ? `mit EPC-Label ${label}` : "ohne EPC"),
     flandersCorrection: (labelPhrase, month, factor) =>
       `Für Wohnungen ${labelPhrase} begrenzt die Flämische Regierung die Indexierung seit ihrem Beschluss vom 3. Oktober 2022. Für Mietverträge mit dem Jahrestag im ${month} gilt deshalb ein Korrekturfaktor von ${factor}:`,
+    brusselsPeriod: (period, monthName) =>
+      period === "10a" ? "vom 1. bis 13. Oktober" : period === "10b" ? "vom 14. bis 31. Oktober" : `im ${monthName}`,
+    brusselsCorrection: (labelPhrase, period, factor) =>
+      `Für Wohnungen ${labelPhrase}, deren Mietvertrag vor dem 14. Oktober 2022 in Kraft trat, schreibt das Brüsseler Wohngesetzbuch (Artikel 224/2, Ordonnanz vom 13. Oktober 2023) einen Korrekturfaktor vor. Für einen Jahrestag ${period} beträgt er ${factor}:`,
     restrictedIncrease: (region, labelPhrase, pct) => {
       const where =
         region === "brussels"
@@ -334,6 +355,17 @@ function epcParagraph(p: IndexationEmailParams, copy: LetterCopy, lang: LetterLa
   const base = formatEur(p.baseRent);
   const unrestricted = formatEur(p.unrestrictedNewRent);
   const calculated = formatEur(p.calculatedNewRent);
+
+  if (p.correctionApplied && p.region === "brussels" && p.brusselsPeriod) {
+    const monthNum = p.brusselsPeriod.startsWith("10") ? 10 : Number(p.brusselsPeriod);
+    const period = copy.brusselsPeriod(p.brusselsPeriod, formatMonthName(monthNum, lang));
+    return [
+      copy.brusselsCorrection(labelPhrase, period, factor),
+      "",
+      `${base} × ${formatIndexValue(p.currentIndex)} / ${formatIndexValue(p.baseIndex)} = ${unrestricted}`,
+      `${unrestricted} × ${factor} = ${calculated}`,
+    ].join("\n");
+  }
 
   if (p.correctionApplied && p.correctionMonth) {
     const intro = copy.flandersCorrection(labelPhrase, formatMonthName(p.correctionMonth, lang), factor);
