@@ -27,7 +27,12 @@ import {
   isHealthIndexStale,
   findClosestHealthIndexMonth,
 } from "../services/healthIndex";
-import { computeIndexationCore } from "../services/indexationCalc";
+import {
+  computeIndexationCore,
+  localYmd,
+  type BrusselsEpcInfo,
+  type IndexationBlockReason,
+} from "../services/indexationCalc";
 import {
   generateDefaultIndexationEmail,
   buildIndexationTemplateVars,
@@ -62,6 +67,7 @@ interface CalculationResult {
     currentMonthlyRent: string | null;
     lastIndexationDate: string | null;
     status: string;
+    brusselsEpcFactor: string | null;
   };
   property: {
     id: string;
@@ -86,6 +92,8 @@ interface CalculationResult {
   correctionApplied: boolean;
   correctionMonth: number | null;
   formulaNote: string | undefined;
+  brussels: BrusselsEpcInfo | null;
+  indexationBlocked: IndexationBlockReason | null;
   effectiveDate: string;
   // Legal anniversary date of this indexation.
   indexationDate: string;
@@ -226,6 +234,9 @@ async function calculateLeaseIndexation(
     epcLabel: property.epcLabel,
     leaseType: lease.type,
     lastIndexationDate: lease.lastIndexationDate,
+    brusselsEpcFactor: lease.brusselsEpcFactor != null ? Number(lease.brusselsEpcFactor) : null,
+    leaseRegistered: lease.leaseRegistered,
+    currentRent: Number(lease.monthlyRent),
   });
   const {
     currentIndex,
@@ -237,6 +248,8 @@ async function calculateLeaseIndexation(
     correctionApplied,
     correctionMonth,
     formulaNote,
+    brussels,
+    indexationBlocked,
     effectiveDate: effectiveDateStr,
     indexationDate,
     effectiveDateOptions,
@@ -266,6 +279,7 @@ async function calculateLeaseIndexation(
       currentMonthlyRent: lease.currentMonthlyRent,
       lastIndexationDate: lease.lastIndexationDate,
       status: lease.status,
+      brusselsEpcFactor: lease.brusselsEpcFactor ?? null,
     },
     property,
     baseRent,
@@ -280,6 +294,8 @@ async function calculateLeaseIndexation(
     correctionApplied,
     correctionMonth,
     formulaNote,
+    brussels,
+    indexationBlocked,
     effectiveDate: effectiveDateStr,
     indexationDate,
     effectiveDateOptions,
@@ -289,6 +305,18 @@ async function calculateLeaseIndexation(
     canApply,
     applicableFrom,
     nextAnniversary,
+  };
+}
+
+/** Error thrown when Brussels law forbids indexing this lease at all. */
+function blockedIndexationError(reason: IndexationBlockReason): { status: number; message: string; code: string } {
+  return {
+    status: 400,
+    code: reason,
+    message:
+      reason === "brussels_not_registered"
+        ? "In Brussels the rent of an unregistered lease may not be indexed. Register the lease and tick 'Lease registered' on the contract first."
+        : "In Brussels the rent may not be indexed without an EPB certificate given to the tenant. Add the EPB label on the property first.",
   };
 }
 
@@ -484,6 +512,8 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       nextAnniversary: calc.nextAnniversary,
       formula: "newRent = baseRent * (currentIndex / baseIndex)",
       formulaNote: calc.formulaNote,
+      brussels: calc.brussels,
+      indexationBlocked: calc.indexationBlocked,
     });
   } catch (error: unknown) {
     if (error && typeof error === "object" && "status" in error && "message" in error) {
@@ -514,6 +544,9 @@ indexationRouter.get("/preview", async (c) => {
     const leaseType = c.req.query("leaseType") || "residential_long";
     const currentRent = Number(c.req.query("currentRent"));
     const lastIndexationDate = c.req.query("lastIndexationDate") || null;
+    const leaseRegistered = c.req.query("leaseRegistered") === "true";
+    const storedFactorRaw = Number(c.req.query("brusselsEpcFactor"));
+    const brusselsEpcFactor = Number.isFinite(storedFactorRaw) && storedFactorRaw > 0 ? storedFactorRaw : null;
 
     if (!baseRent || !baseIndex || !startDate) {
       return c.json(
@@ -530,6 +563,9 @@ indexationRouter.get("/preview", async (c) => {
       epcLabel,
       leaseType,
       lastIndexationDate,
+      leaseRegistered,
+      brusselsEpcFactor,
+      currentRent: Number.isFinite(currentRent) && currentRent > 0 ? currentRent : null,
     });
 
     // Estimate when the rent was last indexed by back-solving the health index
@@ -573,6 +609,8 @@ indexationRouter.get("/preview", async (c) => {
       correctionApplied: core.correctionApplied,
       correctionMonth: core.correctionMonth,
       formulaNote: core.formulaNote,
+      brussels: core.brussels,
+      indexationBlocked: core.indexationBlocked,
       currentRent:
         Number.isFinite(currentRent) && currentRent > 0 ? currentRent : null,
       differenceVsCurrent:
@@ -695,6 +733,9 @@ indexationRouter.get("/raise-summary", async (c) => {
           epcLabel: epcById.get(lease.propertyId) ?? null,
           leaseType: lease.type,
           lastIndexationDate: lease.lastIndexationDate,
+          brusselsEpcFactor: lease.brusselsEpcFactor != null ? Number(lease.brusselsEpcFactor) : null,
+          leaseRegistered: lease.leaseRegistered,
+          currentRent: Number(lease.monthlyRent),
         });
         const currentRent = Number(lease.monthlyRent);
         const shownRent = core.canApply ? core.newRent : core.newRentAtLatest;
@@ -882,6 +923,7 @@ indexationRouter.post(
         await calculateLeaseIndexation(leaseId, userId),
         effectiveDate
       );
+      if (calc.indexationBlocked) throw blockedIndexationError(calc.indexationBlocked);
       const calculatedNewRent = calc.newRent;
 
       // D-08: override cannot exceed the indexed rent (EPC hard cap)
@@ -994,6 +1036,7 @@ indexationRouter.post(
       const { newRent, subject, body, sendNotification, effectiveDate } = c.req.valid("json");
 
       const computed = await calculateLeaseIndexation(leaseId, userId);
+      if (computed.indexationBlocked) throw blockedIndexationError(computed.indexationBlocked);
 
       // Apply requires manager+ role (write operation)
       const applyRole = await getUserPropertyRole(userId, computed.lease.propertyId);
@@ -1058,6 +1101,18 @@ indexationRouter.post(
           lastIndexationDate: calc.indexationDate,
           // An applied indexation ends any snooze from the digest.
           indexationSnoozedUntil: null,
+          // Brussels: the correction factor is fixed at its first use and
+          // reused at every later indexation until a better EPB certificate.
+          ...(calc.lease.region === "brussels" &&
+          calc.correctionApplied &&
+          calc.brussels?.factor &&
+          !calc.lease.brusselsEpcFactor
+            ? {
+                brusselsEpcFactor: calc.brussels.factor.toFixed(9),
+                brusselsEpcFactorLabel: calc.brussels.label.slice(0, 4),
+                brusselsEpcFactorSetAt: localYmd(new Date()),
+              }
+            : {}),
           updatedAt: new Date(),
         })
         .where(eq(leases.id, leaseId));

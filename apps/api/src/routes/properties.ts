@@ -9,6 +9,7 @@ import {
   getUserPropertyRole,
   hasMinimumRole,
 } from "../lib/propertyAccess";
+import { clearBrusselsFactorsForNewCertificate } from "../services/brusselsEpcFactor";
 
 const createPropertySchema = z.object({
   name: z.string().min(1),
@@ -176,7 +177,22 @@ propertiesRouter.patch(
       if (update[key] === "") update[key] = null;
     }
 
+    const before = await db
+      .select({ epcLabel: properties.epcLabel })
+      .from(properties)
+      .where(eq(properties.id, id))
+      .limit(1);
     await db.update(properties).set(update).where(eq(properties.id, id));
+
+    // A new EPB certificate better than E ends a stored Brussels correction factor.
+    if (update.epcLabel !== undefined && before[0] && update.epcLabel !== before[0].epcLabel) {
+      await clearBrusselsFactorsForNewCertificate({
+        propertyId: id,
+        newLabel: (update.epcLabel as string | null) ?? null,
+        userId,
+      });
+    }
+
     const result = await db.select().from(properties).where(eq(properties.id, id));
     return c.json({ data: result[0] || { id, ...data }, message: "Property updated" });
   }

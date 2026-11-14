@@ -82,6 +82,13 @@ export const leases = mysqlTable("leases", {
   // Set when the landlord pressed a snooze button in the indexation digest.
   // Null means no snooze: the normal once-per-anniversary rule applies.
   indexationSnoozedUntil: date("indexation_snoozed_until", { mode: "string" }),
+  // The lease is registered. In Brussels an unregistered lease may not be indexed.
+  leaseRegistered: boolean("lease_registered").default(false).notNull(),
+  // Brussels EPB correction factor, stored when it is first applied. Later
+  // indexations reuse it until a better EPB certificate (A++ to D) is recorded.
+  brusselsEpcFactor: decimal("brussels_epc_factor", { precision: 12, scale: 9 }),
+  brusselsEpcFactorLabel: varchar("brussels_epc_factor_label", { length: 4 }),
+  brusselsEpcFactorSetAt: date("brussels_epc_factor_set_at", { mode: "string" }),
   // Late payment administrative fee (per contract)
   latePaymentFeeEnabled: boolean("late_payment_fee_enabled").default(false).notNull(),
   latePaymentFeeAmount: decimal("late_payment_fee_amount", { precision: 10, scale: 2 }).default("15.00"),
