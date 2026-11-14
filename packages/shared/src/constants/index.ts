@@ -30,7 +30,7 @@ export const REGIONS = {
     indexationAutomatic: false,
     indexationRequestPeriod: 3,
     defaultLeaseLength: 9,
-    // Brussels has permanent EPC-based indexation restrictions since Oct 2022
+    // Brussels: correction factor for EPB E/F/G leases that took effect before 14 Oct 2022
     epcIndexationRestrictions: true,
   },
 } as const;
@@ -297,20 +297,48 @@ export const DEFAULT_SMS_TEMPLATES: Record<SupportedLanguage, {
 // Both Brussels and Flanders have EPC-based restrictions on rent indexation.
 // Wallonia currently has no EPC-based indexation restrictions.
 
-// Brussels: permanent restrictions (since October 14, 2022)
-// Determines what percentage of the calculated rent INCREASE can be applied
-export const BRUSSELS_EPC_INDEXATION_FACTOR: Record<string, number> = {
-  "A++": 1.0,
-  "A+": 1.0,
-  A: 1.0,
-  B: 1.0,
-  C: 0.5,   // Only 50% of the calculated increase
-  D: 0.75,  // Only 75% of the calculated increase
-  E: 0.5,   // Only 50% of the calculated increase
-  F: 0.0,   // No indexation allowed
-  G: 0.0,   // No indexation allowed
-  none: 0.0, // No EPC certificate = no indexation
+// Brussels: correction factor (Brussels Housing Code art. 224/2, ordinance of
+// 13 October 2023). Source, verified digit for digit on 2026-11-14:
+// https://be.brussels/en/housing/rental/lease-contracts/rental-price-indexation/indexation-rents-correction-factor
+// Applies only when the lease took effect before BRUSSELS_EPC_CUTOFF and the EPB
+// certificate is E, F or G. New rent = round2(standard indexed rent x factor):
+// the factor multiplies the whole indexed rent, never just the increase. The
+// factor depends on the anniversary date of the lease (its start month and
+// day; October is split at the 14th) and the label. The same factor applies at
+// every later indexation until a better EPB certificate or a new lease.
+// Without an EPB certificate, or when the lease is not registered, the rent may
+// not be indexed at all.
+// Factor definitions (health index of the month before the anniversary month):
+//   E,   anniversary 1 Jan to 13 Oct:  50% x (index 2022 + index 2023) / index 2023
+//   E,   anniversary 14 Oct to 31 Dec: 50% x (index 2021 + index 2022) / index 2022
+//   F/G, anniversary 1 Jan to 13 Oct:  index 2022 / index 2023
+//   F/G, anniversary 14 Oct to 31 Dec: index 2021 / index 2022
+// These values are fixed by the ordinance and never change.
+export const BRUSSELS_EPC_CUTOFF = "2022-10-14";
+
+// Anniversary period keys: "1".."9", "11", "12" are whole months; October is
+// split into "10a" (1 to 13 October) and "10b" (14 to 31 October).
+export type BrusselsAnniversaryPeriod =
+  | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10a" | "10b" | "11" | "12";
+
+export const BRUSSELS_EPC_CORRECTION_FACTORS: Record<BrusselsAnniversaryPeriod, { e: number; fg: number }> = {
+  "10b": { e: 0.949447646, fg: 0.898895293 },
+  "11": { e: 0.945356473, fg: 0.890712946 },
+  "12": { e: 0.951977401, fg: 0.903954802 },
+  "1": { e: 0.951950895, fg: 0.903901791 },
+  "2": { e: 0.961757813, fg: 0.923515625 },
+  "3": { e: 0.967996216, fg: 0.935992433 },
+  "4": { e: 0.965766823, fg: 0.931533646 },
+  "5": { e: 0.971941594, fg: 0.943883189 },
+  "6": { e: 0.972124068, fg: 0.944248135 },
+  "7": { e: 0.976119286, fg: 0.952238571 },
+  "8": { e: 0.977109655, fg: 0.954219311 },
+  "9": { e: 0.980049682, fg: 0.960099363 },
+  "10a": { e: 0.989805521, fg: 0.979611041 },
 };
+
+// EPB labels that need the Brussels correction factor.
+export const BRUSSELS_EPC_CORRECTED_LABELS: readonly string[] = ["E", "F", "G"];
 
 // Flanders: temporary freeze + permanent correction factor
 // Only applies to residential leases (NOT student leases) started BEFORE Oct 1, 2022
