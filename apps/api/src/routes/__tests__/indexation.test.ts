@@ -366,3 +366,16 @@ describe("Brussels EPB correction factor on apply", () => {
     expect(prev.status).toBe(400);
   });
 });
+
+describe("apply waits for the legal index month", () => {
+  it("refuses when the index of the month before the anniversary is not published", async () => {
+    computeIndexationCore.mockImplementation(async () => ({ ...core, currentIndexPublished: false }));
+    const app = await buildApp();
+    queueLeaseRows();
+    const res = await post(app, "/indexation/apply/lease-1", applyBody);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toContain("2026-04");
+    expect(insertValues).toHaveLength(0);
+    expect(updateSets).toHaveLength(0);
+  });
+});

@@ -206,6 +206,25 @@ export default function IndexationPage() {
     fetchData();
   }, [fetchData]);
 
+  // Month-based health index status: warn when last month's index is overdue.
+  const [indexStatus, setIndexStatus] = useState<{
+    isStale: boolean;
+    expectedMonth: string | null;
+    latestMonth: string | null;
+  } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiUrl}/api/v1/indexation/health-index`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled && json) setIndexStatus(json);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [apiUrl]);
+
   // Bring the deep-linked lease into view once the list has rendered.
   useEffect(() => {
     if (loading || !highlightLeaseId) return;
@@ -391,6 +410,18 @@ export default function IndexationPage() {
           {t("calculate")}
         </Button>
       </div>
+
+      {indexStatus?.isStale && (
+        <p className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950 dark:text-yellow-200">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {indexStatus.expectedMonth
+            ? t("healthIndexOverdue", {
+                month: indexStatus.expectedMonth,
+                latest: indexStatus.latestMonth ?? "-",
+              })
+            : t("healthIndexMissing")}
+        </p>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

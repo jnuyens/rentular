@@ -362,7 +362,9 @@
     "emailPrepareFailed": "Kon de e-mail niet voorbereiden",
     "overrideNoteLabel": "Geïndexeerde huur {indexed}, toegepast {applied}",
     "newRentFromLabel": "Nieuwe huur vanaf",
-    "backdatedNote": "Huur die al betaald is voor voorbije maanden wordt nog niet automatisch aangepast."
+    "backdatedNote": "Huur die al betaald is voor voorbije maanden wordt nog niet automatisch aangepast.",
+    "healthIndexOverdue": "De gezondheidsindex van {month} staat nog niet in Rentular (laatste: {latest}). Indexaties die hem nodig hebben wachten tot Statbel hem publiceert.",
+    "healthIndexMissing": "Er zijn nog geen gezondheidsindexcijfers beschikbaar. Indexaties wachten tot ze bij Statbel opgehaald zijn."
   },
   "communications": {
     "title": "Communicatie",

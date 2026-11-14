@@ -362,7 +362,9 @@
     "emailPrepareFailed": "Impossible de preparer le-mail",
     "overrideNoteLabel": "Loyer indexé {indexed}, appliqué {applied}",
     "newRentFromLabel": "Nouveau loyer à partir du",
-    "backdatedNote": "Le loyer déjà payé pour les mois passés n'est pas encore ajusté automatiquement."
+    "backdatedNote": "Le loyer déjà payé pour les mois passés n'est pas encore ajusté automatiquement.",
+    "healthIndexOverdue": "L'indice santé de {month} n'est pas encore dans Rentular (dernier : {latest}). Les indexations qui en ont besoin attendent sa publication par Statbel.",
+    "healthIndexMissing": "Aucune valeur de l'indice santé n'est encore disponible. Les indexations attendent leur récupération auprès de Statbel."
   },
   "communications": {
     "title": "Communications",

@@ -362,7 +362,9 @@
     "emailPrepareFailed": "Could not prepare the email",
     "overrideNoteLabel": "Indexed rent {indexed}, applied {applied}",
     "newRentFromLabel": "New rent from",
-    "backdatedNote": "Rent already paid for past months is not adjusted automatically yet."
+    "backdatedNote": "Rent already paid for past months is not adjusted automatically yet.",
+    "healthIndexOverdue": "The health index for {month} is not in Rentular yet (latest: {latest}). Indexations that need it wait until Statbel publishes it.",
+    "healthIndexMissing": "No health index values are available yet. Indexations wait until they are fetched from Statbel."
   },
   "communications": {
     "title": "Communications",

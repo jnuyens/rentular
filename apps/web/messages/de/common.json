@@ -362,7 +362,9 @@
     "emailPrepareFailed": "E-Mail konnte nicht vorbereitet werden",
     "overrideNoteLabel": "Indexierte Miete {indexed}, angewendet {applied}",
     "newRentFromLabel": "Neue Miete ab",
-    "backdatedNote": "Bereits gezahlte Miete für vergangene Monate wird noch nicht automatisch angepasst."
+    "backdatedNote": "Bereits gezahlte Miete für vergangene Monate wird noch nicht automatisch angepasst.",
+    "healthIndexOverdue": "Der Gesundheitsindex für {month} ist noch nicht in Rentular (zuletzt: {latest}). Indexierungen, die ihn brauchen, warten, bis Statbel ihn veröffentlicht.",
+    "healthIndexMissing": "Es sind noch keine Gesundheitsindexwerte verfügbar. Indexierungen warten, bis sie bei Statbel abgerufen sind."
   },
   "communications": {
     "title": "Kommunikation",

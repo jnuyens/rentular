@@ -24,9 +24,10 @@ import {
 import type { PropertyManagerRole } from "@rentular/shared";
 import {
   getLatestHealthIndex,
-  isHealthIndexStale,
+  healthIndexStatusFor,
   findClosestHealthIndexMonth,
 } from "../services/healthIndex";
+import { getScheduleTimezone } from "../lib/timezone";
 import {
   computeIndexationCore,
   localYmd,
@@ -105,6 +106,9 @@ interface CalculationResult {
   canApply: boolean;
   applicableFrom: string;
   nextAnniversary: string;
+  // False when the index of the month before the anniversary is not published
+  // yet and the figures use the latest published index instead.
+  currentIndexPublished: boolean;
 }
 
 /**
@@ -259,6 +263,7 @@ async function calculateLeaseIndexation(
     canApply,
     applicableFrom,
     nextAnniversary,
+    currentIndexPublished,
   } = core;
   const currentIndexValue = String(currentIndex);
 
@@ -305,6 +310,7 @@ async function calculateLeaseIndexation(
     canApply,
     applicableFrom,
     nextAnniversary,
+    currentIndexPublished,
   };
 }
 
@@ -374,7 +380,7 @@ function buildIndexationEmailParams(input: {
 indexationRouter.get("/health-index", async (c) => {
   try {
     const latest = await getLatestHealthIndex();
-    const stale = await isHealthIndexStale();
+    const status = healthIndexStatusFor(latest, new Date(), getScheduleTimezone());
 
     if (!latest) {
       return c.json({
@@ -384,6 +390,8 @@ indexationRouter.get("/health-index", async (c) => {
         source: "Statbel",
         lastUpdated: null,
         isStale: true,
+        expectedMonth: status.expectedMonth,
+        latestMonth: null,
       });
     }
 
@@ -393,7 +401,11 @@ indexationRouter.get("/health-index", async (c) => {
       year: latest.year,
       source: "Statbel",
       lastUpdated: latest.fetchedAt,
-      isStale: stale,
+      isStale: status.stale,
+      // Month that should be cached by now and the newest one that is, both
+      // YYYY-MM. When isStale, an indexation that needs the missing month waits.
+      expectedMonth: status.expectedMonth,
+      latestMonth: status.latestMonth,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
@@ -511,6 +523,7 @@ indexationRouter.get("/calculate/:leaseId", async (c) => {
       canApply: calc.canApply,
       applicableFrom: calc.applicableFrom,
       nextAnniversary: calc.nextAnniversary,
+      currentIndexPublished: calc.currentIndexPublished,
       formula: "newRent = baseRent * (currentIndex / baseIndex)",
       formulaNote: calc.formulaNote,
       brussels: calc.brussels,
@@ -1050,6 +1063,16 @@ indexationRouter.post(
         return c.json(
           {
             error: `Indexation cannot be applied before ${computed.applicableFrom} (it may be applied once a year, from the contract anniversary)`,
+          },
+          400
+        );
+      }
+
+      // The legal index month must be published: never apply with an older month.
+      if (!computed.currentIndexPublished) {
+        return c.json(
+          {
+            error: `The health index for ${computed.currentIndexMonth} is not published yet; apply this indexation once it is`,
           },
           400
         );

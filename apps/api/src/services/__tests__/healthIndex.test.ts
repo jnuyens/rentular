@@ -14,6 +14,8 @@ import {
   expectedLatestMonth,
   decideHealthIndexAlert,
   checkHealthIndexAndAlert,
+  healthIndexStatusFor,
+  STATBEL_OPENDATA_URL,
   type HealthIndexCheckDeps,
   type HealthIndexFetchResult,
 } from "../healthIndex";
@@ -100,19 +102,19 @@ describe("extractStatbelCpiText", () => {
 const BXL = "Europe/Brussels";
 
 describe("expectedLatestMonth", () => {
-  it("requires nothing yet on the 4th", () => {
-    expect(expectedLatestMonth(new Date("2026-11-04T10:00:00Z"), BXL)).toBeNull();
+  it("requires nothing yet on the 2nd", () => {
+    expect(expectedLatestMonth(new Date("2026-11-02T10:00:00Z"), BXL)).toBeNull();
   });
 
-  it("requires the previous month from the 5th", () => {
-    expect(expectedLatestMonth(new Date("2026-11-05T10:00:00Z"), BXL)).toEqual({
+  it("requires the previous month from the 3rd", () => {
+    expect(expectedLatestMonth(new Date("2026-11-03T10:00:00Z"), BXL)).toEqual({
       year: "2026",
       month: "10",
     });
   });
 
   it("asks for December of the previous year in January", () => {
-    expect(expectedLatestMonth(new Date("2027-01-05T10:00:00Z"), BXL)).toEqual({
+    expect(expectedLatestMonth(new Date("2027-01-03T10:00:00Z"), BXL)).toEqual({
       year: "2026",
       month: "12",
     });
@@ -123,9 +125,9 @@ describe("expectedLatestMonth", () => {
   });
 
   it("judges the day in the schedule timezone, not UTC", () => {
-    const lateOn4thUtc = new Date("2026-11-04T23:30:00Z");
-    expect(expectedLatestMonth(lateOn4thUtc, "UTC")).toBeNull();
-    expect(expectedLatestMonth(lateOn4thUtc, BXL)).toEqual({ year: "2026", month: "10" });
+    const lateOn2ndUtc = new Date("2026-11-02T23:30:00Z");
+    expect(expectedLatestMonth(lateOn2ndUtc, "UTC")).toBeNull();
+    expect(expectedLatestMonth(lateOn2ndUtc, BXL)).toEqual({ year: "2026", month: "10" });
   });
 });
 
@@ -156,7 +158,7 @@ describe("checkHealthIndexAndAlert", () => {
   function makeDeps(overrides: Partial<HealthIndexCheckDeps> = {}) {
     const claimed = new Set<string>();
     const deps: HealthIndexCheckDeps = {
-      now: new Date("2026-11-05T05:00:00Z"),
+      now: new Date("2026-11-03T05:00:00Z"),
       tz: BXL,
       adminEmail: "admin@example.com",
       hasMonth: vi.fn(async () => false),
@@ -175,19 +177,20 @@ describe("checkHealthIndexAndAlert", () => {
     return deps;
   }
 
-  it("mails the admin once per day when the index is overdue", async () => {
+  it("mails the admin once per missing month when the index is overdue", async () => {
     const deps = makeDeps();
     const ok: HealthIndexFetchResult = { ok: true, fetched: 393, inserted: 0 };
 
     const first = await checkHealthIndexAndAlert(ok, deps);
     expect(first).toEqual({ kind: "stale", sent: true });
     expect(deps.hasMonth).toHaveBeenCalledWith("2026", "10");
-    expect(deps.claimOnce).toHaveBeenCalledWith("healthindex:alert:stale:2026-10", 82800);
+    expect(deps.claimOnce).toHaveBeenCalledWith("healthindex:alert:stale:2026-10", 40 * 86400);
     const [to, subject, body] = (deps.sendEmail as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(to).toBe("admin@example.com");
     expect(subject).toBe("[Rentular] Health index not updated");
     expect(body).toContain("Latest month in database: 2026-09");
     expect(body).toContain("Expected month: 2026-10");
+    expect(body).toContain(STATBEL_OPENDATA_URL);
 
     const second = await checkHealthIndexAndAlert(ok, deps);
     expect(second).toEqual({ kind: "stale", sent: false });
@@ -242,5 +245,74 @@ describe("checkHealthIndexAndAlert", () => {
       checkHealthIndexAndAlert({ ok: true, fetched: 393, inserted: 0 }, deps)
     ).rejects.toThrow("queue down");
     expect(deps.release).toHaveBeenCalledWith("healthindex:alert:stale:2026-10");
+  });
+});
+
+describe("monthly health index check with a fixed clock", () => {
+  const ok: HealthIndexFetchResult = { ok: true, fetched: 393, inserted: 0 };
+  function deps(now: string, present: boolean) {
+    const claimed = new Set<string>();
+    return {
+      now: new Date(now),
+      tz: BXL,
+      adminEmail: "admin@example.com",
+      hasMonth: vi.fn(async () => present),
+      latestMonth: vi.fn(async () => (present ? "2026-10" : "2026-09")),
+      claimOnce: vi.fn(async (key: string) => {
+        if (claimed.has(key)) return false;
+        claimed.add(key);
+        return true;
+      }),
+      sendEmail: vi.fn(async (_to: string, _subject: string, _body: string) => undefined),
+    } satisfies HealthIndexCheckDeps;
+  }
+
+  it("does not alert on the 2nd when last month is missing", async () => {
+    const d = deps("2026-11-02T05:00:00Z", false);
+    expect(await checkHealthIndexAndAlert(ok, d)).toEqual({ kind: null, sent: false });
+    expect(d.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("alerts once on the 3rd, and not again on the following days", async () => {
+    const d = deps("2026-11-03T05:00:00Z", false);
+    expect(await checkHealthIndexAndAlert(ok, d)).toEqual({ kind: "stale", sent: true });
+    d.now = new Date("2026-11-04T05:00:00Z");
+    expect(await checkHealthIndexAndAlert(ok, d)).toEqual({ kind: "stale", sent: false });
+    expect(d.sendEmail).toHaveBeenCalledTimes(1);
+    const body = d.sendEmail.mock.calls[0]![2] as string;
+    expect(body).toContain("Expected month: 2026-10");
+    expect(body).toContain("Latest month in database: 2026-09");
+  });
+
+  it("does nothing when last month is present", async () => {
+    const d = deps("2026-11-03T05:00:00Z", true);
+    expect(await checkHealthIndexAndAlert(ok, d)).toEqual({ kind: null, sent: false });
+    expect(d.sendEmail).not.toHaveBeenCalled();
+  });
+});
+
+describe("healthIndexStatusFor", () => {
+  it("is not stale on the 2nd while last month is missing", () => {
+    expect(healthIndexStatusFor({ year: "2026", month: "09" }, new Date("2026-11-02T10:00:00Z"), BXL)).toEqual({
+      stale: false,
+      expectedMonth: null,
+      latestMonth: "2026-09",
+    });
+  });
+
+  it("is stale from the 3rd while last month is missing", () => {
+    expect(healthIndexStatusFor({ year: "2026", month: "09" }, new Date("2026-11-03T10:00:00Z"), BXL)).toEqual({
+      stale: true,
+      expectedMonth: "2026-10",
+      latestMonth: "2026-09",
+    });
+  });
+
+  it("is fresh when last month is cached, however long ago it was fetched", () => {
+    expect(healthIndexStatusFor({ year: "2026", month: "10" }, new Date("2026-11-28T10:00:00Z"), BXL).stale).toBe(false);
+  });
+
+  it("is stale when nothing is cached", () => {
+    expect(healthIndexStatusFor(null, new Date("2026-11-02T10:00:00Z"), BXL).stale).toBe(true);
   });
 });
